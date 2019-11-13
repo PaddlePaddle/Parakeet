@@ -92,7 +92,6 @@ When this is done, you will see extracted features in `./data/ljspeech` includin
 Training the whole model on one single GPU:
 
 ```bash
-export PYTHONPATH=../:$PYTHONPATH
 export CUDA_VISIBLE_DEVICES=0
 python train.py --data-root=${data-root} --use-gpu \
     --preset=${preset_json_path} \
