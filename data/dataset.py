@@ -13,7 +13,6 @@ class Dataset(object):
         """return a Record"""
         raise NotImplementedError
     
-    @classmethod
     def _prepare_metadata(self):
         raise NotImplementedError
     
