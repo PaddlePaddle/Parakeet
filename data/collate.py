@@ -1,0 +1,71 @@
+"""
+functions to make batch for arrays which satisfy some conditions.
+"""
+import numpy as np
+
+def text_collate(minibatch):
+    """
+    minibatch: List[Example]
+    Example: ndarray, shape(T,), dtype: int64
+    """
+    peek_example = minibatch[0]
+    assert len(peek_example.shape) == 1, "text example is an 1D tensor"
+    
+    lengths = [example.shape[0] for example in minibatch] # assume (channel, n_samples) or (n_samples, )
+    max_len = np.max(lengths)
+    
+    batch = []
+    for example in minibatch:
+        pad_len = max_len - example.shape[0]
+        batch.append(np.pad(example, [(0, pad_len)], mode='constant', constant_values=0))
+
+    return np.array(batch, dtype=np.int64)
+
+def wav_collate(minibatch):
+    """
+    minibatch: List[Example]
+    Example: ndarray, shape(C, T) for multi-channel wav, shape(T,) for mono-channel wav, dtype: float32 
+    """
+    peek_example = minibatch[0]
+    if len(peek_example.shape) == 1:
+        mono_channel = True
+    elif len(peek_example.shape) == 2:
+        mono_channel = False
+    
+    lengths = [example.shape[-1] for example in minibatch] # assume (channel, n_samples) or (n_samples, )
+    max_len = np.max(lengths)
+    
+    batch = []
+    for example in minibatch:
+        pad_len = max_len - example.shape[-1]
+        if mono_channel:
+            batch.append(np.pad(example, [(0, pad_len)], mode='constant', constant_values=0.))
+        else:
+            batch.append(np.pad(example, [(0, 0), (0, pad_len)], mode='constant', constant_values=0.)) # what about PCM, no
+    
+    return np.array(batch, dtype=np.float32)
+
+def spec_collate(minibatch):
+    """
+    minibatch: List[Example]
+    Example: ndarray, shape(C, F, T) for multi-channel spectrogram, shape(F, T) for mono-channel spectrogram, dtype: float32 
+    """
+    # assume (F, T) or (C, F, T)
+    peek_example = minibatch[0]
+    if len(peek_example.shape) == 2:
+        mono_channel = True
+    elif len(peek_example.shape) == 3:
+        mono_channel = False
+    
+    lengths = [example.shape[-1] for example in minibatch] # assume (channel, F, n_frame) or (F, n_frame)
+    max_len = np.max(lengths)
+    
+    batch = []
+    for example in minibatch:
+        pad_len = max_len - example.shape[-1]
+        if mono_channel:
+            batch.append(np.pad(example, [(0, 0), (0, pad_len)], mode='constant', constant_values=0.))
+        else:
+            batch.append(np.pad(example, [(0, 0), (0, 0), (0, pad_len)], mode='constant', constant_values=0.)) # what about PCM, no
+    
+    return np.array(batch, dtype=np.float32)   
