@@ -17,7 +17,7 @@ from paddle import fluid
 import paddle.fluid.dygraph as dg
 
 from hparams import hparams, hparams_debug_string
-from modules import frontend
+import g2p as frontend
 from deepvoice3 import DeepVoiceTTS
 
 

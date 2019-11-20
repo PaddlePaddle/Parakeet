@@ -14,7 +14,7 @@ from hparams import hparams, hparams_debug_string
 from data.data import TextDataSource, MelSpecDataSource
 from nnmnkwii.datasets import FileSourceDataset
 from tqdm import trange
-from modules import frontend
+import g2p as frontend
 
 
 def build_parser():

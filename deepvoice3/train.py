@@ -32,7 +32,7 @@ from data import (TextDataSource, MelSpecDataSource,
                                     LinearSpecDataSource,
                                     PartialyRandomizedSimilarTimeLengthSampler,
                                     Dataset, make_loader, create_batch)
-from modules import frontend
+import g2p as frontend
 from builder import deepvoice3, WindowRange
 from dry_run import dry_run
 from train_model import train_model

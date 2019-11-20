@@ -30,7 +30,7 @@ import paddle.fluid.dygraph as dg
 
 sys.path.append("../")
 import audio
-from modules import frontend
+import g2p as frontend
 import dry_run
 
 from hparams import hparams

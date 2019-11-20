@@ -37,7 +37,7 @@ from tensorboardX import SummaryWriter
 
 # import global hyper parameters
 from hparams import hparams
-from modules import frontend
+import g2p as frontend
 
 _frontend = getattr(frontend, hparams.frontend)
 
