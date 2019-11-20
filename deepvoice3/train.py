@@ -28,7 +28,7 @@ from argparse import ArgumentParser
 from hparams import hparams, hparams_debug_string
 
 from nnmnkwii.datasets import FileSourceDataset
-from data.data import (TextDataSource, MelSpecDataSource,
+from data import (TextDataSource, MelSpecDataSource,
                                     LinearSpecDataSource,
                                     PartialyRandomizedSimilarTimeLengthSampler,
                                     Dataset, make_loader, create_batch)
