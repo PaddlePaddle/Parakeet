@@ -1,8 +1,7 @@
 # coding: utf-8
 
-from g2p.text.symbols import symbols
-from g2p import text
-from g2p.text import sequence_to_text
+from ..text.symbols import symbols
+from ..text import sequence_to_text
 
 import nltk
 from random import random
@@ -30,7 +29,7 @@ def mix_pronunciation(text, p):
 def text_to_sequence(text, p=0.0):
     if p >= 0:
         text = mix_pronunciation(text, p)
-    from g2p.text import text_to_sequence
+    from ..text import text_to_sequence
     text = text_to_sequence(text, ["english_cleaners"])
     return text
 

@@ -1,16 +1,16 @@
 class Dataset(object):
-    def __init__(self, lazy=True, stream=False):
-        # note that lazy and stream means two different things in our glossary
-        # lazy means to place preprocessing in __getitem__
-        # stram means the data source is itself a stream
-        self.lazy = lazy
-        self.stream = stream
+    def __init__(self):
+        pass
     
     def _load_metadata(self):
         raise NotImplementedError
     
     def _get_example(self):
-        """return a Record"""
+        """return a Record (or Example, Instance according to your glossary)"""
+        raise NotImplementedError
+    
+    def _batch_examples(self, minibatch):
+        """get a list of examples, return a batch, whose structure is the same as an example"""
         raise NotImplementedError
     
     def _prepare_metadata(self):

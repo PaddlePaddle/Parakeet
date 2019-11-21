@@ -1,10 +1,9 @@
-from sampler import SequentialSampler, RandomSampler, BatchSampler
+from .sampler import SequentialSampler, RandomSampler, BatchSampler
 
-class DataLoader(object):
-    def __init__(self, dataset, batch_size=1, collate_fn = lambda x: x, 
-                 sampler=None, shuffle=False, batch_sampler=None, drop_last=False):
+class DataCargo(object):
+    def __init__(self, dataset, batch_size=1, sampler=None, 
+                 shuffle=False, batch_sampler=None, drop_last=False):
         self.dataset = dataset
-        self.collate_fn = collate_fn
         
         if batch_sampler is not None:
             # auto_collation with custom batch_sampler
@@ -14,20 +13,14 @@ class DataLoader(object):
                                  'drop_last')
             batch_size = None
             drop_last = False
+            shuffle = False
         elif batch_size is None:
-            # no auto_collation
-            if shuffle or drop_last:
-                raise ValueError('batch_size=None option disables auto-batching '
-                                 'and is mutually exclusive with '
-                                 'shuffle, and drop_last')
-        
-        if sampler is None:  # give default samplers
+            raise ValueError('batch sampler is none. then batch size must not be none.')
+        elif sampler is None:
             if shuffle:
                 sampler = RandomSampler(dataset)
             else:
                 sampler = SequentialSampler(dataset)
-
-        if batch_size is not None and batch_sampler is None:
             # auto_collation without custom batch_sampler
             batch_sampler = BatchSampler(sampler, batch_size, drop_last)
 
@@ -73,7 +66,7 @@ class DataIterator(object):
     def __next__(self):
         index = self._next_index()  # may raise StopIteration, TODO(chenfeiyu): use dynamic batch size
         minibatch = [self._dataset[i] for i in index] # we can abstract it, too to use dynamic batch size
-        minibatch = self.loader.collate_fn(minibatch) # list[Example] -> Batch
+        minibatch = self._dataset._batch_examples(minibatch) # list[Example] -> Batch
         return minibatch
     
     def _next_index(self):

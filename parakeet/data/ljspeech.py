@@ -2,23 +2,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import librosa
-import g2p
+from .. import g2p
 
-from sampler import SequentialSampler, RandomSampler, BatchSampler
-from dataset import Dataset
-from dataloader import DataLoader
+from .sampler import SequentialSampler, RandomSampler, BatchSampler
+from .dataset import Dataset
+from .datacargo import DataCargo
+from .batch import TextIDBatcher, SpecBatcher
 
-from collate import text_collate, spec_collate
 
-LJSPEECH_ROOT = Path("/Users/chenfeiyu/projects/LJSpeech-1.1")
 class LJSpeech(Dataset):
-    def __init__(self, root=LJSPEECH_ROOT, lazy=True, stream=False):
-        super(LJSpeech, self).__init__(lazy, stream)
+    def __init__(self, root):
+        super(LJSpeech, self).__init__()
         self.root = root
         self.metadata = self._prepare_metadata() # we can do this just for luck
-
-        if self.stream:
-            self.examples_generator = self._read() 
         
     def _prepare_metadata(self):
         # if pure-stream case, each _prepare_metadata returns a generator
@@ -26,11 +22,6 @@ class LJSpeech(Dataset):
         metadata = pd.read_csv(csv_path, sep="|", header=None, quoting=3,
                                names=["fname", "raw_text", "normalized_text"])
         return metadata
-    
-    def _read(self):
-        for _, metadatum in self.metadata.iterrows():
-            example = self._get_example(metadatum)
-            yield example
             
     def _get_example(self, metadatum):
         """All the code for generating an Example from a metadatum. If you want a 
@@ -62,44 +53,30 @@ class LJSpeech(Dataset):
         phonemes = np.array(g2p.en.text_to_sequence(normalized_text), dtype=np.int64)
         return (mag, mel, phonemes) # maybe we need to implement it as a map in the future
 
+    def _batch_examples(self, minibatch):
+        mag_batch = []
+        mel_batch = []
+        phoneme_batch = []
+        for example in minibatch:
+            mag, mel, phoneme = example
+            mag_batch.append(mag)
+            mel_batch.append(mel)
+            phoneme_batch.append(phoneme)
+        mag_batch = SpecBatcher(pad_value=0.)(mag_batch)
+        mel_batch = SpecBatcher(pad_value=0.)(mel_batch)
+        phoneme_batch = TextIDBatcher(pad_id=0)(phoneme_batch)
+        return (mag_batch, mel_batch, phoneme_batch)
+
     def __getitem__(self, index):
-        if self.stream:
-            raise ValueError("__getitem__ is invalid in stream mode")
         metadatum = self.metadata.iloc[index]
         example = self._get_example(metadatum)
         return example
     
     def __iter__(self):
-        if self.stream:
-            for example in self.examples_generator:
-                yield example
-        else:
-            for i in range(len(self)):
-                yield self[i]
+        for i in range(len(self)):
+            yield self[i]
     
     def __len__(self):
-        if self.stream:
-            raise ValueError("__len__ is invalid in stream mode")
         return len(self.metadata)
 
-
-def fn(minibatch):
-    mag_batch = []
-    mel_batch = []
-    phoneme_batch = []
-    for example in minibatch:
-        mag, mel, phoneme = example
-        mag_batch.append(mag)
-        mel_batch.append(mel)
-        phoneme_batch.append(phoneme)
-    mag_batch = spec_collate(mag_batch)
-    mel_batch = spec_collate(mel_batch)
-    phoneme_batch = text_collate(phoneme_batch)
-    return (mag_batch, mel_batch, phoneme_batch)
-
-if __name__ == "__main__":
-    ljspeech = LJSpeech(LJSPEECH_ROOT)
-    ljspeech_loader = DataLoader(ljspeech, batch_size=16, shuffle=True, collate_fn=fn)
-    for i, batch in enumerate(ljspeech_loader):
-        print(i)
 

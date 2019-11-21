@@ -1,6 +1,6 @@
 import re
-from g2p.text import cleaners
-from g2p.text.symbols import symbols
+from . import cleaners
+from .symbols import symbols
 
 
 # Mappings from symbol to numeric ID and vice versa:

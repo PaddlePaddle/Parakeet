@@ -12,22 +12,22 @@ and the property:
 - n_vocab
 
 """
-from g2p import en
+from . import en
 
 # optinoal Japanese frontend
 try:
-    from g2p import jp
+    from . import jp
 except ImportError:
     jp = None
 
 try:
-    from g2p import ko
+    from . import ko
 except ImportError:
     ko = None
 
 # if you are going to use the frontend, you need to modify _characters in symbol.py:
 # _characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\'(),-.:;? ' + '¡¿ñáéíóúÁÉÍÓÚÑ'
 try:
-    from g2p import es
+    from . import es
 except ImportError:
     es = None
