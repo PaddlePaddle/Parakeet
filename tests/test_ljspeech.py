@@ -1,4 +1,4 @@
-from parakeet.data.ljspeech import LJSpeech
+from parakeet.datasets.ljspeech import LJSpeech
 from parakeet.data.datacargo import DataCargo
 
 from pathlib import Path

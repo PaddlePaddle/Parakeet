@@ -4,10 +4,10 @@ import pandas as pd
 import librosa
 from .. import g2p
 
-from .sampler import SequentialSampler, RandomSampler, BatchSampler
-from .dataset import Dataset
-from .datacargo import DataCargo
-from .batch import TextIDBatcher, SpecBatcher
+from ..data.sampler import SequentialSampler, RandomSampler, BatchSampler
+from ..data.dataset import Dataset
+from ..data.datacargo import DataCargo
+from ..data.batch import TextIDBatcher, SpecBatcher
 
 
 class LJSpeech(Dataset):
