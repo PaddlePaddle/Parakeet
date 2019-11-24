@@ -34,7 +34,9 @@ setup_info = dict(
     license='Apache 2',
 
     install_requires=[
-        'numpy', 'nltk', 'inflect', 'librosa', 'unidecode', 'numba', 'tqdm', 'matplotlib', 'tensorboardX', 'tensorboard', 'scipy', 'tqdm',
+        'numpy', 'nltk', 'inflect', 'librosa', 'unidecode', 'numba', 
+        'tqdm', 'matplotlib', 'tensorboardX', 'tensorboard', 'scipy',
+        'ruamel.yaml', 'pandas',
     ],
 
     # Package info
