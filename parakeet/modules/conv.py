@@ -19,7 +19,7 @@ import paddle
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 
-from weight_norm import Conv2D, Conv2DTranspose
+from .weight_norm import Conv2D, Conv2DTranspose
 
 
 class Conv1D(dg.Layer):

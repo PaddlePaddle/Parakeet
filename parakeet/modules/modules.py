@@ -18,8 +18,8 @@ import paddle.fluid.dygraph as dg
 
 import numpy as np
 
-import conv
-import weight_norm as weight_norm
+from .import conv
+from . import weight_norm
 
 
 def FC(name_scope,
