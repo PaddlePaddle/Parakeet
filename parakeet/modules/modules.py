@@ -18,7 +18,7 @@ import paddle.fluid.dygraph as dg
 
 import numpy as np
 
-from .import conv
+from . import conv
 from . import weight_norm
 
 
