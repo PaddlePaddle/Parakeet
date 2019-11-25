@@ -40,7 +40,7 @@ setup_info = dict(
     ],
 
     # Package info
-    packages=find_packages(exclude=('tests', 'test.*')),
+    packages=find_packages(exclude=('tests', 'tests.*')),
 
     zip_safe=True,
 )
