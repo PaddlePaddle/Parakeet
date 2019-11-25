@@ -4,17 +4,8 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 
 ## Installation
 
-### Install paddlepaddle
-
-For faster training speed and better support, it is recommended that you install the lasted develop version of paddlepaddle. Please refer to the [quick installation guide](https://paddlepaddle.org.cn/install/quick).
-
-### Other Requirements
-
-Install other requirements with pip.
-
-
 ```bash
-pip install -r requirements.txt
+pip install parakeet
 ```
 
 ## Supported models
