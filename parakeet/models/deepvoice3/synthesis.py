@@ -28,9 +28,9 @@ import nltk
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 
-sys.path.append("../")
+# sys.path.append("../")
 import audio
-import g2p as frontend
+from parakeet import g2p as frontend
 import dry_run
 
 from hparams import hparams

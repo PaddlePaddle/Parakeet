@@ -37,7 +37,7 @@ from tensorboardX import SummaryWriter
 
 # import global hyper parameters
 from hparams import hparams
-import g2p as frontend
+from parakeet import g2p as frontend
 
 _frontend = getattr(frontend, hparams.frontend)
 

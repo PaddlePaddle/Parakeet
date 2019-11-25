@@ -20,10 +20,10 @@ import paddle.fluid.dygraph as dg
 
 import numpy as np
 
-from modules import conv
+from parakeet.modules import conv
 
-from modules.modules import Embedding, PositionEmbedding
-from modules.modules import FC, Conv1D, Conv1DGLU, Conv1DTranspose
+from parakeet.modules.modules import Embedding, PositionEmbedding
+from parakeet.modules.modules import FC, Conv1D, Conv1DGLU, Conv1DTranspose
 
 ConvSpec = namedtuple("ConvSpec", ["out_channels", "filter_size", "dilation"])
 WindowRange = namedtuple("WindowRange", ["backward", "ahead"])

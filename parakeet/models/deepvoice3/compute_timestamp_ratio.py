@@ -9,12 +9,12 @@ import argparse
 import sys
 import io
 import numpy as np
-sys.path.append("../")
+# sys.path.append("../")
 from hparams import hparams, hparams_debug_string
-from data.data import TextDataSource, MelSpecDataSource
+from data import TextDataSource, MelSpecDataSource
 from nnmnkwii.datasets import FileSourceDataset
 from tqdm import trange
-import g2p as frontend
+from parakeet import g2p as frontend
 
 
 def build_parser():

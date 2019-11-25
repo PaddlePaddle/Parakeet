@@ -23,7 +23,7 @@ from paddle import fluid
 import paddle.fluid.dygraph as dg
 
 import sys
-sys.path.append("../")
+# sys.path.append("../")
 from argparse import ArgumentParser
 from hparams import hparams, hparams_debug_string
 
@@ -32,11 +32,11 @@ from data import (TextDataSource, MelSpecDataSource,
                                     LinearSpecDataSource,
                                     PartialyRandomizedSimilarTimeLengthSampler,
                                     Dataset, make_loader, create_batch)
-import g2p as frontend
+from parakeet import g2p as frontend
 from builder import deepvoice3, WindowRange
 from dry_run import dry_run
 from train_model import train_model
-from modules.loss import TTSLoss
+from parakeet.modules.loss import TTSLoss
 from tensorboardX import SummaryWriter
 
 
