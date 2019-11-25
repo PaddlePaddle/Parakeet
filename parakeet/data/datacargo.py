@@ -39,18 +39,13 @@ class DataCargo(object):
 
     @property
     def _index_sampler(self):
-        # The actual sampler used for generating indices for `_DatasetFetcher`
-        # (see _utils/fetch.py) to read data at each time. This would be
-        # `.batch_sampler` if in auto-collation mode, and `.sampler` otherwise.
-        # We can't change `.sampler` and `.batch_sampler` attributes for BC
-        # reasons.
         if self._auto_collation:
             return self.batch_sampler
         else:
             return self.sampler
 
     def __len__(self):
-        return len(self._index_sampler)  # with iterable-style dataset, this will error
+        return len(self._index_sampler)
     
 class DataIterator(object):
     def __init__(self, loader):

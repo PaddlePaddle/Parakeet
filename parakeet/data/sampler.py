@@ -63,7 +63,7 @@ class RandomSampler(Sampler):
         return iter(np.random.permutation(n).tolist())
 
     def __len__(self):
-        return len(self.data_source)
+        return self.num_samples
 
 
 class SubsetRandomSampler(Sampler):
