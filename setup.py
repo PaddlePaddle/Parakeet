@@ -36,7 +36,7 @@ setup_info = dict(
     install_requires=[
         'numpy', 'nltk', 'inflect', 'librosa', 'unidecode', 'numba', 
         'tqdm', 'matplotlib', 'tensorboardX', 'tensorboard', 'scipy',
-        'ruamel.yaml', 'pandas',
+        'ruamel.yaml', 'pandas', 'sox',
     ],
 
     # Package info

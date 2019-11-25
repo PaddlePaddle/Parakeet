@@ -12,8 +12,9 @@ from parakeet.data.datacargo import DataCargo
 from parakeet.data.batch import TextIDBatcher, WavBatcher
 
 class VCTK(Dataset):
-    def __init__(self, root: Path):
-        self.root = root
+    def __init__(self, root):
+        assert isinstance(root, (str, Path)), "root should be a string or Path object"
+        self.root = root if isinstance(root, Path) else Path(root)
         self.text_root = self.root.joinpath("txt")
         self.wav_root = self.root.joinpath("wav48")
 

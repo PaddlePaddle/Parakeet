@@ -13,11 +13,11 @@ from ..data.batch import TextIDBatcher, SpecBatcher
 class LJSpeech(Dataset):
     def __init__(self, root):
         super(LJSpeech, self).__init__()
-        self.root = root
-        self.metadata = self._prepare_metadata() # we can do this just for luck
+        assert isinstance(root, (str, Path)), "root should be a string or Path object"
+        self.root = root if isinstance(root, Path) else Path(root)
+        self.metadata = self._prepare_metadata() 
         
     def _prepare_metadata(self):
-        # if pure-stream case, each _prepare_metadata returns a generator
         csv_path = self.root.joinpath("metadata.csv")
         metadata = pd.read_csv(csv_path, sep="|", header=None, quoting=3,
                                names=["fname", "raw_text", "normalized_text"])
