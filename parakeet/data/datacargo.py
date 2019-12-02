@@ -31,6 +31,9 @@ class DataCargo(object):
     
     def __iter__(self):
         return DataIterator(self)
+
+    def __call__(self):
+        return DataIterator(self)
     
     @property
     def _auto_collation(self):
