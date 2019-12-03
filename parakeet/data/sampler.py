@@ -163,6 +163,35 @@ class WeightedRandomSampler(Sampler):
         return self.num_samples
 
 
+class DistributedSampler(Sampler):
+    def __init__(self, dataset_size, num_trainers, rank, shuffle=True):
+        self.dataset_size = dataset_size
+        self.num_trainers = num_trainers
+        self.rank = rank
+        self.num_samples = int(np.ceil(dataset_size / num_trainers))
+        self.total_size = self.num_samples * num_trainers
+        assert self.total_size >= self.dataset_size
+        self.shuffle = shuffle
+
+    def __iter__(self):
+        indices = list(range(self.dataset_size))
+        if self.shuffle:
+            random.shuffle(indices)
+
+        # Append extra samples to make it evenly distributed on all trainers.
+        indices += indices[:(self.total_size - self.dataset_size)]
+        assert len(indices) == self.total_size
+
+        # Subset samples for each trainer.
+        indices = indices[self.rank:self.total_size:self.num_trainers]
+        assert len(indices) ==  self.num_samples
+
+        return iter(indices)
+
+    def __len__(self):
+        return self.num_samples
+
+
 class BatchSampler(Sampler):
     r"""Wraps another sampler to yield a mini-batch of indices.
     Args:

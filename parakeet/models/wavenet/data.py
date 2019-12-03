@@ -1,5 +1,3 @@
-import math
-import os
 import random
 
 import librosa
@@ -9,7 +7,7 @@ from paddle import fluid
 import utils
 from parakeet.datasets import ljspeech
 from parakeet.data import dataset
-from parakeet.data.sampler import Sampler, BatchSampler, SequentialSampler
+from parakeet.data.sampler import DistributedSampler, BatchSampler
 from parakeet.data.datacargo import DataCargo
 
 
@@ -20,7 +18,7 @@ class Dataset(ljspeech.LJSpeech):
         self.fft_window_shift = config.fft_window_shift
         # Calculate context frames.
         frames_per_second = config.sample_rate // self.fft_window_shift
-        train_clip_frames = int(math.ceil(
+        train_clip_frames = int(np.ceil(
             config.train_clip_second * frames_per_second))
         context_frames = config.context_size // self.fft_window_shift
         self.num_frames = train_clip_frames + context_frames
@@ -39,7 +37,7 @@ class Dataset(ljspeech.LJSpeech):
         assert loaded_sr == sr
 
         # Pad audio to the right size.
-        frames = math.ceil(float(audio.size) / fft_window_shift)
+        frames = int(np.ceil(float(audio.size) / fft_window_shift))
         fft_padding = (fft_size - fft_window_shift) // 2
         desired_length = frames * fft_window_shift + fft_padding * 2
         pad_amount = (desired_length - audio.size) // 2
@@ -123,35 +121,6 @@ class Subset(dataset.Dataset):
 
     def __len__(self):
         return len(self.indices)
-
-
-class DistributedSampler(Sampler):
-    def __init__(self, dataset_size, num_trainers, rank, shuffle=True):
-        self.dataset_size = dataset_size
-        self.num_trainers = num_trainers
-        self.rank = rank
-        self.num_samples = int(math.ceil(dataset_size / num_trainers))
-        self.total_size = self.num_samples * num_trainers
-        assert self.total_size >= self.dataset_size
-        self.shuffle = shuffle
-    
-    def __iter__(self):
-        indices = list(range(self.dataset_size))
-        if self.shuffle:
-            random.shuffle(indices)
-        
-        # Append extra samples to make it evenly distributed on all trainers.
-        indices += indices[:(self.total_size - self.dataset_size)]
-        assert len(indices) == self.total_size
-
-        # Subset samples for each trainer.
-        indices = indices[self.rank:self.total_size:self.num_trainers]
-        assert len(indices) ==  self.num_samples
-
-        return iter(indices)
-
-    def __len__(self):
-        return self.num_samples
 
 
 class LJSpeech:

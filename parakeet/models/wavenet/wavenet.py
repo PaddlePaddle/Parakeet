@@ -4,12 +4,12 @@ import time
 
 import librosa
 import numpy as np
-from paddle import fluid
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 import utils
 from data import LJSpeech
-from wavenet_modules import WaveNetModule, debug
+from wavenet_modules import WaveNetModule
 
 
 class WaveNet():
@@ -32,18 +32,6 @@ class WaveNet():
         dataset = LJSpeech(config, self.nranks, self.rank) 
         self.trainloader = dataset.trainloader
         self.validloader = dataset.validloader
-
-#        if self.rank == 0:
-#            for i, (audios, mels, ids) in enumerate(self.validloader()):
-#                print("audios {}, mels {}, ids {}".format(audios.dtype, mels.dtype, ids.dtype))
-#                print("{}: rank {}, audios {}, mels {}, indices {} / {}".format(
-#                    i, self.rank, audios.shape, mels.shape, ids.shape,
-#                    ids.numpy()))
-#    
-#            for i, (audios, mels, ids) in enumerate(self.trainloader):
-#                print("{}: rank {}, audios {}, mels {}, indices {} / {}".format(
-#                    i, self.rank, audios.shape, mels.shape, ids.shape,
-#                    ids.numpy()))
 
         wavenet = WaveNetModule("wavenet", config, self.rank)
         
@@ -139,8 +127,8 @@ class WaveNet():
         self.wavenet.eval()
 
         total_loss = []
-        start_time = time.time()
         sample_audios = []
+        start_time = time.time()
         for audios, mels, audio_starts in self.validloader():
             loss, sample_audio = self.wavenet(audios, mels, audio_starts, True)
             total_loss.append(float(loss.numpy()))
@@ -159,11 +147,6 @@ class WaveNet():
                 iteration, sample_rate=self.config.sample_rate)
             tb.add_audio("Teacher-Forced-Audio-1", sample_audios[1].numpy(),
                 iteration, sample_rate=self.config.sample_rate)
-
-    def save(self, iteration):
-        utils.save_latest_parameters(self.checkpoint_dir, iteration,
-                                     self.wavenet, self.optimizer)
-        utils.save_latest_checkpoint(self.checkpoint_dir, iteration)
 
     @dg.no_grad
     def infer(self, iteration):
@@ -186,3 +169,8 @@ class WaveNet():
             syn_audio.shape, syn_time))
         librosa.output.write_wav(filename, syn_audio,
             sr=config.sample_rate)
+
+    def save(self, iteration):
+        utils.save_latest_parameters(self.checkpoint_dir, iteration,
+                                     self.wavenet, self.optimizer)
+        utils.save_latest_checkpoint(self.checkpoint_dir, iteration)
