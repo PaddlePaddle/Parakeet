@@ -26,6 +26,7 @@ def FC(name_scope,
        in_features,
        size,
        num_flatten_dims=1,
+       relu=False,
        dropout=0.0,
        epsilon=1e-30,
        act=None,
@@ -39,7 +40,11 @@ def FC(name_scope,
     # stds
     if isinstance(in_features, int):
         in_features = [in_features]
+
     stds = [np.sqrt((1 - dropout) / in_feature) for in_feature in in_features]
+    if relu:
+        stds = [std * np.sqrt(2.0) for std in stds]
+
     weight_inits = [
         fluid.initializer.NormalInitializer(scale=std) for std in stds
     ]
@@ -456,3 +461,152 @@ class PositionEmbedding(dg.Layer):
             return out
         else:
             raise Exception("Then you can just use position rate at init")
+
+
+class Conv1D_GU(dg.Layer):
+    def __init__(self,
+                 name_scope,
+                 conditioner_dim,
+                 in_channels,
+                 num_filters,
+                 filter_size,
+                 dilation,
+                 causal=False,
+                 residual=True,
+                 dtype="float32"):
+        super(Conv1D_GU, self).__init__(name_scope, dtype=dtype)
+
+        self.conditioner_dim = conditioner_dim
+        self.in_channels = in_channels
+        self.num_filters = num_filters
+        self.filter_size = filter_size
+        self.dilation = dilation
+        self.causal = causal
+        self.residual = residual
+
+        if residual:
+            assert (
+                in_channels == num_filters
+            ), "this block uses residual connection"\
+                "the input_channels should equals num_filters"
+
+        self.conv = Conv1D(
+            self.full_name(),
+            in_channels,
+            2 * num_filters,
+            filter_size,
+            dilation,
+            causal=causal,
+            dtype=dtype)
+
+        self.fc = Conv1D(
+            self.full_name(),
+            conditioner_dim,
+            2 * num_filters,
+            filter_size=1,
+            dilation=1,
+            causal=False,
+            dtype=dtype)
+
+    def forward(self, x, skip=None, conditioner=None):
+        """
+        Args:
+            x (Variable): Shape(B, C_in, 1, T), the input of Conv1D_GU
+                layer, where B means batch_size, C_in means the input channels
+                T means input time steps.
+            skip (Variable): Shape(B, C_in, 1, T), skip connection.
+            conditioner (Variable): Shape(B, C_con, 1, T), expanded mel
+                conditioner, where C_con is conditioner hidden dim which
+                equals the num of mel bands. Note that when using residual
+                connection, the Conv1D_GU does not change the number of
+                channels, so out channels equals input channels.
+        Returns:
+            x (Variable): Shape(B, C_out, 1, T), the output of Conv1D_GU, where
+                C_out means the output channels of Conv1D_GU.
+            skip (Variable): Shape(B, C_out, 1, T), skip connection.
+        """
+        residual = x
+        x = self.conv(x)
+
+        if conditioner is not None:
+            cond_bias = self.fc(conditioner)
+            x += cond_bias
+
+        content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
+
+        # Gated Unit.
+        x = fluid.layers.elementwise_mul(fluid.layers.sigmoid(gate),
+                                         fluid.layers.tanh(content))
+
+        if skip is None:
+            skip = x
+        else:
+            skip = fluid.layers.scale(skip + x, np.sqrt(0.5))
+
+        if self.residual:
+            x = fluid.layers.scale(residual + x, np.sqrt(0.5))
+
+        return x, skip
+
+    def add_input(self, x, skip=None, conditioner=None):
+        """
+        Inputs:
+            x: shape(B, num_filters, 1, time_steps)
+            skip: shape(B, num_filters, 1, time_steps), skip connection
+            conditioner: shape(B, conditioner_dim, 1, time_steps)
+        Outputs:
+            x: shape(B, num_filters, 1, time_steps), where time_steps = 1
+            skip: skip connection, same shape as x
+        """
+        residual = x
+
+        # add step input and produce step output
+        x = self.conv.add_input(x)
+
+        if conditioner is not None:
+            cond_bias = self.fc(conditioner)
+            x += cond_bias
+
+        content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
+
+        # Gated Unit.
+        x = fluid.layers.elementwise_mul(fluid.layers.sigmoid(gate),
+                                         fluid.layers.tanh(content))
+
+        if skip is None:
+            skip = x
+        else:
+            skip = fluid.layers.scale(skip + x, np.sqrt(0.5))
+
+        if self.residual:
+            x = fluid.layers.scale(residual + x, np.sqrt(0.5))
+
+        return x, skip
+
+
+def Conv2DTranspose(name_scope,
+                    num_filters,
+                    filter_size,
+                    padding=0,
+                    stride=1,
+                    dilation=1,
+                    use_cudnn=True,
+                    act=None,
+                    dtype="float32"):
+    val = 1.0 / (filter_size[0] * filter_size[1])
+    weight_init = fluid.initializer.ConstantInitializer(val)
+    weight_attr = fluid.ParamAttr(initializer=weight_init)
+
+    layer = weight_norm.Conv2DTranspose(
+        name_scope,
+        num_filters,
+        filter_size=filter_size,
+        padding=padding,
+        stride=stride,
+        dilation=dilation,
+        param_attr=weight_attr,
+        use_cudnn=use_cudnn,
+        act=act,
+        dtype=dtype)
+
+    return layer

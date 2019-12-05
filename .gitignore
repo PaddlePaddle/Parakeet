@@ -130,3 +130,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Shell, vim, and output folder
+*.sh
+*.swp
+runs
+syn_audios
