@@ -1,13 +1,12 @@
 from network import *
-from preprocess import batch_examples_postnet, LJSpeech
 from tensorboardX import SummaryWriter
 import os
 from tqdm import tqdm
-from parakeet.data.datacargo import DataCargo
 from pathlib import Path
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
+from data import LJSpeechLoader
 
 class MyDataParallel(dg.parallel.DataParallel):
     """
@@ -27,21 +26,15 @@ class MyDataParallel(dg.parallel.DataParallel):
                 object.__getattribute__(self, "_sub_layers")["_layers"], key)
 
 
-def main():
-    parser = jsonargparse.ArgumentParser(description="Train postnet model", formatter_class='default_argparse')
-    add_config_options_to_parser(parser)
-    cfg = parser.parse_args('-c ./config/train_postnet.yaml'.split())
+def main(cfg):
     
-    local_rank = dg.parallel.Env().local_rank
-
+    local_rank = dg.parallel.Env().local_rank if cfg.use_data_parallel else 0
+    nranks = dg.parallel.Env().nranks if cfg.use_data_parallel else 1
+    
     if local_rank == 0:
         # Print the whole config setting.
         pprint(jsonargparse.namespace_to_dict(cfg))
 
-    LJSPEECH_ROOT = Path(cfg.data_path)
-    dataset = LJSpeech(LJSPEECH_ROOT)
-    dataloader = DataCargo(dataset, batch_size=cfg.batch_size, shuffle=True, collate_fn=batch_examples_postnet, drop_last=True)
-    
     global_step = 0
     place = (fluid.CUDAPlace(dg.parallel.Env().dev_id)
              if cfg.use_data_parallel else fluid.CUDAPlace(0)
@@ -50,35 +43,10 @@ def main():
     if not os.path.exists(cfg.log_dir):
             os.mkdir(cfg.log_dir)
     path = os.path.join(cfg.log_dir,'postnet')
-    writer = SummaryWriter(path)
 
-    with dg.guard(place):
-         # dataloader
-        input_fields = {
-                'names': ['mel', 'mag'],
-                'shapes':
-                [[cfg.batch_size, None, 80], [cfg.batch_size, None, 257]], 
-                'dtypes': ['float32', 'float32'],
-                'lod_levels': [0, 0]
-            }
+    writer = SummaryWriter(path) if local_rank == 0 else None
 
-        inputs = [
-            fluid.data(
-                name=input_fields['names'][i],
-                shape=input_fields['shapes'][i],
-                dtype=input_fields['dtypes'][i],
-                lod_level=input_fields['lod_levels'][i])
-            for i in range(len(input_fields['names']))
-        ]
-
-        reader = fluid.io.DataLoader.from_generator(
-            feed_list=inputs,
-            capacity=32,
-            iterable=True,
-            use_double_buffer=True,
-            return_list=True)
-
-        
+    with dg.guard(place):   
         model = ModelPostNet('postnet', cfg)
 
         model.train()
@@ -94,9 +62,10 @@ def main():
             strategy = dg.parallel.prepare_context()
             model = MyDataParallel(model, strategy)
 
+        reader = LJSpeechLoader(cfg, nranks, local_rank, is_postnet=True).reader()
+
         for epoch in range(cfg.epochs):
-            reader.set_batch_generator(dataloader, place)
-            pbar = tqdm(reader())
+            pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d'%epoch)
                 mel, mag = data
@@ -109,27 +78,30 @@ def main():
                 loss = layers.mean(layers.abs(layers.elementwise_sub(mag_pred, mag)))
                 if cfg.use_data_parallel:
                     loss = model.scale_loss(loss)
-
-                writer.add_scalars('training_loss',{
-                    'loss':loss.numpy(),
-                }, global_step)
-
-                loss.backward()
-                if cfg.use_data_parallel:
+                    loss.backward()
                     model.apply_collective_grads()
+                else:
+                    loss.backward()
                 optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(1))
                 model.clear_gradients()
-
-                if global_step % cfg.save_step == 0:
-                    if not os.path.exists(cfg.save_path):
-                        os.mkdir(cfg.save_path)
-                    save_path = os.path.join(cfg.save_path,'postnet/%d' % global_step)
-                    dg.save_dygraph(model.state_dict(), save_path)
-                    dg.save_dygraph(optimizer.state_dict(), save_path)
-
                 
+                if local_rank==0:
+                    writer.add_scalars('training_loss',{
+                        'loss':loss.numpy(),
+                    }, global_step)
 
+                    if global_step % cfg.save_step == 0:
+                        if not os.path.exists(cfg.save_path):
+                            os.mkdir(cfg.save_path)
+                        save_path = os.path.join(cfg.save_path,'postnet/%d' % global_step)
+                        dg.save_dygraph(model.state_dict(), save_path)
+                        dg.save_dygraph(optimizer.state_dict(), save_path)
 
+        if local_rank==0:
+            writer.close()
 
 if __name__ == '__main__':
-    main()
+    parser = jsonargparse.ArgumentParser(description="Train postnet model", formatter_class='default_argparse')
+    add_config_options_to_parser(parser)
+    cfg = parser.parse_args('-c ./config/train_postnet.yaml'.split())
+    main(cfg)

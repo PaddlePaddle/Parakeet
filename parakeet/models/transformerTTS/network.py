@@ -7,9 +7,9 @@ class Encoder(dg.Layer):
     def __init__(self, name_scope, embedding_size, num_hidden, config):
         super(Encoder, self).__init__(name_scope)
         self.num_hidden = num_hidden
-        param = fluid.ParamAttr(name='alpha')
-        self.alpha = self.create_parameter(param, shape=(1, ), dtype='float32',
-                        default_initializer = fluid.initializer.ConstantInitializer(value=1.0))
+        param = fluid.ParamAttr(name='alpha',  
+                                initializer=fluid.initializer.Constant(value=1.0))
+        self.alpha = self.create_parameter(param, shape=(1, ), dtype='float32')
         self.pos_inp = get_sinusoid_encoding_table(1024, self.num_hidden, padding_idx=0)
         self.pos_emb = dg.Embedding(name_scope=self.full_name(),
                                  size=[1024, num_hidden],
@@ -31,8 +31,8 @@ class Encoder(dg.Layer):
 
     def forward(self, x, positional):
         if fluid.framework._dygraph_tracer()._train_mode:
-            query_mask = (positional != 0).astype(float)
-            mask = (positional != 0).astype(float)
+            query_mask = (positional != 0).astype(np.float32)
+            mask = (positional != 0).astype(np.float32)
             mask = fluid.layers.expand(fluid.layers.unsqueeze(mask,[1]), [1,x.shape[1], 1])  
         else:
             query_mask, mask = None, None
@@ -42,7 +42,7 @@ class Encoder(dg.Layer):
         
         
         # Get positional encoding
-        positional = self.pos_emb(fluid.layers.unsqueeze(positional, axes=[-1])) 
+        positional = self.pos_emb(positional) 
         x = positional * self.alpha + x #(N, T, C)
        
 
@@ -102,14 +102,14 @@ class Decoder(dg.Layer):
         
         if fluid.framework._dygraph_tracer()._train_mode:
             #zeros = np.zeros(positional.shape, dtype=np.float32)
-            m_mask = (positional != 0).astype(float)
+            m_mask = (positional != 0).astype(np.float32)
             mask = np.repeat(np.expand_dims(m_mask.numpy() == 0, axis=1), decoder_len, axis=1)
             mask = mask + np.repeat(np.expand_dims(np.triu(np.ones([decoder_len, decoder_len]), 1), axis=0) ,batch_size, axis=0)
             mask = fluid.layers.cast(dg.to_variable(mask == 0), np.float32)
             
 
             # (batch_size, decoder_len, decoder_len)
-            zero_mask = fluid.layers.expand(fluid.layers.unsqueeze((c_mask != 0).astype(float), axes=2), [1,1,decoder_len])
+            zero_mask = fluid.layers.expand(fluid.layers.unsqueeze((c_mask != 0).astype(np.float32), axes=2), [1,1,decoder_len])
             # (batch_size, decoder_len, seq_len)
             zero_mask = fluid.layers.transpose(zero_mask, [0,2,1])
         
@@ -125,7 +125,7 @@ class Decoder(dg.Layer):
         query = self.linear(query)
 
         # Get position embedding
-        positional = self.pos_emb(fluid.layers.unsqueeze(positional, axes=[-1]))
+        positional = self.pos_emb(positional)
         query = positional * self.alpha + query
 
         #positional dropout

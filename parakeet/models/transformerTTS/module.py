@@ -130,7 +130,7 @@ class EncoderPrenet(dg.Layer):
         self.projection = FC(self.full_name(), num_hidden, num_hidden)
 
     def forward(self, x):
-        x = self.embedding(fluid.layers.unsqueeze(x, axes=[-1])) #(batch_size, seq_len, embending_size)
+        x = self.embedding(x) #(batch_size, seq_len, embending_size)
         x = layers.transpose(x,[0,2,1])
         x = layers.dropout(layers.relu(self.batch_norm1(self.conv1(x))), 0.2)
         x = layers.dropout(layers.relu(self.batch_norm2(self.conv2(x))), 0.2)
@@ -211,8 +211,9 @@ class ScaledDotProductAttention(dg.Layer):
         # Mask key to ignore padding
         if mask is not None:
             attention = attention * mask
-            mask = (mask == 0).astype(float) * (-2 ** 32 + 1)
+            mask = (mask == 0).astype(np.float32) * (-2 ** 32 + 1)
             attention = attention + mask
+            
 
         attention = layers.softmax(attention)
         # Mask query to ignore padding

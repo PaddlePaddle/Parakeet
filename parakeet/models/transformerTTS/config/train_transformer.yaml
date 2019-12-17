@@ -21,7 +21,7 @@ lr: 0.001
 save_step: 500
 image_step: 2000
 use_gpu: True
-use_data_parallel: False
+use_data_parallel: True
 
 data_path: ../../../dataset/LJSpeech-1.1
 save_path: ./checkpoint

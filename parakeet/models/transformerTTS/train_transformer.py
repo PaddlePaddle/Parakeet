@@ -1,16 +1,15 @@
-from preprocess import batch_examples, LJSpeech
 import os
 from tqdm import tqdm
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 from network import *
 from tensorboardX import SummaryWriter
-from parakeet.data.datacargo import DataCargo
 from pathlib import Path
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
 from matplotlib import cm
+from data import LJSpeechLoader
 
 class MyDataParallel(dg.parallel.DataParallel):
     """
@@ -30,21 +29,14 @@ class MyDataParallel(dg.parallel.DataParallel):
                 object.__getattribute__(self, "_sub_layers")["_layers"], key)
 
 
-def main():
-    parser = jsonargparse.ArgumentParser(description="Train TransformerTTS model", formatter_class='default_argparse')
-    add_config_options_to_parser(parser)
-    cfg = parser.parse_args('-c ./config/train_transformer.yaml'.split())
-    
-    local_rank = dg.parallel.Env().local_rank
+def main(cfg):
+    local_rank = dg.parallel.Env().local_rank if cfg.use_data_parallel else 0
+    nranks = dg.parallel.Env().nranks if cfg.use_data_parallel else 1
 
     if local_rank == 0:
         # Print the whole config setting.
         pprint(jsonargparse.namespace_to_dict(cfg))
 
-
-    LJSPEECH_ROOT = Path(cfg.data_path)
-    dataset = LJSpeech(LJSPEECH_ROOT)
-    dataloader = DataCargo(dataset, batch_size=cfg.batch_size, shuffle=True, collate_fn=batch_examples, drop_last=True)
     global_step = 0
     place = (fluid.CUDAPlace(dg.parallel.Env().dev_id)
              if cfg.use_data_parallel else fluid.CUDAPlace(0)
@@ -57,39 +49,13 @@ def main():
     writer = SummaryWriter(path) if local_rank == 0 else None
     
     with dg.guard(place):
-        if cfg.use_data_parallel:
-            strategy = dg.parallel.prepare_context()
-
-        # dataloader
-        input_fields = {
-                'names': ['character', 'mel', 'mel_input', 'pos_text', 'pos_mel', 'text_len'],
-                'shapes':
-                [[cfg.batch_size, None], [cfg.batch_size, None, 80], [cfg.batch_size, None, 80], [cfg.batch_size, 1], [cfg.batch_size, 1], [cfg.batch_size, 1]],
-                'dtypes': ['float32', 'float32', 'float32', 'int64', 'int64', 'int64'],
-                'lod_levels': [0, 0, 0, 0, 0, 0]
-            }
-
-        inputs = [
-            fluid.data(
-                name=input_fields['names'][i],
-                shape=input_fields['shapes'][i],
-                dtype=input_fields['dtypes'][i],
-                lod_level=input_fields['lod_levels'][i])
-            for i in range(len(input_fields['names']))
-        ]
-
-        reader = fluid.io.DataLoader.from_generator(
-            feed_list=inputs,
-            capacity=32,
-            iterable=True,
-            use_double_buffer=True,
-            return_list=True)
-
         model = Model('transtts', cfg)
 
         model.train()
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(4000 *( cfg.lr ** 2)), 4000))
-
+        
+        reader = LJSpeechLoader(cfg, nranks, local_rank).reader()
+        
         if cfg.checkpoint_path is not None:
             model_dict, opti_dict = fluid.dygraph.load_dygraph(cfg.checkpoint_path)
             model.set_dict(model_dict)
@@ -97,11 +63,11 @@ def main():
             print("load checkpoint!!!")
 
         if cfg.use_data_parallel:
+            strategy = dg.parallel.prepare_context()
             model = MyDataParallel(model, strategy)
-
+        
         for epoch in range(cfg.epochs):
-            reader.set_batch_generator(dataloader, place)
-            pbar = tqdm(reader())
+            pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d'%epoch)
                 character, mel, mel_input, pos_text, pos_mel, text_length = data
@@ -114,40 +80,41 @@ def main():
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
                 loss = mel_loss + post_mel_loss
 
+                if local_rank==0:
+                    writer.add_scalars('training_loss', {
+                        'mel_loss':mel_loss.numpy(),
+                        'post_mel_loss':post_mel_loss.numpy(),
+                    }, global_step)
+
+                    writer.add_scalars('alphas', {
+                        'encoder_alpha':model.encoder.alpha.numpy(),
+                        'decoder_alpha':model.decoder.alpha.numpy(),
+                    }, global_step)
+
+                    writer.add_scalar('learning_rate', optimizer._learning_rate.step().numpy(), global_step)
+
+                    if global_step % cfg.image_step == 1:
+                        for i, prob in enumerate(attn_probs):
+                            for j in range(4):
+                                    x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
+                                    writer.add_image('Attention_enc_%d_0'%global_step, x, i*4+j, dataformats="HWC")
+
+                        for i, prob in enumerate(attn_enc):
+                            for j in range(4):
+                                x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
+                                writer.add_image('Attention_enc_%d_0'%global_step, x, i*4+j, dataformats="HWC")
+
+                        for i, prob in enumerate(attn_dec):
+                            for j in range(4):
+                                x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
+                                writer.add_image('Attention_dec_%d_0'%global_step, x, i*4+j, dataformats="HWC")
+
                 if cfg.use_data_parallel:
                     loss = model.scale_loss(loss)
-
-                writer.add_scalars('training_loss', {
-                    'mel_loss':mel_loss.numpy(),
-                    'post_mel_loss':post_mel_loss.numpy(),
-                }, global_step)
-
-                writer.add_scalars('alphas', {
-                    'encoder_alpha':model.encoder.alpha.numpy(),
-                    'decoder_alpha':model.decoder.alpha.numpy(),
-                }, global_step)
-
-                writer.add_scalar('learning_rate', optimizer._learning_rate.step().numpy(), global_step)
-
-                if global_step % cfg.image_step == 1:
-                    for i, prob in enumerate(attn_probs):
-                       for j in range(4):
-                            x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
-                            writer.add_image('Attention_enc_%d_0'%global_step, x, i*4+j, dataformats="HWC")
-
-                    for i, prob in enumerate(attn_enc):
-                        for j in range(4):
-                            x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
-                            writer.add_image('Attention_enc_%d_0'%global_step, x, i*4+j, dataformats="HWC")
-
-                    for i, prob in enumerate(attn_dec):
-                        for j in range(4):
-                            x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
-                            writer.add_image('Attention_dec_%d_0'%global_step, x, i*4+j, dataformats="HWC")
-
-                loss.backward()
-                if cfg.use_data_parallel:
+                    loss.backward()
                     model.apply_collective_grads()
+                else:
+                    loss.backward()
                 optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(1))
                 model.clear_gradients()
 
@@ -163,4 +130,7 @@ def main():
                     
 
 if __name__ =='__main__':
-    main()
+    parser = jsonargparse.ArgumentParser(description="Train TransformerTTS model", formatter_class='default_argparse')
+    add_config_options_to_parser(parser)
+    cfg = parser.parse_args('-c ./config/train_transformer.yaml'.split())
+    main(cfg)

@@ -2,7 +2,8 @@ from .sampler import SequentialSampler, RandomSampler, BatchSampler
 
 class DataCargo(object):
     def __init__(self, dataset, batch_size=1, sampler=None, 
-                 shuffle=False, batch_sampler=None, drop_last=False):
+                 shuffle=False, batch_sampler=None, collate_fn=None,
+                 drop_last=False):
         self.dataset = dataset
         
         if batch_sampler is not None:
@@ -21,13 +22,20 @@ class DataCargo(object):
                 sampler = RandomSampler(dataset)
             else:
                 sampler = SequentialSampler(dataset)
-            # auto_collation without custom batch_sampler
             batch_sampler = BatchSampler(sampler, batch_size, drop_last)
+        else:
+            batch_sampler = BatchSampler(sampler, batch_size, drop_last)
+
+        self.batch_sampler = batch_sampler
+
+        if collate_fn is None:
+            collate_fn = dataset._batch_examples
+        self.collate_fn = collate_fn
 
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.sampler = sampler
-        self.batch_sampler = batch_sampler
+        
     
     def __iter__(self):
         return DataIterator(self)
@@ -57,6 +65,7 @@ class DataIterator(object):
         
         self._index_sampler = loader._index_sampler
         self._sampler_iter = iter(self._index_sampler)
+        self.collate_fn = loader.collate_fn
     
     def __iter__(self):
         return self
@@ -64,7 +73,7 @@ class DataIterator(object):
     def __next__(self):
         index = self._next_index()  # may raise StopIteration, TODO(chenfeiyu): use dynamic batch size
         minibatch = [self._dataset[i] for i in index] # we can abstract it, too to use dynamic batch size
-        minibatch = self._dataset._batch_examples(minibatch) # list[Example] -> Batch
+        minibatch = self.collate_fn(minibatch)
         return minibatch
     
     def _next_index(self):
