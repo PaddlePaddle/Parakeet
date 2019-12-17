@@ -2,7 +2,8 @@ import itertools
 import os
 import time
 
-import librosa
+#import librosa
+from scipy.io.wavfile import write
 import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
@@ -156,17 +157,38 @@ class WaveFlow():
         output = "{}/{}/iter-{}".format(config.output, config.name, iteration)
         os.makedirs(output, exist_ok=True)
 
-        filename = "{}/valid_{}.wav".format(output, sample)
-        print("Synthesize sample {}, save as {}".format(sample, filename))
+        mels_list = [mels for _, mels in self.validloader()]
+        if sample is not None:
+            mels_list = [mels_list[sample]]
 
-        mels_list = [mels for _, mels, _ in self.validloader()]
-        start_time = time.time()
-        syn_audio = self.waveflow.synthesize(mels_list[sample])
-        syn_time = time.time() - start_time
-        print("audio shape {}, synthesis time {}".format(
-            syn_audio.shape, syn_time))
-        librosa.output.write_wav(filename, syn_audio,
-            sr=config.sample_rate)
+        audio_times = []
+        inf_times = []
+        for sample, mel in enumerate(mels_list):
+            filename = "{}/valid_{}.wav".format(output, sample)
+            print("Synthesize sample {}, save as {}".format(sample, filename))
+    
+            start_time = time.time()
+            audio = self.waveflow.synthesize(mel)
+            syn_time = time.time() - start_time
+    
+            audio_time = audio.shape[0] / 22050
+            print("audio time {}, synthesis time {}, speedup: {}".format(
+                audio_time, syn_time, audio_time / syn_time))
+    
+            #librosa.output.write_wav(filename, syn_audio,
+            #    sr=config.sample_rate)
+            audio = audio.numpy() * 32768.0
+            audio = audio.astype('int16')
+            write(filename, config.sample_rate, audio)
+
+            audio_times.append(audio_time)
+            inf_times.append(syn_time)
+
+        total_audio = sum(audio_times)
+        total_inf = sum(inf_times)
+
+        print("Total audio: {}, total inf time {}, speedup: {}".format(
+            total_audio, total_inf, total_audio / total_inf))
 
     def save(self, iteration):
         utils.save_latest_parameters(self.checkpoint_dir, iteration,

@@ -8,11 +8,11 @@ import paddle.fluid.dygraph as dg
 from paddle import fluid
 
 import utils
-from wavenet import WaveNet
+from waveflow import WaveFlow
 
 
 def add_options_to_parser(parser):
-    parser.add_argument('--model', type=str, default='wavenet',
+    parser.add_argument('--model', type=str, default='waveflow',
         help="general name of the model")
     parser.add_argument('--name', type=str,
         help="specific name of the training model")
@@ -30,7 +30,7 @@ def add_options_to_parser(parser):
 
     parser.add_argument('--output', type=str, default="./syn_audios",
         help="path to write synthesized audio files")
-    parser.add_argument('--sample', type=int,
+    parser.add_argument('--sample', type=int, default=None,
         help="which of the valid samples to synthesize audio")
 
 
@@ -54,7 +54,7 @@ def synthesize(config):
         print("Random Seed: ", seed)
         
         # Build model.
-        model = WaveNet(config, checkpoint_dir)
+        model = WaveFlow(config, checkpoint_dir)
         model.build(training=False)
 
         # Obtain the current iteration.

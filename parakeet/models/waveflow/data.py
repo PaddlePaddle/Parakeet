@@ -79,17 +79,13 @@ class Subset(dataset.Dataset):
                     mode='constant', constant_values=0)
 
         # Normalize audio.
-        audio = audio / MAX_WAV_VALUE
+        audio = audio.astype(np.float32) / MAX_WAV_VALUE
         mel = self.get_mel(audio)
+        #print("mel = {}, dtype {}, shape {}".format(mel, mel.dtype, mel.shape))
 
         return audio, mel
 
     def _batch_examples(self, batch):
-        audio_batch = []
-        mel_batch = []
-        for audio, mel in batch:
-            audio_batch
-
         audios = [sample[0] for sample in batch]
         mels = [sample[1] for sample in batch]
 
