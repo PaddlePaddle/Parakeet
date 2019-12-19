@@ -2,11 +2,10 @@ import itertools
 import os
 import time
 
-#import librosa
-from scipy.io.wavfile import write
 import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
+from scipy.io.wavfile import write
 
 import utils
 from data import LJSpeech
@@ -28,18 +27,6 @@ class WaveFlow():
         dataset = LJSpeech(config, self.nranks, self.rank) 
         self.trainloader = dataset.trainloader
         self.validloader = dataset.validloader
-
-#        if self.rank == 0:
-#            for i, (audios, mels) in enumerate(self.validloader()):
-#                print("audios {}, mels {}".format(audios.dtype, mels.dtype))
-#                print("{}: rank {}, audios {}, mels {}".format(
-#                    i, self.rank, audios.shape, mels.shape))
-#    
-#            for i, (audios, mels) in enumerate(self.trainloader):
-#                print("{}: rank {}, audios {}, mels {}".format(
-#                    i, self.rank, audios.shape, mels.shape))
-#
-#        exit()
 
         waveflow = WaveFlowModule("waveflow", config)
         
@@ -96,8 +83,6 @@ class WaveFlow():
         else:
             loss.backward()
 
-        current_lr = self.optimizer._learning_rate
-
         self.optimizer.minimize(loss, parameter_list=self.waveflow.parameters())
         self.waveflow.clear_gradients()
 
@@ -113,7 +98,6 @@ class WaveFlow():
 
             tb = self.tb_logger
             tb.add_scalar("Train-Loss-Rank-0", loss_val, iteration)
-            tb.add_scalar("Learning-Rate", current_lr, iteration)
 
     @dg.no_grad
     def valid_step(self, iteration):
@@ -161,34 +145,44 @@ class WaveFlow():
         if sample is not None:
             mels_list = [mels_list[sample]]
 
-        audio_times = []
-        inf_times = []
         for sample, mel in enumerate(mels_list):
             filename = "{}/valid_{}.wav".format(output, sample)
             print("Synthesize sample {}, save as {}".format(sample, filename))
     
             start_time = time.time()
-            audio = self.waveflow.synthesize(mel)
+            audio = self.waveflow.synthesize(mel, sigma=self.config.sigma)
             syn_time = time.time() - start_time
     
-            audio_time = audio.shape[0] / 22050
-            print("audio time {}, synthesis time {}, speedup: {}".format(
-                audio_time, syn_time, audio_time / syn_time))
+            audio = audio[0]
+            audio_time = audio.shape[0] / self.config.sample_rate
+            print("audio time {:.4f}, synthesis time {:.4f}".format(
+                audio_time, syn_time))
     
-            #librosa.output.write_wav(filename, syn_audio,
-            #    sr=config.sample_rate)
+            # Denormalize audio from [-1, 1] to [-32768, 32768] int16 range.
             audio = audio.numpy() * 32768.0
             audio = audio.astype('int16')
             write(filename, config.sample_rate, audio)
 
-            audio_times.append(audio_time)
-            inf_times.append(syn_time)
+    @dg.no_grad
+    def benchmark(self):
+        self.waveflow.eval()
 
-        total_audio = sum(audio_times)
-        total_inf = sum(inf_times)
+        mels_list = [mels for _, mels in self.validloader()]
+        mel = fluid.layers.concat(mels_list, axis=2)
+        mel = mel[:, :, :864]
+        batch_size = 8
+        mel = fluid.layers.expand(mel, [batch_size, 1, 1])
 
-        print("Total audio: {}, total inf time {}, speedup: {}".format(
-            total_audio, total_inf, total_audio / total_inf))
+        for i in range(10):
+            start_time = time.time()
+            audio = self.waveflow.synthesize(mel, sigma=self.config.sigma)
+            print("audio.shape = ", audio.shape)
+            syn_time = time.time() - start_time
+
+            audio_time = audio.shape[1] * batch_size / self.config.sample_rate
+            print("audio time {:.4f}, synthesis time {:.4f}".format(
+                audio_time, syn_time))
+            print("{} X real-time".format(audio_time / syn_time))
 
     def save(self, iteration):
         utils.save_latest_parameters(self.checkpoint_dir, iteration,

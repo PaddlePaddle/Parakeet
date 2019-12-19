@@ -4,15 +4,12 @@ import librosa
 import numpy as np
 from paddle import fluid
 
-import utils
 from parakeet.datasets import ljspeech
 from parakeet.data import dataset
 from parakeet.data.batch import SpecBatcher, WavBatcher
 from parakeet.data.datacargo import DataCargo
 from parakeet.data.sampler import DistributedSampler, BatchSampler
 from scipy.io.wavfile import read
-
-MAX_WAV_VALUE = 32768.0
 
 
 class Dataset(ljspeech.LJSpeech):
@@ -78,10 +75,9 @@ class Subset(dataset.Dataset):
                 audio = np.pad(audio, (0, segment_length - audio.shape[0]),
                     mode='constant', constant_values=0)
 
-        # Normalize audio.
-        audio = audio.astype(np.float32) / MAX_WAV_VALUE
+        # Normalize audio to the [-1, 1] range.
+        audio = audio.astype(np.float32) / 32768.0
         mel = self.get_mel(audio)
-        #print("mel = {}, dtype {}, shape {}".format(mel, mel.dtype, mel.shape))
 
         return audio, mel
 

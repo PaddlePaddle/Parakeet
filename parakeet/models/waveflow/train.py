@@ -14,8 +14,6 @@ import slurm
 import utils
 from waveflow import WaveFlow
 
-MAXIMUM_SAVE_TIME = 10 * 60
-
 
 def add_options_to_parser(parser):
     parser.add_argument('--model', type=str, default='waveflow',
@@ -35,8 +33,6 @@ def add_options_to_parser(parser):
               "default to load the latest checkpoint"))
     parser.add_argument('--checkpoint', type=str, default=None,
         help="path of the checkpoint to load")
-    parser.add_argument('--slurm', type=bool, default=False,
-        help="whether you are using slurm to submit training jobs")
 
 
 def train(config):
@@ -85,13 +81,6 @@ def train(config):
         else:
             iteration = int(config.checkpoint.split('/')[-1].split('-')[-1])
 
-        # Get restart command if using slurm.
-        if config.slurm:
-            resume_command, death_time = slurm.restart_command()
-            if rank == 0:
-                print("Restart command:", " ".join(resume_command))
-        done = False
-
         while iteration < config.max_iterations:
             # Run one single training step.
             model.train_step(iteration)
@@ -101,20 +90,6 @@ def train(config):
             if iteration % config.test_every == 0:
                 # Run validation step.
                 model.valid_step(iteration)
-
-            # Check whether reaching the time limit.
-            if config.slurm:
-                done = (death_time is not None and death_time - time.time() <
-                    MAXIMUM_SAVE_TIME)
-
-            if rank == 0 and done:
-                print("Saving progress before exiting.")
-                model.save(iteration)
-
-                print("Running restart command:", " ".join(resume_command))
-                # Submit restart command.
-                subprocess.check_call(resume_command)
-                break
 
             if rank == 0 and iteration % config.save_every == 0:
                 # Save parameters.

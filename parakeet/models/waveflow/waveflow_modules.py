@@ -23,7 +23,6 @@ def set_param_attr(layer, c_in=1):
 
 def unfold(x, n_group):
     length = x.shape[-1] 
-    #assert length % n_group == 0
     new_shape = x.shape[:-1] + [length // n_group, n_group]
     return fluid.layers.reshape(x, new_shape)
 
@@ -192,13 +191,53 @@ class Flow(dg.Layer):
 
         return self.end(output)
 
+    def infer(self, audio, mel, queues):
+        audio = self.start(audio)
 
-def debug(x, msg):
-    y = x.numpy()
-    print(msg + " :\n", y) 
-    print("shape: ", y.shape)
-    print("dtype: ", y.dtype)
-    print("")
+        for i in range(self.n_layers):
+            dilation_h = self.dilation_h_list[i]
+            dilation_w = 2 ** i
+
+            state_size = dilation_h * (self.kernel_h - 1)
+            queue = queues[i]
+
+            if len(queue) == 0:
+                for j in range(state_size):
+                    queue.append(fluid.layers.zeros_like(audio))
+
+            state = queue[0:state_size]
+            state = fluid.layers.concat([*state, audio], axis=2)
+
+            queue.pop(0)
+            queue.append(audio)
+
+            # Pad height dim (n_group): causal convolution
+            # Pad width dim (time): dialated non-causal convolution
+            pad_top, pad_bottom = 0, 0
+            pad_left = int((self.kernel_w-1) * dilation_w / 2)
+            pad_right = int((self.kernel_w-1) * dilation_w / 2)
+            state = fluid.layers.pad2d(state,
+                paddings=[pad_top, pad_bottom, pad_left, pad_right])
+
+            hidden = self.in_layers[i](state)
+            cond_hidden = self.cond_layers[i](mel)
+            in_acts = hidden + cond_hidden
+            out_acts = fluid.layers.tanh(in_acts[:, :self.n_channels, :]) * \
+                fluid.layers.sigmoid(in_acts[:, self.n_channels:, :])
+            res_skip_acts = self.res_skip_layers[i](out_acts)
+
+            if i < self.n_layers - 1:
+                audio += res_skip_acts[:, :self.n_channels, :, :]
+                skip_acts = res_skip_acts[:, self.n_channels:, :, :]
+            else:
+                skip_acts = res_skip_acts
+
+            if i == 0:
+                output = skip_acts
+            else:
+                output += skip_acts
+
+        return self.end(output)
 
 
 class WaveFlowModule(dg.Layer):
@@ -206,7 +245,9 @@ class WaveFlowModule(dg.Layer):
         super(WaveFlowModule, self).__init__(name_scope)
         self.n_flows = config.n_flows
         self.n_group = config.n_group
+        self.n_layers = config.n_layers
         assert self.n_group % 2 == 0
+        assert self.n_flows % 2 == 0
 
         self.conditioner = Conditioner(self.full_name())
         self.flows = []
@@ -215,14 +256,16 @@ class WaveFlowModule(dg.Layer):
             self.flows.append(flow)
             self.add_sublayer("flow_{}".format(i), flow) 
 
-        self.perms = [[15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-                      [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-                      [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-                      [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-                      [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8],
-                      [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8],
-                      [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8],
-                      [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8]]
+        self.perms = []
+        half = self.n_group // 2
+        for i in range(self.n_flows):
+            perm = list(range(self.n_group))
+            if i < self.n_flows // 2:
+                perm = perm[::-1]
+            else:
+                perm[:half] = reversed(perm[:half])
+                perm[half:] = reversed(perm[half:])
+            self.perms.append(perm)
         
     def forward(self, audio, mel):
         mel = self.conditioner(mel)
@@ -266,18 +309,12 @@ class WaveFlowModule(dg.Layer):
         return z, log_s_list
 
     def synthesize(self, mel, sigma=1.0):
-        #debug(mel, "mel")
         mel = self.conditioner.infer(mel)
-        #debug(mel, "mel after conditioner")
-
         # From [bs, mel_bands, time] to [bs, mel_bands, n_group, time/n_group]
         mel = fluid.layers.transpose(unfold(mel, self.n_group), [0, 1, 3, 2])
-        #debug(mel, "after group")
 
         audio = fluid.layers.gaussian_random(
             shape=[mel.shape[0], 1, mel.shape[2], mel.shape[3]], std=sigma)
-
-        #debug(audio, "audio")
 
         for i in reversed(range(self.n_flows)):
             # Permute over the height dimension.
@@ -287,34 +324,28 @@ class WaveFlowModule(dg.Layer):
             mel = fluid.layers.stack(mel_slices, axis=2)
 
             audio_list = []
-            audio_0 = audio[:, :, :1, :]
+            audio_0 = audio[:, :, 0:1, :]
             audio_list.append(audio_0)
+            audio_h = audio_0
+            queues = [[] for _ in range(self.n_layers)]
 
             for h in range(1, self.n_group):
-                # inputs: [bs, 1, h, time/n_group]
-                inputs = fluid.layers.concat(audio_list, axis=2)
-                conds = mel[:, :, 1:(h+1), :]
-                outputs = self.flows[i](inputs, conds)
+                inputs = audio_h
+                conds = mel[:, :, h:(h+1), :]
+                outputs = self.flows[i].infer(inputs, conds, queues)
 
-                log_s = outputs[:, :1, (h-1):h, :]
-                b = outputs[:, 1:, (h-1):h, :]
-                audio_h = (audio[:, :, h:(h+1), :] - b) / fluid.layers.exp(log_s)
+                log_s = outputs[:, 0:1, :, :]
+                b = outputs[:, 1:, :, :]
+                audio_h = (audio[:, :, h:(h+1), :] - b) / \
+                    fluid.layers.exp(log_s)
                 audio_list.append(audio_h)
 
             audio = fluid.layers.concat(audio_list, axis=2)
-            #print("audio.shape =", audio.shape)
 
-        # Assume batch size = 1
-        # audio: [n_group, time/n_group]
-        audio = fluid.layers.squeeze(audio, [0, 1])
-        # audio: [time]
+        # audio: [bs, n_group, time/n_group]
+        audio = fluid.layers.squeeze(audio, [1])
+        # audio: [bs, time]
         audio = fluid.layers.reshape(
-            fluid.layers.transpose(audio, [1, 0]), [-1])
-        #print("audio.shape =", audio.shape)
+            fluid.layers.transpose(audio, [0, 2, 1]), [audio.shape[0], -1])
 
         return audio
-
-    def start_new_sequence(self):
-        for layer in self.sublayers():
-            if isinstance(layer, conv.Conv1D):
-                layer.start_new_sequence()

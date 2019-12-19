@@ -1,3 +1,0 @@
-paddlepaddle-gpu==1.6.1.post97
-tensorboardX==1.9
-librosa==0.7.1

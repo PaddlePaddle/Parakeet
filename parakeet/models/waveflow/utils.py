@@ -57,27 +57,6 @@ def add_config_options_to_parser(parser):
     parser.add_argument('--config', action=jsonargparse.ActionConfigFile)
 
 
-def pad_to_size(array, length, pad_with=0.0):
-    """
-    Pad an array on the first (length) axis to a given length.
-    """
-    padding = length - array.shape[0]
-    assert padding >= 0, "Padding required was less than zero"
-
-    paddings = [(0, 0)] * len(array.shape)
-    paddings[0] = (0, padding)
-
-    return np.pad(array, paddings, mode='constant', constant_values=pad_with)
-
-
-def calculate_context_size(config):
-    dilations = list(
-        itertools.islice(
-            itertools.cycle(config.dilation_block), config.layers))
-    config.context_size = sum(dilations) + 1
-    print("Context size is", config.context_size)
-
-
 def load_latest_checkpoint(checkpoint_dir, rank=0):
     checkpoint_path = os.path.join(checkpoint_dir, "checkpoint")
     # Create checkpoint index file if not exist.
