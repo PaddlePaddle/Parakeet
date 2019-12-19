@@ -12,8 +12,8 @@ seed: 1234
 learning_rate: 0.0002
 batch_size: 8
 test_every: 2000
-save_every: 5000
-max_iterations: 2000000
+save_every: 10000
+max_iterations: 3000000
 
 sigma: 1.0
 n_flows: 8
