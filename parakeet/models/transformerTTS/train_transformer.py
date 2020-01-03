@@ -9,7 +9,8 @@ import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
 from matplotlib import cm
-from data import LJSpeechLoader
+from parakeet.modules.utils import cross_entropy
+from parakeet.models.dataloader.jlspeech import LJSpeechLoader
 
 class MyDataParallel(dg.parallel.DataParallel):
     """
@@ -49,7 +50,7 @@ def main(cfg):
     writer = SummaryWriter(path) if local_rank == 0 else None
     
     with dg.guard(place):
-        model = Model('transtts', cfg)
+        model = TransformerTTS(cfg)
 
         model.train()
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(4000 *( cfg.lr ** 2)), 4000))
@@ -75,15 +76,22 @@ def main(cfg):
                 global_step += 1
                 
                 mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(character, mel_input, pos_text, pos_mel)
-        
+
+                label = np.zeros(stop_preds.shape).astype(np.float32)
+                text_length = text_length.numpy()
+                for i in range(label.shape[0]):
+                    label[i][text_length[i] - 1] = 1
+                
                 mel_loss = layers.mean(layers.abs(layers.elementwise_sub(mel_pred, mel)))
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
-                loss = mel_loss + post_mel_loss
+                stop_loss = cross_entropy(stop_preds, dg.to_variable(label))
+                loss = mel_loss + post_mel_loss + stop_loss
 
                 if local_rank==0:
                     writer.add_scalars('training_loss', {
                         'mel_loss':mel_loss.numpy(),
                         'post_mel_loss':post_mel_loss.numpy(),
+                        'stop_loss':stop_loss.numpy()
                     }, global_step)
 
                     writer.add_scalars('alphas', {
@@ -97,7 +105,7 @@ def main(cfg):
                         for i, prob in enumerate(attn_probs):
                             for j in range(4):
                                     x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
-                                    writer.add_image('Attention_enc_%d_0'%global_step, x, i*4+j, dataformats="HWC")
+                                    writer.add_image('Attention_%d_0'%global_step, x, i*4+j, dataformats="HWC")
 
                         for i, prob in enumerate(attn_enc):
                             for j in range(4):

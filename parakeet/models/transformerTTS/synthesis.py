@@ -28,8 +28,8 @@ def synthesis(text_input, cfg):
     writer = SummaryWriter(path)
 
     with dg.guard(place):
-        model = Model('transtts', cfg)
-        model_postnet = ModelPostNet('postnet', cfg)
+        model = Model(cfg)
+        model_postnet = ModelPostNet(cfg)
 
         model.set_dict(load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "transformer")))
         model_postnet.set_dict(load_checkpoint(str(cfg.postnet_step), os.path.join(cfg.checkpoint_path, "postnet")))

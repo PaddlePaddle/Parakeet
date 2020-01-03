@@ -47,7 +47,7 @@ def main(cfg):
     writer = SummaryWriter(path) if local_rank == 0 else None
 
     with dg.guard(place):   
-        model = ModelPostNet('postnet', cfg)
+        model = ModelPostNet(cfg)
 
         model.train()
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(4000 *( cfg.lr ** 2)), 4000))
@@ -62,7 +62,7 @@ def main(cfg):
             strategy = dg.parallel.prepare_context()
             model = MyDataParallel(model, strategy)
 
-        reader = LJSpeechLoader(cfg, nranks, local_rank, is_postnet=True).reader()
+        reader = LJSpeechLoader(cfg, nranks, local_rank, is_vocoder=True).reader()
 
         for epoch in range(cfg.epochs):
             pbar = tqdm(reader)
@@ -74,7 +74,6 @@ def main(cfg):
                 global_step += 1
 
                 mag_pred = model(mel)
-                
                 loss = layers.mean(layers.abs(layers.elementwise_sub(mag_pred, mag)))
                 if cfg.use_data_parallel:
                     loss = model.scale_loss(loss)

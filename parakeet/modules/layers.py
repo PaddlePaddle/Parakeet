@@ -15,7 +15,7 @@ class Conv1D(dg.Layer):
 
     def __init__(self,
                  in_channels,
-                 num_filters,
+                 out_channels,
                  filter_size=3,
                  padding=0,
                  dilation=1,
@@ -31,7 +31,7 @@ class Conv1D(dg.Layer):
 
         self.padding = padding
         self.in_channels = in_channels
-        self.num_filters = num_filters
+        self.num_filters = out_channels
         self.filter_size = filter_size
         self.stride = stride
         self.dilation = dilation
@@ -40,8 +40,8 @@ class Conv1D(dg.Layer):
         self.data_format = data_format
 
         self.conv = dg.Conv2D(
-            in_channels=in_channels,
-            num_filters=num_filters,
+            num_channels=in_channels,
+            num_filters=out_channels,
             filter_size=(1, filter_size),
             stride=(1, stride),
             dilation=(1, dilation),
@@ -84,9 +84,8 @@ class Pool1D(dg.Layer):
                  use_cudnn=True, 
                  ceil_mode=False, 
                  exclusive=True,
-                 data_format='NCT', 
-                 dtype='float32'):
-        super(Pool1D, self).__init__(dtype=dtype)
+                 data_format='NCT'):
+        super(Pool1D, self).__init__()
         self.pool_size = pool_size
         self.pool_type = pool_type
         self.pool_stride = pool_stride
@@ -96,13 +95,12 @@ class Pool1D(dg.Layer):
         self.ceil_mode = ceil_mode
         self.exclusive = exclusive
         self.data_format = data_format
-        self.dtype = dtype
 
 
         self.pool2d = dg.Pool2D([1,pool_size], pool_type = pool_type,
                                 pool_stride = [1,pool_stride], pool_padding = [0, pool_padding],
                                 global_pooling = global_pooling, use_cudnn = use_cudnn,
-                                ceil_mode = ceil_mode, exclusive = exclusive, dtype = dtype)
+                                ceil_mode = ceil_mode, exclusive = exclusive)
 
     
     def forward(self, x):
@@ -122,45 +120,3 @@ class Pool1D(dg.Layer):
         if self.data_format == 'NTC':
             x = fluid.layers.transpose(x, [0, 2, 1])
         return x
-
-class DynamicGRU(dg.Layer):
-    def __init__(self,
-                 size,
-                 param_attr=None,
-                 bias_attr=None,
-                 is_reverse=False,
-                 gate_activation='sigmoid',
-                 candidate_activation='tanh',
-                 h_0=None,
-                 origin_mode=False,
-                 init_size=None):
-        super(DynamicGRU, self).__init__()
-        self.gru_unit = dg.GRUUnit(
-            size * 3,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            activation=candidate_activation,
-            gate_activation=gate_activation,
-            origin_mode=origin_mode)
-        self.size = size
-        self.h_0 = h_0
-        self.is_reverse = is_reverse
-
-    def forward(self, inputs):
-        hidden = self.h_0
-        res = []
-        for i in range(inputs.shape[1]):
-            if self.is_reverse:
-                i = inputs.shape[1] - 1 - i
-            input_ = inputs[:, i:i + 1, :]
-            input_ = fluid.layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False)
-            hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False)
-            res.append(hidden_)
-        if self.is_reverse:
-            res = res[::-1]
-        res = fluid.layers.concat(res, axis=1)
-        return res
-

@@ -3,40 +3,44 @@ import numpy as np
 import pandas as pd
 import librosa
 
+from paddle import fluid
 from parakeet import g2p
 from parakeet import audio
-
-from parakeet.data.sampler import SequentialSampler, RandomSampler, BatchSampler
-from parakeet.data.dataset import Dataset
+from parakeet.data.sampler import *
 from parakeet.data.datacargo import DataCargo
+from parakeet.data.dataset import Dataset
 from parakeet.data.batch import TextIDBatcher, SpecBatcher
 
-_ljspeech_processor = audio.AudioProcessor(
-    sample_rate=22050, 
-    num_mels=80, 
-    min_level_db=-100, 
-    ref_level_db=20, 
-    n_fft=2048, 
-    win_length= int(22050 * 0.05), 
-    hop_length= int(22050 * 0.0125),
-    power=1.2,
-    preemphasis=0.97,
-    signal_norm=True,
-    symmetric_norm=False,
-    max_norm=1.,
-    mel_fmin=0,
-    mel_fmax=None,
-    clip_norm=True,
-    griffin_lim_iters=60,
-    do_trim_silence=False,
-    sound_norm=False)
+class LJSpeechLoader:
+    def __init__(self, config, nranks, rank, is_vocoder=False):
+        place = fluid.CUDAPlace(rank) if config.use_gpu else fluid.CPUPlace()
+
+        LJSPEECH_ROOT = Path(config.data_path)
+        dataset = LJSpeech(LJSPEECH_ROOT, config)
+        sampler = DistributedSampler(len(dataset), nranks, rank)
+
+        assert config.batch_size % nranks == 0
+        each_bs = config.batch_size // nranks
+        if is_vocoder:
+            dataloader = DataCargo(dataset, sampler=sampler, batch_size=each_bs, shuffle=True, collate_fn=batch_examples_vocoder, drop_last=True)
+        else:
+            dataloader = DataCargo(dataset, sampler=sampler, batch_size=each_bs, shuffle=True, collate_fn=batch_examples, drop_last=True)
+        
+        self.reader = fluid.io.DataLoader.from_generator(
+            capacity=32,
+            iterable=True,
+            use_double_buffer=True,
+            return_list=True)
+        self.reader.set_batch_generator(dataloader, place)
+
 
 class LJSpeech(Dataset):
-    def __init__(self, root):
+    def __init__(self, root, config):
         super(LJSpeech, self).__init__()
         assert isinstance(root, (str, Path)), "root should be a string or Path object"
         self.root = root if isinstance(root, Path) else Path(root)
         self.metadata = self._prepare_metadata()
+        self.config = config
         
     def _prepare_metadata(self):
         csv_path = self.root.joinpath("metadata.csv")
@@ -55,6 +59,25 @@ class LJSpeech(Dataset):
         fname, raw_text, normalized_text = metadatum
         wav_path = self.root.joinpath("wavs", fname + ".wav")
         
+        _ljspeech_processor = audio.AudioProcessor(
+            sample_rate=22050, 
+            num_mels=80, 
+            min_level_db=-100, 
+            ref_level_db=20, 
+            n_fft=2048, 
+            win_length= int(22050 * 0.05), 
+            hop_length= int(22050 * 0.0125),
+            power=1.2,
+            preemphasis=0.97,
+            signal_norm=True,
+            symmetric_norm=False,
+            max_norm=1.,
+            mel_fmin=0,
+            mel_fmax=None,
+            clip_norm=True,
+            griffin_lim_iters=60,
+            do_trim_silence=False,
+            sound_norm=False)
         # load -> trim -> preemphasis -> stft -> magnitude -> mel_scale -> logscale -> normalize
         wav = _ljspeech_processor.load_wav(str(wav_path))
         mag = _ljspeech_processor.spectrogram(wav).astype(np.float32)
@@ -121,3 +144,5 @@ def batch_examples_vocoder(batch):
     return (mels, mags)
 
 
+
+        

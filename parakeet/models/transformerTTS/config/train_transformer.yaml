@@ -10,15 +10,15 @@ audio:
   ref_level_db: 20
   outputs_per_step: 1
 
-network:
-  hidden_size: 256
-  embedding_size: 512
+
+hidden_size: 384 #256
+embedding_size: 384 #512
 
 
 batch_size: 32
 epochs: 10000
 lr: 0.001
-save_step: 500
+save_step: 10
 image_step: 2000
 use_gpu: True
 use_data_parallel: True
