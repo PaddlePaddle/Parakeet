@@ -34,6 +34,9 @@ def main(cfg):
     local_rank = dg.parallel.Env().local_rank if cfg.use_data_parallel else 0
     nranks = dg.parallel.Env().nranks if cfg.use_data_parallel else 1
 
+    fluid.default_startup_program().random_seed = 1
+    fluid.default_main_program().random_seed = 1
+
     if local_rank == 0:
         # Print the whole config setting.
         pprint(jsonargparse.namespace_to_dict(cfg))
@@ -53,7 +56,8 @@ def main(cfg):
         model = TransformerTTS(cfg)
 
         model.train()
-        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(4000 *( cfg.lr ** 2)), 4000))
+        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(cfg.warm_up_step *( cfg.lr ** 2)), cfg.warm_up_step), 
+                                                  parameter_list=model.parameters())
         
         reader = LJSpeechLoader(cfg, nranks, local_rank).reader()
         
@@ -69,6 +73,8 @@ def main(cfg):
         
         for epoch in range(cfg.epochs):
             pbar = tqdm(reader)
+            
+
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d'%epoch)
                 character, mel, mel_input, pos_text, pos_mel, text_length = data
@@ -86,7 +92,7 @@ def main(cfg):
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
                 stop_loss = cross_entropy(stop_preds, dg.to_variable(label))
                 loss = mel_loss + post_mel_loss + stop_loss
-
+                
                 if local_rank==0:
                     writer.add_scalars('training_loss', {
                         'mel_loss':mel_loss.numpy(),
@@ -116,16 +122,16 @@ def main(cfg):
                             for j in range(4):
                                 x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
                                 writer.add_image('Attention_dec_%d_0'%global_step, x, i*4+j, dataformats="HWC")
-
+                                
                 if cfg.use_data_parallel:
                     loss = model.scale_loss(loss)
                     loss.backward()
                     model.apply_collective_grads()
                 else:
                     loss.backward()
-                optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(1))
+                optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg.grad_clip_thresh))
                 model.clear_gradients()
-
+                
                 # save checkpoint
                 if local_rank==0 and global_step % cfg.save_step == 0:
                     if not os.path.exists(cfg.save_path):

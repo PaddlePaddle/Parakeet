@@ -9,7 +9,7 @@ class AudioProcessor(object):
                  sample_rate=None, # int, sampling rate
                  num_mels=None, # int, bands of mel spectrogram
                  min_level_db=None, # float, minimum level db
-                 ref_level_db=None, # float, reference level dbn
+                 ref_level_db=None, # float, reference level db
                  n_fft=None, # int: number of samples in a frame for stft
                  win_length=None, # int: the same meaning with n_fft
                  hop_length=None, # int: number of samples between neighboring frame
@@ -22,7 +22,7 @@ class AudioProcessor(object):
                  mel_fmax=None, # int: mel spectrogram's maximum frequency
                  clip_norm=True, # bool: clip spectrogram's norm
                  griffin_lim_iters=None, # int:
-                 do_trim_silence=False, # bool: trim silience
+                 do_trim_silence=False, # bool: trim silence
                  sound_norm=False,
                  **kwargs):
         self.sample_rate = sample_rate

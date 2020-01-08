@@ -20,13 +20,12 @@ class Encoder(dg.Layer):
         self.pos_emb = dg.Embedding(size=[1024, num_hidden],
                                  padding_idx=0,
                                  param_attr=fluid.ParamAttr(
-                                     name='weight',
                                      initializer=fluid.initializer.NumpyArrayInitializer(self.pos_inp),
                                      trainable=False))
         self.encoder_prenet = EncoderPrenet(embedding_size = embedding_size, 
                                             num_hidden = num_hidden, 
                                             use_cudnn=config.use_gpu)
-        self.layers = [MultiheadAttention(num_hidden, num_hidden, num_hidden) for _ in range(3)]
+        self.layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
         for i, layer in enumerate(self.layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
         self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*4, filter_size=1, use_cudnn = config.use_gpu) for _ in range(3)]
@@ -39,6 +38,7 @@ class Encoder(dg.Layer):
             mask = get_attn_key_pad_mask(positional, x)
         else:
             query_mask, mask = None, None
+        
         
         # Encoder pre_network
         x = self.encoder_prenet(x) #(N,T,C)
@@ -81,10 +81,10 @@ class Decoder(dg.Layer):
                                             dropout_rate=0.2)
         self.linear = dg.Linear(num_hidden, num_hidden)
 
-        self.selfattn_layers = [MultiheadAttention(num_hidden, num_hidden, num_hidden) for _ in range(3)]
+        self.selfattn_layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
         for i, layer in enumerate(self.selfattn_layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
-        self.attn_layers = [MultiheadAttention(num_hidden, num_hidden, num_hidden) for _ in range(3)]
+        self.attn_layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
         for i, layer in enumerate(self.attn_layers):
             self.add_sublayer("attn_{}".format(i), layer)
         self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*4, filter_size=1) for _ in range(3)]
@@ -104,18 +104,18 @@ class Decoder(dg.Layer):
         
         if fluid.framework._dygraph_tracer()._train_mode:
             m_mask = get_non_pad_mask(positional)
-            mask = get_attn_key_pad_mask(positional, query)
+            mask = get_attn_key_pad_mask((positional==0).astype(np.float32), query)
             triu_tensor = dg.to_variable(get_triu_tensor(query.numpy(), query.numpy())).astype(np.float32)
             mask = mask + triu_tensor
-            mask = fluid.layers.cast(mask != 0, np.float32)
+            mask = fluid.layers.cast(mask == 0, np.float32)
             
-
             # (batch_size, decoder_len, encoder_len)
             zero_mask = get_attn_key_pad_mask(layers.squeeze(c_mask,[-1]), query)
         else:
             mask = get_triu_tensor(query.numpy(), query.numpy()).astype(np.float32)
-            mask = fluid.layers.cast(dg.to_variable(mask != 0), np.float32)
+            mask = fluid.layers.cast(dg.to_variable(mask == 0), np.float32)
             m_mask, zero_mask = None, None
+        
         # Decoder pre-network
         query = self.decoder_prenet(query)
 
@@ -164,6 +164,7 @@ class TransformerTTS(dg.Layer):
         # key (batch_size, seq_len, channel)
         # c_mask (batch_size, seq_len)
         # attns_enc (channel / 2, seq_len, seq_len)
+        
         key, c_mask, attns_enc = self.encoder(characters, pos_text)
         
         # mel_output/postnet_output (batch_size, mel_len, n_mel)

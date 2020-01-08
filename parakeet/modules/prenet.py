@@ -2,9 +2,6 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 
 class PreNet(dg.Layer):
-    """
-    Pre Net before passing through the network
-    """
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0.2):
         """
         :param input_size: dimension of input
@@ -21,6 +18,14 @@ class PreNet(dg.Layer):
         self.linear2 = dg.Linear(hidden_size, output_size)
 
     def forward(self, x):
+        """
+        Pre Net before passing through the network.
+        
+        Args:
+            x (Variable): Shape(B, T, C), dtype: float32. The input value.
+        Returns:
+            x (Variable), Shape(B, T, C), the result after pernet.
+        """
         x = layers.dropout(layers.relu(self.linear1(x)), self.dropout_rate)
         x = layers.dropout(layers.relu(self.linear2(x)), self.dropout_rate)
         return x

@@ -25,6 +25,14 @@ class DynamicGRU(dg.Layer):
         self.is_reverse = is_reverse
 
     def forward(self, inputs):
+        """
+        Dynamic GRU block.
+        
+        Args:
+            input (Variable): Shape(B, T, C), dtype: float32. The input value.
+        Returns:
+            output (Variable), Shape(B, T, C), the result compute by GRU.
+        """
         hidden = self.h_0
         res = []
         for i in range(inputs.shape[1]):

@@ -9,9 +9,9 @@ def add_config_options_to_parser(parser):
         help="the sampling rate of audio data file.")
     parser.add_argument('--audio.preemphasis', type=float, default=0.97,
         help="the preemphasis coefficient.")
-    parser.add_argument('--audio.hop_length', type=float, default=128,
+    parser.add_argument('--audio.hop_length', type=int, default=128,
         help="the number of samples to advance between frames.")
-    parser.add_argument('--audio.win_length', type=float, default=1024,
+    parser.add_argument('--audio.win_length', type=int, default=1024,
         help="the length (width) of the window function.")
     parser.add_argument('--audio.power', type=float, default=1.4,
         help="the power to raise before griffin-lim.")
@@ -27,6 +27,10 @@ def add_config_options_to_parser(parser):
     parser.add_argument('--embedding_size', type=int, default=512,
         help="the embedding vector size.")
 
+    parser.add_argument('--warm_up_step', type=int, default=4000,
+        help="the warm up step of learning rate.")
+    parser.add_argument('--grad_clip_thresh', type=float, default=1.0,
+        help="the threshold of grad clip.")
     parser.add_argument('--batch_size', type=int, default=32,
         help="batch size for training.")
     parser.add_argument('--epochs', type=int, default=10000,

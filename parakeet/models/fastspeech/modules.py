@@ -11,20 +11,33 @@ from parakeet.modules.feed_forward import PositionwiseFeedForward
 
 
 class FFTBlock(dg.Layer):
-    """FFT Block"""
     def __init__(self, d_model, d_inner, n_head, d_k, d_v, filter_size, padding, dropout=0.2):
         super(FFTBlock, self).__init__()
         self.slf_attn = MultiheadAttention(d_model, d_k, d_v, num_head=n_head, dropout=dropout)
         self.pos_ffn = PositionwiseFeedForward(d_model, d_inner, filter_size =filter_size, padding =padding, dropout=dropout)
 
     def forward(self, enc_input, non_pad_mask=None, slf_attn_mask=None):
-        enc_output, enc_slf_attn = self.slf_attn(enc_input, enc_input, enc_input, mask=slf_attn_mask)
-        enc_output *= non_pad_mask
+        """
+        Feed Forward Transformer block in FastSpeech.
+        
+        Args:
+            enc_input (Variable): Shape(B, T, C), dtype: float32. The embedding characters input. 
+                T means the timesteps of input.
+            non_pad_mask (Variable): Shape(B, T, 1), dtype: int64. The mask of sequence.
+            slf_attn_mask (Variable): Shape(B, len_q, len_k), dtype: int64. The mask of self attention. 
+                len_q means the sequence length of query, len_k means the sequence length of key.
 
-        enc_output = self.pos_ffn(enc_output)
-        enc_output *= non_pad_mask
+        Returns:
+            output (Variable), Shape(B, T, C), the output after self-attention & ffn.
+            slf_attn (Variable), Shape(B * n_head, T, T), the self attention.
+        """
+        output, slf_attn = self.slf_attn(enc_input, enc_input, enc_input, mask=slf_attn_mask)
+        output *= non_pad_mask
 
-        return enc_output, enc_slf_attn
+        output = self.pos_ffn(output)
+        output *= non_pad_mask
+
+        return output, slf_attn
 
 
 class LengthRegulator(dg.Layer):
@@ -70,6 +83,20 @@ class LengthRegulator(dg.Layer):
     
 
     def forward(self, x, alpha=1.0, target=None):
+        """
+        Length Regulator block in FastSpeech.
+        
+        Args:
+            x (Variable): Shape(B, T, C), dtype: float32. The encoder output.
+            alpha (Constant): dtype: float32. The hyperparameter to determine the length of 
+                the expanded sequence mel, thereby controlling the voice speed.
+            target (Variable): (Variable, optional): Shape(B, T_text),
+                dtype: int64. The duration of phoneme compute from pretrained transformerTTS.
+
+        Returns:
+            output (Variable), Shape(B, T, C), the output after exppand.
+            duration_predictor_output (Variable), Shape(B, T, C), the output of duration predictor.
+        """
         duration_predictor_output = self.duration_predictor(x)
         if fluid.framework._dygraph_tracer()._train_mode:
             output = self.LR(x, target)
@@ -81,7 +108,6 @@ class LengthRegulator(dg.Layer):
             return output, mel_pos
 
 class DurationPredictor(dg.Layer):
-    """ Duration Predictor """
     def __init__(self, input_size, out_channels, filter_size, dropout=0.1):
         super(DurationPredictor, self).__init__()
         self.input_size = input_size
@@ -105,7 +131,14 @@ class DurationPredictor(dg.Layer):
         self.linear =dg.Linear(self.out_channels, 1)
 
     def forward(self, encoder_output):
+        """
+        Duration Predictor block in FastSpeech.
         
+        Args:
+            encoder_output (Variable): Shape(B, T, C), dtype: float32. The encoder output.
+        Returns:
+            out (Variable), Shape(B, T, C), the output of duration predictor.
+        """
         # encoder_output.shape(N, T, C)
         out = layers.dropout(layers.relu(self.layer_norm1(self.conv1(encoder_output))), self.dropout)
         out = layers.dropout(layers.relu(self.layer_norm2(self.conv2(out))), self.dropout)

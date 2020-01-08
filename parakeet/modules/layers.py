@@ -6,6 +6,42 @@ from paddle import fluid
 import paddle.fluid.dygraph as dg
 
 
+class Conv(dg.Layer):
+    def __init__(self, in_channels, out_channels, filter_size=1,
+                padding=0, dilation=1, stride=1, use_cudnn=True, 
+                data_format="NCT", is_bias=True):
+        super(Conv, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.filter_size = filter_size
+        self.padding = padding
+        self.dilation = dilation
+        self.stride = stride
+        self.use_cudnn = use_cudnn
+        self.data_format = data_format
+        self.is_bias = is_bias
+
+        self.weight_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer())
+        self.bias_attr = None
+        if is_bias is not False:
+            k = math.sqrt(1 / in_channels)
+            self.bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)) 
+        
+        self.conv = Conv1D( in_channels = in_channels,
+                            out_channels = out_channels,
+                            filter_size = filter_size,
+                            padding = padding,
+                            dilation = dilation,
+                            stride = stride,
+                            param_attr = self.weight_attr,
+                            bias_attr = self.bias_attr,
+                            use_cudnn = use_cudnn,
+                            data_format = data_format)
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
 class Conv1D(dg.Layer):
     """
     A convolution 1D block implemented with Conv2D. Form simplicity and 

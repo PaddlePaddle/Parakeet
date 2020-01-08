@@ -9,9 +9,9 @@ def add_config_options_to_parser(parser):
         help="the sampling rate of audio data file.")
     parser.add_argument('--audio.preemphasis', type=float, default=0.97,
         help="the preemphasis coefficient.")
-    parser.add_argument('--audio.hop_length', type=float, default=128,
+    parser.add_argument('--audio.hop_length', type=int, default=128,
         help="the number of samples to advance between frames.")
-    parser.add_argument('--audio.win_length', type=float, default=1024,
+    parser.add_argument('--audio.win_length', type=int, default=1024,
         help="the length (width) of the window function.")
     parser.add_argument('--audio.power', type=float, default=1.4,
         help="the power to raise before griffin-lim.")

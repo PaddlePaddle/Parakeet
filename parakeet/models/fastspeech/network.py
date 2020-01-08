@@ -35,6 +35,20 @@ class Encoder(dg.Layer):
             self.add_sublayer('fft_{}'.format(i), layer)
 
     def forward(self, character, text_pos):
+        """
+        Encoder layer of FastSpeech.
+        
+        Args:
+            character (Variable): Shape(B, T_text), dtype: float32. The input text
+                characters. T_text means the timesteps of input characters.
+            text_pos (Variable): Shape(B, T_text), dtype: int64. The input text
+                position. T_text means the timesteps of input characters.
+
+        Returns:
+            enc_output (Variable), Shape(B, text_T, C), the encoder output.
+            non_pad_mask (Variable), Shape(B, T_text, 1), the mask with non pad.
+            enc_slf_attn_list (list<Variable>), Len(n_layers), Shape(B * n_head, text_T, text_T), the encoder self attention list.
+        """
         enc_slf_attn_list = []
         # -- prepare masks
         # shape character (N, T)
@@ -80,6 +94,18 @@ class Decoder(dg.Layer):
             self.add_sublayer('fft_{}'.format(i), layer)
     
     def forward(self, enc_seq, enc_pos):
+        """
+        Decoder layer of FastSpeech.
+        
+        Args:
+            enc_seq (Variable), Shape(B, text_T, C), dtype: float32. 
+                The output of length regulator.
+            enc_pos (Variable, optional): Shape(B, T_mel),
+                dtype: int64. The spectrum position. T_mel means the timesteps of input spectrum.
+        Returns:
+            dec_output (Variable), Shape(B, mel_T, C), the decoder output.
+            dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
+        """
         dec_slf_attn_list = []
 
         # -- Prepare masks
@@ -141,6 +167,31 @@ class FastSpeech(dg.Layer):
                  dropout=0.1)
 
     def forward(self, character, text_pos, mel_pos=None, length_target=None, alpha=1.0):
+        """
+        FastSpeech model.
+        
+        Args:
+            character (Variable): Shape(B, T_text), dtype: float32. The input text
+                characters. T_text means the timesteps of input characters.
+            text_pos (Variable): Shape(B, T_text), dtype: int64. The input text
+                position. T_text means the timesteps of input characters.
+            mel_pos (Variable, optional): Shape(B, T_mel),
+                dtype: int64. The spectrum position. T_mel means the timesteps of input spectrum.
+            length_target (Variable, optional): Shape(B, T_text),
+                dtype: int64. The duration of phoneme compute from pretrained transformerTTS.
+            alpha (Constant): 
+                dtype: float32. The hyperparameter to determine the length of the expanded sequence 
+                mel, thereby controlling the voice speed.
+
+        Returns:
+            mel_output (Variable), Shape(B, mel_T, C), the mel output before postnet.
+            mel_output_postnet (Variable), Shape(B, mel_T, C), the mel output after postnet.
+            duration_predictor_output (Variable), Shape(B, text_T), the duration of phoneme compute 
+            with duration predictor.
+            enc_slf_attn_list (Variable), Shape(B, text_T, text_T), the encoder self attention list.
+            dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
+        """
+
         encoder_output, non_pad_mask, enc_slf_attn_list = self.encoder(character, text_pos)
         if fluid.framework._dygraph_tracer()._train_mode:
             

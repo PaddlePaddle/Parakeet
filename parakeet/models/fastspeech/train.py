@@ -66,8 +66,8 @@ def main(cfg):
 
         model = FastSpeech(cfg)
         model.train()
-        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(cfg.warm_up_step *( cfg.lr ** 2)), cfg.warm_up_step))
-
+        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(cfg.warm_up_step *( cfg.lr ** 2)), cfg.warm_up_step),
+                                                  parameter_list=model.parameters())
         reader = LJSpeechLoader(cfg, nranks, local_rank).reader()
         
         if cfg.checkpoint_path is not None:

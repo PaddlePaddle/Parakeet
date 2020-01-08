@@ -6,7 +6,7 @@ from pathlib import Path
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
-from data import LJSpeechLoader
+from parakeet.models.dataloader.jlspeech import LJSpeechLoader
 
 class MyDataParallel(dg.parallel.DataParallel):
     """
@@ -50,7 +50,9 @@ def main(cfg):
         model = ModelPostNet(cfg)
 
         model.train()
-        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(4000 *( cfg.lr ** 2)), 4000))
+        optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(cfg.warm_up_step *( cfg.lr ** 2)), cfg.warm_up_step),
+                                                  parameter_list=model.parameters())
+
 
         if cfg.checkpoint_path is not None:
             model_dict, opti_dict = fluid.dygraph.load_dygraph(cfg.checkpoint_path)
@@ -75,13 +77,16 @@ def main(cfg):
 
                 mag_pred = model(mel)
                 loss = layers.mean(layers.abs(layers.elementwise_sub(mag_pred, mag)))
+                
                 if cfg.use_data_parallel:
                     loss = model.scale_loss(loss)
                     loss.backward()
                     model.apply_collective_grads()
                 else:
                     loss.backward()
-                optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(1))
+                optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg.grad_clip_thresh))
+                print("===============",model.pre_proj.conv.weight.numpy())
+                print("===============",model.pre_proj.conv.weight.gradient())
                 model.clear_gradients()
                 
                 if local_rank==0:

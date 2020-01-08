@@ -3,9 +3,10 @@ from parakeet.g2p.text.symbols import symbols
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from parakeet.modules.layers import Conv1D, Pool1D
+from parakeet.modules.layers import Conv, Pool1D
 from parakeet.modules.dynamicGRU import DynamicGRU
 import numpy as np
+
 
 
 class EncoderPrenet(dg.Layer):
@@ -18,19 +19,19 @@ class EncoderPrenet(dg.Layer):
                                         param_attr = fluid.ParamAttr(name='weight'),
                                         padding_idx = None)
         self.conv_list = []
-        self.conv_list.append(Conv1D(in_channels = embedding_size, 
+        self.conv_list.append(Conv(in_channels = embedding_size, 
                             out_channels = num_hidden, 
                             filter_size = 5,
                             padding = int(np.floor(5/2)),
                             use_cudnn = use_cudnn,
                             data_format = "NCT"))
         for _ in range(2):
-            self.conv_list = Conv1D(in_channels = num_hidden, 
+            self.conv_list.append(Conv(in_channels = num_hidden, 
                                 out_channels = num_hidden, 
                                 filter_size = 5,
                                 padding = int(np.floor(5/2)),
                                 use_cudnn = use_cudnn,
-                                data_format = "NCT")
+                                data_format = "NCT"))
 
         for i, layer in enumerate(self.conv_list):
             self.add_sublayer("conv_list_{}".format(i), layer)
@@ -71,13 +72,13 @@ class CBHG(dg.Layer):
         self.hidden_size = hidden_size
         self.projection_size = projection_size
         self.conv_list = []
-        self.conv_list.append(Conv1D(in_channels = projection_size,
+        self.conv_list.append(Conv(in_channels = projection_size,
                             out_channels = hidden_size,
                             filter_size = 1,
                             padding = int(np.floor(1/2)),
                             data_format = "NCT"))
         for i in range(2,K+1):
-            self.conv_list.append(Conv1D(in_channels = hidden_size,
+            self.conv_list.append(Conv(in_channels = hidden_size,
                             out_channels = hidden_size,
                             filter_size = i,
                             padding = int(np.floor(i/2)),
@@ -100,13 +101,13 @@ class CBHG(dg.Layer):
 
         conv_outdim = hidden_size * K
 
-        self.conv_projection_1 = Conv1D(in_channels = conv_outdim,
+        self.conv_projection_1 = Conv(in_channels = conv_outdim,
                             out_channels = hidden_size,
                             filter_size = 3,
                             padding = int(np.floor(3/2)),
                             data_format = "NCT")
 
-        self.conv_projection_2 = Conv1D(in_channels = hidden_size,
+        self.conv_projection_2 = Conv(in_channels = hidden_size,
                             out_channels = projection_size,
                             filter_size = 3,
                             padding = int(np.floor(3/2)),
