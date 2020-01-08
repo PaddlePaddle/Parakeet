@@ -25,6 +25,9 @@ class MyDataParallel(dg.parallel.DataParallel):
             return getattr(
                 object.__getattribute__(self, "_sub_layers")["_layers"], key)
 
+def load_checkpoint(step, model_path):
+    model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
+    return model_dict, opti_dict
 
 def main(cfg):
     
@@ -55,9 +58,10 @@ def main(cfg):
 
 
         if cfg.checkpoint_path is not None:
-            model_dict, opti_dict = fluid.dygraph.load_dygraph(cfg.checkpoint_path)
+            model_dict, opti_dict = load_checkpoint(str(cfg.postnet_step), os.path.join(cfg.checkpoint_path, "postnet"))
             model.set_dict(model_dict)
             optimizer.set_dict(opti_dict)
+            global_step = cfg.postnet_step
             print("load checkpoint!!!")
 
         if cfg.use_data_parallel:
