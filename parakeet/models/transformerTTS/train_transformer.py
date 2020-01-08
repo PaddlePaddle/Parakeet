@@ -29,6 +29,10 @@ class MyDataParallel(dg.parallel.DataParallel):
             return getattr(
                 object.__getattribute__(self, "_sub_layers")["_layers"], key)
 
+def load_checkpoint(step, model_path):
+    model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
+    return model_dict, opti_dict
+
 
 def main(cfg):
     local_rank = dg.parallel.Env().local_rank if cfg.use_data_parallel else 0
@@ -62,9 +66,10 @@ def main(cfg):
         reader = LJSpeechLoader(cfg, nranks, local_rank).reader()
         
         if cfg.checkpoint_path is not None:
-            model_dict, opti_dict = fluid.dygraph.load_dygraph(cfg.checkpoint_path)
+            model_dict, opti_dict = load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "transformer"))
             model.set_dict(model_dict)
             optimizer.set_dict(opti_dict)
+            global_step = cfg.transformer_step
             print("load checkpoint!!!")
 
         if cfg.use_data_parallel:

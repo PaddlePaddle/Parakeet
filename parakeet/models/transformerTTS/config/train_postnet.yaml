@@ -25,3 +25,5 @@ use_data_parallel: True
 data_path: ../../../dataset/LJSpeech-1.1
 save_path: ./checkpoint
 log_dir: ./log
+#checkpoint_path: ./checkpoint
+#transformer_step: 27000
