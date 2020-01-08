@@ -1,0 +1,24 @@
+valid_size: 16
+segment_length: 16000
+sample_rate: 22050
+fft_window_shift: 256
+fft_window_size: 1024
+fft_size: 1024
+mel_bands: 80
+mel_fmin: 0.0
+mel_fmax: 8000.0
+
+seed: 1234
+learning_rate: 0.0002
+batch_size: 8
+test_every: 2000
+save_every: 10000
+max_iterations: 3000000
+
+sigma: 1.0
+n_flows: 8
+n_group: 16
+n_layers: 8
+n_channels: 64
+kernel_h: 3
+kernel_w: 3

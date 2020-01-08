@@ -1,0 +1,27 @@
+audio:
+  num_mels: 80
+  n_fft: 2048
+  sr: 22050
+  preemphasis: 0.97
+  hop_length: 275
+  win_length: 1102
+  power: 1.2
+  min_level_db: -100
+  ref_level_db: 20
+  outputs_per_step: 1
+
+hidden_size: 256
+embedding_size: 512
+
+warm_up_step: 4000
+grad_clip_thresh: 1.0
+batch_size: 32
+epochs: 10000
+lr: 0.001
+save_step: 500
+use_gpu: True
+use_data_parallel: True
+
+data_path: ../../../dataset/LJSpeech-1.1
+save_path: ./checkpoint
+log_dir: ./log

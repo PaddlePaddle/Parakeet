@@ -88,7 +88,7 @@ def batch_spec(minibatch, pad_value=0., dtype=np.float32):
         mono_channel = False
     
     lengths = [example.shape[-1] for example in minibatch] # assume (channel, F, n_frame) or (F, n_frame)
-    max_len = np.max(lengths)
+    max_len = np.max(lengths)  
     
     batch = []
     for example in minibatch:
