@@ -89,8 +89,6 @@ def main(cfg):
                 else:
                     loss.backward()
                 optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg.grad_clip_thresh))
-                print("===============",model.pre_proj.conv.weight.numpy())
-                print("===============",model.pre_proj.conv.weight.gradient())
                 model.clear_gradients()
                 
                 if local_rank==0:

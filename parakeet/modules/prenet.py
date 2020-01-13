@@ -1,5 +1,6 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
+from parakeet.modules.layers import Linear
 
 class PreNet(dg.Layer):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0.2):
@@ -14,8 +15,8 @@ class PreNet(dg.Layer):
         self.output_size = output_size
         self.dropout_rate = dropout_rate
         
-        self.linear1 = dg.Linear(input_size, hidden_size)
-        self.linear2 = dg.Linear(hidden_size, output_size)
+        self.linear1 = Linear(input_size, hidden_size)
+        self.linear2 = Linear(hidden_size, output_size)
 
     def forward(self, x):
         """

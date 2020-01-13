@@ -63,7 +63,7 @@ def main(cfg):
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(cfg.warm_up_step *( cfg.lr ** 2)), cfg.warm_up_step), 
                                                   parameter_list=model.parameters())
         
-        reader = LJSpeechLoader(cfg, nranks, local_rank).reader()
+        reader = LJSpeechLoader(cfg, nranks, local_rank, shuffle=True).reader()
         
         if cfg.checkpoint_path is not None:
             model_dict, opti_dict = load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "transformer"))
@@ -78,26 +78,25 @@ def main(cfg):
         
         for epoch in range(cfg.epochs):
             pbar = tqdm(reader)
-            
-
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d'%epoch)
                 character, mel, mel_input, pos_text, pos_mel, text_length = data
 
                 global_step += 1
-                
                 mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(character, mel_input, pos_text, pos_mel)
+                
 
                 label = np.zeros(stop_preds.shape).astype(np.float32)
                 text_length = text_length.numpy()
                 for i in range(label.shape[0]):
                     label[i][text_length[i] - 1] = 1
-                
+                    
                 mel_loss = layers.mean(layers.abs(layers.elementwise_sub(mel_pred, mel)))
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
                 stop_loss = cross_entropy(stop_preds, dg.to_variable(label))
                 loss = mel_loss + post_mel_loss + stop_loss
-                
+
+
                 if local_rank==0:
                     writer.add_scalars('training_loss', {
                         'mel_loss':mel_loss.numpy(),

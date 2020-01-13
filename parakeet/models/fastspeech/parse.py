@@ -22,8 +22,8 @@ def add_config_options_to_parser(parser):
     parser.add_argument('--audio.outputs_per_step', type=int, default=1,
         help="the outputs per step.")
     
-    parser.add_argument('--embedding_size', type=int, default=256,
-        help="the dim size of embedding.")
+    parser.add_argument('--fs_embedding_size', type=int, default=256,
+        help="the dim size of embedding of fastspeech.")
     parser.add_argument('--encoder_n_layer', type=int, default=6,
         help="the number of FFT Block in encoder.")
     parser.add_argument('--encoder_head', type=int, default=2,
@@ -32,18 +32,14 @@ def add_config_options_to_parser(parser):
         help="the filter size of conv1d in encoder.")
     parser.add_argument('--max_sep_len', type=int, default=2048,
         help="the max length of sequence.")
-    parser.add_argument('--encoder_output_size', type=int, default=256,
-        help="the output channel size of encoder.")
     parser.add_argument('--decoder_n_layer', type=int, default=6,
         help="the number of FFT Block in decoder.")
     parser.add_argument('--decoder_head', type=int, default=2,
         help="the attention head number in decoder.")
     parser.add_argument('--decoder_conv1d_filter_size', type=int, default=1024,
         help="the filter size of conv1d in decoder.")
-    parser.add_argument('--decoder_output_size', type=int, default=256,
-        help="the output channel size of decoder.")
-    parser.add_argument('--hidden_size', type=int, default=256,
-        help="the hidden size in model.")
+    parser.add_argument('--fs_hidden_size', type=int, default=256,
+        help="the hidden size in model of fastspeech.")
     parser.add_argument('--duration_predictor_output_size', type=int, default=256,
         help="the output size of duration predictior.")
     parser.add_argument('--duration_predictor_filter_size', type=int, default=3,
@@ -56,6 +52,11 @@ def add_config_options_to_parser(parser):
         help="the dropout in network.")
     parser.add_argument('--transformer_head', type=int, default=4,
         help="the attention head num of transformerTTS.")
+
+    parser.add_argument('--hidden_size', type=int, default=256,
+        help="the hidden size in model of transformerTTS.")
+    parser.add_argument('--embedding_size', type=int, default=256,
+        help="the dim size of embedding of transformerTTS.")
 
     parser.add_argument('--warm_up_step', type=int, default=4000,
         help="the warm up step of learning rate.")

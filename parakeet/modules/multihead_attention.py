@@ -2,6 +2,7 @@ import math
 import numpy as np
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
+from parakeet.modules.layers import Linear
 
 class ScaledDotProductAttention(dg.Layer):
     def __init__(self, d_key):
@@ -34,10 +35,10 @@ class ScaledDotProductAttention(dg.Layer):
             attention = attention * mask
             mask = (mask == 0).astype(np.float32) * (-2 ** 32 + 1)
             attention = attention + mask
-            
-
+        
         attention = layers.softmax(attention)
         attention = layers.dropout(attention, dropout)
+        
         # Mask query to ignore padding
         if query_mask is not None:
             attention = attention * query_mask
@@ -54,13 +55,13 @@ class MultiheadAttention(dg.Layer):
         self.d_q = d_q
         self.dropout = dropout
 
-        self.key = dg.Linear(num_hidden, num_head * d_k)
-        self.value = dg.Linear(num_hidden, num_head * d_k)
-        self.query = dg.Linear(num_hidden, num_head * d_q)
+        self.key = Linear(num_hidden, num_head * d_k, is_bias=False)
+        self.value = Linear(num_hidden, num_head * d_k, is_bias=False)
+        self.query = Linear(num_hidden, num_head * d_q, is_bias=False)
 
         self.scal_attn = ScaledDotProductAttention(d_k)
 
-        self.fc = dg.Linear(num_head * d_q, num_hidden)
+        self.fc = Linear(num_head * d_q * 2, num_hidden)
 
         self.layer_norm = dg.LayerNorm(num_hidden)
 
@@ -105,6 +106,7 @@ class MultiheadAttention(dg.Layer):
         result = layers.reshape(result, [self.num_head, batch_size, seq_len_query, self.d_q])
         result = layers.reshape(layers.transpose(result, [1,2,0,3]),[batch_size, seq_len_query, -1])
         
+        result = layers.concat([query_input,result], axis=-1)
         result = layers.dropout(self.fc(result), self.dropout)
         result = result + query_input
         
