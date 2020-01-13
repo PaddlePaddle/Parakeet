@@ -2,7 +2,7 @@ import os
 from scipy.io.wavfile import write
 from parakeet.g2p.en import text_to_sequence
 import numpy as np
-from network import Model, ModelPostNet
+from network import TransformerTTS, ModelPostNet
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 import paddle.fluid as fluid
@@ -28,7 +28,7 @@ def synthesis(text_input, cfg):
     writer = SummaryWriter(path)
 
     with dg.guard(place):
-        model = Model(cfg)
+        model = TransformerTTS(cfg)
         model_postnet = ModelPostNet(cfg)
 
         model.set_dict(load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "transformer")))

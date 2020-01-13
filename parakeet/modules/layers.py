@@ -5,6 +5,25 @@ import paddle
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 
+class Linear(dg.Layer):
+    def __init__(self, in_features, out_features, is_bias=True, dtype="float32"):
+        super(Linear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.dtype = dtype
+        self.weight = fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer())
+        self.bias  = is_bias
+
+        if is_bias is not False:
+            k = math.sqrt(1 / in_features)
+            self.bias = fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k))
+
+        self.linear = dg.Linear(in_features, out_features, param_attr = self.weight,
+                            bias_attr = self.bias,)
+    
+    def forward(self, x):
+        x = self.linear(x)
+        return x
 
 class Conv(dg.Layer):
     def __init__(self, in_channels, out_channels, filter_size=1,

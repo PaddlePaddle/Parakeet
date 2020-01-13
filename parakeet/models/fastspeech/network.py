@@ -1,5 +1,5 @@
 from utils import *
-from modules import *
+from modules import FFTBlock, LengthRegulator
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.g2p.text.symbols import symbols
@@ -131,38 +131,38 @@ class FastSpeech(dg.Layer):
 
         self.encoder = Encoder(n_src_vocab=len(symbols)+1,
                                len_max_seq=cfg.max_sep_len,
-                               d_word_vec=cfg.embedding_size,
+                               d_word_vec=cfg.fs_embedding_size,
                                n_layers=cfg.encoder_n_layer,
                                n_head=cfg.encoder_head,
                                d_k=64,
                                d_v=64,
-                               d_model=cfg.hidden_size,
+                               d_model=cfg.fs_hidden_size,
                                d_inner=cfg.encoder_conv1d_filter_size,
                                fft_conv1d_kernel=cfg.fft_conv1d_filter, 
                                fft_conv1d_padding=cfg.fft_conv1d_padding,
                                dropout=0.1)
-        self.length_regulator = LengthRegulator(input_size=cfg.hidden_size, 
+        self.length_regulator = LengthRegulator(input_size=cfg.fs_hidden_size, 
                                                 out_channels=cfg.duration_predictor_output_size, 
                                                 filter_size=cfg.duration_predictor_filter_size, 
                                                 dropout=cfg.dropout)
         self.decoder = Decoder(len_max_seq=cfg.max_sep_len,
-                                d_word_vec=cfg.embedding_size,
+                                d_word_vec=cfg.fs_embedding_size,
                                 n_layers=cfg.decoder_n_layer,
                                 n_head=cfg.decoder_head,
                                 d_k=64,
                                 d_v=64,
-                                d_model=cfg.hidden_size,
+                                d_model=cfg.fs_hidden_size,
                                 d_inner=cfg.decoder_conv1d_filter_size,
                                 fft_conv1d_kernel=cfg.fft_conv1d_filter, 
                                 fft_conv1d_padding=cfg.fft_conv1d_padding,
                                 dropout=0.1)
-        self.mel_linear = dg.Linear(cfg.decoder_output_size, cfg.audio.num_mels)
-        self.postnet = PostConvNet(n_mels=80,
+        self.mel_linear = dg.Linear(cfg.fs_hidden_size, cfg.audio.num_mels * cfg.audio.outputs_per_step)
+        self.postnet = PostConvNet(n_mels=cfg.audio.num_mels,
                  num_hidden=512,
                  filter_size=5,
                  padding=int(5 / 2),
                  num_conv=5,
-                 outputs_per_step=1,
+                 outputs_per_step=cfg.audio.outputs_per_step,
                  use_cudnn=True,
                  dropout=0.1)
 

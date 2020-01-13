@@ -1,7 +1,7 @@
 from parakeet.models.transformerTTS.module import *
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.modules.layers import Conv1D
+from parakeet.modules.layers import Conv1D, Linear
 from parakeet.modules.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.feed_forward import PositionwiseFeedForward
@@ -13,8 +13,7 @@ class Encoder(dg.Layer):
     def __init__(self, embedding_size, num_hidden, config):
         super(Encoder, self).__init__()
         self.num_hidden = num_hidden
-        param = fluid.ParamAttr(name='alpha',  
-                                initializer=fluid.initializer.Constant(value=1.0))
+        param = fluid.ParamAttr(initializer=fluid.initializer.Constant(value=1.0))
         self.alpha = self.create_parameter(shape=(1, ), attr=param, dtype='float32')
         self.pos_inp = get_sinusoid_encoding_table(1024, self.num_hidden, padding_idx=0)
         self.pos_emb = dg.Embedding(size=[1024, num_hidden],
@@ -39,13 +38,13 @@ class Encoder(dg.Layer):
         else:
             query_mask, mask = None, None
         
-        
         # Encoder pre_network
         x = self.encoder_prenet(x) #(N,T,C)
         
         
         # Get positional encoding
         positional = self.pos_emb(positional) 
+        
         x = positional * self.alpha + x #(N, T, C)
        
 
@@ -65,21 +64,20 @@ class Decoder(dg.Layer):
     def __init__(self, num_hidden, config):
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
-        param = fluid.ParamAttr(name='alpha')
+        param = fluid.ParamAttr()
         self.alpha = self.create_parameter(shape=(1,), attr=param, dtype='float32',
                         default_initializer = fluid.initializer.ConstantInitializer(value=1.0))
         self.pos_inp = get_sinusoid_encoding_table(1024, self.num_hidden, padding_idx=0)
         self.pos_emb = dg.Embedding(size=[1024, num_hidden],
                                  padding_idx=0,
                                  param_attr=fluid.ParamAttr(
-                                     name='weight',
                                      initializer=fluid.initializer.NumpyArrayInitializer(self.pos_inp),
                                      trainable=False))
         self.decoder_prenet = PreNet(input_size = config.audio.num_mels, 
                                             hidden_size = num_hidden * 2, 
                                             output_size = num_hidden, 
                                             dropout_rate=0.2)
-        self.linear = dg.Linear(num_hidden, num_hidden)
+        self.linear = Linear(num_hidden, num_hidden)
 
         self.selfattn_layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
         for i, layer in enumerate(self.selfattn_layers):
@@ -90,8 +88,8 @@ class Decoder(dg.Layer):
         self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*4, filter_size=1) for _ in range(3)]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
-        self.mel_linear = dg.Linear(num_hidden, config.audio.num_mels * config.audio.outputs_per_step)
-        self.stop_linear = dg.Linear(num_hidden, 1)
+        self.mel_linear = Linear(num_hidden, config.audio.num_mels * config.audio.outputs_per_step)
+        self.stop_linear = Linear(num_hidden, 1)
 
         self.postconvnet = PostConvNet(config.audio.num_mels, config.hidden_size, 
                                        filter_size = 5, padding = 4, num_conv=5, 
@@ -115,10 +113,10 @@ class Decoder(dg.Layer):
             mask = get_triu_tensor(query.numpy(), query.numpy()).astype(np.float32)
             mask = fluid.layers.cast(dg.to_variable(mask == 0), np.float32)
             m_mask, zero_mask = None, None
-        
+
         # Decoder pre-network
         query = self.decoder_prenet(query)
-
+        
         # Centered position
         query = self.linear(query)
 
@@ -132,14 +130,13 @@ class Decoder(dg.Layer):
         # Attention decoder-decoder, encoder-decoder
         selfattn_list = list()
         attn_list = list()
-
+        
         for selfattn, attn, ffn in zip(self.selfattn_layers, self.attn_layers, self.ffns):
             query, attn_dec = selfattn(query, query, query, mask = mask, query_mask = m_mask)
             query, attn_dot = attn(key, value, query, mask = zero_mask, query_mask = m_mask)
             query = ffn(query)
             selfattn_list.append(attn_dec)
             attn_list.append(attn_dot)
-        
         # Mel linear projection
         mel_out = self.mel_linear(query)
         # Post Mel Network
@@ -164,7 +161,7 @@ class TransformerTTS(dg.Layer):
         # key (batch_size, seq_len, channel)
         # c_mask (batch_size, seq_len)
         # attns_enc (channel / 2, seq_len, seq_len)
-        
+
         key, c_mask, attns_enc = self.encoder(characters, pos_text)
         
         # mel_output/postnet_output (batch_size, mel_len, n_mel)

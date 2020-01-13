@@ -3,10 +3,9 @@ from parakeet.g2p.text.symbols import symbols
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from parakeet.modules.layers import Conv, Pool1D
+from parakeet.modules.layers import Conv, Pool1D, Linear
 from parakeet.modules.dynamicGRU import DynamicGRU
 import numpy as np
-
 
 
 class EncoderPrenet(dg.Layer):
@@ -15,8 +14,7 @@ class EncoderPrenet(dg.Layer):
         self.embedding_size = embedding_size
         self.num_hidden = num_hidden
         self.use_cudnn = use_cudnn
-        self.embedding = dg.Embedding( size = [len(symbols), embedding_size], 
-                                        param_attr = fluid.ParamAttr(name='weight'),
+        self.embedding = dg.Embedding( size = [len(symbols), embedding_size],
                                         padding_idx = None)
         self.conv_list = []
         self.conv_list.append(Conv(in_channels = embedding_size, 
@@ -37,16 +35,12 @@ class EncoderPrenet(dg.Layer):
             self.add_sublayer("conv_list_{}".format(i), layer)
 
         self.batch_norm_list = [dg.BatchNorm(num_hidden, 
-                            param_attr = fluid.ParamAttr(name='weight'), 
-                            bias_attr = fluid.ParamAttr(name='bias'),
-                            moving_mean_name =  'moving_mean',
-                            moving_variance_name = 'moving_var',
-                            data_layout='NCHW') for _ in range(3)]
+                            data_layout='NCHW', epsilon=1e-30) for _ in range(3)]
 
         for i, layer in enumerate(self.batch_norm_list):
             self.add_sublayer("batch_norm_list_{}".format(i), layer)
 
-        self.projection = dg.Linear(num_hidden, num_hidden)
+        self.projection = Linear(num_hidden, num_hidden)
 
     def forward(self, x):
         x = self.embedding(x) #(batch_size, seq_len, embending_size)
@@ -90,10 +84,6 @@ class CBHG(dg.Layer):
         self.batchnorm_list = []
         for i in range(K):
             self.batchnorm_list.append(dg.BatchNorm(hidden_size, 
-                            param_attr = fluid.ParamAttr(name='weight'), 
-                            bias_attr = fluid.ParamAttr(name='bias'),
-                            moving_mean_name =  'moving_mean',
-                            moving_variance_name = 'moving_var',
                             data_layout='NCHW'))
 
         for i, layer in enumerate(self.batchnorm_list):
@@ -114,16 +104,8 @@ class CBHG(dg.Layer):
                             data_format = "NCT")
 
         self.batchnorm_proj_1 = dg.BatchNorm(hidden_size, 
-                            param_attr = fluid.ParamAttr(name='weight'), 
-                            bias_attr = fluid.ParamAttr(name='bias'),
-                            moving_mean_name =  'moving_mean',
-                            moving_variance_name = 'moving_var',
                             data_layout='NCHW')
         self.batchnorm_proj_2 = dg.BatchNorm(projection_size, 
-                            param_attr = fluid.ParamAttr(name='weight'), 
-                            bias_attr = fluid.ParamAttr(name='bias'),
-                            moving_mean_name =  'moving_mean',
-                            moving_variance_name = 'moving_var',
                             data_layout='NCHW')
         self.max_pool = Pool1D(pool_size = max_pool_kernel_size, 
                     pool_type='max', 
@@ -134,32 +116,24 @@ class CBHG(dg.Layer):
 
         h_0 = np.zeros((batch_size, hidden_size // 2), dtype="float32")
         h_0 = dg.to_variable(h_0)
-        self.fc_forward1 = dg.Linear(hidden_size, hidden_size // 2 * 3)
-        self.fc_reverse1 = dg.Linear(hidden_size, hidden_size // 2 * 3)
+        self.fc_forward1 = Linear(hidden_size, hidden_size // 2 * 3)
+        self.fc_reverse1 = Linear(hidden_size, hidden_size // 2 * 3)
         self.gru_forward1 = DynamicGRU(size = self.hidden_size // 2,
-                              param_attr = fluid.ParamAttr(name='weight'), 
-                              bias_attr = fluid.ParamAttr(name='bias'),
                               is_reverse = False,
                               origin_mode = True,
                               h_0 = h_0)
         self.gru_reverse1 = DynamicGRU(size = self.hidden_size // 2,
-                              param_attr = fluid.ParamAttr(name='weight'), 
-                              bias_attr = fluid.ParamAttr(name='bias'),
                               is_reverse=True,
                               origin_mode=True,
                               h_0 = h_0)
 
-        self.fc_forward2 = dg.Linear(hidden_size, hidden_size // 2 * 3)
-        self.fc_reverse2 = dg.Linear(hidden_size, hidden_size // 2 * 3)
+        self.fc_forward2 = Linear(hidden_size, hidden_size // 2 * 3)
+        self.fc_reverse2 = Linear(hidden_size, hidden_size // 2 * 3)
         self.gru_forward2 = DynamicGRU(size = self.hidden_size // 2,
-                              param_attr = fluid.ParamAttr(name='weight'), 
-                              bias_attr = fluid.ParamAttr(name='bias'),
                               is_reverse = False,
                               origin_mode = True,
                               h_0 = h_0)
         self.gru_reverse2 = DynamicGRU(size = self.hidden_size // 2,
-                              param_attr = fluid.ParamAttr(name='weight'), 
-                              bias_attr = fluid.ParamAttr(name='bias'),
                               is_reverse=True,
                               origin_mode=True,
                               h_0 = h_0)
@@ -216,8 +190,8 @@ class Highwaynet(dg.Layer):
         self.linears = []
 
         for i in range(num_layers):
-            self.linears.append(dg.Linear(num_units, num_units))
-            self.gates.append(dg.Linear(num_units, num_units))
+            self.linears.append(Linear(num_units, num_units))
+            self.gates.append(Linear(num_units, num_units))
         
         for i, (linear, gate) in enumerate(zip(self.linears,self.gates)):
             self.add_sublayer("linears_{}".format(i), linear)

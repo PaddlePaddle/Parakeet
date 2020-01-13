@@ -8,8 +8,6 @@ from parakeet.modules.layers import Conv1D
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.feed_forward import PositionwiseFeedForward
 
-
-
 class FFTBlock(dg.Layer):
     def __init__(self, d_model, d_inner, n_head, d_k, d_v, filter_size, padding, dropout=0.2):
         super(FFTBlock, self).__init__()
