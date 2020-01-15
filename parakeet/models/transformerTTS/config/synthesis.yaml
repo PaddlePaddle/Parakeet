@@ -11,8 +11,8 @@ audio:
   outputs_per_step: 1
 
 max_len: 50
-transformer_step: 1
-postnet_step: 1
+transformer_step: 10
+postnet_step: 10
 use_gpu: True
 
 checkpoint_path: ./checkpoint

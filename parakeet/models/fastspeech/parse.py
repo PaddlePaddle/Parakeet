@@ -22,8 +22,6 @@ def add_config_options_to_parser(parser):
     parser.add_argument('--audio.outputs_per_step', type=int, default=1,
         help="the outputs per step.")
     
-    parser.add_argument('--fs_embedding_size', type=int, default=256,
-        help="the dim size of embedding of fastspeech.")
     parser.add_argument('--encoder_n_layer', type=int, default=6,
         help="the number of FFT Block in encoder.")
     parser.add_argument('--encoder_head', type=int, default=2,

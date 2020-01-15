@@ -14,7 +14,6 @@ encoder_n_layer: 6
 encoder_head: 2
 encoder_conv1d_filter_size: 1536
 max_sep_len: 2048
-fs_embedding_size: 384
 decoder_n_layer: 6
 decoder_head: 2
 decoder_conv1d_filter_size: 1536
@@ -39,6 +38,6 @@ use_gpu: True
 use_data_parallel: False
 
 data_path: ../../../dataset/LJSpeech-1.1
-transtts_path: ../transformerTTS/checkpoint
-transformer_step: 1
+transtts_path: ../transformerTTS/checkpoint/
+transformer_step: 10
 log_dir: ./log

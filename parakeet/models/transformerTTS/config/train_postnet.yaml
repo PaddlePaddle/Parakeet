@@ -18,9 +18,9 @@ grad_clip_thresh: 1.0
 batch_size: 32
 epochs: 10000
 lr: 0.001
-save_step: 500
+save_step: 10
 use_gpu: True
-use_data_parallel: True
+use_data_parallel: False
 
 data_path: ../../../dataset/LJSpeech-1.1
 save_path: ./checkpoint

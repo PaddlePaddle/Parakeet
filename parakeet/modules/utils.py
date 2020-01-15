@@ -65,9 +65,10 @@ def guided_attention(N, T, g=0.2):
     return W
 
 
-def cross_entropy(input, label, position_weight=5.0, epsilon=0.0001):
-    input = -1 * label * layers.log(input + epsilon) - (1-label) * layers.log(1 - input + epsilon)
-    label = input * (label * (position_weight - 1) + 1)
-    return layers.reduce_sum(label, dim=[0, 1])
+def cross_entropy(input, label, position_weight=1.0, epsilon=1e-30):
+    output = -1 * label * layers.log(input + epsilon) - (1-label) * layers.log(1 - input + epsilon)
+    output = output * (label * (position_weight - 1) + 1)
+
+    return layers.reduce_sum(output, dim=[0, 1])
         
 

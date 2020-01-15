@@ -86,16 +86,16 @@ def main(cfg):
                 mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(character, mel_input, pos_text, pos_mel)
                 
 
-                label = np.zeros(stop_preds.shape).astype(np.float32)
-                text_length = text_length.numpy()
-                for i in range(label.shape[0]):
-                    label[i][text_length[i] - 1] = 1
+                label = (pos_mel == 0).astype(np.float32)
+                #label = np.zeros(stop_preds.shape).astype(np.float32)
+                #text_length = text_length.numpy()
+                #for i in range(label.shape[0]):
+                #    label[i][text_length[i] - 1] = 1
                     
                 mel_loss = layers.mean(layers.abs(layers.elementwise_sub(mel_pred, mel)))
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
-                stop_loss = cross_entropy(stop_preds, dg.to_variable(label))
+                stop_loss = cross_entropy(stop_preds, label)
                 loss = mel_loss + post_mel_loss + stop_loss
-
 
                 if local_rank==0:
                     writer.add_scalars('training_loss', {
