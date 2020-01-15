@@ -55,14 +55,13 @@ def main(cfg):
     writer = SummaryWriter(path) if local_rank == 0 else None
 
     with dg.guard(place):
-        transformerTTS = TransformerTTS(cfg)
-        model_path = os.path.join(cfg.transtts_path, "transformer")
-        model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, str(cfg.transformer_step)))
-        #for param in transformerTTS.state_dict():
-        #   print(param)
-        
-        transformerTTS.set_dict(model_dict)
-        transformerTTS.eval()
+        with fluid.unique_name.guard():
+            transformerTTS = TransformerTTS(cfg)
+            model_path = os.path.join(cfg.transtts_path, "transformer")
+            model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, str(cfg.transformer_step)))
+            
+            transformerTTS.set_dict(model_dict)
+            transformerTTS.eval()
 
         model = FastSpeech(cfg)
         model.train()
@@ -89,7 +88,6 @@ def main(cfg):
 
                 _, _, attn_probs, _, _, _ = transformerTTS(character, mel_input, pos_text, pos_mel)
                 alignment = dg.to_variable(get_alignment(attn_probs, cfg.transformer_head)).astype(np.float32)
-
                 global_step += 1
                     
                 #Forward
@@ -104,8 +102,7 @@ def main(cfg):
                 total_loss = mel_loss + mel_postnet_loss + duration_loss
 
                 if local_rank==0:
-                    print('epoch:{}, step:{}, mel_loss:{}, mel_postnet_loss:{}, duration_loss:{}'.format(epoch, global_step, mel_loss.numpy(), mel_postnet_loss.numpy(), duration_loss.numpy()))
-
+                    #print('epoch:{}, step:{}, mel_loss:{}, mel_postnet_loss:{}, duration_loss:{}'.format(epoch, global_step, mel_loss.numpy(), mel_postnet_loss.numpy(), duration_loss.numpy()))
                     writer.add_scalar('mel_loss', mel_loss.numpy(), global_step)
                     writer.add_scalar('post_mel_loss', mel_postnet_loss.numpy(), global_step)
                     writer.add_scalar('duration_loss', duration_loss.numpy(), global_step)

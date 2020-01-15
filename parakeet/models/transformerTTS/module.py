@@ -35,7 +35,7 @@ class EncoderPrenet(dg.Layer):
             self.add_sublayer("conv_list_{}".format(i), layer)
 
         self.batch_norm_list = [dg.BatchNorm(num_hidden, 
-                            data_layout='NCHW', epsilon=1e-30) for _ in range(3)]
+                            data_layout='NCHW') for _ in range(3)]
 
         for i, layer in enumerate(self.batch_norm_list):
             self.add_sublayer("batch_norm_list_{}".format(i), layer)
@@ -57,6 +57,7 @@ class CBHG(dg.Layer):
         super(CBHG, self).__init__()
         """
         :param hidden_size: dimension of hidden unit
+        :param batch_size: batch size
         :param K: # of convolution banks
         :param projection_size: dimension of projection unit
         :param num_gru_layers: # of layers of GRUcell

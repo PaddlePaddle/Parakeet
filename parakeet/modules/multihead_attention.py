@@ -105,7 +105,6 @@ class MultiheadAttention(dg.Layer):
         # concat all multihead result
         result = layers.reshape(result, [self.num_head, batch_size, seq_len_query, self.d_q])
         result = layers.reshape(layers.transpose(result, [1,2,0,3]),[batch_size, seq_len_query, -1])
-        
         result = layers.concat([query_input,result], axis=-1)
         result = layers.dropout(self.fc(result), self.dropout)
         result = result + query_input

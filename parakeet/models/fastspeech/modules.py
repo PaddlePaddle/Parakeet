@@ -4,7 +4,7 @@ import utils
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
-from parakeet.modules.layers import Conv1D
+from parakeet.modules.layers import Conv, Linear
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.feed_forward import PositionwiseFeedForward
 
@@ -113,12 +113,12 @@ class DurationPredictor(dg.Layer):
         self.filter_size = filter_size
         self.dropout = dropout
 
-        self.conv1 = Conv1D(in_channels = self.input_size, 
+        self.conv1 = Conv(in_channels = self.input_size, 
                         out_channels = self.out_channels, 
                         filter_size = self.filter_size,
                         padding=1,
                         data_format='NTC')
-        self.conv2 = Conv1D(in_channels = self.out_channels, 
+        self.conv2 = Conv(in_channels = self.out_channels, 
                         out_channels = self.out_channels, 
                         filter_size = self.filter_size,
                         padding=1,
@@ -126,7 +126,7 @@ class DurationPredictor(dg.Layer):
         self.layer_norm1 = dg.LayerNorm(self.out_channels)
         self.layer_norm2 = dg.LayerNorm(self.out_channels)
 
-        self.linear =dg.Linear(self.out_channels, 1)
+        self.linear =Linear(self.out_channels, 1)
 
     def forward(self, encoder_output):
         """

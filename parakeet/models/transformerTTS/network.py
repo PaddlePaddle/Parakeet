@@ -10,7 +10,7 @@ from parakeet.modules.post_convnet import PostConvNet
 
 
 class Encoder(dg.Layer):
-    def __init__(self, embedding_size, num_hidden, config):
+    def __init__(self, embedding_size, num_hidden, config, num_head=4):
         super(Encoder, self).__init__()
         self.num_hidden = num_hidden
         param = fluid.ParamAttr(initializer=fluid.initializer.Constant(value=1.0))
@@ -24,10 +24,10 @@ class Encoder(dg.Layer):
         self.encoder_prenet = EncoderPrenet(embedding_size = embedding_size, 
                                             num_hidden = num_hidden, 
                                             use_cudnn=config.use_gpu)
-        self.layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
+        self.layers = [MultiheadAttention(num_hidden, num_hidden//num_head, num_hidden//num_head) for _ in range(3)]
         for i, layer in enumerate(self.layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
-        self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*4, filter_size=1, use_cudnn = config.use_gpu) for _ in range(3)]
+        self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*num_head, filter_size=1, use_cudnn = config.use_gpu) for _ in range(3)]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
 
@@ -61,7 +61,7 @@ class Encoder(dg.Layer):
         return x, query_mask, attentions
 
 class Decoder(dg.Layer):
-    def __init__(self, num_hidden, config):
+    def __init__(self, num_hidden, config, num_head=4):
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
         param = fluid.ParamAttr()
@@ -79,13 +79,13 @@ class Decoder(dg.Layer):
                                             dropout_rate=0.2)
         self.linear = Linear(num_hidden, num_hidden)
 
-        self.selfattn_layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
+        self.selfattn_layers = [MultiheadAttention(num_hidden, num_hidden//num_head, num_hidden//num_head) for _ in range(3)]
         for i, layer in enumerate(self.selfattn_layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
-        self.attn_layers = [MultiheadAttention(num_hidden, num_hidden//4, num_hidden//4) for _ in range(3)]
+        self.attn_layers = [MultiheadAttention(num_hidden, num_hidden//num_head, num_hidden//num_head) for _ in range(3)]
         for i, layer in enumerate(self.attn_layers):
             self.add_sublayer("attn_{}".format(i), layer)
-        self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*4, filter_size=1) for _ in range(3)]
+        self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*num_head, filter_size=1) for _ in range(3)]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
         self.mel_linear = Linear(num_hidden, config.audio.num_mels * config.audio.outputs_per_step)

@@ -28,12 +28,15 @@ def synthesis(text_input, cfg):
     writer = SummaryWriter(path)
 
     with dg.guard(place):
-        model = TransformerTTS(cfg)
-        model_postnet = ModelPostNet(cfg)
-
-        model.set_dict(load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "transformer")))
-        model_postnet.set_dict(load_checkpoint(str(cfg.postnet_step), os.path.join(cfg.checkpoint_path, "postnet")))
-
+        with fluid.unique_name.guard():
+            model = TransformerTTS(cfg)
+            model.set_dict(load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "transformer")))
+            model.eval()
+        
+        with fluid.unique_name.guard():
+            model_postnet = ModelPostNet(cfg)
+            model_postnet.set_dict(load_checkpoint(str(cfg.postnet_step), os.path.join(cfg.checkpoint_path, "postnet")))
+            model_postnet.eval()
         # init input
         text = np.asarray(text_to_sequence(text_input))
         text = fluid.layers.unsqueeze(dg.to_variable(text),[0])
@@ -41,9 +44,6 @@ def synthesis(text_input, cfg):
         pos_text = np.arange(1, text.shape[1]+1)
         pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text),[0])
         
-
-        model.eval()
-        model_postnet.eval()
 
         pbar = tqdm(range(cfg.max_len))
 
