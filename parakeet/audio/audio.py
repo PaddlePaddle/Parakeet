@@ -209,7 +209,7 @@ class AudioProcessor(object):
     def inv_melspectrogram(self, mel_spectrogram):
         S = self._denormalize(mel_spectrogram)
         S = self._db_to_amplitude(S + self.ref_level_db)
-        S = self._linear_to_mel(np.abs(S))
+        S = self._mel_to_linear(np.abs(S))
         if self.preemphasis:
             return self.apply_inv_preemphasis(self._griffin_lim(S ** self.power))
         return self._griffin_lim(S ** self.power)

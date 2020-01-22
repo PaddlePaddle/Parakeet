@@ -49,6 +49,7 @@ class EncoderPrenet(dg.Layer):
             x = layers.dropout(layers.relu(batch_norm(conv(x))), 0.2)
         x = layers.transpose(x,[0,2,1]) #(N,T,C)
         x = self.projection(x)
+
         return x
 
 class CBHG(dg.Layer):

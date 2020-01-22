@@ -1,11 +1,11 @@
-from utils import *
-from modules import FFTBlock, LengthRegulator
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.g2p.text.symbols import symbols
 from parakeet.modules.utils import *
 from parakeet.modules.post_convnet import PostConvNet
 from parakeet.modules.layers import Linear
+from utils import *
+from modules import FFTBlock, LengthRegulator
 
 class Encoder(dg.Layer):
     def __init__(self,
@@ -203,8 +203,7 @@ class FastSpeech(dg.Layer):
             return mel_output, mel_output_postnet, duration_predictor_output, enc_slf_attn_list, dec_slf_attn_list
         else:
             length_regulator_output, decoder_pos = self.length_regulator(encoder_output, alpha=alpha)
-            decoder_output = self.decoder(length_regulator_output, decoder_pos)
-
+            decoder_output, _ = self.decoder(length_regulator_output, decoder_pos)
             mel_output = self.mel_linear(decoder_output)
             mel_output_postnet = self.postnet(mel_output) + mel_output
 

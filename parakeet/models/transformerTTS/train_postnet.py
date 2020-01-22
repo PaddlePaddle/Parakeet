@@ -1,33 +1,23 @@
-from network import *
 from tensorboardX import SummaryWriter
 import os
 from tqdm import tqdm
 from pathlib import Path
+from collections import OrderedDict
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
-from parakeet.models.dataloader.jlspeech import LJSpeechLoader
-
-class MyDataParallel(dg.parallel.DataParallel):
-    """
-    A data parallel proxy for model.
-    """
-
-    def __init__(self, layers, strategy):
-        super(MyDataParallel, self).__init__(layers, strategy)
-
-    def __getattr__(self, key):
-        if key in self.__dict__:
-            return object.__getattribute__(self, key)
-        elif key is "_layers":
-            return object.__getattribute__(self, "_sub_layers")["_layers"]
-        else:
-            return getattr(
-                object.__getattribute__(self, "_sub_layers")["_layers"], key)
+from parakeet.models.dataloader.ljspeech import LJSpeechLoader
+from network import *
 
 def load_checkpoint(step, model_path):
     model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
-    return model_dict, opti_dict
+    new_state_dict = OrderedDict()
+    for param in model_dict:
+        if param.startswith('_layers.'):
+            new_state_dict[param[8:]] = model_dict[param]
+        else:
+            new_state_dict[param] = model_dict[param]
+    return new_state_dict, opti_dict
 
 def main(cfg):
     
@@ -66,7 +56,7 @@ def main(cfg):
 
         if cfg.use_data_parallel:
             strategy = dg.parallel.prepare_context()
-            model = MyDataParallel(model, strategy)
+            model = fluid.dygraph.parallel.DataParallel(model, strategy)
 
         reader = LJSpeechLoader(cfg, nranks, local_rank, is_vocoder=True).reader()
 

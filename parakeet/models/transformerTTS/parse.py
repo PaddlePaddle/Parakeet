@@ -44,13 +44,15 @@ def add_config_options_to_parser(parser):
     parser.add_argument('--max_len', type=int, default=400,
         help="The max length of audio when synthsis.")
     parser.add_argument('--transformer_step', type=int, default=160000,
-        help="Global step to restore checkpoint of transformer in synthesis.")
-    parser.add_argument('--postnet_step', type=int, default=100000,
-        help="Global step to restore checkpoint of postnet in synthesis.")
+        help="Global step to restore checkpoint of transformer.")
+    parser.add_argument('--postnet_step', type=int, default=90000,
+        help="Global step to restore checkpoint of postnet.")
     parser.add_argument('--use_gpu', type=bool, default=True,
         help="use gpu or not during training.")
     parser.add_argument('--use_data_parallel', type=bool, default=False,
         help="use data parallel or not during training.")
+    parser.add_argument('--stop_token', type=bool, default=False,
+        help="use stop token loss in network or not.")
 
     parser.add_argument('--data_path', type=str, default='./dataset/LJSpeech-1.1',
         help="the path of dataset.")

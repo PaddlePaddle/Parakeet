@@ -1,18 +1,15 @@
 import os
-from scipy.io.wavfile import write
-from parakeet.g2p.en import text_to_sequence
-import numpy as np
-from network import TransformerTTS, ModelPostNet
-from tqdm import tqdm
 from tensorboardX import SummaryWriter
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dg
-from pathlib import Path
+from collections import OrderedDict
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
-from collections import OrderedDict
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from parakeet.g2p.en import text_to_sequence
 from parakeet import audio
+from network import FastSpeech
 
 def load_checkpoint(step, model_path):
     model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
@@ -35,31 +32,16 @@ def synthesis(text_input, cfg):
     writer = SummaryWriter(path)
 
     with dg.guard(place):
-        with fluid.unique_name.guard():
-            model = TransformerTTS(cfg)
-            model.set_dict(load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.checkpoint_path, "nostop_token/transformer")))
-            model.eval()
-        
-        with fluid.unique_name.guard():
-            model_postnet = ModelPostNet(cfg)
-            model_postnet.set_dict(load_checkpoint(str(cfg.postnet_step), os.path.join(cfg.checkpoint_path, "postnet")))
-            model_postnet.eval()
-        # init input
+        model = FastSpeech(cfg)
+        model.set_dict(load_checkpoint(str(cfg.fastspeech_step), os.path.join(cfg.checkpoint_path, "fastspeech")))
+        model.eval()
+
         text = np.asarray(text_to_sequence(text_input))
         text = fluid.layers.unsqueeze(dg.to_variable(text),[0])
-        mel_input = dg.to_variable(np.zeros([1,1,80])).astype(np.float32)
         pos_text = np.arange(1, text.shape[1]+1)
         pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text),[0])
-        
 
-        pbar = tqdm(range(cfg.max_len))
-
-        for i in pbar:
-            pos_mel = np.arange(1, mel_input.shape[1]+1)
-            pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel),[0])
-            mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(text, mel_input, pos_text, pos_mel)
-            mel_input = fluid.layers.concat([mel_input, postnet_pred[:,-1:,:]], axis=1)
-        mag_pred = model_postnet(postnet_pred)
+        mel_output, mel_output_postnet = model(text, pos_text, alpha=cfg.alpha)
 
         _ljspeech_processor = audio.AudioProcessor(
             sample_rate=cfg.audio.sr, 
@@ -81,11 +63,10 @@ def synthesis(text_input, cfg):
             do_trim_silence=False,
             sound_norm=False)
 
-        wav = _ljspeech_processor.inv_spectrogram(fluid.layers.transpose(fluid.layers.squeeze(mag_pred,[0]), [1,0]).numpy())
+        mel_output_postnet = fluid.layers.transpose(fluid.layers.squeeze(mel_output_postnet,[0]), [1,0])
+        wav = _ljspeech_processor.inv_melspectrogram(mel_output_postnet.numpy())
         writer.add_audio(text_input, wav, 0, cfg.audio.sr)
-        if not os.path.exists(cfg.sample_path):
-            os.mkdir(cfg.sample_path)
-        write(os.path.join(cfg.sample_path,'test.wav'), cfg.audio.sr, wav)
+        print("Synthesis completed !!!")
     writer.close()
 
 if __name__ == '__main__':

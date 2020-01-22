@@ -24,11 +24,12 @@ save_step: 1000
 image_step: 2000
 use_gpu: True
 use_data_parallel: False
+stop_token: False
 
 data_path: ../../../dataset/LJSpeech-1.1
 save_path: ./checkpoint
 log_dir: ./log
 #checkpoint_path: ./checkpoint
-#transformer_step: 70000
+#ransformer_step: 97000
 
    
