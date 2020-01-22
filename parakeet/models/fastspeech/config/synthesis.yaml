@@ -25,22 +25,9 @@ fft_conv1d_padding: 1
 dropout: 0.1
 transformer_head: 4
 
-embedding_size: 512
-hidden_size: 256
-
-warm_up_step: 4000
-grad_clip_thresh: 0.1
-batch_size: 32
-epochs: 10000
-lr: 0.001
-save_step: 500
 use_gpu: True
-use_data_parallel: False
+alpha: 1.0
 
-data_path: ../../../dataset/LJSpeech-1.1
-transtts_path: ../transformerTTS/checkpoint/
-transformer_step: 200000
-save_path: ./checkpoint
+checkpoint_path: checkpoint/
+fastspeech_step: 71000
 log_dir: ./log
-#checkpoint_path: ./checkpoint
-#ransformer_step: 97000

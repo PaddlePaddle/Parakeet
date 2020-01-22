@@ -1,45 +1,32 @@
 import os
 from tqdm import tqdm
-import paddle.fluid.dygraph as dg
-import paddle.fluid.layers as layers
-from network import *
 from tensorboardX import SummaryWriter
 from pathlib import Path
+from collections import OrderedDict
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
 from matplotlib import cm
+import paddle.fluid.dygraph as dg
+import paddle.fluid.layers as layers
 from parakeet.modules.utils import cross_entropy
-from parakeet.models.dataloader.jlspeech import LJSpeechLoader
-
-class MyDataParallel(dg.parallel.DataParallel):
-    """
-    A data parallel proxy for model.
-    """
-
-    def __init__(self, layers, strategy):
-        super(MyDataParallel, self).__init__(layers, strategy)
-
-    def __getattr__(self, key):
-        if key in self.__dict__:
-            return object.__getattribute__(self, key)
-        elif key is "_layers":
-            return object.__getattribute__(self, "_sub_layers")["_layers"]
-        else:
-            return getattr(
-                object.__getattribute__(self, "_sub_layers")["_layers"], key)
+from parakeet.models.dataloader.ljspeech import LJSpeechLoader
+from network import *
 
 def load_checkpoint(step, model_path):
     model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
-    return model_dict, opti_dict
+    new_state_dict = OrderedDict()
+    for param in model_dict:
+        if param.startswith('_layers.'):
+            new_state_dict[param[8:]] = model_dict[param]
+        else:
+            new_state_dict[param] = model_dict[param]
+    return new_state_dict, opti_dict
 
 
 def main(cfg):
     local_rank = dg.parallel.Env().local_rank if cfg.use_data_parallel else 0
     nranks = dg.parallel.Env().nranks if cfg.use_data_parallel else 1
-
-    fluid.default_startup_program().random_seed = 1
-    fluid.default_main_program().random_seed = 1
 
     if local_rank == 0:
         # Print the whole config setting.
@@ -74,28 +61,27 @@ def main(cfg):
 
         if cfg.use_data_parallel:
             strategy = dg.parallel.prepare_context()
-            model = MyDataParallel(model, strategy)
+            model = fluid.dygraph.parallel.DataParallel(model, strategy)
         
         for epoch in range(cfg.epochs):
             pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d'%epoch)
-                character, mel, mel_input, pos_text, pos_mel, text_length = data
+                character, mel, mel_input, pos_text, pos_mel, text_length, _ = data
 
                 global_step += 1
                 mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(character, mel_input, pos_text, pos_mel)
                 
 
                 label = (pos_mel == 0).astype(np.float32)
-                #label = np.zeros(stop_preds.shape).astype(np.float32)
-                #text_length = text_length.numpy()
-                #for i in range(label.shape[0]):
-                #    label[i][text_length[i] - 1] = 1
                     
                 mel_loss = layers.mean(layers.abs(layers.elementwise_sub(mel_pred, mel)))
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
-                stop_loss = cross_entropy(stop_preds, label)
-                loss = mel_loss + post_mel_loss + stop_loss
+                loss = mel_loss + post_mel_loss
+                # Note: When used stop token loss the learning did not work.
+                if cfg.stop_token:
+                    stop_loss = cross_entropy(stop_preds, label)
+                    loss = loss + stop_loss
 
                 if local_rank==0:
                     writer.add_scalars('training_loss', {

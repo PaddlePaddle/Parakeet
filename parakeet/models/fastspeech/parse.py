@@ -50,6 +50,9 @@ def add_config_options_to_parser(parser):
         help="the dropout in network.")
     parser.add_argument('--transformer_head', type=int, default=4,
         help="the attention head num of transformerTTS.")
+    parser.add_argument('--alpha', type=float, default=1.0,
+        help="the hyperparameter to determine the length of the expanded sequence\
+                mel, thereby controlling the voice speed.")
 
     parser.add_argument('--hidden_size', type=int, default=256,
         help="the hidden size in model of transformerTTS.")
@@ -68,6 +71,8 @@ def add_config_options_to_parser(parser):
         help="the learning rate for training.")
     parser.add_argument('--save_step', type=int, default=500,
         help="checkpointing interval during training.")
+    parser.add_argument('--fastspeech_step', type=int, default=160000,
+        help="Global step to restore checkpoint of fastspeech.")
     parser.add_argument('--use_gpu', type=bool, default=True,
         help="use gpu or not during training.")
     parser.add_argument('--use_data_parallel', type=bool, default=False,
