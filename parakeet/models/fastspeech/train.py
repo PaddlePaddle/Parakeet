@@ -29,7 +29,6 @@ def load_checkpoint(step, model_path):
     return new_state_dict, opti_dict
 
 def main(cfg):
-
     local_rank = dg.parallel.Env().local_rank if cfg.use_data_parallel else 0
     nranks = dg.parallel.Env().nranks if cfg.use_data_parallel else 1
 

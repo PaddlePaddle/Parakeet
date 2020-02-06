@@ -12,11 +12,13 @@ class PostConvNet(dg.Layer):
                  num_conv=5,
                  outputs_per_step=1,
                  use_cudnn=True,
-                 dropout=0.1):
+                 dropout=0.1,
+                 batchnorm_last=False):
         super(PostConvNet, self).__init__()
         
         self.dropout = dropout
         self.num_conv = num_conv
+        self.batchnorm_last = batchnorm_last
         self.conv_list = []
         self.conv_list.append(Conv(in_channels = n_mels * outputs_per_step,
                             out_channels = num_hidden,
@@ -45,8 +47,9 @@ class PostConvNet(dg.Layer):
 
         self.batch_norm_list = [dg.BatchNorm(num_hidden, 
                             data_layout='NCHW') for _ in range(num_conv-1)]
-        #self.batch_norm_list.append(dg.BatchNorm(n_mels * outputs_per_step, 
-        #                    data_layout='NCHW'))
+        if self.batchnorm_last:
+            self.batch_norm_list.append(dg.BatchNorm(n_mels * outputs_per_step, 
+                                data_layout='NCHW'))
         for i, layer in enumerate(self.batch_norm_list):
             self.add_sublayer("batch_norm_list_{}".format(i), layer)
         
@@ -70,5 +73,8 @@ class PostConvNet(dg.Layer):
             input = layers.dropout(layers.tanh(batch_norm(conv(input)[:,:,:len])), self.dropout)
         conv = self.conv_list[self.num_conv-1]
         input = conv(input)[:,:,:len]
+        if self.batchnorm_last:
+            batch_norm = self.batch_norm_list[self.num_conv-1]
+            input = layers.dropout(batch_norm(input), self.dropout)
         output = layers.transpose(input, [0,2,1])
         return output

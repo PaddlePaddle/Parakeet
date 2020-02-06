@@ -161,7 +161,8 @@ class FastSpeech(dg.Layer):
                  num_conv=5,
                  outputs_per_step=cfg.audio.outputs_per_step,
                  use_cudnn=True,
-                 dropout=0.1)
+                 dropout=0.1,
+                 batchnorm_last=True)
 
     def forward(self, character, text_pos, mel_pos=None, length_target=None, alpha=1.0):
         """
