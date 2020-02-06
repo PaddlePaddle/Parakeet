@@ -47,21 +47,25 @@ class ScaledDotProductAttention(dg.Layer):
         return result, attention
 
 class MultiheadAttention(dg.Layer):
-    def __init__(self, num_hidden, d_k, d_q, num_head=4, dropout=0.1):
+    def __init__(self, num_hidden, d_k, d_q, num_head=4, is_bias=False, dropout=0.1, is_concat=True):
         super(MultiheadAttention, self).__init__()
         self.num_hidden = num_hidden
         self.num_head = num_head
         self.d_k = d_k
         self.d_q = d_q
         self.dropout = dropout
+        self.is_concat = is_concat
 
-        self.key = Linear(num_hidden, num_head * d_k, is_bias=False)
-        self.value = Linear(num_hidden, num_head * d_k, is_bias=False)
-        self.query = Linear(num_hidden, num_head * d_q, is_bias=False)
+        self.key = Linear(num_hidden, num_head * d_k, is_bias=is_bias)
+        self.value = Linear(num_hidden, num_head * d_k, is_bias=is_bias)
+        self.query = Linear(num_hidden, num_head * d_q, is_bias=is_bias)
 
         self.scal_attn = ScaledDotProductAttention(d_k)
 
-        self.fc = Linear(num_head * d_q * 2, num_hidden)
+        if self.is_concat:
+            self.fc = Linear(num_head * d_q * 2, num_hidden)
+        else:
+            self.fc = Linear(num_head * d_q, num_hidden)
 
         self.layer_norm = dg.LayerNorm(num_hidden)
 
@@ -105,7 +109,8 @@ class MultiheadAttention(dg.Layer):
         # concat all multihead result
         result = layers.reshape(result, [self.num_head, batch_size, seq_len_query, self.d_q])
         result = layers.reshape(layers.transpose(result, [1,2,0,3]),[batch_size, seq_len_query, -1])
-        result = layers.concat([query_input,result], axis=-1)
+        if self.is_concat:
+            result = layers.concat([query_input,result], axis=-1)
         result = layers.dropout(self.fc(result), self.dropout)
         result = result + query_input
         
