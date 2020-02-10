@@ -6,11 +6,14 @@ from collections import OrderedDict
 import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+import paddle.fluid.layers as layers
 from parakeet.models.dataloader.ljspeech import LJSpeechLoader
-from network import *
+from parakeet.models.transformerTTS.vocoder import Vocoder
 
 def load_checkpoint(step, model_path):
-    model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
+    model_dict, opti_dict = dg.load_dygraph(os.path.join(model_path, step))
     new_state_dict = OrderedDict()
     for param in model_dict:
         if param.startswith('_layers.'):
@@ -40,7 +43,7 @@ def main(cfg):
     writer = SummaryWriter(path) if local_rank == 0 else None
 
     with dg.guard(place):   
-        model = ModelPostNet(cfg)
+        model = Vocoder(cfg)
 
         model.train()
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=dg.NoamDecay(1/(cfg.warm_up_step *( cfg.lr ** 2)), cfg.warm_up_step),
@@ -99,5 +102,5 @@ def main(cfg):
 if __name__ == '__main__':
     parser = jsonargparse.ArgumentParser(description="Train postnet model", formatter_class='default_argparse')
     add_config_options_to_parser(parser)
-    cfg = parser.parse_args('-c ./config/train_postnet.yaml'.split())
+    cfg = parser.parse_args('-c ./config/train_vocoder.yaml'.split())
     main(cfg)

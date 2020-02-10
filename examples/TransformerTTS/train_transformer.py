@@ -7,11 +7,13 @@ import jsonargparse
 from parse import add_config_options_to_parser
 from pprint import pprint
 from matplotlib import cm
+import numpy as np
+import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 from parakeet.modules.utils import cross_entropy
 from parakeet.models.dataloader.ljspeech import LJSpeechLoader
-from network import *
+from parakeet.models.transformerTTS.transformerTTS import TransformerTTS
 
 def load_checkpoint(step, model_path):
     model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
@@ -86,9 +88,11 @@ def main(cfg):
                 if local_rank==0:
                     writer.add_scalars('training_loss', {
                         'mel_loss':mel_loss.numpy(),
-                        'post_mel_loss':post_mel_loss.numpy(),
-                        'stop_loss':stop_loss.numpy()
+                        'post_mel_loss':post_mel_loss.numpy()
                     }, global_step)
+
+                    if cfg.stop_token:
+                        writer.add_scalar('stop_loss', stop_loss.numpy(), global_step)
 
                     writer.add_scalars('alphas', {
                         'encoder_alpha':model.encoder.alpha.numpy(),

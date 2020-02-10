@@ -14,9 +14,9 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
 from parakeet.models.dataloader.ljspeech import LJSpeechLoader
-from parakeet.models.transformerTTS.network import TransformerTTS
-from network import FastSpeech
-from utils import get_alignment
+from parakeet.models.transformerTTS.transformerTTS import TransformerTTS
+from parakeet.models.fastspeech.fastspeech import FastSpeech
+from parakeet.models.fastspeech.utils import get_alignment
 
 def load_checkpoint(step, model_path):
     model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
