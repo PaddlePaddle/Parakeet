@@ -35,7 +35,7 @@ epochs: 10000
 lr: 0.001
 save_step: 500
 use_gpu: True
-use_data_parallel: True
+use_data_parallel: False
 
 data_path: ../../dataset/LJSpeech-1.1
 transtts_path: ../TransformerTTS/checkpoint/

@@ -1,9 +1,8 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.modules.layers import Conv1D, Linear
 from parakeet.modules.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
-from parakeet.modules.feed_forward import PositionwiseFeedForward
+from parakeet.modules.ffn import PositionwiseFeedForward
 from parakeet.models.transformerTTS.encoderprenet import EncoderPrenet
 
 class Encoder(dg.Layer):

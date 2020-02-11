@@ -1,12 +1,12 @@
+import math
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.modules.layers import Conv1D, Linear
 from parakeet.modules.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
-from parakeet.modules.feed_forward import PositionwiseFeedForward
-from parakeet.modules.prenet import PreNet
-from parakeet.modules.post_convnet import PostConvNet
- 
+from parakeet.modules.ffn import PositionwiseFeedForward
+from parakeet.models.transformerTTS.prenet import PreNet
+from parakeet.models.transformerTTS.post_convnet import PostConvNet
+
 class Decoder(dg.Layer):
     def __init__(self, num_hidden, config, num_head=4):
         super(Decoder, self).__init__()
@@ -24,7 +24,10 @@ class Decoder(dg.Layer):
                                             hidden_size = num_hidden * 2, 
                                             output_size = num_hidden, 
                                             dropout_rate=0.2)
-        self.linear = Linear(num_hidden, num_hidden)
+        k = math.sqrt(1 / num_hidden)
+        self.linear = dg.Linear(num_hidden, num_hidden,
+                                param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                                bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
 
         self.selfattn_layers = [MultiheadAttention(num_hidden, num_hidden//num_head, num_hidden//num_head) for _ in range(3)]
         for i, layer in enumerate(self.selfattn_layers):
@@ -35,8 +38,12 @@ class Decoder(dg.Layer):
         self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*num_head, filter_size=1) for _ in range(3)]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
-        self.mel_linear = Linear(num_hidden, config.audio.num_mels * config.audio.outputs_per_step)
-        self.stop_linear = Linear(num_hidden, 1)
+        self.mel_linear = dg.Linear(num_hidden, config.audio.num_mels * config.audio.outputs_per_step,
+                                param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                                bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
+        self.stop_linear = dg.Linear(num_hidden, 1,
+                                  param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                                  bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
 
         self.postconvnet = PostConvNet(config.audio.num_mels, config.hidden_size, 
                                        filter_size = 5, padding = 4, num_conv=5, 

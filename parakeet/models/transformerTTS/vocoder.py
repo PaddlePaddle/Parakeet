@@ -1,6 +1,6 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.modules.layers import Conv1D, Linear
+from parakeet.modules.customized import Conv1D
 from parakeet.modules.utils import *
 from parakeet.models.transformerTTS.CBHG import CBHG
 

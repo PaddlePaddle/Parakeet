@@ -3,8 +3,8 @@ from parakeet.g2p.text.symbols import symbols
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from parakeet.modules.layers import Conv, Pool1D, Linear
-from parakeet.modules.dynamicGRU import DynamicGRU
+from parakeet.modules.customized import Pool1D, Conv1D
+from parakeet.modules.dynamic_gru import DynamicGRU
 import numpy as np
 
 class CBHG(dg.Layer):
@@ -23,16 +23,22 @@ class CBHG(dg.Layer):
         self.hidden_size = hidden_size
         self.projection_size = projection_size
         self.conv_list = []
-        self.conv_list.append(Conv(in_channels = projection_size,
+        k = math.sqrt(1 / projection_size)
+        self.conv_list.append(Conv1D(in_channels = projection_size,
                             out_channels = hidden_size,
                             filter_size = 1,
                             padding = int(np.floor(1/2)),
+                            param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                             data_format = "NCT"))
+        k = math.sqrt(1 / hidden_size)
         for i in range(2,K+1):
-            self.conv_list.append(Conv(in_channels = hidden_size,
+            self.conv_list.append(Conv1D(in_channels = hidden_size,
                             out_channels = hidden_size,
                             filter_size = i,
                             padding = int(np.floor(i/2)),
+                            param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                             data_format = "NCT"))
 
         for i, layer in enumerate(self.conv_list):
@@ -48,16 +54,22 @@ class CBHG(dg.Layer):
 
         conv_outdim = hidden_size * K
 
-        self.conv_projection_1 = Conv(in_channels = conv_outdim,
+        k = math.sqrt(1 / conv_outdim)
+        self.conv_projection_1 = Conv1D(in_channels = conv_outdim,
                             out_channels = hidden_size,
                             filter_size = 3,
                             padding = int(np.floor(3/2)),
+                            param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                             data_format = "NCT")
 
-        self.conv_projection_2 = Conv(in_channels = hidden_size,
+        k = math.sqrt(1 / hidden_size)
+        self.conv_projection_2 = Conv1D(in_channels = hidden_size,
                             out_channels = projection_size,
                             filter_size = 3,
                             padding = int(np.floor(3/2)),
+                            param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                             data_format = "NCT")
 
         self.batchnorm_proj_1 = dg.BatchNorm(hidden_size, 
@@ -73,8 +85,13 @@ class CBHG(dg.Layer):
 
         h_0 = np.zeros((batch_size, hidden_size // 2), dtype="float32")
         h_0 = dg.to_variable(h_0)
-        self.fc_forward1 = Linear(hidden_size, hidden_size // 2 * 3)
-        self.fc_reverse1 = Linear(hidden_size, hidden_size // 2 * 3)
+        k = math.sqrt(1 / hidden_size)
+        self.fc_forward1 = dg.Linear(hidden_size, hidden_size // 2 * 3,
+                           param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                           bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
+        self.fc_reverse1 = dg.Linear(hidden_size, hidden_size // 2 * 3,
+                            param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                            bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
         self.gru_forward1 = DynamicGRU(size = self.hidden_size // 2,
                               is_reverse = False,
                               origin_mode = True,
@@ -84,8 +101,12 @@ class CBHG(dg.Layer):
                               origin_mode=True,
                               h_0 = h_0)
 
-        self.fc_forward2 = Linear(hidden_size, hidden_size // 2 * 3)
-        self.fc_reverse2 = Linear(hidden_size, hidden_size // 2 * 3)
+        self.fc_forward2 = dg.Linear(hidden_size, hidden_size // 2 * 3,
+                           param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                           bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
+        self.fc_reverse2 = dg.Linear(hidden_size, hidden_size // 2 * 3,
+                           param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                           bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
         self.gru_forward2 = DynamicGRU(size = self.hidden_size // 2,
                               is_reverse = False,
                               origin_mode = True,
@@ -145,10 +166,14 @@ class Highwaynet(dg.Layer):
 
         self.gates = []
         self.linears = []
-
+        k = math.sqrt(1 / num_units)
         for i in range(num_layers):
-            self.linears.append(Linear(num_units, num_units))
-            self.gates.append(Linear(num_units, num_units))
+            self.linears.append(dg.Linear(num_units, num_units,
+                                param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                                bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k))))
+            self.gates.append(dg.Linear(num_units, num_units,
+                              param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                              bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k))))
         
         for i, (linear, gate) in enumerate(zip(self.linears,self.gates)):
             self.add_sublayer("linears_{}".format(i), linear)

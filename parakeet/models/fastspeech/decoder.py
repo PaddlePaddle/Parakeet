@@ -1,9 +1,6 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.g2p.text.symbols import symbols
 from parakeet.modules.utils import *
-from parakeet.modules.post_convnet import PostConvNet
-from parakeet.modules.layers import Linear
 from parakeet.models.fastspeech.FFTBlock import FFTBlock
 
 class Decoder(dg.Layer):

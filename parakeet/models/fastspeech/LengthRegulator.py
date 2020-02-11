@@ -4,7 +4,7 @@ import parakeet.models.fastspeech.utils
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
-from parakeet.modules.layers import Conv, Linear
+from parakeet.modules.customized import Conv1D
 
 class LengthRegulator(dg.Layer):
     def __init__(self, input_size, out_channels, filter_size, dropout=0.1):
@@ -82,20 +82,31 @@ class DurationPredictor(dg.Layer):
         self.filter_size = filter_size
         self.dropout = dropout
 
-        self.conv1 = Conv(in_channels = self.input_size, 
+        k = math.sqrt(1 / self.input_size)
+        self.conv1 = Conv1D(in_channels = self.input_size, 
                         out_channels = self.out_channels, 
                         filter_size = self.filter_size,
                         padding=1,
+                        param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                         data_format='NTC')
-        self.conv2 = Conv(in_channels = self.out_channels, 
+        k = math.sqrt(1 / self.out_channels)
+        self.conv2 = Conv1D(in_channels = self.out_channels, 
                         out_channels = self.out_channels, 
                         filter_size = self.filter_size,
                         padding=1,
+                        param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                         data_format='NTC')
         self.layer_norm1 = dg.LayerNorm(self.out_channels)
         self.layer_norm2 = dg.LayerNorm(self.out_channels)
 
-        self.linear =Linear(self.out_channels, 1)
+        self.weight = fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer())
+        k = math.sqrt(1 / self.out_channels)
+        self.bias = fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k))
+
+        self.linear =dg.Linear(self.out_channels, 1, param_attr = self.weight,
+                            bias_attr = self.bias)
 
     def forward(self, encoder_output):
         """

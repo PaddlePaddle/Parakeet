@@ -1,10 +1,8 @@
+import math
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.g2p.text.symbols import symbols
-from parakeet.modules.utils import *
-from parakeet.modules.post_convnet import PostConvNet
-from parakeet.modules.layers import Linear
-from parakeet.models.fastspeech.utils import *
+from parakeet.models.transformerTTS.post_convnet import PostConvNet
 from parakeet.models.fastspeech.LengthRegulator import LengthRegulator
 from parakeet.models.fastspeech.encoder import Encoder
 from parakeet.models.fastspeech.decoder import Decoder
@@ -39,7 +37,13 @@ class FastSpeech(dg.Layer):
                                 fft_conv1d_kernel=cfg.fft_conv1d_filter, 
                                 fft_conv1d_padding=cfg.fft_conv1d_padding,
                                 dropout=0.1)
-        self.mel_linear = Linear(cfg.fs_hidden_size, cfg.audio.num_mels * cfg.audio.outputs_per_step)
+        self.weight = fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer())
+        k = math.sqrt(1 / cfg.fs_hidden_size)
+        self.bias = fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k))
+        self.mel_linear = dg.Linear(cfg.fs_hidden_size, 
+                                    cfg.audio.num_mels * cfg.audio.outputs_per_step,
+                                    param_attr = self.weight,
+                                    bias_attr = self.bias,)
         self.postnet = PostConvNet(n_mels=cfg.audio.num_mels,
                  num_hidden=512,
                  filter_size=5,

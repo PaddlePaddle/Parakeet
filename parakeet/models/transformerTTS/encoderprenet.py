@@ -3,7 +3,7 @@ from parakeet.g2p.text.symbols import symbols
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from parakeet.modules.layers import Conv, Linear
+from parakeet.modules.customized import Conv1D
 import numpy as np
 
 
@@ -16,17 +16,23 @@ class EncoderPrenet(dg.Layer):
         self.embedding = dg.Embedding( size = [len(symbols), embedding_size],
                                         padding_idx = None)
         self.conv_list = []
-        self.conv_list.append(Conv(in_channels = embedding_size, 
+        k = math.sqrt(1 / embedding_size)
+        self.conv_list.append(Conv1D(in_channels = embedding_size, 
                             out_channels = num_hidden, 
                             filter_size = 5,
                             padding = int(np.floor(5/2)),
+                            param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                             use_cudnn = use_cudnn,
                             data_format = "NCT"))
+        k = math.sqrt(1 / num_hidden)
         for _ in range(2):
-            self.conv_list.append(Conv(in_channels = num_hidden, 
+            self.conv_list.append(Conv1D(in_channels = num_hidden, 
                                 out_channels = num_hidden, 
                                 filter_size = 5,
                                 padding = int(np.floor(5/2)),
+                                param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
+                                bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
                                 use_cudnn = use_cudnn,
                                 data_format = "NCT"))
 
@@ -39,7 +45,10 @@ class EncoderPrenet(dg.Layer):
         for i, layer in enumerate(self.batch_norm_list):
             self.add_sublayer("batch_norm_list_{}".format(i), layer)
 
-        self.projection = Linear(num_hidden, num_hidden)
+        k = math.sqrt(1 / num_hidden)
+        self.projection = dg.Linear(num_hidden, num_hidden,
+                                param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
+                                bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
 
     def forward(self, x):
         x = self.embedding(x) #(batch_size, seq_len, embending_size)
