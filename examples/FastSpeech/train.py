@@ -51,7 +51,6 @@ def main(cfg):
         with fluid.unique_name.guard():
             transformerTTS = TransformerTTS(cfg)
             model_dict, _ = load_checkpoint(str(cfg.transformer_step), os.path.join(cfg.transtts_path, "transformer"))
-            
             transformerTTS.set_dict(model_dict)
             transformerTTS.eval()
 

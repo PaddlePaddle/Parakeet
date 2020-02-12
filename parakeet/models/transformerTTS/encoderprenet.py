@@ -17,24 +17,22 @@ class EncoderPrenet(dg.Layer):
                                         padding_idx = None)
         self.conv_list = []
         k = math.sqrt(1 / embedding_size)
-        self.conv_list.append(Conv1D(in_channels = embedding_size, 
-                            out_channels = num_hidden, 
+        self.conv_list.append(Conv1D(num_channels = embedding_size, 
+                            num_filters = num_hidden, 
                             filter_size = 5,
                             padding = int(np.floor(5/2)),
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
                             bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            use_cudnn = use_cudnn,
-                            data_format = "NCT"))
+                            use_cudnn = use_cudnn))
         k = math.sqrt(1 / num_hidden)
         for _ in range(2):
-            self.conv_list.append(Conv1D(in_channels = num_hidden, 
-                                out_channels = num_hidden, 
+            self.conv_list.append(Conv1D(num_channels = num_hidden, 
+                                num_filters = num_hidden, 
                                 filter_size = 5,
                                 padding = int(np.floor(5/2)),
                                 param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
                                 bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                                use_cudnn = use_cudnn,
-                                data_format = "NCT"))
+                                use_cudnn = use_cudnn))
 
         for i, layer in enumerate(self.conv_list):
             self.add_sublayer("conv_list_{}".format(i), layer)

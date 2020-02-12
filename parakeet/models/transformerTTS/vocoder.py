@@ -10,15 +10,13 @@ class Vocoder(dg.Layer):
     """
     def __init__(self, config):
         super(Vocoder, self).__init__()
-        self.pre_proj = Conv1D(in_channels = config.audio.num_mels, 
-                             out_channels = config.hidden_size,
-                             filter_size=1,
-                             data_format = "NCT")
+        self.pre_proj = Conv1D(num_channels = config.audio.num_mels, 
+                             num_filters = config.hidden_size,
+                             filter_size=1)
         self.cbhg = CBHG(config.hidden_size, config.batch_size)
-        self.post_proj = Conv1D(in_channels = config.hidden_size, 
-                             out_channels = (config.audio.n_fft // 2) + 1,
-                             filter_size=1,
-                             data_format = "NCT")
+        self.post_proj = Conv1D(num_channels = config.hidden_size, 
+                             num_filters = (config.audio.n_fft // 2) + 1,
+                             filter_size=1)
 
     def forward(self, mel):
         mel = layers.transpose(mel, [0,2,1])

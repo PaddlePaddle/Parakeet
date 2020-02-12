@@ -24,22 +24,20 @@ class CBHG(dg.Layer):
         self.projection_size = projection_size
         self.conv_list = []
         k = math.sqrt(1 / projection_size)
-        self.conv_list.append(Conv1D(in_channels = projection_size,
-                            out_channels = hidden_size,
+        self.conv_list.append(Conv1D(num_channels = projection_size,
+                            num_filters = hidden_size,
                             filter_size = 1,
                             padding = int(np.floor(1/2)),
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
-                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            data_format = "NCT"))
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k))))
         k = math.sqrt(1 / hidden_size)
         for i in range(2,K+1):
-            self.conv_list.append(Conv1D(in_channels = hidden_size,
-                            out_channels = hidden_size,
+            self.conv_list.append(Conv1D(num_channels = hidden_size,
+                            num_filters = hidden_size,
                             filter_size = i,
                             padding = int(np.floor(i/2)),
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
-                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            data_format = "NCT"))
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k))))
 
         for i, layer in enumerate(self.conv_list):
             self.add_sublayer("conv_list_{}".format(i), layer)
@@ -55,22 +53,20 @@ class CBHG(dg.Layer):
         conv_outdim = hidden_size * K
 
         k = math.sqrt(1 / conv_outdim)
-        self.conv_projection_1 = Conv1D(in_channels = conv_outdim,
-                            out_channels = hidden_size,
+        self.conv_projection_1 = Conv1D(num_channels = conv_outdim,
+                            num_filters = hidden_size,
                             filter_size = 3,
                             padding = int(np.floor(3/2)),
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
-                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            data_format = "NCT")
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)))
 
         k = math.sqrt(1 / hidden_size)
-        self.conv_projection_2 = Conv1D(in_channels = hidden_size,
-                            out_channels = projection_size,
+        self.conv_projection_2 = Conv1D(num_channels = hidden_size,
+                            num_filters = projection_size,
                             filter_size = 3,
                             padding = int(np.floor(3/2)),
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
-                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            data_format = "NCT")
+                            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)))
 
         self.batchnorm_proj_1 = dg.BatchNorm(hidden_size, 
                             data_layout='NCHW')

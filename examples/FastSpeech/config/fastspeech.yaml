@@ -1,14 +1,14 @@
 audio:
-  num_mels: 80
-  n_fft: 2048
-  sr: 22050
-  preemphasis: 0.97
-  hop_length: 256
-  win_length: 1024
-  power: 1.2
-  min_level_db: -100
-  ref_level_db: 20
-  outputs_per_step: 1
+  num_mels: 80  #the number of mel bands when calculating mel spectrograms.
+  n_fft: 2048 #the number of fft components.
+  sr: 22050 #the sampling rate of audio data file.
+  preemphasis: 0.97 #the preemphasis coefficient.
+  hop_length: 256 #the number of samples to advance between frames.
+  win_length: 1024 #the length (width) of the window function.
+  power: 1.2 #the power to raise before griffin-lim.
+  min_level_db: -100 #the minimum level db.
+  ref_level_db: 20 #the reference level db.
+  outputs_per_step: 1 #the outputs per step.
 
 encoder_n_layer: 6
 encoder_head: 2
@@ -35,12 +35,12 @@ epochs: 10000
 lr: 0.001
 save_step: 500
 use_gpu: True
-use_data_parallel: False
+use_data_parallel: True
 
 data_path: ../../dataset/LJSpeech-1.1
 transtts_path: ../TransformerTTS/checkpoint/
-transformer_step: 200000
+transformer_step: 160000
 save_path: ./checkpoint
 log_dir: ./log
 #checkpoint_path: ./checkpoint
-#ransformer_step: 97000
+#transformer_step: 97000

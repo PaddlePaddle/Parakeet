@@ -22,34 +22,31 @@ class PostConvNet(dg.Layer):
         self.batchnorm_last = batchnorm_last
         self.conv_list = []
         k = math.sqrt(1 / (n_mels * outputs_per_step))
-        self.conv_list.append(Conv1D(in_channels = n_mels * outputs_per_step,
-                            out_channels = num_hidden,
+        self.conv_list.append(Conv1D(num_channels = n_mels * outputs_per_step,
+                            num_filters = num_hidden,
                             filter_size = filter_size,
                             padding = padding,
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
                             bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            use_cudnn = use_cudnn,
-                            data_format = "NCT"))
+                            use_cudnn = use_cudnn))
 
         k = math.sqrt(1 / num_hidden)
         for _ in range(1, num_conv-1):
-            self.conv_list.append(Conv1D(in_channels = num_hidden,
-                                out_channels = num_hidden,
+            self.conv_list.append(Conv1D(num_channels = num_hidden,
+                                num_filters = num_hidden,
                                 filter_size = filter_size,
                                 padding = padding,
                                 param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
                                 bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                                use_cudnn = use_cudnn,
-                                data_format = "NCT") )
+                                use_cudnn = use_cudnn))
 
-        self.conv_list.append(Conv1D(in_channels = num_hidden,
-                            out_channels = n_mels * outputs_per_step,
+        self.conv_list.append(Conv1D(num_channels = num_hidden,
+                            num_filters = n_mels * outputs_per_step,
                             filter_size = filter_size,
                             padding = padding,
                             param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
                             bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                            use_cudnn = use_cudnn,
-                            data_format = "NCT"))
+                            use_cudnn = use_cudnn))
 
         for i, layer in enumerate(self.conv_list):
             self.add_sublayer("conv_list_{}".format(i), layer)

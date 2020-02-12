@@ -83,21 +83,21 @@ class DurationPredictor(dg.Layer):
         self.dropout = dropout
 
         k = math.sqrt(1 / self.input_size)
-        self.conv1 = Conv1D(in_channels = self.input_size, 
-                        out_channels = self.out_channels, 
+        self.conv1 = Conv1D(num_channels = self.input_size, 
+                        num_filters = self.out_channels, 
                         filter_size = self.filter_size,
                         padding=1,
                         param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
-                        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                        data_format='NTC')
+                        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)))
+                        #data_format='NTC')
         k = math.sqrt(1 / self.out_channels)
-        self.conv2 = Conv1D(in_channels = self.out_channels, 
-                        out_channels = self.out_channels, 
+        self.conv2 = Conv1D(num_channels = self.out_channels, 
+                        num_filters = self.out_channels, 
                         filter_size = self.filter_size,
                         padding=1,
                         param_attr = fluid.ParamAttr(initializer=fluid.initializer.XavierInitializer()),
-                        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)),
-                        data_format='NTC')
+                        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Uniform(low=-k, high=k)))
+                        #data_format='NTC')
         self.layer_norm1 = dg.LayerNorm(self.out_channels)
         self.layer_norm2 = dg.LayerNorm(self.out_channels)
 
@@ -118,10 +118,17 @@ class DurationPredictor(dg.Layer):
             out (Variable), Shape(B, T, C), the output of duration predictor.
         """
         # encoder_output.shape(N, T, C)
-        out = layers.dropout(layers.relu(self.layer_norm1(self.conv1(encoder_output))), self.dropout)
-        out = layers.dropout(layers.relu(self.layer_norm2(self.conv2(out))), self.dropout)
+        out = layers.transpose(encoder_output, [0,2,1])
+        out = self.conv1(out)
+        out = layers.transpose(out, [0,2,1])
+        out = layers.dropout(layers.relu(self.layer_norm1(out)), self.dropout)
+        out = layers.transpose(out, [0,2,1])
+        out = self.conv2(out)
+        out = layers.transpose(out, [0,2,1])
+        out = layers.dropout(layers.relu(self.layer_norm2(out)), self.dropout)
         out = layers.relu(self.linear(out))
         out = layers.squeeze(out, axes=[-1])
+        
             
         return out
 
