@@ -1,6 +1,6 @@
 import os
 import argparse
-import ruamel.yamls
+import ruamel.yaml
 import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -15,10 +15,9 @@ import paddle.fluid.layers as F
 import paddle.fluid.dygraph as dg
 
 from parakeet.g2p import en
-from parakeet.models.deepvoice3.encoder import ConvSpec
 from parakeet.data import FilterDataset, TransformDataset, FilterDataset
 from parakeet.data import DataCargo, PartialyRandomizedSimilarTimeLengthSampler, SequentialSampler
-from parakeet.models.deepvoice3 import Encoder, Decoder, Converter, DeepVoice3
+from parakeet.models.deepvoice3 import Encoder, Decoder, Converter, DeepVoice3, ConvSpec
 from parakeet.models.deepvoice3.loss import TTSLoss
 from parakeet.utils.layer_tools import summary
 
@@ -128,7 +127,7 @@ if __name__ == "__main__":
         use_memory_mask = model_config["use_memory_mask"]
         query_position_rate = model_config["query_position_rate"]
         key_position_rate = model_config["key_position_rate"]
-        window_behind = model_config["window_behind"]
+        window_backward = model_config["window_backward"]
         window_ahead = model_config["window_ahead"]
         key_projection = model_config["key_projection"]
         value_projection = model_config["value_projection"]
@@ -137,10 +136,10 @@ if __name__ == "__main__":
                          freeze_embedding, filter_size, encoder_channels,
                          n_mels, decoder_channels, r,
                          trainable_positional_encodings, use_memory_mask,
-                         query_position_rate, key_position_rate, window_behind,
-                         window_ahead, key_projection, value_projection,
-                         downsample_factor, linear_dim, use_decoder_states,
-                         converter_channels, dropout)
+                         query_position_rate, key_position_rate,
+                         window_backward, window_ahead, key_projection,
+                         value_projection, downsample_factor, linear_dim,
+                         use_decoder_states, converter_channels, dropout)
 
         # =========================loss=========================
         loss_config = config["loss"]

@@ -1,6 +1,6 @@
 import os
 import argparse
-import ruamel.yamls
+import ruamel.yaml
 import numpy as np
 import soundfile as sf
 
@@ -22,6 +22,11 @@ if __name__ == "__main__":
     parser.add_argument("checkpoint", type=str, help="checkpoint to load.")
     parser.add_argument("text", type=str, help="text file to synthesize")
     parser.add_argument("output_path", type=str, help="path to save results")
+    parser.add_argument("-g",
+                        "--device",
+                        type=int,
+                        default=-1,
+                        help="device to use")
 
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
@@ -67,7 +72,7 @@ if __name__ == "__main__":
         use_memory_mask = model_config["use_memory_mask"]
         query_position_rate = model_config["query_position_rate"]
         key_position_rate = model_config["key_position_rate"]
-        window_behind = model_config["window_behind"]
+        window_backward = model_config["window_backward"]
         window_ahead = model_config["window_ahead"]
         key_projection = model_config["key_projection"]
         value_projection = model_config["value_projection"]
@@ -76,11 +81,12 @@ if __name__ == "__main__":
                          freeze_embedding, filter_size, encoder_channels,
                          n_mels, decoder_channels, r,
                          trainable_positional_encodings, use_memory_mask,
-                         query_position_rate, key_position_rate, window_behind,
-                         window_ahead, key_projection, value_projection,
-                         downsample_factor, linear_dim, use_decoder_states,
-                         converter_channels, dropout)
+                         query_position_rate, key_position_rate,
+                         window_backward, window_ahead, key_projection,
+                         value_projection, downsample_factor, linear_dim,
+                         use_decoder_states, converter_channels, dropout)
 
+        summary(dv3)
         state, _ = dg.load_dygraph(args.checkpoint)
         dv3.set_dict(state)
 
