@@ -2,7 +2,7 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.modules.customized import Conv1D
 from parakeet.modules.utils import *
-from parakeet.models.transformer_tts.CBHG import CBHG
+from parakeet.models.transformer_tts.cbhg import CBHG
 
 class Vocoder(dg.Layer):
     """

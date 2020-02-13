@@ -10,7 +10,7 @@ from pprint import pprint
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
-from parakeet.models.dataloader.ljspeech import LJSpeechLoader
+from data import LJSpeechLoader
 from parakeet.models.transformer_tts.vocoder import Vocoder
 
 def load_checkpoint(step, model_path):

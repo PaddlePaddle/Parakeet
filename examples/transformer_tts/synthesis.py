@@ -14,7 +14,7 @@ from pprint import pprint
 from collections import OrderedDict
 from parakeet import audio
 from parakeet.models.transformer_tts.vocoder import Vocoder
-from parakeet.models.transformer_tts.transformerTTS import TransformerTTS
+from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
 
 def load_checkpoint(step, model_path):
     model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, step))

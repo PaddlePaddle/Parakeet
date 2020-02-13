@@ -3,7 +3,7 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.g2p.text.symbols import symbols
 from parakeet.models.transformer_tts.post_convnet import PostConvNet
-from parakeet.models.fastspeech.LengthRegulator import LengthRegulator
+from parakeet.models.fastspeech.length_regulator import LengthRegulator
 from parakeet.models.fastspeech.encoder import Encoder
 from parakeet.models.fastspeech.decoder import Decoder
 

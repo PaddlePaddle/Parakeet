@@ -13,8 +13,8 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 from parakeet.modules.utils import cross_entropy
-from parakeet.models.dataloader.ljspeech import LJSpeechLoader
-from parakeet.models.transformer_tts.transformerTTS import TransformerTTS
+from data import LJSpeechLoader
+from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
 
 def load_checkpoint(step, model_path):
     model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))

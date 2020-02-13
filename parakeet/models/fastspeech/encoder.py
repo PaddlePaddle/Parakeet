@@ -1,7 +1,7 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.modules.utils import *
-from parakeet.models.fastspeech.FFTBlock import FFTBlock
+from parakeet.models.fastspeech.fft_block import FFTBlock
 
 class Encoder(dg.Layer):
     def __init__(self,

@@ -132,7 +132,7 @@ dmypy.json
 .pyre/
 
 # Shell, vim, and output folder
-*.sh
+#*.sh
 *.swp
 runs
 syn_audios

@@ -1,4 +1,3 @@
-
 # train model
 # if you wish to resume from an exists model, uncomment --checkpoint_path and --fastspeech_step
 #CUDA_VISIBLE_DEVICES=0,1,2,3 \

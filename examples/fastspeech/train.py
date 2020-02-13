@@ -13,10 +13,12 @@ from tensorboardX import SummaryWriter
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
-from parakeet.models.dataloader.ljspeech import LJSpeechLoader
-from parakeet.models.transformer_tts.transformerTTS import TransformerTTS
+from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
 from parakeet.models.fastspeech.fastspeech import FastSpeech
 from parakeet.models.fastspeech.utils import get_alignment
+import sys
+sys.path.append("../transformer_tts")
+from data import LJSpeechLoader
 
 def load_checkpoint(step, model_path):
     model_dict, opti_dict = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
