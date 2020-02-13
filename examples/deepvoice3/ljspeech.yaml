@@ -1,0 +1,103 @@
+meta_data:
+  min_text_length: 20
+
+transform:
+  # text
+  replace_pronunciation_prob: 0.5
+
+  # spectrogram
+  sample_rate: 22050
+  max_norm: 0.999
+  preemphasis: 0.97
+  n_fft: 1024
+  win_length: 1024
+  hop_length: 256
+
+  # mel
+  fmin: 125
+  fmax: 7600
+  n_mels: 80
+
+  # db scale
+  min_level_db: -100
+  ref_level_db: 20
+
+
+loss:
+  masked_loss_weight: 0.5
+  priority_freq: 3000
+  priority_freq_weight: 0.0
+  binary_divergence_weight: 0.1
+  guided_attention_sigma: 0.2
+
+synthesis:
+  max_steps: 512
+  power: 1.4
+  n_iter: 32
+
+model:
+  # speaker_embedding
+  n_speakers: 1
+  speaker_embed_dim: 16
+  speaker_embedding_weight_std: 0.01
+  
+  max_positions: 512
+  dropout: 0.050000000000000044
+  # encoder
+  text_embed_dim: 256
+  embedding_weight_std: 0.1
+  freeze_embedding: false
+  padding_idx: 0
+  encoder_channels: 256
+
+  # decoder
+  query_position_rate: 1.0
+  key_position_rate: 1.29
+  trainable_positional_encodings: false
+  kernel_size: 3
+  decoder_channels: 512
+  downsample_factor: 4
+  outputs_per_step: 1
+  
+  # attention
+  key_position_rate: true
+  value_position_rate: true
+  force_monotonic_attention: true
+  window_backward: -1
+  window_ahead: 3
+  use_memory_mask: true
+
+  # converter
+  use_decoder_state_for_postnet_input: true
+  converter_channels: 256
+
+optimizer:
+  beta1: 0.5
+  beta2: 0.9
+  epsilon: 1e-6
+
+lr_scheduler:
+  warmup_steps: 4000
+  peak_learning_rate: 5e-4
+  
+train:
+  batch_size: 16
+  epochs: 2000
+  
+  report_interval: 100
+  snap_interval: 1000
+  eval_interval: 10000
+  save_interval: 10000
+
+
+
+
+
+
+
+
+
+
+
+
+
