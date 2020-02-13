@@ -28,7 +28,7 @@ You can choose to install via pypi or clone the repository and install manually.
    pip install -e .
    ```
 
-### cmudict
+### Download cmudict for nltk
 You also need to download cmudict for nltk, because convert text into phonemes with `cmudict`.
 
 ```python
@@ -37,7 +37,7 @@ nltk.download("punkt")
 nltk.download("cmudict")
 ```
 
-## dataset
+## Dataset
 
 We experiment with the LJSpeech dataset. Download and unzip [LJSpeech](https://keithito.com/LJ-Speech-Dataset/).
 
@@ -48,20 +48,22 @@ tar xjvf LJSpeech-1.1.tar.bz2
 
 ## Model Architecture
 
-![DeepVoice3 model architecture](./_images/model_architecture.png)
+![DeepVoice3 model architecture](./images/model_architecture.png)
 
 The model consists of an encoder, a decoder and a converter (and a speaker embedding for multispeaker models). The encoder, together with the decoder forms the seq2seq part of the model, and the converter forms the postnet part.
 
 ## Project Structure
 
+```text
 ├── data.py          data_processing 
 ├── ljspeech.yaml    (example) configuration file
 ├── sentences.txt    sample sentences
 ├── synthesis.py     script to synthesize waveform from text
 ├── train.py         script to train a model
 └── utils.py         utility functions
+```
 
-## train
+## Train
 
 Train the model using train.py, follow the usage displayed by `python train.py --help`.
 
@@ -100,7 +102,7 @@ optional arguments:
 
 5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
-## synthesis
+## Synthesis
 ```text
 usage: synthesis.py [-h] [-c CONFIG] [-g DEVICE] checkpoint text output_path
 
