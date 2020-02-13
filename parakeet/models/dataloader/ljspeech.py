@@ -13,17 +13,17 @@ from parakeet.data.batch import TextIDBatcher, SpecBatcher
 from parakeet.data.dataset import DatasetMixin, TransformDataset
 
 class LJSpeechLoader:
-    def __init__(self, config, nranks, rank, is_vocoder=False, shuffle=True):
-        place = fluid.CUDAPlace(rank) if config.use_gpu else fluid.CPUPlace()
+    def __init__(self, config, args, nranks, rank, is_vocoder=False, shuffle=True):
+        place = fluid.CUDAPlace(rank) if args.use_gpu else fluid.CPUPlace()
 
-        LJSPEECH_ROOT = Path(config.data_path)
+        LJSPEECH_ROOT = Path(args.data_path)
         metadata = LJSpeechMetaData(LJSPEECH_ROOT)
         transformer = LJSpeech(config)
         dataset = TransformDataset(metadata, transformer)
         sampler = DistributedSampler(len(metadata), nranks, rank, shuffle=shuffle)
 
-        assert config.batch_size % nranks == 0
-        each_bs = config.batch_size // nranks
+        assert args.batch_size % nranks == 0
+        each_bs = args.batch_size // nranks
         if is_vocoder:
             dataloader = DataCargo(dataset, sampler=sampler, batch_size=each_bs, shuffle=shuffle, batch_fn=batch_examples_vocoder, drop_last=True)
         else:
@@ -63,15 +63,15 @@ class LJSpeech(object):
         super(LJSpeech, self).__init__()
         self.config = config
         self._ljspeech_processor = audio.AudioProcessor(
-            sample_rate=config.audio.sr, 
-            num_mels=config.audio.num_mels, 
-            min_level_db=config.audio.min_level_db, 
-            ref_level_db=config.audio.ref_level_db, 
-            n_fft=config.audio.n_fft, 
-            win_length= config.audio.win_length, 
-            hop_length= config.audio.hop_length,
-            power=config.audio.power,
-            preemphasis=config.audio.preemphasis,
+            sample_rate=config['audio']['sr'], 
+            num_mels=config['audio']['num_mels'], 
+            min_level_db=config['audio']['min_level_db'], 
+            ref_level_db=config['audio']['ref_level_db'], 
+            n_fft=config['audio']['n_fft'], 
+            win_length= config['audio']['win_length'], 
+            hop_length= config['audio']['hop_length'],
+            power=config['audio']['power'],
+            preemphasis=config['audio']['preemphasis'],
             signal_norm=True,
             symmetric_norm=False,
             max_norm=1.,

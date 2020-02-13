@@ -13,23 +13,8 @@ audio:
 
 hidden_size: 256
 embedding_size: 512
-
-
 warm_up_step: 4000
 grad_clip_thresh: 1.0
-batch_size: 32
-epochs: 10000
-lr: 0.001
-save_step: 1000
-image_step: 2000
-use_gpu: True
-use_data_parallel: False
-stop_token: False
 
-data_path: ../../dataset/LJSpeech-1.1
-save_path: ./checkpoint
-log_dir: ./log
-#checkpoint_path: ./checkpoint
-#ransformer_step: 97000
 
    

@@ -3,10 +3,10 @@ import paddle.fluid as fluid
 from parakeet.modules.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.ffn import PositionwiseFeedForward
-from parakeet.models.transformerTTS.encoderprenet import EncoderPrenet
+from parakeet.models.transformer_tts.encoderprenet import EncoderPrenet
 
 class Encoder(dg.Layer):
-    def __init__(self, embedding_size, num_hidden, config, num_head=4):
+    def __init__(self, embedding_size, num_hidden, num_head=4):
         super(Encoder, self).__init__()
         self.num_hidden = num_hidden
         param = fluid.ParamAttr(initializer=fluid.initializer.Constant(value=1.0))
@@ -19,11 +19,11 @@ class Encoder(dg.Layer):
                                      trainable=False))
         self.encoder_prenet = EncoderPrenet(embedding_size = embedding_size, 
                                             num_hidden = num_hidden, 
-                                            use_cudnn=config.use_gpu)
+                                            use_cudnn=True)
         self.layers = [MultiheadAttention(num_hidden, num_hidden//num_head, num_hidden//num_head) for _ in range(3)]
         for i, layer in enumerate(self.layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
-        self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*num_head, filter_size=1, use_cudnn = config.use_gpu) for _ in range(3)]
+        self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*num_head, filter_size=1, use_cudnn = True) for _ in range(3)]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
 

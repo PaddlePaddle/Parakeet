@@ -4,8 +4,8 @@ import paddle.fluid as fluid
 from parakeet.modules.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.ffn import PositionwiseFeedForward
-from parakeet.models.transformerTTS.prenet import PreNet
-from parakeet.models.transformerTTS.post_convnet import PostConvNet
+from parakeet.models.transformer_tts.prenet import PreNet
+from parakeet.models.transformer_tts.post_convnet import PostConvNet
 
 class Decoder(dg.Layer):
     def __init__(self, num_hidden, config, num_head=4):
@@ -20,7 +20,7 @@ class Decoder(dg.Layer):
                                  param_attr=fluid.ParamAttr(
                                      initializer=fluid.initializer.NumpyArrayInitializer(self.pos_inp),
                                      trainable=False))
-        self.decoder_prenet = PreNet(input_size = config.audio.num_mels, 
+        self.decoder_prenet = PreNet(input_size = config['audio']['num_mels'], 
                                             hidden_size = num_hidden * 2, 
                                             output_size = num_hidden, 
                                             dropout_rate=0.2)
@@ -38,17 +38,17 @@ class Decoder(dg.Layer):
         self.ffns = [PositionwiseFeedForward(num_hidden, num_hidden*num_head, filter_size=1) for _ in range(3)]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
-        self.mel_linear = dg.Linear(num_hidden, config.audio.num_mels * config.audio.outputs_per_step,
+        self.mel_linear = dg.Linear(num_hidden, config['audio']['num_mels'] * config['audio']['outputs_per_step'],
                                 param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
                                 bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
         self.stop_linear = dg.Linear(num_hidden, 1,
                                   param_attr=fluid.ParamAttr(initializer = fluid.initializer.XavierInitializer()),
                                   bias_attr=fluid.ParamAttr(initializer = fluid.initializer.Uniform(low=-k, high=k)))
 
-        self.postconvnet = PostConvNet(config.audio.num_mels, config.hidden_size, 
+        self.postconvnet = PostConvNet(config['audio']['num_mels'], config['hidden_size'], 
                                        filter_size = 5, padding = 4, num_conv=5, 
-                                       outputs_per_step=config.audio.outputs_per_step, 
-                                       use_cudnn = config.use_gpu)
+                                       outputs_per_step=config['audio']['outputs_per_step'], 
+                                       use_cudnn = True)
 
     def forward(self, key, value, query, c_mask, positional):
 

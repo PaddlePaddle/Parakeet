@@ -1,13 +1,13 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.models.transformerTTS.encoder import Encoder
-from parakeet.models.transformerTTS.decoder import Decoder
+from parakeet.models.transformer_tts.encoder import Encoder
+from parakeet.models.transformer_tts.decoder import Decoder
 
 class TransformerTTS(dg.Layer):
     def __init__(self, config):
         super(TransformerTTS, self).__init__()
-        self.encoder = Encoder(config.embedding_size, config.hidden_size, config)
-        self.decoder = Decoder(config.hidden_size, config)
+        self.encoder = Encoder(config['embedding_size'], config['hidden_size'])
+        self.decoder = Decoder(config['hidden_size'], config)
         self.config = config
 
     def forward(self, characters, mel_input, pos_text, pos_mel):

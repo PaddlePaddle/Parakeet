@@ -13,7 +13,7 @@ audio:
 encoder_n_layer: 6
 encoder_head: 2
 encoder_conv1d_filter_size: 1536
-max_sep_len: 2048
+max_seq_len: 2048
 decoder_n_layer: 6
 decoder_head: 2
 decoder_conv1d_filter_size: 1536
@@ -24,10 +24,3 @@ fft_conv1d_filter: 3
 fft_conv1d_padding: 1
 dropout: 0.1
 transformer_head: 4
-
-use_gpu: True
-alpha: 1.0
-
-checkpoint_path: checkpoint/
-fastspeech_step: 71000
-log_dir: ./log

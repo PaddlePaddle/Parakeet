@@ -9,12 +9,3 @@ audio:
   min_level_db: -100
   ref_level_db: 20
   outputs_per_step: 1
-
-max_len: 50
-transformer_step: 10
-postnet_step: 10
-use_gpu: True
-
-checkpoint_path: ./checkpoint
-log_dir: ./log
-sample_path: ./sample
