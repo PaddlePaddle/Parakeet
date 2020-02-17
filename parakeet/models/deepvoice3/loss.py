@@ -203,16 +203,21 @@ class TTSLoss(object):
 
         result = {
             "mel": mel_loss if compute_mel_loss else None,
+            "mel_l1_loss": mel_l1_loss if compute_mel_loss else None,
+            "mel_bce_loss": mel_bce_loss if compute_mel_loss else None,
             "lin": lin_loss if compute_lin_loss else None,
+            "lin_l1_loss": lin_l1_loss if compute_lin_loss else None,
+            "lin_bce_loss": lin_bce_loss if compute_lin_loss else None,
             "done": done_loss if compute_done_loss else None,
             "attn": attn_loss if compute_attn_loss else None,
         }
+
         return result
 
     @staticmethod
     def compose_loss(result):
         total_loss = 0.
-        for v in result.values():
-            if v is not None:
-                total_loss += v
+        for k in ["mel", "lin", "done", "attn"]:
+            if result[k] is not None:
+                total_loss += result[k]
         return total_loss

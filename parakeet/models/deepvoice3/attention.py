@@ -3,6 +3,7 @@ from collections import namedtuple
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as F
+import paddle.fluid.initializer as I
 
 from parakeet.modules.weight_norm import Linear
 WindowRange = namedtuple("WindowRange", ["backward", "ahead"])
@@ -17,12 +18,24 @@ class Attention(dg.Layer):
                  key_projection=True,
                  value_projection=True):
         super(Attention, self).__init__()
-        self.query_proj = Linear(query_dim, embed_dim)
+        std = np.sqrt(1 / query_dim)
+        self.query_proj = Linear(query_dim,
+                                 embed_dim,
+                                 param_attr=I.Normal(scale=std))
         if key_projection:
-            self.key_proj = Linear(embed_dim, embed_dim)
+            std = np.sqrt(1 / embed_dim)
+            self.key_proj = Linear(embed_dim,
+                                   embed_dim,
+                                   param_attr=I.Normal(scale=std))
         if value_projection:
-            self.value_proj = Linear(embed_dim, embed_dim)
-        self.out_proj = Linear(embed_dim, query_dim)
+            std = np.sqrt(1 / embed_dim)
+            self.value_proj = Linear(embed_dim,
+                                     embed_dim,
+                                     param_attr=I.Normal(scale=std))
+        std = np.sqrt(1 / embed_dim)
+        self.out_proj = Linear(embed_dim,
+                               query_dim,
+                               param_attr=I.Normal(scale=std))
 
         self.key_projection = key_projection
         self.value_projection = value_projection

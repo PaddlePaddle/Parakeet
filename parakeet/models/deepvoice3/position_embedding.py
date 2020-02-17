@@ -42,7 +42,7 @@ def position_encoding_init(n_position,
     embed_range = 2 * (np.arange(d_pos_vec) // 2)
     radians = position_rate \
             * indices_range \
-            * np.power(1e4, embed_range / d_pos_vec)
+            / np.power(1.e4, embed_range / d_pos_vec)
     if padding_idx is not None:
         radians[padding_idx] = 0.
     return radians

@@ -42,8 +42,6 @@ class Conv1DGLU(dg.Layer):
         # weight init and dropout
         self.std_mul = std_mul
         self.dropout = dropout
-        c_in = filter_size * in_channels
-        std = np.sqrt(std_mul * (1 - dropout) / c_in)
 
         self.residual = residual
         if residual:
@@ -51,6 +49,7 @@ class Conv1DGLU(dg.Layer):
                 in_channels == num_filters
             ), "this block uses residual connection"\
                 "the input_channes should equals num_filters"
+        std = np.sqrt(std_mul * (1 - dropout) / (filter_size * in_channels))
         self.conv = Conv1DCell(in_channels,
                                2 * num_filters,
                                filter_size,
