@@ -35,9 +35,11 @@ class Encoder(dg.Layer):
             std = np.sqrt((1 - dropout) / speaker_dim)
             self.sp_proj1 = Linear(speaker_dim,
                                    embed_dim,
+                                   act="softsign",
                                    param_attr=I.Normal(scale=std))
             self.sp_proj2 = Linear(speaker_dim,
                                    embed_dim,
+                                   act="softsign",
                                    param_attr=I.Normal(scale=std))
         self.n_speakers = n_speakers
 
@@ -104,9 +106,7 @@ class Encoder(dg.Layer):
                 speaker_embed,
                 self.dropout,
                 dropout_implementation="upscale_in_train")
-            x = F.elementwise_add(x,
-                                  F.softsign(self.sp_proj1(speaker_embed)),
-                                  axis=0)
+            x = F.elementwise_add(x, self.sp_proj1(speaker_embed), axis=0)
 
         input_embed = x
         for layer in self.convolutions:
@@ -117,9 +117,7 @@ class Encoder(dg.Layer):
                 x = layer(x)
 
         if self.n_speakers > 1 and speaker_embed is not None:
-            x = F.elementwise_add(x,
-                                  F.softsign(self.sp_proj2(speaker_embed)),
-                                  axis=0)
+            x = F.elementwise_add(x, self.sp_proj2(speaker_embed), axis=0)
 
         keys = x  # (B, C, T)
         values = F.scale(input_embed + x, scale=np.sqrt(0.5))

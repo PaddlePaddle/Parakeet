@@ -18,7 +18,7 @@ You can choose to install via pypi or clone the repository and install manually.
 
 1. Install via pypi.
    ```bash
-   pip install parakeet
+   pip install paddle-parakeet
    ```
 
 2. Install manually.
@@ -102,6 +102,19 @@ optional arguments:
 
 5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
+example script:
+
+```bash
+python train.py --config=./ljspeech.yaml --data=./LJSpeech-1.1/ --output=experiment --device=0
+```
+
+You can monitor training log via tensorboard, using the script below.
+
+```bash
+cd experiment/log
+tensorboard --logdir=.
+```
+
 ## Synthesis
 ```text
 usage: synthesis.py [-h] [-c CONFIG] [-g DEVICE] checkpoint text output_path
@@ -126,4 +139,10 @@ optional arguments:
 3. `text`is the text file to synthesize.
 4. `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`) and attention plots (*.png) for each sentence.
 5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
+
+example script:
+
+```bash
+python synthesis.py --config=./ljspeech.yaml --device=0 experiment/checkpoints/model_step_005000000 sentences.txt generated
+```
 

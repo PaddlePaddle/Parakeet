@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import librosa
 from scipy import signal
@@ -125,21 +126,32 @@ def eval_model(model, text, replace_pronounciation_prob, min_level_db,
     model.eval()
     mel_outputs, linear_outputs, alignments, done = model.transduce(
         dg.to_variable(text), dg.to_variable(text_positions))
-    linear_outputs_np = linear_outputs.numpy()[0].T  # (C, T)
-    print("linear_outputs's shape: ", linear_outputs_np.shape)
 
-    denoramlized = np.clip(linear_outputs_np, 0,
-                           1) * (-min_level_db) + min_level_db
+    linear_outputs_np = linear_outputs.numpy()[0].T  # (C, T)
+    wav = spec_to_waveform(linear_outputs_np, min_level_db, ref_level_db,
+                           power, n_iter, win_length, hop_length, preemphasis)
+    alignments_np = alignments.numpy()[0]  # batch_size = 1
+    print("linear_outputs's shape: ", linear_outputs_np.shape)
+    print("alignmnets' shape:", alignments.shape)
+    return wav, alignments_np
+
+
+def spec_to_waveform(spec, min_level_db, ref_level_db, power, n_iter,
+                     win_length, hop_length, preemphasis):
+    """Convert output linear spec to waveform using griffin-lim vocoder.
+    
+    Args:
+        spec (ndarray): the output linear spectrogram, shape(C, T), where C means n_fft, T means frames.
+    """
+    denoramlized = np.clip(spec, 0, 1) * (-min_level_db) + min_level_db
     lin_scaled = np.exp((denoramlized + ref_level_db) / 20 * np.log(10))
     wav = librosa.griffinlim(lin_scaled**power,
                              n_iter=n_iter,
                              hop_length=hop_length,
                              win_length=win_length)
-    wav = signal.lfilter([1.], [1., -preemphasis], wav)
-
-    print("alignmnets' shape:", alignments.shape)
-    alignments_np = alignments.numpy()[0].T
-    return wav, alignments_np
+    if preemphasis > 0:
+        wav = signal.lfilter([1.], [1., -preemphasis], wav)
+    return wav
 
 
 def make_output_tree(output_dir):
@@ -157,88 +169,89 @@ def make_output_tree(output_dir):
             os.makedirs(p)
 
 
-def plot_alignment(alignment, path, info=None):
+def plot_alignment(alignment, path):
     """
     Plot an attention layer's alignment for a sentence.
-    alignment: shape(T_enc, T_dec), and T_enc is flipped
+    alignment: shape(T_dec, T_enc).
     """
 
-    fig, ax = plt.subplots()
-    im = ax.imshow(alignment,
-                   aspect='auto',
-                   origin='lower',
-                   interpolation='none')
-    fig.colorbar(im, ax=ax)
-    xlabel = 'Decoder timestep'
-    if info is not None:
-        xlabel += '\n\n' + info
-    plt.xlabel(xlabel)
-    plt.ylabel('Encoder timestep')
-    plt.tight_layout()
+    plt.figure()
+    plt.imshow(alignment)
+    plt.colorbar()
+    plt.xlabel('Encoder timestep')
+    plt.ylabel('Decoder timestep')
     plt.savefig(path)
     plt.close()
 
 
-def plot_alignments(alignments, save_dir, global_step):
-    """
-    Plot alignments for a sentence when training, we just pick the first 
-    sentence. Each layer is plot separately. 
-    alignments: shape(N, T_dec, T_enc)
-    """
-    n_layers = alignments.shape[0]
-    for i, alignment in enumerate(alignments):
-        alignment = alignment.T
-
-        path = os.path.join(save_dir, "layer_{}".format(i))
-        if not os.path.exists(path):
-            os.makedirs(path)
-        fname = os.path.join(path, "step_{:09d}".format(global_step))
-        plot_alignment(alignment, fname)
-
-    average_alignment = np.mean(alignments, axis=0).T
-    path = os.path.join(save_dir, "average")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    fname = os.path.join(path, "step_{:09d}.png".format(global_step))
-    plot_alignment(average_alignment, fname)
-
-
 def save_state(save_dir,
+               writer,
                global_step,
                mel_input=None,
                mel_output=None,
                lin_input=None,
                lin_output=None,
                alignments=None,
-               wav=None):
+               win_length=1024,
+               hop_length=256,
+               min_level_db=-100,
+               ref_level_db=20,
+               power=1.4,
+               n_iter=32,
+               preemphasis=0.97,
+               sample_rate=22050):
+    """Save training intermediate results. Save states for the first sentence in the batch, including
+    mel_spec(predicted, target), lin_spec(predicted, target), attn, waveform.
+    
+    Args:
+        save_dir (str): directory to save results.
+        writer (SummaryWriter): tensorboardX summary writer
+        global_step (int): global step.
+        mel_input (Variable, optional): Defaults to None. Shape(B, T_mel, C_mel)
+        mel_output (Variable, optional): Defaults to None. Shape(B, T_mel, C_mel)
+        lin_input (Variable, optional): Defaults to None. Shape(B, T_lin, C_lin)
+        lin_output (Variable, optional): Defaults to None. Shape(B, T_lin, C_lin)
+        alignments (Variable, optional): Defaults to None. Shape(N, B, T_dec, C_enc)
+        wav ([type], optional): Defaults to None. [description]
+    """
 
     if mel_input is not None and mel_output is not None:
-        path = os.path.join(save_dir, "mel_spec")
-        if not os.path.exists(path):
-            os.makedirs(path)
+        mel_input = mel_input[0].numpy().T
+        mel_output = mel_output[0].numpy().T
 
+        path = os.path.join(save_dir, "mel_spec")
         plt.figure(figsize=(10, 3))
         display.specshow(mel_input)
         plt.colorbar()
         plt.title("mel_input")
         plt.savefig(
             os.path.join(path,
-                         "target_mel_spec_step{:09d}".format(global_step)))
+                         "target_mel_spec_step{:09d}.png".format(global_step)))
         plt.close()
+
+        writer.add_image("target/mel_spec",
+                         cm.viridis(mel_input),
+                         global_step,
+                         dataformats="HWC")
 
         plt.figure(figsize=(10, 3))
         display.specshow(mel_output)
         plt.colorbar()
-        plt.title("mel_input")
+        plt.title("mel_output")
         plt.savefig(
-            os.path.join(path,
-                         "predicted_mel_spec_step{:09d}".format(global_step)))
+            os.path.join(
+                path, "predicted_mel_spec_step{:09d}.png".format(global_step)))
         plt.close()
 
+        writer.add_image("predicted/mel_spec",
+                         cm.viridis(mel_output),
+                         global_step,
+                         dataformats="HWC")
+
     if lin_input is not None and lin_output is not None:
+        lin_input = lin_input[0].numpy().T
+        lin_output = lin_output[0].numpy().T
         path = os.path.join(save_dir, "lin_spec")
-        if not os.path.exists(path):
-            os.makedirs(path)
 
         plt.figure(figsize=(10, 3))
         display.specshow(lin_input)
@@ -246,28 +259,50 @@ def save_state(save_dir,
         plt.title("mel_input")
         plt.savefig(
             os.path.join(path,
-                         "target_lin_spec_step{:09d}".format(global_step)))
+                         "target_lin_spec_step{:09d}.png".format(global_step)))
         plt.close()
+
+        writer.add_image("target/lin_spec",
+                         cm.viridis(lin_input),
+                         global_step,
+                         dataformats="HWC")
 
         plt.figure(figsize=(10, 3))
         display.specshow(lin_output)
         plt.colorbar()
         plt.title("mel_input")
         plt.savefig(
-            os.path.join(path,
-                         "predicted_lin_spec_step{:09d}".format(global_step)))
+            os.path.join(
+                path, "predicted_lin_spec_step{:09d}.png".format(global_step)))
         plt.close()
 
-    if alignments is not None and len(alignments.shape) == 3:
-        path = os.path.join(save_dir, "alignments")
-        if not os.path.exists(path):
-            os.makedirs(path)
-        plot_alignments(alignments, path, global_step)
+        writer.add_image("predicted/lin_spec",
+                         cm.viridis(lin_output),
+                         global_step,
+                         dataformats="HWC")
 
-    if wav is not None:
+    if alignments is not None and len(alignments.shape) == 4:
+        path = os.path.join(save_dir, "alignments")
+        alignments = alignments[:, 0, :, :].numpy()
+        for idx, attn_layer in enumerate(alignments):
+            save_path = os.path.join(
+                path,
+                "train_attn_layer_{}_step_{}.png".format(idx, global_step))
+            plot_alignment(attn_layer, save_path)
+
+            writer.add_image("train_attn/layer_{}".format(idx),
+                             cm.viridis(attn_layer),
+                             global_step,
+                             dataformats="HWC")
+
+    if lin_output is not None:
+        wav = spec_to_waveform(lin_output, min_level_db, ref_level_db, power,
+                               n_iter, win_length, hop_length, preemphasis)
         path = os.path.join(save_dir, "waveform")
-        if not os.path.exists(path):
-            os.makedirs(path)
-        sf.write(
-            os.path.join(path, "sample_step_{:09d}.wav".format(global_step)),
-            wav, 22050)
+        save_path = os.path.join(
+            path, "train_sample_step_{:09d}.wav".format(global_step))
+        sf.write(save_path, wav, sample_rate)
+        writer.add_audio("train_sample",
+                         wav,
+                         global_step,
+                         sample_rate=sample_rate)

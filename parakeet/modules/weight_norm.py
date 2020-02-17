@@ -6,7 +6,6 @@ import paddle.fluid.layers as F
 from parakeet.modules import customized as L
 
 
-# TODO: just use numpy to init weight norm wrappers
 def norm(param, dim, power):
     powered = F.pow(param, power)
     powered_norm = F.reduce_sum(powered, dim=dim, keep_dim=False)
@@ -73,7 +72,7 @@ class WeightNormWrapper(dg.Layer):
             w_g, self.create_parameter(shape=temp.shape, dtype=temp.dtype))
         F.assign(temp, getattr(self, w_g))
 
-        # also set this
+        # also set this when setting up
         setattr(
             self.layer, self.param_name,
             compute_weight(getattr(self, w_v), getattr(self, w_g), self.dim,
