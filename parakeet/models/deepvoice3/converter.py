@@ -13,11 +13,12 @@ from parakeet.models.deepvoice3.encoder import ConvSpec
 def upsampling_4x_blocks(n_speakers, speaker_dim, target_channels, dropout):
     # upsampling convolitions
     upsampling_convolutions = [
-        Conv1DTranspose(target_channels,
-                        target_channels,
-                        2,
-                        stride=2,
-                        param_attr=I.Normal(np.sqrt(1 / target_channels))),
+        Conv1DTranspose(
+            target_channels,
+            target_channels,
+            2,
+            stride=2,
+            param_attr=I.Normal(scale=np.sqrt(1 / (2 * target_channels)))),
         Conv1DGLU(n_speakers,
                   speaker_dim,
                   target_channels,
@@ -34,12 +35,12 @@ def upsampling_4x_blocks(n_speakers, speaker_dim, target_channels, dropout):
                   dilation=3,
                   std_mul=4.,
                   dropout=dropout),
-        Conv1DTranspose(target_channels,
-                        target_channels,
-                        2,
-                        stride=2,
-                        param_attr=I.Normal(scale=np.sqrt(4. /
-                                                          target_channels))),
+        Conv1DTranspose(
+            target_channels,
+            target_channels,
+            2,
+            stride=2,
+            param_attr=I.Normal(scale=np.sqrt(4. / (2 * target_channels)))),
         Conv1DGLU(n_speakers,
                   speaker_dim,
                   target_channels,
@@ -62,12 +63,12 @@ def upsampling_4x_blocks(n_speakers, speaker_dim, target_channels, dropout):
 
 def upsampling_2x_blocks(n_speakers, speaker_dim, target_channels, dropout):
     upsampling_convolutions = [
-        Conv1DTranspose(target_channels,
-                        target_channels,
-                        2,
-                        stride=2,
-                        param_attr=I.Normal(scale=np.sqrt(1. /
-                                                          target_channels))),
+        Conv1DTranspose(
+            target_channels,
+            target_channels,
+            2,
+            stride=2,
+            param_attr=I.Normal(scale=np.sqrt(1. / (2 * target_channels)))),
         Conv1DGLU(n_speakers,
                   speaker_dim,
                   target_channels,

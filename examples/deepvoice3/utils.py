@@ -50,7 +50,7 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
                   embed_dim,
                   n_speakers,
                   speaker_dim,
-                  padding_idx=padding_idx,
+                  padding_idx=None,
                   embedding_weight_std=embedding_std,
                   convolutions=encoder_convolutions,
                   max_positions=max_positions,
@@ -122,6 +122,7 @@ def eval_model(model, text, replace_pronounciation_prob, min_level_db,
 
     text = np.expand_dims(text, 0)
     text_positions = np.expand_dims(text_positions, 0)
+    model.eval()
     mel_outputs, linear_outputs, alignments, done = model.transduce(
         dg.to_variable(text), dg.to_variable(text_positions))
     linear_outputs_np = linear_outputs.numpy()[0].T  # (C, T)
