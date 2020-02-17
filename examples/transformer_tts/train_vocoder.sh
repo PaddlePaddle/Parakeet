@@ -1,7 +1,7 @@
 
 # train model
-# if you wish to resume from an exists model, uncomment --checkpoint_path and --transformer_step
-#CUDA_VISIBLE_DEVICES=0,1,2,3 \
+# if you wish to resume from an exists model, uncomment --checkpoint_path and --vocoder_step
+CUDA_VISIBLE_DEVICES=0 \
 python -u train_vocoder.py \
 --batch_size=32 \
 --epochs=10000 \

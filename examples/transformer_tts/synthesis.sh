@@ -1,10 +1,10 @@
 
 # train model
-#CUDA_VISIBLE_DEVICES=0,1,2,3 \
+CUDA_VISIBLE_DEVICES=0 \
 python -u synthesis.py \
 --max_len=50 \
 --transformer_step=160000 \
---postnet_step=70000 \
+--vocoder_step=70000 \
 --use_gpu=1
 --checkpoint_path='./checkpoint' \
 --log_dir='./log' \
