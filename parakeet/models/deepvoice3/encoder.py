@@ -32,7 +32,7 @@ class Encoder(dg.Layer):
 
         self.dropout = dropout
         if n_speakers > 1:
-            std = np.sqrt((1 - dropout) / speaker_dim)  # CAUTION: keep_prob
+            std = np.sqrt((1 - dropout) / speaker_dim)
             self.sp_proj1 = Linear(speaker_dim,
                                    embed_dim,
                                    param_attr=I.Normal(scale=std))

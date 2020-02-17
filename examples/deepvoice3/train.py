@@ -227,8 +227,12 @@ if __name__ == "__main__":
                                    lin_specs, done_flags, text_lengths, frames)
                 l = criterion.compose_loss(losses)
                 l.backward()
+                # record learning rate before updating
+                writer.add_scalar("learning_rate",
+                                  optim._learning_rate.step().numpy(),
+                                  global_step)
                 optim.minimize(l, grad_clip=gradient_clipper)
-                dv3.clear_gradients()
+                optim.clear_gradients()
 
                 # ==================all kinds of tedious things=================
                 for k in epoch_loss.keys():
@@ -237,6 +241,7 @@ if __name__ == "__main__":
 
                 # record step loss into tensorboard
                 step_loss = {k: v.numpy()[0] for k, v in losses.items()}
+                print(step_loss)
                 for k, v in step_loss.items():
                     writer.add_scalar(k, v, global_step)
 
@@ -276,7 +281,7 @@ if __name__ == "__main__":
                         "Please call Stella.",
                         "Some have accepted this as a miracle without any physical explanation.",
                     ]
-                    for idx, sent in sentences:
+                    for idx, sent in enumerate(sentences):
                         wav, attn = eval_model(dv3, sent,
                                                replace_pronounciation_prob,
                                                min_level_db, ref_level_db,
