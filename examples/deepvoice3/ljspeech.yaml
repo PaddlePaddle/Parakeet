@@ -85,7 +85,6 @@ train:
   batch_size: 16
   epochs: 2000
   
-  report_interval: 100
   snap_interval: 1000
   eval_interval: 10000
   save_interval: 10000

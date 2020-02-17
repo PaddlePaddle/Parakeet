@@ -79,25 +79,26 @@ def unfold_adjacent_frames(folded_frames, r):
 
 
 class Decoder(dg.Layer):
-    def __init__(self,
-                 n_speakers,
-                 speaker_dim,
-                 embed_dim,
-                 mel_dim,
-                 r=1,
-                 max_positions=512,
-                 padding_idx=None,
-                 preattention=(ConvSpec(128, 5, 1), ) * 4,
-                 convolutions=(ConvSpec(128, 5, 1), ) * 4,
-                 attention=True,
-                 dropout=0.0,
-                 use_memory_mask=False,
-                 force_monotonic_attention=False,
-                 query_position_rate=1.0,
-                 key_position_rate=1.0,
-                 window_range=WindowRange(-1, 3),
-                 key_projection=True,
-                 value_projection=True):
+    def __init__(
+        self,
+        n_speakers,
+        speaker_dim,
+        embed_dim,
+        mel_dim,
+        r=1,
+        max_positions=512,
+        padding_idx=None,  # remove it!
+        preattention=(ConvSpec(128, 5, 1), ) * 4,
+        convolutions=(ConvSpec(128, 5, 1), ) * 4,
+        attention=True,
+        dropout=0.0,
+        use_memory_mask=False,
+        force_monotonic_attention=False,
+        query_position_rate=1.0,
+        key_position_rate=1.0,
+        window_range=WindowRange(-1, 3),
+        key_projection=True,
+        value_projection=True):
         super(Decoder, self).__init__()
 
         self.dropout = dropout
@@ -109,21 +110,23 @@ class Decoder(dg.Layer):
         self.n_speakers = n_speakers
 
         conv_channels = convolutions[0].out_channels
+        # only when padding idx is 0 can we easilt handle it
         self.embed_keys_positions = PositionEmbedding(max_positions,
                                                       embed_dim,
-                                                      padding_idx=padding_idx)
+                                                      padding_idx=0)
         self.embed_query_positions = PositionEmbedding(max_positions,
                                                        conv_channels,
-                                                       padding_idx=padding_idx)
+                                                       padding_idx=0)
 
         if n_speakers > 1:
-            # CAUTION: mind the sigmoid
             std = np.sqrt((1 - dropout) / speaker_dim)
             self.speaker_proj1 = Linear(speaker_dim,
                                         1,
+                                        act="sigmoid",
                                         param_attr=I.Normal(scale=std))
             self.speaker_proj2 = Linear(speaker_dim,
                                         1,
+                                        act="sigmoid",
                                         param_attr=I.Normal(scale=std))
 
         # prenet
@@ -168,6 +171,7 @@ class Decoder(dg.Layer):
                                               ] * len(convolutions)
         else:
             self.force_monotonic_attention = force_monotonic_attention
+
         for x, y in zip(self.force_monotonic_attention, self.attention):
             if x is True and y is False:
                 raise ValueError("When not using attention, there is no "
@@ -249,7 +253,7 @@ class Decoder(dg.Layer):
             text_positions (Variable): shape(B, T_enc), dtype: int64.
                 Positions indices for text inputs for the encoder, where 
                 T_enc means the encoder timesteps.
-            frame_positions (Variable): shape(B, T_dec // r), dtype: 
+            frame_positions (Variable): shape(B, T_mel // r), dtype: 
                 int64. Positions indices for each decoder time steps.
             speaker_embed: shape(batch_size, speaker_dim), speaker embedding, 
                 only used for multispeaker model.
@@ -287,16 +291,14 @@ class Decoder(dg.Layer):
         if text_positions is not None:
             w = self.key_position_rate
             if self.n_speakers > 1:
-                w = w * F.squeeze(F.sigmoid(self.speaker_proj1(speaker_embed)),
-                                  [-1])
+                w = w * F.squeeze(self.speaker_proj1(speaker_embed), [-1])
             text_pos_embed = self.embed_keys_positions(text_positions, w)
             keys += text_pos_embed  # (B, T, C)
 
         if frame_positions is not None:
             w = self.query_position_rate
             if self.n_speakers > 1:
-                w = w * F.squeeze(F.sigmoid(self.speaker_proj2(speaker_embed)),
-                                  [-1])
+                w = w * F.squeeze(self.speaker_proj2(speaker_embed), [-1])
             frame_pos_embed = self.embed_query_positions(frame_positions, w)
         else:
             frame_pos_embed = None
@@ -387,8 +389,7 @@ class Decoder(dg.Layer):
             w = self.key_position_rate
             if self.n_speakers > 1:
                 # shape (B, )
-                w = w * F.squeeze(F.sigmoid(self.speaker_proj1(speaker_embed)),
-                                  [-1])
+                w = w * F.squeeze(self.speaker_proj1(speaker_embed), [-1])
             text_pos_embed = self.embed_keys_positions(text_positions, w)
             keys += text_pos_embed  # (B, T, C)
 
@@ -417,8 +418,7 @@ class Decoder(dg.Layer):
                                         dtype="int64")
             w = self.query_position_rate
             if self.n_speakers > 1:
-                w = w * F.squeeze(F.sigmoid(self.speaker_proj2(speaker_embed)),
-                                  [-1])
+                w = w * F.squeeze(self.speaker_proj2(speaker_embed), [-1])
             # (B, T=1, C)
             frame_pos_embed = self.embed_query_positions(frame_pos, w)
 

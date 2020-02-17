@@ -22,7 +22,7 @@ from parakeet.models.deepvoice3.loss import TTSLoss
 from parakeet.utils.layer_tools import summary
 
 from data import LJSpeechMetaData, DataCollector, Transform
-from utils import make_model, eval_model, plot_alignment, plot_alignments, save_state, make_output_tree
+from utils import make_model, eval_model, save_state, make_output_tree, plot_alignment
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -176,6 +176,11 @@ if __name__ == "__main__":
                                      parameter_list=dv3.parameters())
         gradient_clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.1)
 
+        # generation
+        synthesis_config = config["synthesis"]
+        power = synthesis_config["power"]
+        n_iter = synthesis_config["n_iter"]
+
         # =========================link(dataloader, paddle)=========================
         # CAUTION: it does not return a DataLoader
         loader = fluid.io.DataLoader.from_generator(capacity=10,
@@ -198,16 +203,14 @@ if __name__ == "__main__":
 
         # =========================train=========================
         epoch = train_config["epochs"]
-        report_interval = train_config["report_interval"]
         snap_interval = train_config["snap_interval"]
         save_interval = train_config["save_interval"]
         eval_interval = train_config["eval_interval"]
 
         global_step = 1
-        average_loss = {"mel": 0, "lin": 0, "done": 0, "attn": 0}
 
         for j in range(1, 1 + epoch):
-            epoch_loss = {"mel": 0., "lin": 0., "done": 0., "attn": 0.}
+            epoch_loss = 0.
             for i, batch in tqdm.tqdm(enumerate(loader, 1)):
                 dv3.train()  # CAUTION: don't forget to switch to train
                 (text_sequences, text_lengths, text_positions, mel_specs,
@@ -225,7 +228,7 @@ if __name__ == "__main__":
                 losses = criterion(mel_outputs, linear_outputs, done,
                                    alignments, downsampled_mel_specs,
                                    lin_specs, done_flags, text_lengths, frames)
-                l = criterion.compose_loss(losses)
+                l = losses["loss"]
                 l.backward()
                 # record learning rate before updating
                 writer.add_scalar("learning_rate",
@@ -235,41 +238,31 @@ if __name__ == "__main__":
                 optim.clear_gradients()
 
                 # ==================all kinds of tedious things=================
-                for k in epoch_loss.keys():
-                    epoch_loss[k] += losses[k].numpy()[0]
-                    average_loss[k] += losses[k].numpy()[0]
-
                 # record step loss into tensorboard
+                epoch_loss += l.numpy()[0]
                 step_loss = {k: v.numpy()[0] for k, v in losses.items()}
-                print(step_loss)
                 for k, v in step_loss.items():
                     writer.add_scalar(k, v, global_step)
 
                 # TODO: clean code
                 # train state saving, the first sentence in the batch
                 if global_step % snap_interval == 0:
-                    linear_outputs_np = linear_outputs.numpy()[0].T
-                    denoramlized = np.clip(linear_outputs_np, 0, 1) \
-                                 * (-min_level_db) \
-                                 + min_level_db
-                    lin_scaled = np.exp(
-                        (denoramlized + ref_level_db) / 20 * np.log(10))
-                    synthesis_config = config["synthesis"]
-                    power = synthesis_config["power"]
-                    n_iter = synthesis_config["n_iter"]
-                    wav = librosa.griffinlim(lin_scaled**power,
-                                             n_iter=n_iter,
-                                             hop_length=hop_length,
-                                             win_length=win_length)
-
                     save_state(state_dir,
+                               writer,
                                global_step,
-                               mel_input=mel_specs.numpy()[0].T,
-                               mel_output=mel_outputs.numpy()[0].T,
-                               lin_input=lin_specs.numpy()[0].T,
-                               lin_output=linear_outputs.numpy()[0].T,
-                               alignments=alignments.numpy()[:, 0, :, :],
-                               wav=wav)
+                               mel_input=downsampled_mel_specs,
+                               mel_output=mel_outputs,
+                               lin_input=lin_specs,
+                               lin_output=linear_outputs,
+                               alignments=alignments,
+                               win_length=win_length,
+                               hop_length=hop_length,
+                               min_level_db=min_level_db,
+                               ref_level_db=ref_level_db,
+                               power=power,
+                               n_iter=n_iter,
+                               preemphasis=preemphasis,
+                               sample_rate=sample_rate)
 
                 # evaluation
                 if global_step % eval_interval == 0:
@@ -291,28 +284,31 @@ if __name__ == "__main__":
                             state_dir, "waveform",
                             "eval_sample_{:09d}.wav".format(global_step))
                         sf.write(wav_path, wav, sample_rate)
+                        writer.add_audio("eval_sample_{}".format(idx),
+                                         wav,
+                                         global_step,
+                                         sample_rate=sample_rate)
                         attn_path = os.path.join(
                             state_dir, "alignments",
                             "eval_sample_attn_{:09d}.png".format(global_step))
                         plot_alignment(attn, attn_path)
+                        writer.add_image("eval_sample_attn{}".format(idx),
+                                         cm.viridis(attn),
+                                         global_step,
+                                         dataformats="HWC")
 
                 # save checkpoint
                 if global_step % save_interval == 0:
-                    dg.save_dygraph(dv3.state_dict(),
-                                    os.path.join(ckpt_dir, "dv3"))
-                    dg.save_dygraph(optim.state_dict(),
-                                    os.path.join(ckpt_dir, "dv3"))
-
-                # report average loss
-                if global_step % report_interval == 0:
-                    for k in epoch_loss.keys():
-                        average_loss[k] /= report_interval
-                    print("[average_loss] ",
-                          "global_step: {}".format(global_step), average_loss)
-                    average_loss = {"mel": 0, "lin": 0, "done": 0, "attn": 0}
+                    dg.save_dygraph(
+                        dv3.state_dict(),
+                        os.path.join(ckpt_dir,
+                                     "model_step_{}".format(global_step)))
+                    dg.save_dygraph(
+                        optim.state_dict(),
+                        os.path.join(ckpt_dir,
+                                     "model_step_{}".format(global_step)))
 
                 global_step += 1
             # epoch report
-            for k in epoch_loss.keys():
-                epoch_loss[k] /= i
-            print("[epoch_loss] ", "epoch: {}".format(j), epoch_loss)
+            writer.add_scalar("epoch_average_loss", epoch_loss / i, j)
+            epoch_loss = 0.

@@ -156,8 +156,9 @@ class TTSLoss(object):
                  compute_mel_loss=True,
                  compute_done_loss=True,
                  compute_attn_loss=True):
+        total_loss = 0.
+
         # n_frames # mel_lengths # decoder_lengths
-        # 4 个 loss 吧。lin(l1, bce, lin), mel(l1, bce, mel), attn, done
         max_frames = lin_hyp.shape[1]
         max_mel_steps = max_frames // self.downsample_factor
         max_decoder_steps = max_mel_steps // self.r
@@ -182,6 +183,7 @@ class TTSLoss(object):
             lin_bce_loss = self.binary_divergence(lin_hyp, lin_ref, lin_mask)
             lin_loss = self.binary_divergence_weight * lin_bce_loss \
                      + (1 - self.binary_divergence_weight) * lin_l1_loss
+            total_loss += lin_loss
 
         if compute_mel_loss:
             mel_hyp = mel_hyp[:, :-self.time_shift, :]
@@ -192,32 +194,28 @@ class TTSLoss(object):
             # print("=====>", mel_l1_loss.numpy()[0], mel_bce_loss.numpy()[0])
             mel_loss = self.binary_divergence_weight * mel_bce_loss \
                      + (1 - self.binary_divergence_weight) * mel_l1_loss
+            total_loss += mel_loss
 
         if compute_attn_loss:
             attn_loss = self.attention_loss(
                 attn_hyp, input_lengths.numpy(),
                 n_frames.numpy() // (self.downsample_factor * self.r))
+            total_loss += attn_loss
 
         if compute_done_loss:
             done_loss = self.done_loss(done_hyp, done_ref)
+            total_loss += done_loss
 
         result = {
-            "mel": mel_loss if compute_mel_loss else None,
-            "mel_l1_loss": mel_l1_loss if compute_mel_loss else None,
-            "mel_bce_loss": mel_bce_loss if compute_mel_loss else None,
-            "lin": lin_loss if compute_lin_loss else None,
-            "lin_l1_loss": lin_l1_loss if compute_lin_loss else None,
-            "lin_bce_loss": lin_bce_loss if compute_lin_loss else None,
+            "loss": total_loss,
+            "mel/mel_loss": mel_loss if compute_mel_loss else None,
+            "mel/l1_loss": mel_l1_loss if compute_mel_loss else None,
+            "mel/bce_loss": mel_bce_loss if compute_mel_loss else None,
+            "lin/lin_loss": lin_loss if compute_lin_loss else None,
+            "lin/l1_loss": lin_l1_loss if compute_lin_loss else None,
+            "lin/bce_loss": lin_bce_loss if compute_lin_loss else None,
             "done": done_loss if compute_done_loss else None,
             "attn": attn_loss if compute_attn_loss else None,
         }
 
         return result
-
-    @staticmethod
-    def compose_loss(result):
-        total_loss = 0.
-        for k in ["mel", "lin", "done", "attn"]:
-            if result[k] is not None:
-                total_loss += result[k]
-        return total_loss
