@@ -84,7 +84,7 @@ If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, a
 CUDA_VISIBLE_DEVICES=0,1,2,3
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train_transformer.py \
 --use_gpu=1 \
---use_data_parallel=0 \
+--use_data_parallel=1 \
 --data_path=${DATAPATH} \
 --config_path='config/train_transformer.yaml' \
 ```
@@ -113,7 +113,7 @@ If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, a
 CUDA_VISIBLE_DEVICES=0,1,2,3
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train_vocoder.py \
 --use_gpu=1 \
---use_data_parallel=0 \
+--use_data_parallel=1 \
 --data_path=${DATAPATH} \
 --config_path='config/train_vocoder.yaml' \
 ```
