@@ -38,7 +38,7 @@ def main(args):
     
     if not os.path.exists(args.log_dir):
             os.mkdir(args.log_dir)
-    path = os.path.join(args.log_dir,'postnet')
+    path = os.path.join(args.log_dir,'vocoder')
 
     writer = SummaryWriter(path) if local_rank == 0 else None
 
@@ -51,7 +51,7 @@ def main(args):
 
 
         if args.checkpoint_path is not None:
-            model_dict, opti_dict = load_checkpoint(str(args.vocoder_step), os.path.join(args.checkpoint_path, "postnet"))
+            model_dict, opti_dict = load_checkpoint(str(args.vocoder_step), os.path.join(args.checkpoint_path, "vocoder"))
             model.set_dict(model_dict)
             optimizer.set_dict(opti_dict)
             global_step = args.vocoder_step
@@ -92,7 +92,7 @@ def main(args):
                     if global_step % args.save_step == 0:
                         if not os.path.exists(args.save_path):
                             os.mkdir(args.save_path)
-                        save_path = os.path.join(args.save_path,'postnet/%d' % global_step)
+                        save_path = os.path.join(args.save_path,'vocoder/%d' % global_step)
                         dg.save_dygraph(model.state_dict(), save_path)
                         dg.save_dygraph(optimizer.state_dict(), save_path)
 
@@ -100,7 +100,7 @@ def main(args):
             writer.close()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Train postnet model")
+    parser = argparse.ArgumentParser(description="Train vocoder model")
     add_config_options_to_parser(parser)
     args = parser.parse_args()
     # Print the whole config setting.
