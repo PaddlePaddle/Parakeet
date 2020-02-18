@@ -8,6 +8,12 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 
 ## Installation
 
+### Install Paddlepaddle
+
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires paddlepaddle's version is above 1.7.
+
+### Install Parakeet
+
 ```bash
 # git clone this repo first
 cd Parakeet
