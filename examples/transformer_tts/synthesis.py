@@ -42,13 +42,13 @@ def synthesis(text_input, args):
     with dg.guard(place):
         with fluid.unique_name.guard():
             model = TransformerTTS(cfg)
-            model.set_dict(load_checkpoint(str(args.transformer_step), os.path.join(args.checkpoint_path, "nostop_token/transformer")))
+            model.set_dict(load_checkpoint(str(args.transformer_step), os.path.join(args.checkpoint_path, "transformer")))
             model.eval()
         
         with fluid.unique_name.guard():
-            model_postnet = Vocoder(cfg, args.batch_size)
-            model_postnet.set_dict(load_checkpoint(str(args.postnet_step), os.path.join(args.checkpoint_path, "postnet")))
-            model_postnet.eval()
+            model_vocoder = Vocoder(cfg, args.batch_size)
+            model_vocoder.set_dict(load_checkpoint(str(args.vocoder_step), os.path.join(args.checkpoint_path, "vocoder")))
+            model_vocoder.eval()
         # init input
         text = np.asarray(text_to_sequence(text_input))
         text = fluid.layers.unsqueeze(dg.to_variable(text),[0])
@@ -64,7 +64,7 @@ def synthesis(text_input, args):
             pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel),[0])
             mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(text, mel_input, pos_text, pos_mel)
             mel_input = fluid.layers.concat([mel_input, postnet_pred[:,-1:,:]], axis=1)
-        mag_pred = model_postnet(postnet_pred)
+        mag_pred = model_vocoder(postnet_pred)
 
         _ljspeech_processor = audio.AudioProcessor(
             sample_rate=cfg['audio']['sr'], 
