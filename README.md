@@ -9,9 +9,23 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 ## Installation
 
 ```bash
-pip install parakeet
+# git clone this repo first
+cd Parakeet
+pip install -e .
 ```
 
+### Install CMUdict for nltk
+
+CMUdict from nltk is used to transform text into phonemes.
+
+```python
+import nltk
+nltk.download("cmudict")
+```
 ## Supported models
 
-- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](./deepvoice3)
+- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](./parakeet/models/deepvoice3)
+
+## Examples
+
+- [Train a deepvoice 3 model with ljspeech dataset](./parakeet/examples/deepvoice3) 
