@@ -28,10 +28,23 @@ CMUdict from nltk is used to transform text into phonemes.
 import nltk
 nltk.download("cmudict")
 ```
+
+If you have completed all the above installations, but still report an error at runtime：
+
+``` OSError: sndfile library not found ```
+
+You need to install ```libsndfile``` using your distribution’s package manager. e.g. install via:
+
+``` sudo apt-get install libsndfile1 ```
+
 ## Supported models
 
 - [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654)
+- [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895)
+- [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
 
 ## Examples
 
 - [Train a deepvoice 3 model with ljspeech dataset](./parakeet/examples/deepvoice3) 
+- [Train a transformer_tts model with ljspeech dataset](./parakeet/examples/transformer_tts) 
+- [Train a fastspeech model with ljspeech dataset](./parakeet/examples/fastspeech) 

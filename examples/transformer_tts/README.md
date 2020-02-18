@@ -3,45 +3,6 @@ Paddle fluid implementation of TransformerTTS, a neural TTS with Transformer. Th
 
 We implement TransformerTTS model in paddle fluid with dynamic graph, which is convenient for flexible network architectures.
 
-## Installation
-
-### Install paddlepaddle
-This implementation requires the latest develop version of paddlepaddle. You can either download the compiled package or build paddle from source.
-1. Install the compiled package, via pip, conda or docker. See [**Installation Mannuals**](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/install/index_en.html) for more details.
-
-2. Build paddlepaddle from source. See [**Compile From Source Code**](https://www.paddlepaddle.org.cn/documentation/docs/en/beginners_guide/install/compile/fromsource_en.html) for more details. Note that if you want to enable data parallel training for multiple GPUs, you should set `-DWITH_DISTRIBUTE=ON` with cmake.
-
-### Install parakeet
-You can choose to install via pypi or clone the repository and install manually.
-
-1. Install via pypi.
-   ```bash
-   pip install parakeet
-   ```
-
-2. Install manually.
-   ```bash
-   git clone <url>
-   cd Parakeet/
-   pip install -e .
-
-### Download cmudict for nltk
-You also need to download cmudict for nltk, because convert text into phonemes with `cmudict`.
-
-```python
-import nltk
-nltk.download("punkt")
-nltk.download("cmudict")
-```
-
-If you have completed all the above installations, but still report an error at runtime：
-
-``` OSError: sndfile library not found ```
-
-You need to install ```libsndfile``` using your distribution’s package manager. e.g. install via:
-
-``` sudo apt-get install libsndfile1 ```
-
 ## Dataset
 
 We experiment with the LJSpeech dataset. Download and unzip [LJSpeech](https://keithito.com/LJ-Speech-Dataset/).
