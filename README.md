@@ -30,7 +30,7 @@ nltk.download("cmudict")
 ```
 ## Supported models
 
-- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](./parakeet/models/deepvoice3)
+- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654)
 
 ## Examples
 
