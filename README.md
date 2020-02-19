@@ -20,22 +20,21 @@ cd Parakeet
 pip install -e .
 ```
 
+### Setup
+Make sure libsndfile1 installed:
+```bash 
+sudo apt-get install libsndfile1 
+```
+
 ### Install CMUdict for nltk
 
 CMUdict from nltk is used to transform text into phonemes.
-
 ```python
 import nltk
+nltk.download("punkt")
 nltk.download("cmudict")
 ```
 
-If you have completed all the above installations, but still report an error at runtime：
-
-``` OSError: sndfile library not found ```
-
-You need to install ```libsndfile``` using your distribution’s package manager. e.g. install via:
-
-``` sudo apt-get install libsndfile1 ```
 
 ## Supported models
 
