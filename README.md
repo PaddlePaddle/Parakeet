@@ -20,18 +20,30 @@ cd Parakeet
 pip install -e .
 ```
 
+### Setup
+Make sure libsndfile1 installed:
+```bash 
+sudo apt-get install libsndfile1 
+```
+
 ### Install CMUdict for nltk
 
 CMUdict from nltk is used to transform text into phonemes.
-
 ```python
 import nltk
+nltk.download("punkt")
 nltk.download("cmudict")
 ```
+
+
 ## Supported models
 
 - [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654)
+- [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895)
+- [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
 
 ## Examples
 
 - [Train a deepvoice 3 model with ljspeech dataset](./parakeet/examples/deepvoice3) 
+- [Train a transformer_tts model with ljspeech dataset](./parakeet/examples/transformer_tts) 
+- [Train a fastspeech model with ljspeech dataset](./parakeet/examples/fastspeech) 
