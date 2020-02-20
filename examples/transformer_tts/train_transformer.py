@@ -12,7 +12,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
-from parakeet.modules.utils import cross_entropy
+from parakeet.models.transformer_tts.utils import cross_entropy
 from data import LJSpeechLoader
 from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
 

@@ -1,6 +1,6 @@
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.modules.utils import *
+from parakeet.models.transformer_tts.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.ffn import PositionwiseFeedForward
 from parakeet.models.transformer_tts.encoderprenet import EncoderPrenet
