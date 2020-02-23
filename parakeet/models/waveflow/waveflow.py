@@ -8,13 +8,18 @@ from paddle import fluid
 from scipy.io.wavfile import write
 
 import utils
-from data import LJSpeech
-from waveflow_modules import WaveFlowLoss, WaveFlowModule
+from .data import LJSpeech
+from .waveflow_modules import WaveFlowLoss, WaveFlowModule
 
 
 class WaveFlow():
-    def __init__(self, config, checkpoint_dir, parallel=False, rank=0,
-                 nranks=1, tb_logger=None):
+    def __init__(self,
+                 config,
+                 checkpoint_dir,
+                 parallel=False,
+                 rank=0,
+                 nranks=1,
+                 tb_logger=None):
         self.config = config
         self.checkpoint_dir = checkpoint_dir
         self.parallel = parallel
@@ -24,12 +29,12 @@ class WaveFlow():
 
     def build(self, training=True):
         config = self.config
-        dataset = LJSpeech(config, self.nranks, self.rank) 
+        dataset = LJSpeech(config, self.nranks, self.rank)
         self.trainloader = dataset.trainloader
         self.validloader = dataset.validloader
 
-        waveflow = WaveFlowModule("waveflow", config)
-        
+        waveflow = WaveFlowModule(config)
+
         # Dry run once to create and initalize all necessary parameters.
         audio = dg.to_variable(np.random.randn(1, 16000).astype(np.float32))
         mel = dg.to_variable(
@@ -38,29 +43,36 @@ class WaveFlow():
 
         if training:
             optimizer = fluid.optimizer.AdamOptimizer(
-                learning_rate=config.learning_rate)
-    
+                learning_rate=config.learning_rate,
+                parameter_list=waveflow.parameters())
+
             # Load parameters.
-            utils.load_parameters(self.checkpoint_dir, self.rank,
-                                  waveflow, optimizer,
-                                  iteration=config.iteration,
-                                  file_path=config.checkpoint)
+            utils.load_parameters(
+                self.checkpoint_dir,
+                self.rank,
+                waveflow,
+                optimizer,
+                iteration=config.iteration,
+                file_path=config.checkpoint)
             print("Rank {}: checkpoint loaded.".format(self.rank))
-    
+
             # Data parallelism.
             if self.parallel:
                 strategy = dg.parallel.prepare_context()
                 waveflow = dg.parallel.DataParallel(waveflow, strategy)
-    
+
             self.waveflow = waveflow
             self.optimizer = optimizer
             self.criterion = WaveFlowLoss(config.sigma)
 
         else:
             # Load parameters.
-            utils.load_parameters(self.checkpoint_dir, self.rank, waveflow,
-                                  iteration=config.iteration,
-                                  file_path=config.checkpoint)
+            utils.load_parameters(
+                self.checkpoint_dir,
+                self.rank,
+                waveflow,
+                iteration=config.iteration,
+                file_path=config.checkpoint)
             print("Rank {}: checkpoint loaded.".format(self.rank))
 
             self.waveflow = waveflow
@@ -83,7 +95,8 @@ class WaveFlow():
         else:
             loss.backward()
 
-        self.optimizer.minimize(loss, parameter_list=self.waveflow.parameters())
+        self.optimizer.minimize(
+            loss, parameter_list=self.waveflow.parameters())
         self.waveflow.clear_gradients()
 
         graph_time = time.time()
@@ -148,16 +161,16 @@ class WaveFlow():
         for sample, mel in enumerate(mels_list):
             filename = "{}/valid_{}.wav".format(output, sample)
             print("Synthesize sample {}, save as {}".format(sample, filename))
-    
+
             start_time = time.time()
             audio = self.waveflow.synthesize(mel, sigma=self.config.sigma)
             syn_time = time.time() - start_time
-    
+
             audio = audio[0]
             audio_time = audio.shape[0] / self.config.sample_rate
-            print("audio time {:.4f}, synthesis time {:.4f}".format(
-                audio_time, syn_time))
-    
+            print("audio time {:.4f}, synthesis time {:.4f}".format(audio_time,
+                                                                    syn_time))
+
             # Denormalize audio from [-1, 1] to [-32768, 32768] int16 range.
             audio = audio.numpy() * 32768.0
             audio = audio.astype('int16')
@@ -180,8 +193,8 @@ class WaveFlow():
             syn_time = time.time() - start_time
 
             audio_time = audio.shape[1] * batch_size / self.config.sample_rate
-            print("audio time {:.4f}, synthesis time {:.4f}".format(
-                audio_time, syn_time))
+            print("audio time {:.4f}, synthesis time {:.4f}".format(audio_time,
+                                                                    syn_time))
             print("{} X real-time".format(audio_time / syn_time))
 
     def save(self, iteration):

@@ -40,8 +40,8 @@ def norm_except(param, dim, power):
 
 def compute_weight(v, g, dim, power):
     assert len(g.shape) == 1, "magnitude should be a vector"
-    v_normalized = F.elementwise_div(v, (norm_except(v, dim, power) + 1e-12),
-                                     axis=dim)
+    v_normalized = F.elementwise_div(
+        v, (norm_except(v, dim, power) + 1e-12), axis=dim)
     weight = F.elementwise_mul(v_normalized, g, axis=dim)
     return weight
 
@@ -63,20 +63,21 @@ class WeightNormWrapper(dg.Layer):
         original_weight = getattr(layer, param_name)
         self.add_parameter(
             w_v,
-            self.create_parameter(shape=original_weight.shape,
-                                  dtype=original_weight.dtype))
+            self.create_parameter(
+                shape=original_weight.shape, dtype=original_weight.dtype))
         F.assign(original_weight, getattr(self, w_v))
         delattr(layer, param_name)
         temp = norm_except(getattr(self, w_v), self.dim, self.power)
         self.add_parameter(
-            w_g, self.create_parameter(shape=temp.shape, dtype=temp.dtype))
+            w_g, self.create_parameter(
+                shape=temp.shape, dtype=temp.dtype))
         F.assign(temp, getattr(self, w_g))
 
         # also set this when setting up
-        setattr(
-            self.layer, self.param_name,
-            compute_weight(getattr(self, w_v), getattr(self, w_g), self.dim,
-                           self.power))
+        setattr(self.layer, self.param_name,
+                compute_weight(
+                    getattr(self, w_v),
+                    getattr(self, w_g), self.dim, self.power))
 
         self.weigth_norm_applied = True
 
@@ -84,10 +85,10 @@ class WeightNormWrapper(dg.Layer):
     def hook(self):
         w_v = self.param_name + "_v"
         w_g = self.param_name + "_g"
-        setattr(
-            self.layer, self.param_name,
-            compute_weight(getattr(self, w_v), getattr(self, w_g), self.dim,
-                           self.power))
+        setattr(self.layer, self.param_name,
+                compute_weight(
+                    getattr(self, w_v),
+                    getattr(self, w_g), self.dim, self.power))
 
     def remove_weight_norm(self):
         self.hook()
@@ -111,6 +112,13 @@ class WeightNormWrapper(dg.Layer):
         else:
             return getattr(
                 object.__getattribute__(self, "_sub_layers")["layer"], key)
+
+    def __setattr__(self, name, value):
+        if name == "_param_attr" or name == "_bias_attr":
+            print(name)
+            setattr(self.layer, name, value)
+        else:
+            super().__setattr__(name, value)
 
 
 def Linear(input_dim,

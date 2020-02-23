@@ -5,10 +5,9 @@ import numpy as np
 from paddle import fluid
 
 from parakeet.datasets import ljspeech
-from parakeet.data import dataset
-from parakeet.data.batch import SpecBatcher, WavBatcher
-from parakeet.data.datacargo import DataCargo
-from parakeet.data.sampler import DistributedSampler, BatchSampler
+from parakeet.data import SpecBatcher, WavBatcher
+from parakeet.data import DataCargo, DatasetMixin
+from parakeet.data import DistributedSampler, BatchSampler
 from scipy.io.wavfile import read
 
 
@@ -27,7 +26,7 @@ class Dataset(ljspeech.LJSpeech):
         return audio
 
 
-class Subset(dataset.Dataset): 
+class Subset(DatasetMixin):
     def __init__(self, dataset, indices, valid):
         self.dataset = dataset
         self.indices = indices
@@ -36,18 +35,18 @@ class Subset(dataset.Dataset):
 
     def get_mel(self, audio):
         spectrogram = librosa.core.stft(
-            audio, n_fft=self.config.fft_size,
+            audio,
+            n_fft=self.config.fft_size,
             hop_length=self.config.fft_window_shift,
             win_length=self.config.fft_window_size)
-        spectrogram_magnitude = np.abs(spectrogram) 
+        spectrogram_magnitude = np.abs(spectrogram)
 
         # mel_filter_bank shape: [n_mels, 1 + n_fft/2]
-        mel_filter_bank = librosa.filters.mel(
-            sr=self.config.sample_rate,
-            n_fft=self.config.fft_size,
-            n_mels=self.config.mel_bands,
-            fmin=self.config.mel_fmin,
-            fmax=self.config.mel_fmax)
+        mel_filter_bank = librosa.filters.mel(sr=self.config.sample_rate,
+                                              n_fft=self.config.fft_size,
+                                              n_mels=self.config.mel_bands,
+                                              fmin=self.config.mel_fmin,
+                                              fmax=self.config.mel_fmax)
         # mel shape: [n_mels, num_frames]
         mel = np.dot(mel_filter_bank, spectrogram_magnitude)
 
@@ -67,13 +66,14 @@ class Subset(dataset.Dataset):
             pass
         else:
             # audio shape: [len]
-            if audio.shape[0] >= segment_length:  
+            if audio.shape[0] >= segment_length:
                 max_audio_start = audio.shape[0] - segment_length
                 audio_start = random.randint(0, max_audio_start)
-                audio = audio[audio_start : (audio_start + segment_length)]
+                audio = audio[audio_start:(audio_start + segment_length)]
             else:
                 audio = np.pad(audio, (0, segment_length - audio.shape[0]),
-                    mode='constant', constant_values=0)
+                               mode='constant',
+                               constant_values=0)
 
         # Normalize audio to the [-1, 1] range.
         audio = audio.astype(np.float32) / 32768.0
@@ -109,17 +109,17 @@ class LJSpeech:
 
         # Train dataset.
         trainset = Subset(ds, train_indices, valid=False)
-        sampler = DistributedSampler(len(trainset), nranks, rank) 
+        sampler = DistributedSampler(len(trainset), nranks, rank)
         total_bs = config.batch_size
         assert total_bs % nranks == 0
-        train_sampler = BatchSampler(sampler, total_bs // nranks,
-            drop_last=True)
+        train_sampler = BatchSampler(
+            sampler, total_bs // nranks, drop_last=True)
         trainloader = DataCargo(trainset, batch_sampler=train_sampler)
 
         trainreader = fluid.io.PyReader(capacity=50, return_list=True)
         trainreader.decorate_batch_generator(trainloader, place)
         self.trainloader = (data for _ in iter(int, 1)
-            for data in trainreader())
+                            for data in trainreader())
 
         # Valid dataset.
         validset = Subset(ds, valid_indices, valid=True)
@@ -127,5 +127,5 @@ class LJSpeech:
         validloader = DataCargo(validset, batch_size=1, shuffle=False)
 
         validreader = fluid.io.PyReader(capacity=20, return_list=True)
-        validreader.decorate_batch_generator(validloader, place) 
+        validreader.decorate_batch_generator(validloader, place)
         self.validloader = validreader
