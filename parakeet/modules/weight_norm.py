@@ -113,13 +113,6 @@ class WeightNormWrapper(dg.Layer):
             return getattr(
                 object.__getattribute__(self, "_sub_layers")["layer"], key)
 
-    def __setattr__(self, name, value):
-        if name == "_param_attr" or name == "_bias_attr":
-            print(name)
-            setattr(self.layer, name, value)
-        else:
-            super().__setattr__(name, value)
-
 
 def Linear(input_dim,
            output_dim,
