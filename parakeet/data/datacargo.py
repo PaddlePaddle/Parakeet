@@ -1,3 +1,4 @@
+import six
 from .sampler import SequentialSampler, RandomSampler, BatchSampler
 
 
@@ -84,7 +85,11 @@ class DataIterator(object):
         return minibatch
 
     def _next_index(self):
-        return next(self._sampler_iter)
+        if six.PY3:
+            return next(self._sampler_iter)
+        else:
+            # six.PY2
+            return self._sampler_iter.next()
 
     def __len__(self):
         return len(self._index_sampler)
