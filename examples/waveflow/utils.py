@@ -84,7 +84,6 @@ def add_config_options_to_parser(parser):
 
 
 def add_yaml_config(config):
-    print(config)
     with open(config.config, 'rt') as f:
         yaml_cfg = ruamel.yaml.safe_load(f)
     cfg_vars = vars(config)

@@ -152,7 +152,8 @@ class WaveFlow():
         sample = config.sample
 
         output = "{}/{}/iter-{}".format(config.output, config.name, iteration)
-        os.makedirs(output, exist_ok=True)
+        if not os.path.exists(output):
+            os.makedirs(output)
 
         mels_list = [mels for _, mels in self.validloader()]
         if sample is not None:
