@@ -28,22 +28,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Train a deepvoice 3 model with LJSpeech dataset.")
     parser.add_argument("-c", "--config", type=str, help="experimrnt config")
-    parser.add_argument("-s",
-                        "--data",
-                        type=str,
-                        default="/workspace/datasets/LJSpeech-1.1/",
-                        help="The path of the LJSpeech dataset.")
+    parser.add_argument(
+        "-s",
+        "--data",
+        type=str,
+        default="/workspace/datasets/LJSpeech-1.1/",
+        help="The path of the LJSpeech dataset.")
     parser.add_argument("-r", "--resume", type=str, help="checkpoint to load")
-    parser.add_argument("-o",
-                        "--output",
-                        type=str,
-                        default="result",
-                        help="The directory to save result.")
-    parser.add_argument("-g",
-                        "--device",
-                        type=int,
-                        default=-1,
-                        help="device to use")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default="result",
+        help="The directory to save result.")
+    parser.add_argument(
+        "-g", "--device", type=int, default=-1, help="device to use")
     args, _ = parser.parse_known_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
@@ -84,18 +83,16 @@ if __name__ == "__main__":
     train_config = config["train"]
     batch_size = train_config["batch_size"]
     text_lengths = [len(example[2]) for example in meta]
-    sampler = PartialyRandomizedSimilarTimeLengthSampler(
-        text_lengths, batch_size)
+    sampler = PartialyRandomizedSimilarTimeLengthSampler(text_lengths,
+                                                         batch_size)
 
     # some hyperparameters affect how we process data, so create a data collector!
     model_config = config["model"]
     downsample_factor = model_config["downsample_factor"]
     r = model_config["outputs_per_step"]
     collector = DataCollector(downsample_factor=downsample_factor, r=r)
-    ljspeech_loader = DataCargo(ljspeech,
-                                batch_fn=collector,
-                                batch_size=batch_size,
-                                sampler=sampler)
+    ljspeech_loader = DataCargo(
+        ljspeech, batch_fn=collector, batch_size=batch_size, sampler=sampler)
 
     # =========================model=========================
     if args.device == -1:
@@ -131,15 +128,14 @@ if __name__ == "__main__":
         window_ahead = model_config["window_ahead"]
         key_projection = model_config["key_projection"]
         value_projection = model_config["value_projection"]
-        dv3 = make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
-                         padding_idx, embedding_std, max_positions, n_vocab,
-                         freeze_embedding, filter_size, encoder_channels,
-                         n_mels, decoder_channels, r,
-                         trainable_positional_encodings, use_memory_mask,
-                         query_position_rate, key_position_rate,
-                         window_backward, window_ahead, key_projection,
-                         value_projection, downsample_factor, linear_dim,
-                         use_decoder_states, converter_channels, dropout)
+        dv3 = make_model(
+            n_speakers, speaker_dim, speaker_embed_std, embed_dim, padding_idx,
+            embedding_std, max_positions, n_vocab, freeze_embedding,
+            filter_size, encoder_channels, n_mels, decoder_channels, r,
+            trainable_positional_encodings, use_memory_mask,
+            query_position_rate, key_position_rate, window_backward,
+            window_ahead, key_projection, value_projection, downsample_factor,
+            linear_dim, use_decoder_states, converter_channels, dropout)
 
         # =========================loss=========================
         loss_config = config["loss"]
@@ -149,13 +145,14 @@ if __name__ == "__main__":
         priority_freq_weight = loss_config["priority_freq_weight"]
         binary_divergence_weight = loss_config["binary_divergence_weight"]
         guided_attention_sigma = loss_config["guided_attention_sigma"]
-        criterion = TTSLoss(masked_weight=masked_weight,
-                            priority_bin=priority_bin,
-                            priority_weight=priority_freq_weight,
-                            binary_divergence_weight=binary_divergence_weight,
-                            guided_attention_sigma=guided_attention_sigma,
-                            downsample_factor=downsample_factor,
-                            r=r)
+        criterion = TTSLoss(
+            masked_weight=masked_weight,
+            priority_bin=priority_bin,
+            priority_weight=priority_freq_weight,
+            binary_divergence_weight=binary_divergence_weight,
+            guided_attention_sigma=guided_attention_sigma,
+            downsample_factor=downsample_factor,
+            r=r)
 
         # =========================lr_scheduler=========================
         lr_config = config["lr_scheduler"]
@@ -169,11 +166,12 @@ if __name__ == "__main__":
         beta1 = optim_config["beta1"]
         beta2 = optim_config["beta2"]
         epsilon = optim_config["epsilon"]
-        optim = fluid.optimizer.Adam(lr_scheduler,
-                                     beta1,
-                                     beta2,
-                                     epsilon=epsilon,
-                                     parameter_list=dv3.parameters())
+        optim = fluid.optimizer.Adam(
+            lr_scheduler,
+            beta1,
+            beta2,
+            epsilon=epsilon,
+            parameter_list=dv3.parameters())
         gradient_clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.1)
 
         # generation
@@ -183,8 +181,8 @@ if __name__ == "__main__":
 
         # =========================link(dataloader, paddle)=========================
         # CAUTION: it does not return a DataLoader
-        loader = fluid.io.DataLoader.from_generator(capacity=10,
-                                                    return_list=True)
+        loader = fluid.io.DataLoader.from_generator(
+            capacity=10, return_list=True)
         loader.set_batch_generator(ljspeech_loader, places=place)
 
         # tensorboard & checkpoint preparation
@@ -247,22 +245,23 @@ if __name__ == "__main__":
                 # TODO: clean code
                 # train state saving, the first sentence in the batch
                 if global_step % snap_interval == 0:
-                    save_state(state_dir,
-                               writer,
-                               global_step,
-                               mel_input=downsampled_mel_specs,
-                               mel_output=mel_outputs,
-                               lin_input=lin_specs,
-                               lin_output=linear_outputs,
-                               alignments=alignments,
-                               win_length=win_length,
-                               hop_length=hop_length,
-                               min_level_db=min_level_db,
-                               ref_level_db=ref_level_db,
-                               power=power,
-                               n_iter=n_iter,
-                               preemphasis=preemphasis,
-                               sample_rate=sample_rate)
+                    save_state(
+                        state_dir,
+                        writer,
+                        global_step,
+                        mel_input=downsampled_mel_specs,
+                        mel_output=mel_outputs,
+                        lin_input=lin_specs,
+                        lin_output=linear_outputs,
+                        alignments=alignments,
+                        win_length=win_length,
+                        hop_length=hop_length,
+                        min_level_db=min_level_db,
+                        ref_level_db=ref_level_db,
+                        power=power,
+                        n_iter=n_iter,
+                        preemphasis=preemphasis,
+                        sample_rate=sample_rate)
 
                 # evaluation
                 if global_step % eval_interval == 0:
@@ -275,27 +274,28 @@ if __name__ == "__main__":
                         "Some have accepted this as a miracle without any physical explanation.",
                     ]
                     for idx, sent in enumerate(sentences):
-                        wav, attn = eval_model(dv3, sent,
-                                               replace_pronounciation_prob,
-                                               min_level_db, ref_level_db,
-                                               power, n_iter, win_length,
-                                               hop_length, preemphasis)
+                        wav, attn = eval_model(
+                            dv3, sent, replace_pronounciation_prob,
+                            min_level_db, ref_level_db, power, n_iter,
+                            win_length, hop_length, preemphasis)
                         wav_path = os.path.join(
                             state_dir, "waveform",
                             "eval_sample_{:09d}.wav".format(global_step))
                         sf.write(wav_path, wav, sample_rate)
-                        writer.add_audio("eval_sample_{}".format(idx),
-                                         wav,
-                                         global_step,
-                                         sample_rate=sample_rate)
+                        writer.add_audio(
+                            "eval_sample_{}".format(idx),
+                            wav,
+                            global_step,
+                            sample_rate=sample_rate)
                         attn_path = os.path.join(
                             state_dir, "alignments",
                             "eval_sample_attn_{:09d}.png".format(global_step))
                         plot_alignment(attn, attn_path)
-                        writer.add_image("eval_sample_attn{}".format(idx),
-                                         cm.viridis(attn),
-                                         global_step,
-                                         dataformats="HWC")
+                        writer.add_image(
+                            "eval_sample_attn{}".format(idx),
+                            cm.viridis(attn),
+                            global_step,
+                            dataformats="HWC")
 
                 # save checkpoint
                 if global_step % save_interval == 0:

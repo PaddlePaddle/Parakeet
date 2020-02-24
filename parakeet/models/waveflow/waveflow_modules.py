@@ -3,26 +3,27 @@ import itertools
 import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
-from parakeet.modules import conv, modules, weight_norm
+from parakeet.modules import weight_norm
 
 
-def set_param_attr(layer, c_in=1):
-    if isinstance(layer, (weight_norm.Conv2DTranspose, weight_norm.Conv2D)):
-        k = np.sqrt(1.0 / (c_in * np.prod(layer._filter_size)))
+def get_param_attr(layer_type, filter_size, c_in=1):
+    if layer_type == "weight_norm":
+        k = np.sqrt(1.0 / (c_in * np.prod(filter_size)))
         weight_init = fluid.initializer.UniformInitializer(low=-k, high=k)
         bias_init = fluid.initializer.UniformInitializer(low=-k, high=k)
-    elif isinstance(layer, dg.Conv2D):
+    elif layer_type == "common":
         weight_init = fluid.initializer.ConstantInitializer(0.0)
         bias_init = fluid.initializer.ConstantInitializer(0.0)
     else:
         raise TypeError("Unsupported layer type.")
 
-    layer._param_attr = fluid.ParamAttr(initializer=weight_init)
-    layer._bias_attr = fluid.ParamAttr(initializer=bias_init)
+    param_attr = fluid.ParamAttr(initializer=weight_init)
+    bias_attr = fluid.ParamAttr(initializer=bias_init)
+    return param_attr, bias_attr
 
 
 def unfold(x, n_group):
-    length = x.shape[-1] 
+    length = x.shape[-1]
     new_shape = x.shape[:-1] + [length // n_group, n_group]
     return fluid.layers.reshape(x, new_shape)
 
@@ -48,20 +49,23 @@ class WaveFlowLoss:
 
 
 class Conditioner(dg.Layer):
-    def __init__(self, name_scope):
-        super(Conditioner, self).__init__(name_scope)
+    def __init__(self):
+        super(Conditioner, self).__init__()
         upsample_factors = [16, 16]
-        
+
         self.upsample_conv2d = []
         for s in upsample_factors:
             in_channel = 1
-            conv_trans2d = modules.Conv2DTranspose(
-                self.full_name(),
+            param_attr, bias_attr = get_param_attr(
+                "weight_norm", (3, 2 * s), c_in=in_channel)
+            conv_trans2d = weight_norm.Conv2DTranspose(
+                num_channels=in_channel,
                 num_filters=1,
                 filter_size=(3, 2 * s),
                 padding=(1, s // 2),
-                stride=(1, s))
-            set_param_attr(conv_trans2d, c_in=in_channel) 
+                stride=(1, s),
+                param_attr=param_attr,
+                bias_attr=bias_attr)
             self.upsample_conv2d.append(conv_trans2d)
 
         for i, layer in enumerate(self.upsample_conv2d):
@@ -86,8 +90,8 @@ class Conditioner(dg.Layer):
 
 
 class Flow(dg.Layer):
-    def __init__(self, name_scope, config): 
-        super(Flow, self).__init__(name_scope)
+    def __init__(self, config):
+        super(Flow, self).__init__()
         self.n_layers = config.n_layers
         self.n_channels = config.n_channels
         self.kernel_h = config.kernel_h
@@ -95,27 +99,34 @@ class Flow(dg.Layer):
 
         # Transform audio: [batch, 1, n_group, time/n_group] 
         # => [batch, n_channels, n_group, time/n_group]
+        param_attr, bias_attr = get_param_attr("weight_norm", (1, 1), c_in=1)
         self.start = weight_norm.Conv2D(
-            self.full_name(),
+            num_channels=1,
             num_filters=self.n_channels,
-            filter_size=(1, 1))
-        set_param_attr(self.start, c_in=1)
+            filter_size=(1, 1),
+            param_attr=param_attr,
+            bias_attr=bias_attr)
 
         # Initializing last layer to 0 makes the affine coupling layers
         # do nothing at first.  This helps with training stability
         # output shape: [batch, 2, n_group, time/n_group]
+        param_attr, bias_attr = get_param_attr(
+            "common", (1, 1), c_in=self.n_channels)
         self.end = dg.Conv2D(
-            self.full_name(),
+            num_channels=self.n_channels,
             num_filters=2,
-            filter_size=(1, 1))
-        set_param_attr(self.end)
+            filter_size=(1, 1),
+            param_attr=param_attr,
+            bias_attr=bias_attr)
 
         # receiptive fileds: (kernel - 1) * sum(dilations) + 1 >= squeeze
-        dilation_dict = {8:   [1, 1, 1, 1, 1, 1, 1, 1],
-                         16:  [1, 1, 1, 1, 1, 1, 1, 1],
-                         32:  [1, 2, 4, 1, 2, 4, 1, 2],
-                         64:  [1, 2, 4, 8, 16, 1, 2, 4],
-                         128: [1, 2, 4, 8, 16, 32, 64, 1]}
+        dilation_dict = {
+            8: [1, 1, 1, 1, 1, 1, 1, 1],
+            16: [1, 1, 1, 1, 1, 1, 1, 1],
+            32: [1, 2, 4, 1, 2, 4, 1, 2],
+            64: [1, 2, 4, 8, 16, 1, 2, 4],
+            128: [1, 2, 4, 8, 16, 32, 64, 1]
+        }
         self.dilation_h_list = dilation_dict[config.n_group]
 
         self.in_layers = []
@@ -123,32 +134,42 @@ class Flow(dg.Layer):
         self.res_skip_layers = []
         for i in range(self.n_layers):
             dilation_h = self.dilation_h_list[i]
-            dilation_w = 2 ** i
+            dilation_w = 2**i
 
+            param_attr, bias_attr = get_param_attr(
+                "weight_norm", (self.kernel_h, self.kernel_w),
+                c_in=self.n_channels)
             in_layer = weight_norm.Conv2D(
-                self.full_name(),
+                num_channels=self.n_channels,
                 num_filters=2 * self.n_channels,
                 filter_size=(self.kernel_h, self.kernel_w),
-                dilation=(dilation_h, dilation_w))
-            set_param_attr(in_layer, c_in=self.n_channels)
+                dilation=(dilation_h, dilation_w),
+                param_attr=param_attr,
+                bias_attr=bias_attr)
             self.in_layers.append(in_layer)
 
+            param_attr, bias_attr = get_param_attr(
+                "weight_norm", (1, 1), c_in=config.mel_bands)
             cond_layer = weight_norm.Conv2D(
-                self.full_name(),
+                num_channels=config.mel_bands,
                 num_filters=2 * self.n_channels,
-                filter_size=(1, 1))
-            set_param_attr(cond_layer, c_in=config.mel_bands)
+                filter_size=(1, 1),
+                param_attr=param_attr,
+                bias_attr=bias_attr)
             self.cond_layers.append(cond_layer)
 
             if i < self.n_layers - 1:
                 res_skip_channels = 2 * self.n_channels
             else:
                 res_skip_channels = self.n_channels
+            param_attr, bias_attr = get_param_attr(
+                "weight_norm", (1, 1), c_in=self.n_channels)
             res_skip_layer = weight_norm.Conv2D(
-                self.full_name(),
+                num_channels=self.n_channels,
                 num_filters=res_skip_channels,
-                filter_size=(1, 1))
-            set_param_attr(res_skip_layer, c_in=self.n_channels)
+                filter_size=(1, 1),
+                param_attr=param_attr,
+                bias_attr=bias_attr)
             self.res_skip_layers.append(res_skip_layer)
 
             self.add_sublayer("in_layer_{}".format(i), in_layer)
@@ -162,14 +183,14 @@ class Flow(dg.Layer):
 
         for i in range(self.n_layers):
             dilation_h = self.dilation_h_list[i]
-            dilation_w = 2 ** i
+            dilation_w = 2**i
 
             # Pad height dim (n_group): causal convolution
             # Pad width dim (time): dialated non-causal convolution
             pad_top, pad_bottom = (self.kernel_h - 1) * dilation_h, 0
-            pad_left = pad_right = int((self.kernel_w-1) * dilation_w / 2)
-            audio_pad = fluid.layers.pad2d(audio, 
-                paddings=[pad_top, pad_bottom, pad_left, pad_right])
+            pad_left = pad_right = int((self.kernel_w - 1) * dilation_w / 2)
+            audio_pad = fluid.layers.pad2d(
+                audio, paddings=[pad_top, pad_bottom, pad_left, pad_right])
 
             hidden = self.in_layers[i](audio_pad)
             cond_hidden = self.cond_layers[i](mel)
@@ -196,7 +217,7 @@ class Flow(dg.Layer):
 
         for i in range(self.n_layers):
             dilation_h = self.dilation_h_list[i]
-            dilation_w = 2 ** i
+            dilation_w = 2**i
 
             state_size = dilation_h * (self.kernel_h - 1)
             queue = queues[i]
@@ -206,7 +227,7 @@ class Flow(dg.Layer):
                     queue.append(fluid.layers.zeros_like(audio))
 
             state = queue[0:state_size]
-            state = fluid.layers.concat([*state, audio], axis=2)
+            state = fluid.layers.concat(state + [audio], axis=2)
 
             queue.pop(0)
             queue.append(audio)
@@ -214,10 +235,10 @@ class Flow(dg.Layer):
             # Pad height dim (n_group): causal convolution
             # Pad width dim (time): dialated non-causal convolution
             pad_top, pad_bottom = 0, 0
-            pad_left = int((self.kernel_w-1) * dilation_w / 2)
-            pad_right = int((self.kernel_w-1) * dilation_w / 2)
-            state = fluid.layers.pad2d(state,
-                paddings=[pad_top, pad_bottom, pad_left, pad_right])
+            pad_left = int((self.kernel_w - 1) * dilation_w / 2)
+            pad_right = int((self.kernel_w - 1) * dilation_w / 2)
+            state = fluid.layers.pad2d(
+                state, paddings=[pad_top, pad_bottom, pad_left, pad_right])
 
             hidden = self.in_layers[i](state)
             cond_hidden = self.cond_layers[i](mel)
@@ -241,20 +262,20 @@ class Flow(dg.Layer):
 
 
 class WaveFlowModule(dg.Layer):
-    def __init__(self, name_scope, config):
-        super(WaveFlowModule, self).__init__(name_scope)
+    def __init__(self, config):
+        super(WaveFlowModule, self).__init__()
         self.n_flows = config.n_flows
         self.n_group = config.n_group
         self.n_layers = config.n_layers
         assert self.n_group % 2 == 0
         assert self.n_flows % 2 == 0
 
-        self.conditioner = Conditioner(self.full_name())
+        self.conditioner = Conditioner()
         self.flows = []
         for i in range(self.n_flows):
-            flow = Flow(self.full_name(), config)
+            flow = Flow(config)
             self.flows.append(flow)
-            self.add_sublayer("flow_{}".format(i), flow) 
+            self.add_sublayer("flow_{}".format(i), flow)
 
         self.perms = []
         half = self.n_group // 2
@@ -266,7 +287,7 @@ class WaveFlowModule(dg.Layer):
                 perm[:half] = reversed(perm[:half])
                 perm[half:] = reversed(perm[half:])
             self.perms.append(perm)
-        
+
     def forward(self, audio, mel):
         mel = self.conditioner(mel)
         assert mel.shape[2] >= audio.shape[1]
@@ -277,14 +298,13 @@ class WaveFlowModule(dg.Layer):
             audio = audio[:, :pruned_len]
         if mel.shape[2] > pruned_len:
             mel = mel[:, :, :pruned_len]
-        
+
         # From [bs, mel_bands, time] to [bs, mel_bands, n_group, time/n_group]
         mel = fluid.layers.transpose(unfold(mel, self.n_group), [0, 1, 3, 2])
         # From [bs, time] to [bs, n_group, time/n_group]
         audio = fluid.layers.transpose(unfold(audio, self.n_group), [0, 2, 1])
         # [bs, 1, n_group, time/n_group] 
         audio = fluid.layers.unsqueeze(audio, 1)
-
         log_s_list = []
         for i in range(self.n_flows):
             inputs = audio[:, :, :-1, :]
@@ -305,7 +325,6 @@ class WaveFlowModule(dg.Layer):
             mel = fluid.layers.stack(mel_slices, axis=2)
 
         z = fluid.layers.squeeze(audio, [1])
-
         return z, log_s_list
 
     def synthesize(self, mel, sigma=1.0):
@@ -331,7 +350,7 @@ class WaveFlowModule(dg.Layer):
 
             for h in range(1, self.n_group):
                 inputs = audio_h
-                conds = mel[:, :, h:(h+1), :]
+                conds = mel[:, :, h:(h + 1), :]
                 outputs = self.flows[i].infer(inputs, conds, queues)
 
                 log_s = outputs[:, 0:1, :, :]
