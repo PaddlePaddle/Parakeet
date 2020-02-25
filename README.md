@@ -36,14 +36,16 @@ nltk.download("cmudict")
 ```
 
 
-## Supported models
+## Related Research
 
 - [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654)
 - [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895)
 - [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
+- [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219)
 
 ## Examples
 
-- [Train a deepvoice 3 model with ljspeech dataset](./parakeet/examples/deepvoice3)
-- [Train a transformer_tts model with ljspeech dataset](./parakeet/examples/transformer_tts)
-- [Train a fastspeech model with ljspeech dataset](./parakeet/examples/fastspeech)
+- [Train a DeepVoice3 model with ljspeech dataset](./parakeet/examples/deepvoice3)
+- [Train a TransformerTTS  model with ljspeech dataset](./parakeet/examples/transformer_tts)
+- [Train a FastSpeech model with ljspeech dataset](./parakeet/examples/fastspeech)
+- [Train a WaveFlow model with ljspeech dataset](./parakeet/examples/waveflow)

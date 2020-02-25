@@ -8,6 +8,7 @@ from paddle import fluid
 from scipy.io.wavfile import write
 
 import utils
+from parakeet.modules import weight_norm
 from .data import LJSpeech
 from .waveflow_modules import WaveFlowLoss, WaveFlowModule
 
@@ -26,6 +27,7 @@ class WaveFlow():
         self.rank = rank
         self.nranks = nranks
         self.tb_logger = tb_logger
+        self.dtype = "float16" if config.use_fp16 else "float32"
 
     def build(self, training=True):
         config = self.config
@@ -36,9 +38,9 @@ class WaveFlow():
         waveflow = WaveFlowModule(config)
 
         # Dry run once to create and initalize all necessary parameters.
-        audio = dg.to_variable(np.random.randn(1, 16000).astype(np.float32))
+        audio = dg.to_variable(np.random.randn(1, 16000).astype(self.dtype))
         mel = dg.to_variable(
-            np.random.randn(1, config.mel_bands, 63).astype(np.float32))
+            np.random.randn(1, config.mel_bands, 63).astype(self.dtype))
         waveflow(audio, mel)
 
         if training:
@@ -72,8 +74,13 @@ class WaveFlow():
                 self.rank,
                 waveflow,
                 iteration=config.iteration,
-                file_path=config.checkpoint)
+                file_path=config.checkpoint,
+                dtype=self.dtype)
             print("Rank {}: checkpoint loaded.".format(self.rank))
+
+            for layer in waveflow.sublayers():
+                if isinstance(layer, weight_norm.WeightNormWrapper):
+                    layer.remove_weight_norm()
 
             self.waveflow = waveflow
 
@@ -173,7 +180,7 @@ class WaveFlow():
                                                                     syn_time))
 
             # Denormalize audio from [-1, 1] to [-32768, 32768] int16 range.
-            audio = audio.numpy() * 32768.0
+            audio = audio.numpy().astype("float32") * 32768.0
             audio = audio.astype('int16')
             write(filename, config.sample_rate, audio)
 

@@ -109,3 +109,13 @@ python -u benchmark.py \
     --root=./data/LJSpeech-1.1 \
     --name=${ModelName} --use_gpu=true
 ```
+
+### Low-precision inference
+
+This model supports the float16 low-precsion inference. By appending the argument
+
+```bash
+    --use_fp16=true
+```
+
+to the command of synthesis and benchmarking, one can experience the fast speed of low-precision inference.

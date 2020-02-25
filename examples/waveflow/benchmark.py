@@ -24,9 +24,14 @@ def add_options_to_parser(parser):
 
     parser.add_argument(
         '--use_gpu',
-        type=bool,
+        type=utils.str2bool,
         default=True,
         help="option to use gpu training")
+    parser.add_argument(
+        '--use_fp16',
+        type=utils.str2bool,
+        default=True,
+        help="option to use fp16 for inference")
 
     parser.add_argument(
         '--iteration',

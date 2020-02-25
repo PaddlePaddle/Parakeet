@@ -127,4 +127,6 @@ if __name__ == "__main__":
     # the preceding update will be overwritten by the following one.
     config = parser.parse_args()
     config = utils.add_yaml_config(config)
+    # Force to use fp32 in model training
+    vars(config)["use_fp16"] = False
     train(config)

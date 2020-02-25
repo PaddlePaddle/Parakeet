@@ -1,5 +1,4 @@
 import itertools
-
 import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
@@ -49,7 +48,7 @@ class WaveFlowLoss:
 
 
 class Conditioner(dg.Layer):
-    def __init__(self):
+    def __init__(self, dtype):
         super(Conditioner, self).__init__()
         upsample_factors = [16, 16]
 
@@ -65,7 +64,8 @@ class Conditioner(dg.Layer):
                 padding=(1, s // 2),
                 stride=(1, s),
                 param_attr=param_attr,
-                bias_attr=bias_attr)
+                bias_attr=bias_attr,
+                dtype="float32")
             self.upsample_conv2d.append(conv_trans2d)
 
         for i, layer in enumerate(self.upsample_conv2d):
@@ -74,19 +74,30 @@ class Conditioner(dg.Layer):
     def forward(self, x):
         x = fluid.layers.unsqueeze(x, 1)
         for layer in self.upsample_conv2d:
-            x = fluid.layers.leaky_relu(layer(x), alpha=0.4)
+            in_dtype = x.dtype
+            if in_dtype == fluid.core.VarDesc.VarType.FP16:
+                x = fluid.layers.cast(x, "float32")
+            x = layer(x)
+            if in_dtype == fluid.core.VarDesc.VarType.FP16:
+                x = fluid.layers.cast(x, "float16")
+            x = fluid.layers.leaky_relu(x, alpha=0.4)
 
-        return fluid.layers.squeeze(x, [1])
+        return fluid.layers.reshape(x, [x.shape[0], x.shape[2], x.shape[3]])
 
     def infer(self, x):
         x = fluid.layers.unsqueeze(x, 1)
         for layer in self.upsample_conv2d:
+            in_dtype = x.dtype
+            if in_dtype == fluid.core.VarDesc.VarType.FP16:
+                x = fluid.layers.cast(x, "float32")
             x = layer(x)
+            if in_dtype == fluid.core.VarDesc.VarType.FP16:
+                x = fluid.layers.cast(x, "float16")
             # Trim conv artifacts.
             time_cutoff = layer._filter_size[1] - layer._stride[1]
             x = fluid.layers.leaky_relu(x[:, :, :, :-time_cutoff], alpha=0.4)
 
-        return fluid.layers.squeeze(x, [1])
+        return fluid.layers.reshape(x, [x.shape[0], x.shape[2], x.shape[3]])
 
 
 class Flow(dg.Layer):
@@ -96,6 +107,7 @@ class Flow(dg.Layer):
         self.n_channels = config.n_channels
         self.kernel_h = config.kernel_h
         self.kernel_w = config.kernel_w
+        self.dtype = "float16" if config.use_fp16 else "float32"
 
         # Transform audio: [batch, 1, n_group, time/n_group] 
         # => [batch, n_channels, n_group, time/n_group]
@@ -105,7 +117,8 @@ class Flow(dg.Layer):
             num_filters=self.n_channels,
             filter_size=(1, 1),
             param_attr=param_attr,
-            bias_attr=bias_attr)
+            bias_attr=bias_attr,
+            dtype=self.dtype)
 
         # Initializing last layer to 0 makes the affine coupling layers
         # do nothing at first.  This helps with training stability
@@ -117,7 +130,8 @@ class Flow(dg.Layer):
             num_filters=2,
             filter_size=(1, 1),
             param_attr=param_attr,
-            bias_attr=bias_attr)
+            bias_attr=bias_attr,
+            dtype=self.dtype)
 
         # receiptive fileds: (kernel - 1) * sum(dilations) + 1 >= squeeze
         dilation_dict = {
@@ -145,7 +159,8 @@ class Flow(dg.Layer):
                 filter_size=(self.kernel_h, self.kernel_w),
                 dilation=(dilation_h, dilation_w),
                 param_attr=param_attr,
-                bias_attr=bias_attr)
+                bias_attr=bias_attr,
+                dtype=self.dtype)
             self.in_layers.append(in_layer)
 
             param_attr, bias_attr = get_param_attr(
@@ -155,7 +170,8 @@ class Flow(dg.Layer):
                 num_filters=2 * self.n_channels,
                 filter_size=(1, 1),
                 param_attr=param_attr,
-                bias_attr=bias_attr)
+                bias_attr=bias_attr,
+                dtype=self.dtype)
             self.cond_layers.append(cond_layer)
 
             if i < self.n_layers - 1:
@@ -169,7 +185,8 @@ class Flow(dg.Layer):
                 num_filters=res_skip_channels,
                 filter_size=(1, 1),
                 param_attr=param_attr,
-                bias_attr=bias_attr)
+                bias_attr=bias_attr,
+                dtype=self.dtype)
             self.res_skip_layers.append(res_skip_layer)
 
             self.add_sublayer("in_layer_{}".format(i), in_layer)
@@ -191,7 +208,6 @@ class Flow(dg.Layer):
             pad_left = pad_right = int((self.kernel_w - 1) * dilation_w / 2)
             audio_pad = fluid.layers.pad2d(
                 audio, paddings=[pad_top, pad_bottom, pad_left, pad_right])
-
             hidden = self.in_layers[i](audio_pad)
             cond_hidden = self.cond_layers[i](mel)
             in_acts = hidden + cond_hidden
@@ -239,12 +255,11 @@ class Flow(dg.Layer):
             pad_right = int((self.kernel_w - 1) * dilation_w / 2)
             state = fluid.layers.pad2d(
                 state, paddings=[pad_top, pad_bottom, pad_left, pad_right])
-
             hidden = self.in_layers[i](state)
             cond_hidden = self.cond_layers[i](mel)
             in_acts = hidden + cond_hidden
             out_acts = fluid.layers.tanh(in_acts[:, :self.n_channels, :]) * \
-                fluid.layers.sigmoid(in_acts[:, self.n_channels:, :])
+                      fluid.layers.sigmoid(in_acts[:, self.n_channels:, :])
             res_skip_acts = self.res_skip_layers[i](out_acts)
 
             if i < self.n_layers - 1:
@@ -270,7 +285,8 @@ class WaveFlowModule(dg.Layer):
         assert self.n_group % 2 == 0
         assert self.n_flows % 2 == 0
 
-        self.conditioner = Conditioner()
+        self.dtype = "float16" if config.use_fp16 else "float32"
+        self.conditioner = Conditioner(self.dtype)
         self.flows = []
         for i in range(self.n_flows):
             flow = Flow(config)
@@ -324,17 +340,21 @@ class WaveFlowModule(dg.Layer):
             mel_slices = [mel[:, :, j, :] for j in self.perms[i]]
             mel = fluid.layers.stack(mel_slices, axis=2)
 
-        z = fluid.layers.squeeze(audio, [1])
+        z = fluid.layers.reshape(
+            audio, [audio.shape[0], audio.shape[2], audio.shape[3]])
         return z, log_s_list
 
     def synthesize(self, mel, sigma=1.0):
+        if self.dtype == "float16":
+            mel = fluid.layers.cast(mel, self.dtype)
         mel = self.conditioner.infer(mel)
         # From [bs, mel_bands, time] to [bs, mel_bands, n_group, time/n_group]
         mel = fluid.layers.transpose(unfold(mel, self.n_group), [0, 1, 3, 2])
 
         audio = fluid.layers.gaussian_random(
             shape=[mel.shape[0], 1, mel.shape[2], mel.shape[3]], std=sigma)
-
+        if self.dtype == "float16":
+            audio = fluid.layers.cast(audio, self.dtype)
         for i in reversed(range(self.n_flows)):
             # Permute over the height dimension.
             audio_slices = [audio[:, :, j, :] for j in self.perms[i]]
@@ -362,9 +382,9 @@ class WaveFlowModule(dg.Layer):
             audio = fluid.layers.concat(audio_list, axis=2)
 
         # audio: [bs, n_group, time/n_group]
-        audio = fluid.layers.squeeze(audio, [1])
+        audio = fluid.layers.reshape(
+            audio, [audio.shape[0], audio.shape[2], audio.shape[3]])
         # audio: [bs, time]
         audio = fluid.layers.reshape(
             fluid.layers.transpose(audio, [0, 2, 1]), [audio.shape[0], -1])
-
         return audio
