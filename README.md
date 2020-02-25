@@ -6,9 +6,15 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
   <img src="images/logo.png" width=450 /> <br>
 </div>
 
-## Installation
+### Setup
 
-### Install Paddlepaddle
+Make sure the library `libsndfile1` installed, e.g., on Ubuntu
+
+```bash
+sudo apt-get install libsndfile1
+```
+
+### Install PaddlePaddle
 
 See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires paddlepaddle's version is above 1.7.
 
@@ -18,12 +24,6 @@ See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. T
 # git clone this repo first
 cd Parakeet
 pip install -e .
-```
-
-### Setup
-Make sure libsndfile1 installed:
-```bash 
-sudo apt-get install libsndfile1 
 ```
 
 ### Install CMUdict for nltk
@@ -44,6 +44,6 @@ nltk.download("cmudict")
 
 ## Examples
 
-- [Train a deepvoice 3 model with ljspeech dataset](./parakeet/examples/deepvoice3) 
-- [Train a transformer_tts model with ljspeech dataset](./parakeet/examples/transformer_tts) 
-- [Train a fastspeech model with ljspeech dataset](./parakeet/examples/fastspeech) 
+- [Train a deepvoice 3 model with ljspeech dataset](./parakeet/examples/deepvoice3)
+- [Train a transformer_tts model with ljspeech dataset](./parakeet/examples/transformer_tts)
+- [Train a fastspeech model with ljspeech dataset](./parakeet/examples/fastspeech)
