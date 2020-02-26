@@ -25,3 +25,11 @@
         files: \.md$
     -   id: remove-tabs
         files: \.md$
+-   repo: local
+    hooks:
+    -   id: copyright_checker
+        name: copyright_checker
+        entry: python ./tools/copyright.hook
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
+        exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$

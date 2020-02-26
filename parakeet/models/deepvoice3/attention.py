@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from collections import namedtuple
 from paddle import fluid
@@ -19,23 +33,19 @@ class Attention(dg.Layer):
                  value_projection=True):
         super(Attention, self).__init__()
         std = np.sqrt(1 / query_dim)
-        self.query_proj = Linear(query_dim,
-                                 embed_dim,
-                                 param_attr=I.Normal(scale=std))
+        self.query_proj = Linear(
+            query_dim, embed_dim, param_attr=I.Normal(scale=std))
         if key_projection:
             std = np.sqrt(1 / embed_dim)
-            self.key_proj = Linear(embed_dim,
-                                   embed_dim,
-                                   param_attr=I.Normal(scale=std))
+            self.key_proj = Linear(
+                embed_dim, embed_dim, param_attr=I.Normal(scale=std))
         if value_projection:
             std = np.sqrt(1 / embed_dim)
-            self.value_proj = Linear(embed_dim,
-                                     embed_dim,
-                                     param_attr=I.Normal(scale=std))
+            self.value_proj = Linear(
+                embed_dim, embed_dim, param_attr=I.Normal(scale=std))
         std = np.sqrt(1 / embed_dim)
-        self.out_proj = Linear(embed_dim,
-                               query_dim,
-                               param_attr=I.Normal(scale=std))
+        self.out_proj = Linear(
+            embed_dim, query_dim, param_attr=I.Normal(scale=std))
 
         self.key_projection = key_projection
         self.value_projection = value_projection
@@ -102,9 +112,8 @@ class Attention(dg.Layer):
 
         x = F.softmax(x)
         attn_scores = x
-        x = F.dropout(x,
-                      self.dropout,
-                      dropout_implementation="upscale_in_train")
+        x = F.dropout(
+            x, self.dropout, dropout_implementation="upscale_in_train")
         x = F.matmul(x, values)
         encoder_length = keys.shape[1]
         # CAUTION: is it wrong? let it be now

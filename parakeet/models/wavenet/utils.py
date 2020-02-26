@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import itertools
 import os
 import time
@@ -8,57 +22,82 @@ import paddle.fluid.dygraph as dg
 
 
 def add_config_options_to_parser(parser):
-    parser.add_argument('--valid_size', type=int,
-        help="size of the valid dataset")
-    parser.add_argument('--train_clip_second', type=float,
+    parser.add_argument(
+        '--valid_size', type=int, help="size of the valid dataset")
+    parser.add_argument(
+        '--train_clip_second',
+        type=float,
         help="the length of audio clip for training")
-    parser.add_argument('--sample_rate', type=int,
-        help="sampling rate of audio data file")
-    parser.add_argument('--fft_window_shift', type=int,
+    parser.add_argument(
+        '--sample_rate', type=int, help="sampling rate of audio data file")
+    parser.add_argument(
+        '--fft_window_shift',
+        type=int,
         help="the shift of fft window for each frame")
-    parser.add_argument('--fft_window_size', type=int,
+    parser.add_argument(
+        '--fft_window_size',
+        type=int,
         help="the size of fft window for each frame")
-    parser.add_argument('--fft_size', type=int,
-        help="the size of fft filter on each frame")
-    parser.add_argument('--mel_bands', type=int,
+    parser.add_argument(
+        '--fft_size', type=int, help="the size of fft filter on each frame")
+    parser.add_argument(
+        '--mel_bands',
+        type=int,
         help="the number of mel bands when calculating mel spectrograms")
 
-    parser.add_argument('--seed', type=int,
-        help="seed of random initialization for the model")
-    parser.add_argument('--batch_size', type=int,
-        help="batch size for training")
-    parser.add_argument('--test_every', type=int,
-        help="test interval during training")
-    parser.add_argument('--save_every', type=int,
+    parser.add_argument(
+        '--seed', type=int, help="seed of random initialization for the model")
+    parser.add_argument(
+        '--batch_size', type=int, help="batch size for training")
+    parser.add_argument(
+        '--test_every', type=int, help="test interval during training")
+    parser.add_argument(
+        '--save_every',
+        type=int,
         help="checkpointing interval during training")
-    parser.add_argument('--max_iterations', type=int,
-        help="maximum training iterations")
+    parser.add_argument(
+        '--max_iterations', type=int, help="maximum training iterations")
 
-    parser.add_argument('--layers', type=int,
-        help="number of dilated convolution layers")
-    parser.add_argument('--kernel_width', type=int,
-        help="dilated convolution kernel width")
-    parser.add_argument('--dilation_block', type=list,
-        help="dilated convolution kernel width")
+    parser.add_argument(
+        '--layers', type=int, help="number of dilated convolution layers")
+    parser.add_argument(
+        '--kernel_width', type=int, help="dilated convolution kernel width")
+    parser.add_argument(
+        '--dilation_block', type=list, help="dilated convolution kernel width")
     parser.add_argument('--residual_channels', type=int)
     parser.add_argument('--skip_channels', type=int)
-    parser.add_argument('--loss_type', type=str,
-        help="mix-gaussian-pdf or softmax")
-    parser.add_argument('--num_channels', type=int, default=None,
+    parser.add_argument(
+        '--loss_type', type=str, help="mix-gaussian-pdf or softmax")
+    parser.add_argument(
+        '--num_channels',
+        type=int,
+        default=None,
         help="number of channels for softmax output")
-    parser.add_argument('--num_mixtures', type=int, default=None,
+    parser.add_argument(
+        '--num_mixtures',
+        type=int,
+        default=None,
         help="number of gaussian mixtures for gaussian output")
-    parser.add_argument('--log_scale_min', type=float, default=None,
+    parser.add_argument(
+        '--log_scale_min',
+        type=float,
+        default=None,
         help="minimum clip value of log variance of gaussian output")
 
-    parser.add_argument('--conditioner.filter_sizes', type=list,
+    parser.add_argument(
+        '--conditioner.filter_sizes',
+        type=list,
         help="conv2d tranpose op filter sizes for building conditioner")
-    parser.add_argument('--conditioner.upsample_factors', type=list,
+    parser.add_argument(
+        '--conditioner.upsample_factors',
+        type=list,
         help="list of upsample factors for building conditioner")
 
     parser.add_argument('--learning_rate', type=float)
     parser.add_argument('--gradient_max_norm', type=float)
-    parser.add_argument('--anneal.every', type=int,
+    parser.add_argument(
+        '--anneal.every',
+        type=int,
         help="step interval for annealing learning rate")
     parser.add_argument('--anneal.rate', type=float)
 
@@ -113,8 +152,12 @@ def save_latest_checkpoint(checkpoint_dir, iteration):
         handle.write("model_checkpoint_path: step-{}".format(iteration))
 
 
-def load_parameters(checkpoint_dir, rank, model, optimizer=None,
-                    iteration=None, file_path=None):
+def load_parameters(checkpoint_dir,
+                    rank,
+                    model,
+                    optimizer=None,
+                    iteration=None,
+                    file_path=None):
     if file_path is None:
         if iteration is None:
             iteration = load_latest_checkpoint(checkpoint_dir, rank)
@@ -128,7 +171,7 @@ def load_parameters(checkpoint_dir, rank, model, optimizer=None,
     if optimizer and optimizer_dict:
         optimizer.set_dict(optimizer_dict)
         print("[checkpoint] Rank {}: loaded optimizer state from {}".format(
-              rank, file_path))
+            rank, file_path))
 
 
 def save_latest_parameters(checkpoint_dir, iteration, model, optimizer=None):

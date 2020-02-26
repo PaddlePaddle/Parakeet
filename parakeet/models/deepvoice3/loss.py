@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from numba import jit
 
@@ -31,9 +45,7 @@ def guided_attention(N, max_N, T, max_T, g):
     return W
 
 
-def guided_attentions(encoder_lengths,
-                      decoder_lengths,
-                      max_decoder_len,
+def guided_attentions(encoder_lengths, decoder_lengths, max_decoder_len,
                       g=0.2):
     B = len(encoder_lengths)
     max_input_len = encoder_lengths.max()
@@ -93,9 +105,8 @@ class TTSLoss(object):
     def binary_divergence(self, prediction, target, mask):
         flattened_prediction = F.reshape(prediction, [-1, 1])
         flattened_target = F.reshape(target, [-1, 1])
-        flattened_loss = F.log_loss(flattened_prediction,
-                                    flattened_target,
-                                    epsilon=1e-8)
+        flattened_loss = F.log_loss(
+            flattened_prediction, flattened_target, epsilon=1e-8)
         bin_div = fluid.layers.reshape(flattened_loss, prediction.shape)
 
         w = self.masked_weight
@@ -163,23 +174,20 @@ class TTSLoss(object):
         max_mel_steps = max_frames // self.downsample_factor
         max_decoder_steps = max_mel_steps // self.r
 
-        decoder_mask = F.sequence_mask(n_frames // self.downsample_factor //
-                                       self.r,
-                                       max_decoder_steps,
-                                       dtype="float32")
-        mel_mask = F.sequence_mask(n_frames // self.downsample_factor,
-                                   max_mel_steps,
-                                   dtype="float32")
+        decoder_mask = F.sequence_mask(
+            n_frames // self.downsample_factor // self.r,
+            max_decoder_steps,
+            dtype="float32")
+        mel_mask = F.sequence_mask(
+            n_frames // self.downsample_factor, max_mel_steps, dtype="float32")
         lin_mask = F.sequence_mask(n_frames, max_frames, dtype="float32")
 
         if compute_lin_loss:
             lin_hyp = lin_hyp[:, :-self.time_shift, :]
             lin_ref = lin_ref[:, self.time_shift:, :]
             lin_mask = lin_mask[:, self.time_shift:, :]
-            lin_l1_loss = self.l1_loss(lin_hyp,
-                                       lin_ref,
-                                       lin_mask,
-                                       priority_bin=self.priority_bin)
+            lin_l1_loss = self.l1_loss(
+                lin_hyp, lin_ref, lin_mask, priority_bin=self.priority_bin)
             lin_bce_loss = self.binary_divergence(lin_hyp, lin_ref, lin_mask)
             lin_loss = self.binary_divergence_weight * lin_bce_loss \
                      + (1 - self.binary_divergence_weight) * lin_l1_loss
@@ -197,9 +205,10 @@ class TTSLoss(object):
             total_loss += mel_loss
 
         if compute_attn_loss:
-            attn_loss = self.attention_loss(
-                attn_hyp, input_lengths.numpy(),
-                n_frames.numpy() // (self.downsample_factor * self.r))
+            attn_loss = self.attention_loss(attn_hyp,
+                                            input_lengths.numpy(),
+                                            n_frames.numpy() //
+                                            (self.downsample_factor * self.r))
             total_loss += attn_loss
 
         if compute_done_loss:

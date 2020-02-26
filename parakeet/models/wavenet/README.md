@@ -2,7 +2,7 @@
 
 Paddle fluid implementation of WaveNet, a deep generative model of raw audio waveforms.
 WaveNet model is originally proposed in [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499).
-Our implementation is based on the WaveNet architecture described in [ClariNet: Parallel Wave Generation in End-to-End Text-to-Speech](https://arxiv.org/abs/1807.07281) and can provide various output distributions, including single Gaussian, mixture of Gaussian, and softmax with linearly quantized channels. 
+Our implementation is based on the WaveNet architecture described in [ClariNet: Parallel Wave Generation in End-to-End Text-to-Speech](https://arxiv.org/abs/1807.07281) and can provide various output distributions, including single Gaussian, mixture of Gaussian, and softmax with linearly quantized channels.
 
 We implement WaveNet model in paddle fluid with dynamic graph, which is convenient for flexible network architectures.
 
@@ -51,10 +51,10 @@ python -u train.py --config=${yaml} \
 #### Save and Load checkpoints
 
 Our model will save model parameters as checkpoints in `./runs/wavenet/${ModelName}/checkpoint/` every 10000 iterations by default.
-The saved checkpoint will have the format of `step-${iteration_number}.pdparams` for model parameters and `step-${iteration_number}.pdopt` for optimizer parameters. 
+The saved checkpoint will have the format of `step-${iteration_number}.pdparams` for model parameters and `step-${iteration_number}.pdopt` for optimizer parameters.
 
 There are three ways to load a checkpoint and resume training (take an example that you want to load a 500000-iteration checkpoint):
-1. Use `--checkpoint=./runs/wavenet/${ModelName}/checkpoint/step-500000` to provide a specific path to load. Note that you only need to provide the base name of the parameter file, which is `step-500000`, no extension name `.pdparams` or `.pdopt` is needed. 
+1. Use `--checkpoint=./runs/wavenet/${ModelName}/checkpoint/step-500000` to provide a specific path to load. Note that you only need to provide the base name of the parameter file, which is `step-500000`, no extension name `.pdparams` or `.pdopt` is needed.
 2. Use `--iteration=500000`.
 3. If you don't specify either `--checkpoint` or `--iteration`, the model will automatically load the latest checkpoint in `./runs/wavenet/${ModelName}/checkpoint`.
 
@@ -91,7 +91,7 @@ python -u synthesis.py --config=${yaml} \
     --root=./data/LJSpeech-1.1 \
     --name=${ModelName} --use_gpu=true \
     --output=./syn_audios \
-    --sample=${SAMPLE} 
+    --sample=${SAMPLE}
 ```
 
 In this example, `--output` specifies where to save the synthesized audios and `--sample` specifies which sample in the valid dataset (a split from the whole LJSpeech dataset, by default contains the first 16 audio samples) to synthesize based on the mel-spectrograms computed from the ground truth sample audio, e.g., `--sample=0` means to synthesize the first audio in the valid dataset.

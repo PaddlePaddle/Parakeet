@@ -1,4 +1,4 @@
-# Deepvoice 3 
+# Deepvoice 3
 
 Paddle implementation of deepvoice 3 in dynamic graph, a convolutional network based text-to-speech synthesis model. The implementation is based on [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654).
 
@@ -22,7 +22,7 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 ## Project Structure
 
 ```text
-├── data.py          data_processing 
+├── data.py          data_processing
 ├── ljspeech.yaml    (example) configuration file
 ├── sentences.txt    sample sentences
 ├── synthesis.py     script to synthesize waveform from text
@@ -50,7 +50,7 @@ optional arguments:
                         The directory to save result.
   -g DEVICE, --device DEVICE
                         device to use
-``` 
+```
 
 1. `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
 2. `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
@@ -61,7 +61,7 @@ optional arguments:
 ├── checkpoints      # checkpoint
 ├── log              # tensorboard log
 └── states           # train and evaluation results
-    ├── alignments   # attention 
+    ├── alignments   # attention
     ├── lin_spec     # linear spectrogram
     ├── mel_spec     # mel spectrogram
     └── waveform     # waveform (.wav files)
@@ -112,4 +112,3 @@ example script:
 ```bash
 python synthesis.py --config=./ljspeech.yaml --device=0 experiment/checkpoints/model_step_005000000 sentences.txt generated
 ```
-

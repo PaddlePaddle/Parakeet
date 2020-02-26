@@ -12,6 +12,3 @@ def text_to_sequence(text, p=0.0):
     from ..text import text_to_sequence
     text = text_to_sequence(text, ["basic_cleaners"])
     return text
-
-
-

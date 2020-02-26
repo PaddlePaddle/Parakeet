@@ -1,5 +1,4 @@
 # coding: utf-8
-
 """Text processing frontend
 
 All frontend module should have the following functions:

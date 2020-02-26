@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import random
 import subprocess
@@ -18,24 +32,42 @@ MAXIMUM_SAVE_TIME = 10 * 60
 
 
 def add_options_to_parser(parser):
-    parser.add_argument('--model', type=str, default='wavenet',
+    parser.add_argument(
+        '--model',
+        type=str,
+        default='wavenet',
         help="general name of the model")
-    parser.add_argument('--name', type=str,
-        help="specific name of the training model")
-    parser.add_argument('--root', type=str,
-        help="root path of the LJSpeech dataset")
+    parser.add_argument(
+        '--name', type=str, help="specific name of the training model")
+    parser.add_argument(
+        '--root', type=str, help="root path of the LJSpeech dataset")
 
-    parser.add_argument('--parallel', type=bool, default=True,
+    parser.add_argument(
+        '--parallel',
+        type=bool,
+        default=True,
         help="option to use data parallel training")
-    parser.add_argument('--use_gpu', type=bool, default=True,
+    parser.add_argument(
+        '--use_gpu',
+        type=bool,
+        default=True,
         help="option to use gpu training")
 
-    parser.add_argument('--iteration', type=int, default=None,
+    parser.add_argument(
+        '--iteration',
+        type=int,
+        default=None,
         help=("which iteration of checkpoint to load, "
               "default to load the latest checkpoint"))
-    parser.add_argument('--checkpoint', type=str, default=None,
+    parser.add_argument(
+        '--checkpoint',
+        type=str,
+        default=None,
         help="path of the checkpoint to load")
-    parser.add_argument('--slurm', type=bool, default=False,
+    parser.add_argument(
+        '--slurm',
+        type=bool,
+        default=False,
         help="whether you are using slurm to submit training jobs")
 
 
@@ -104,8 +136,8 @@ def train(config):
 
             # Check whether reaching the time limit.
             if config.slurm:
-                done = (death_time is not None and death_time - time.time() <
-                    MAXIMUM_SAVE_TIME)
+                done = (death_time is not None and
+                        death_time - time.time() < MAXIMUM_SAVE_TIME)
 
             if rank == 0 and done:
                 print("Saving progress before exiting.")
@@ -127,8 +159,8 @@ def train(config):
 
 if __name__ == "__main__":
     # Create parser.
-    parser = jsonargparse.ArgumentParser(description="Train WaveNet model",
-        formatter_class='default_argparse')
+    parser = jsonargparse.ArgumentParser(
+        description="Train WaveNet model", formatter_class='default_argparse')
     add_options_to_parser(parser)
     utils.add_config_options_to_parser(parser)
 
@@ -136,4 +168,4 @@ if __name__ == "__main__":
     # For conflicting updates to the same field, 
     # the preceding update will be overwritten by the following one.
     config = parser.parse_args()
-    train(config) 
+    train(config)

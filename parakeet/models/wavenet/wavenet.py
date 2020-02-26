@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import itertools
 import os
 import time
@@ -13,8 +27,13 @@ from wavenet_modules import WaveNetModule
 
 
 class WaveNet():
-    def __init__(self, config, checkpoint_dir, parallel=False, rank=0,
-                 nranks=1, tb_logger=None):
+    def __init__(self,
+                 config,
+                 checkpoint_dir,
+                 parallel=False,
+                 rank=0,
+                 nranks=1,
+                 tb_logger=None):
         # Process config to calculate the context size
         dilations = list(
             itertools.islice(
@@ -29,12 +48,12 @@ class WaveNet():
 
     def build(self, training=True):
         config = self.config
-        dataset = LJSpeech(config, self.nranks, self.rank) 
+        dataset = LJSpeech(config, self.nranks, self.rank)
         self.trainloader = dataset.trainloader
         self.validloader = dataset.validloader
 
         wavenet = WaveNetModule("wavenet", config, self.rank)
-        
+
         # Dry run once to create and initalize all necessary parameters.
         audio = dg.to_variable(np.random.randn(1, 20000).astype(np.float32))
         mel = dg.to_variable(
@@ -45,38 +64,44 @@ class WaveNet():
         if training:
             # Create Learning rate scheduler.
             lr_scheduler = dg.ExponentialDecay(
-                learning_rate = config.learning_rate,
-                decay_steps = config.anneal.every,
-                decay_rate = config.anneal.rate,
+                learning_rate=config.learning_rate,
+                decay_steps=config.anneal.every,
+                decay_rate=config.anneal.rate,
                 staircase=True)
-    
+
             optimizer = fluid.optimizer.AdamOptimizer(
                 learning_rate=lr_scheduler)
-    
+
             clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
                 config.gradient_max_norm)
 
             # Load parameters.
-            utils.load_parameters(self.checkpoint_dir, self.rank,
-                                  wavenet, optimizer,
-                                  iteration=config.iteration,
-                                  file_path=config.checkpoint)
+            utils.load_parameters(
+                self.checkpoint_dir,
+                self.rank,
+                wavenet,
+                optimizer,
+                iteration=config.iteration,
+                file_path=config.checkpoint)
             print("Rank {}: checkpoint loaded.".format(self.rank))
-    
+
             # Data parallelism.
             if self.parallel:
                 strategy = dg.parallel.prepare_context()
                 wavenet = dg.parallel.DataParallel(wavenet, strategy)
-    
+
             self.wavenet = wavenet
             self.optimizer = optimizer
             self.clipper = clipper
 
         else:
             # Load parameters.
-            utils.load_parameters(self.checkpoint_dir, self.rank, wavenet,
-                                  iteration=config.iteration,
-                                  file_path=config.checkpoint)
+            utils.load_parameters(
+                self.checkpoint_dir,
+                self.rank,
+                wavenet,
+                iteration=config.iteration,
+                file_path=config.checkpoint)
             print("Rank {}: checkpoint loaded.".format(self.rank))
 
             self.wavenet = wavenet
@@ -104,7 +129,9 @@ class WaveNet():
         else:
             current_lr = self.optimizer._learning_rate
 
-        self.optimizer.minimize(loss, grad_clip=self.clipper,
+        self.optimizer.minimize(
+            loss,
+            grad_clip=self.clipper,
             parameter_list=self.wavenet.parameters())
         self.wavenet.clear_gradients()
 
@@ -143,10 +170,16 @@ class WaveNet():
 
             tb = self.tb_logger
             tb.add_scalar("Valid-Avg-Loss", loss_val, iteration)
-            tb.add_audio("Teacher-Forced-Audio-0", sample_audios[0].numpy(),
-                iteration, sample_rate=self.config.sample_rate)
-            tb.add_audio("Teacher-Forced-Audio-1", sample_audios[1].numpy(),
-                iteration, sample_rate=self.config.sample_rate)
+            tb.add_audio(
+                "Teacher-Forced-Audio-0",
+                sample_audios[0].numpy(),
+                iteration,
+                sample_rate=self.config.sample_rate)
+            tb.add_audio(
+                "Teacher-Forced-Audio-1",
+                sample_audios[1].numpy(),
+                iteration,
+                sample_rate=self.config.sample_rate)
 
     @dg.no_grad
     def infer(self, iteration):
@@ -165,10 +198,9 @@ class WaveNet():
         start_time = time.time()
         syn_audio = self.wavenet.synthesize(mels_list[sample])
         syn_time = time.time() - start_time
-        print("audio shape {}, synthesis time {}".format(
-            syn_audio.shape, syn_time))
-        librosa.output.write_wav(filename, syn_audio,
-            sr=config.sample_rate)
+        print("audio shape {}, synthesis time {}".format(syn_audio.shape,
+                                                         syn_time))
+        librosa.output.write_wav(filename, syn_audio, sr=config.sample_rate)
 
     def save(self, iteration):
         utils.save_latest_parameters(self.checkpoint_dir, iteration,

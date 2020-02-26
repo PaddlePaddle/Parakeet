@@ -14,9 +14,4 @@ One of the reasons we choose to load data lazily (only load metadata before hand
 
 For deep learning practice, we typically batch examples. So the dataset should comes with a method to batch examples. Assuming the record is implemented as a tuple with several items. When an item is represented as a fix-sized array, to batch them is trivial, just `np.stack` suffices. But for array with dynamic size, padding is needed. We decide to implement a batching method for each item. Then batching a record can be implemented by these methods. For a dataset, a `_batch_examples` should be implemented. But in most cases, you can choose one from `batching.py`.
 
-That is it! 
-
-
-
-
-
+That is it!

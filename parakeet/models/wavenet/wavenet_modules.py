@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import itertools
 
 import numpy as np
@@ -16,11 +30,11 @@ def get_padding(filter_size, stride, padding_type='same'):
 
 def extract_slices(x, audio_starts, audio_length, rank):
     slices = []
-    for i in range(x.shape[0]): 
+    for i in range(x.shape[0]):
         start = audio_starts.numpy()[i]
         end = start + audio_length
         slice = fluid.layers.slice(
-            x, axes=[0, 1], starts=[i, start], ends=[i+1, end])
+            x, axes=[0, 1], starts=[i, start], ends=[i + 1, end])
         slices.append(fluid.layers.squeeze(slice, [0]))
 
     x = fluid.layers.stack(slices, axis=0)
@@ -50,7 +64,7 @@ class Conditioner(dg.Layer):
         # Register python list as parameters.
         for i, layer in enumerate(self.deconvs):
             self.add_sublayer("conv_transpose_{}".format(i), layer)
-        
+
     def forward(self, x):
         x = fluid.layers.unsqueeze(x, 1)
         for layer in self.deconvs:
@@ -62,7 +76,7 @@ class Conditioner(dg.Layer):
 class WaveNetModule(dg.Layer):
     def __init__(self, name_scope, config, rank):
         super(WaveNetModule, self).__init__(name_scope)
-        
+
         self.rank = rank
         self.conditioner = Conditioner(self.full_name(), config)
         self.dilations = list(
@@ -82,15 +96,13 @@ class WaveNetModule(dg.Layer):
                 embed_dim=config.residual_channels,
                 std=0.1)
         elif config.loss_type == "mix-gaussian-pdf":
-            self.embedding_fc = modules.FC(
-                self.full_name(),
-                in_features=1,
-                size=config.residual_channels,
-                num_flatten_dims=2,
-                relu=False)
+            self.embedding_fc = modules.FC(self.full_name(),
+                                           in_features=1,
+                                           size=config.residual_channels,
+                                           num_flatten_dims=2,
+                                           relu=False)
         else:
-            raise ValueError(
-                "loss_type {} is unsupported!".format(loss_type))
+            raise ValueError("loss_type {} is unsupported!".format(loss_type))
 
         self.dilated_causal_convs = []
         for dilation in self.dilations:
@@ -102,56 +114,49 @@ class WaveNetModule(dg.Layer):
                     num_filters=config.residual_channels,
                     filter_size=config.kernel_width,
                     dilation=dilation,
-                    causal=True
-                )
-            )
+                    causal=True))
 
         for i, layer in enumerate(self.dilated_causal_convs):
-            self.add_sublayer("dilated_causal_conv_{}".format(i), layer) 
+            self.add_sublayer("dilated_causal_conv_{}".format(i), layer)
 
-        self.fc1 = modules.FC(
-            self.full_name(),
-            in_features=config.residual_channels,
-            size=config.skip_channels,
-            num_flatten_dims=2,
-            relu=True,
-            act="relu")
+        self.fc1 = modules.FC(self.full_name(),
+                              in_features=config.residual_channels,
+                              size=config.skip_channels,
+                              num_flatten_dims=2,
+                              relu=True,
+                              act="relu")
 
-        self.fc2 = modules.FC(
-            self.full_name(),
-            in_features=config.skip_channels,
-            size=config.skip_channels,
-            num_flatten_dims=2,
-            relu=True,
-            act="relu")
+        self.fc2 = modules.FC(self.full_name(),
+                              in_features=config.skip_channels,
+                              size=config.skip_channels,
+                              num_flatten_dims=2,
+                              relu=True,
+                              act="relu")
 
         if config.loss_type == "softmax":
-            self.fc3 = modules.FC(
-                self.full_name(),
-                in_features=config.skip_channels,
-                size=config.num_channels,
-                num_flatten_dims=2,
-                relu=False)
+            self.fc3 = modules.FC(self.full_name(),
+                                  in_features=config.skip_channels,
+                                  size=config.num_channels,
+                                  num_flatten_dims=2,
+                                  relu=False)
         elif config.loss_type == "mix-gaussian-pdf":
-            self.fc3 = modules.FC(
-                self.full_name(),
-                in_features=config.skip_channels,
-                size=3 * config.num_mixtures,
-                num_flatten_dims=2,
-                relu=False)
+            self.fc3 = modules.FC(self.full_name(),
+                                  in_features=config.skip_channels,
+                                  size=3 * config.num_mixtures,
+                                  num_flatten_dims=2,
+                                  relu=False)
         else:
-            raise ValueError(
-                "loss_type {} is unsupported!".format(loss_type))
+            raise ValueError("loss_type {} is unsupported!".format(loss_type))
 
     def sample_softmax(self, mix_parameters):
         batch, length, hidden = mix_parameters.shape
         mix_param_2d = fluid.layers.reshape(mix_parameters,
-            [batch * length, hidden])
+                                            [batch * length, hidden])
         mix_param_2d = fluid.layers.softmax(mix_param_2d, axis=-1)
 
         # quantized: [batch * length]
-        quantized = fluid.layers.cast(fluid.layers.sampling_id(mix_param_2d),
-            dtype="float32")
+        quantized = fluid.layers.cast(
+            fluid.layers.sampling_id(mix_param_2d), dtype="float32")
         samples = (quantized + 0.5) * (2.0 / self.config.num_channels) - 1.0
 
         # samples: [batch * length]
@@ -162,23 +167,23 @@ class WaveNetModule(dg.Layer):
         # to [bs * len, 3 * num_mixtures].
         batch, length, hidden = mix_parameters.shape
         mix_param_2d = fluid.layers.reshape(mix_parameters,
-            [batch * length, hidden])
+                                            [batch * length, hidden])
         K = hidden // 3
 
         # Unpack the parameters of the mixture of gaussian.
-        logits_pi = mix_param_2d[:, 0 : K]
-        mu = mix_param_2d[:, K : 2*K]
-        log_s = mix_param_2d[:, 2*K : 3*K]
+        logits_pi = mix_param_2d[:, 0:K]
+        mu = mix_param_2d[:, K:2 * K]
+        log_s = mix_param_2d[:, 2 * K:3 * K]
         s = fluid.layers.exp(log_s)
 
         pi = fluid.layers.softmax(logits_pi, axis=-1)
         comp_samples = fluid.layers.sampling_id(pi)
-        
+
         row_idx = dg.to_variable(np.arange(batch * length))
         comp_samples = fluid.layers.stack([row_idx, comp_samples], axis=-1)
 
         mu_comp = fluid.layers.gather_nd(mu, comp_samples)
-        s_comp = fluid.layers.gather_nd(s, comp_samples) 
+        s_comp = fluid.layers.gather_nd(s, comp_samples)
 
         # N(0, 1) normal sample.
         u = fluid.layers.gaussian_random(shape=[batch * length])
@@ -220,8 +225,9 @@ class WaveNetModule(dg.Layer):
 
         # Calculate gaussian loss.
         targets = fluid.layers.unsqueeze(targets, -1)
-        targets = fluid.layers.expand(targets, [1, 1, self.config.num_mixtures])
-        x_std =  inv_s * (targets - mu)
+        targets = fluid.layers.expand(targets,
+                                      [1, 1, self.config.num_mixtures])
+        x_std = inv_s * (targets - mu)
         exponent = fluid.layers.exp(-0.5 * x_std * x_std)
         pdf_x = 1.0 / np.sqrt(2.0 * np.pi) * inv_s * exponent
         pdf_x = pi * pdf_x
@@ -239,9 +245,9 @@ class WaveNetModule(dg.Layer):
 
         # Slice conditioners.
         audio_length = audios.shape[1]
-        conditioner = extract_slices(full_conditioner,
-            audio_starts, audio_length, self.rank)
-    
+        conditioner = extract_slices(full_conditioner, audio_starts,
+                                     audio_length, self.rank)
+
         # input_audio, target_audio: [bs, len]
         input_audios = audios[:, :-1]
         target_audios = audios[:, 1:]
@@ -263,15 +269,16 @@ class WaveNetModule(dg.Layer):
             layer_input = self.embedding_fc(
                 fluid.layers.unsqueeze(input_audios, 2))
         else:
-            raise ValueError(
-                "loss_type {} is unsupported!".format(loss_type))
+            raise ValueError("loss_type {} is unsupported!".format(loss_type))
 
         # layer_input: [bs, res_channel, 1, len]
         layer_input = fluid.layers.unsqueeze(
-            fluid.layers.transpose(layer_input, perm=[0, 2, 1]), 2)
+            fluid.layers.transpose(
+                layer_input, perm=[0, 2, 1]), 2)
         # conditioner: [bs, mel_bands, 1, len]
         conditioner = fluid.layers.unsqueeze(
-            fluid.layers.transpose(conditioner, perm=[0, 2, 1]), 2)
+            fluid.layers.transpose(
+                conditioner, perm=[0, 2, 1]), 2)
 
         skip = None
         for i, layer in enumerate(self.dilated_causal_convs):
@@ -292,23 +299,22 @@ class WaveNetModule(dg.Layer):
             elif loss_type == "mix-gaussian-pdf":
                 sample_audios = self.sample_mix_gaussian(mix_parameters)
             else:
-                raise ValueError(
-                    "loss_type {} is unsupported!".format(loss_type))
+                raise ValueError("loss_type {} is unsupported!".format(
+                    loss_type))
 
         if loss_type == "softmax":
             loss = self.softmax_loss(target_audios, mix_parameters)
         elif loss_type == "mix-gaussian-pdf":
-            loss = self.mixture_density_loss(target_audios,
-                mix_parameters, self.log_scale_min)
+            loss = self.mixture_density_loss(target_audios, mix_parameters,
+                                             self.log_scale_min)
         else:
-            raise ValueError(
-                "loss_type {} is unsupported!".format(loss_type))
+            raise ValueError("loss_type {} is unsupported!".format(loss_type))
 
         return loss, sample_audios
 
     def synthesize(self, mels):
         self.start_new_sequence()
-        bs, n_frames, mel_bands = mels.shape 
+        bs, n_frames, mel_bands = mels.shape
         conditioner = self.conditioner(mels)
         time_steps = conditioner.shape[1]
 
@@ -335,23 +341,24 @@ class WaveNetModule(dg.Layer):
             elif loss_type == "mix-gaussian-pdf":
                 audio_input = self.embedding_fc(current_sample)
             else:
-                raise ValueError(
-                    "loss_type {} is unsupported!".format(loss_type))
+                raise ValueError("loss_type {} is unsupported!".format(
+                    loss_type))
 
             # [bs, channel, 1, 1]
             audio_input = fluid.layers.unsqueeze(
-                fluid.layers.transpose(audio_input, perm=[0, 2, 1]), 2)
+                fluid.layers.transpose(
+                    audio_input, perm=[0, 2, 1]), 2)
             # [bs, mel_bands]
             cond_input = conditioner[:, i, :]
             # [bs, mel_bands, 1, 1]
-            cond_input = fluid.layers.reshape(
-                cond_input, cond_input.shape + [1, 1])
+            cond_input = fluid.layers.reshape(cond_input,
+                                              cond_input.shape + [1, 1])
 
             skip = None
             for layer in self.dilated_causal_convs:
-                audio_input, skip = layer.add_input(
-                    audio_input, skip, cond_input)
-            
+                audio_input, skip = layer.add_input(audio_input, skip,
+                                                    cond_input)
+
             # [bs, 1, channel]
             skip = fluid.layers.transpose(
                 fluid.layers.squeeze(skip, [2]), perm=[0, 2, 1])
@@ -361,19 +368,19 @@ class WaveNetModule(dg.Layer):
             elif loss_type == "mix-gaussian-pdf":
                 sample = self.sample_mix_gaussian(mix_parameters)
             else:
-                raise ValueError(
-                    "loss_type {} is unsupported!".format(loss_type))
+                raise ValueError("loss_type {} is unsupported!".format(
+                    loss_type))
             audio_samples.append(sample)
             # [bs]
             current_sample = audio_samples[-1]
             # [bs, 1, 1]
-            current_sample = fluid.layers.reshape(current_sample,
-                current_sample.shape + [1, 1])
+            current_sample = fluid.layers.reshape(
+                current_sample, current_sample.shape + [1, 1])
 
         # syn_audio: [num_samples]
         syn_audio = fluid.layers.concat(audio_samples, axis=0).numpy()
 
-        return syn_audio        
+        return syn_audio
 
     def start_new_sequence(self):
         for layer in self.sublayers():
