@@ -45,7 +45,7 @@ nltk.download("cmudict")
 
 ## Examples
 
-- [Train a DeepVoice3 model with ljspeech dataset](./parakeet/examples/deepvoice3)
-- [Train a TransformerTTS  model with ljspeech dataset](./parakeet/examples/transformer_tts)
-- [Train a FastSpeech model with ljspeech dataset](./parakeet/examples/fastspeech)
-- [Train a WaveFlow model with ljspeech dataset](./parakeet/examples/waveflow)
+- [Train a DeepVoice3 model with ljspeech dataset](./examples/deepvoice3)
+- [Train a TransformerTTS  model with ljspeech dataset](./examples/transformer_tts)
+- [Train a FastSpeech model with ljspeech dataset](./examples/fastspeech)
+- [Train a WaveFlow model with ljspeech dataset](./examples/waveflow)
