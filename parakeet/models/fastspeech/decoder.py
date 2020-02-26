@@ -1,7 +1,21 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
 from parakeet.models.transformer_tts.utils import *
 from parakeet.models.fastspeech.fft_block import FFTBlock
+
 
 class Decoder(dg.Layer):
     def __init__(self,
@@ -18,16 +32,29 @@ class Decoder(dg.Layer):
         super(Decoder, self).__init__()
 
         n_position = len_max_seq + 1
-        self.pos_inp = get_sinusoid_encoding_table(n_position, d_model, padding_idx=0)
-        self.position_enc = dg.Embedding(size=[n_position, d_model],
-                                 padding_idx=0,
-                                 param_attr=fluid.ParamAttr(
-                                     initializer=fluid.initializer.NumpyArrayInitializer(self.pos_inp),
-                                     trainable=False))
-        self.layer_stack = [FFTBlock(d_model, d_inner, n_head, d_k, d_v, fft_conv1d_kernel, fft_conv1d_padding, dropout=dropout) for _ in range(n_layers)] 
+        self.pos_inp = get_sinusoid_encoding_table(
+            n_position, d_model, padding_idx=0)
+        self.position_enc = dg.Embedding(
+            size=[n_position, d_model],
+            padding_idx=0,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    self.pos_inp),
+                trainable=False))
+        self.layer_stack = [
+            FFTBlock(
+                d_model,
+                d_inner,
+                n_head,
+                d_k,
+                d_v,
+                fft_conv1d_kernel,
+                fft_conv1d_padding,
+                dropout=dropout) for _ in range(n_layers)
+        ]
         for i, layer in enumerate(self.layer_stack):
             self.add_sublayer('fft_{}'.format(i), layer)
-    
+
     def forward(self, enc_seq, enc_pos):
         """
         Decoder layer of FastSpeech.

@@ -1,30 +1,46 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import librosa
 import soundfile as sf
 import numpy as np
 import scipy.io
 import scipy.signal
 
+
 class AudioProcessor(object):
-    def __init__(self,
-                 sample_rate=None, # int, sampling rate
-                 num_mels=None, # int, bands of mel spectrogram
-                 min_level_db=None, # float, minimum level db
-                 ref_level_db=None, # float, reference level db
-                 n_fft=None, # int: number of samples in a frame for stft
-                 win_length=None, # int: the same meaning with n_fft
-                 hop_length=None, # int: number of samples between neighboring frame
-                 power=None, # float:power to raise before griffin-lim
-                 preemphasis=None, # float: preemphasis coefficident
-                 signal_norm=None, # 
-                 symmetric_norm=False, # bool, apply clip norm in [-max_norm, max_form]
-                 max_norm=None, # float, max norm
-                 mel_fmin=None, # int: mel spectrogram's minimum frequency
-                 mel_fmax=None, # int: mel spectrogram's maximum frequency
-                 clip_norm=True, # bool: clip spectrogram's norm
-                 griffin_lim_iters=None, # int:
-                 do_trim_silence=False, # bool: trim silence
-                 sound_norm=False,
-                 **kwargs):
+    def __init__(
+            self,
+            sample_rate=None,  # int, sampling rate
+            num_mels=None,  # int, bands of mel spectrogram
+            min_level_db=None,  # float, minimum level db
+            ref_level_db=None,  # float, reference level db
+            n_fft=None,  # int: number of samples in a frame for stft
+            win_length=None,  # int: the same meaning with n_fft
+            hop_length=None,  # int: number of samples between neighboring frame
+            power=None,  # float:power to raise before griffin-lim
+            preemphasis=None,  # float: preemphasis coefficident
+            signal_norm=None,  # 
+            symmetric_norm=False,  # bool, apply clip norm in [-max_norm, max_form]
+            max_norm=None,  # float, max norm
+            mel_fmin=None,  # int: mel spectrogram's minimum frequency
+            mel_fmax=None,  # int: mel spectrogram's maximum frequency
+            clip_norm=True,  # bool: clip spectrogram's norm
+            griffin_lim_iters=None,  # int:
+            do_trim_silence=False,  # bool: trim silence
+            sound_norm=False,
+            **kwargs):
         self.sample_rate = sample_rate
         self.num_mels = num_mels
         self.min_level_db = min_level_db
@@ -34,8 +50,8 @@ class AudioProcessor(object):
         self.n_fft = n_fft
         self.win_length = win_length or n_fft
         # hop length defaults to 1/4 window_length
-        self.hop_length = hop_length or 0.25 * self.win_length 
-        
+        self.hop_length = hop_length or 0.25 * self.win_length
+
         self.power = power
         self.preemphasis = float(preemphasis)
 
@@ -52,7 +68,8 @@ class AudioProcessor(object):
         self.do_trim_silence = do_trim_silence
 
         self.sound_norm = sound_norm
-        self.num_freq, self.frame_length_ms, self.frame_shift_ms = self._stft_parameters()
+        self.num_freq, self.frame_length_ms, self.frame_shift_ms = self._stft_parameters(
+        )
 
     def _stft_parameters(self):
         """compute frame length and hop length in ms"""
@@ -65,44 +82,54 @@ class AudioProcessor(object):
         """object repr"""
         cls_name_str = self.__class__.__name__
         members = vars(self)
-        dict_str = "\n".join(["  {}: {},".format(k, v) for k, v in members.items()])
+        dict_str = "\n".join(
+            ["  {}: {},".format(k, v) for k, v in members.items()])
         repr_str = "{}(\n{})\n".format(cls_name_str, dict_str)
         return repr_str
 
     def save_wav(self, path, wav):
         """save audio with scipy.io.wavfile in 16bit integers"""
         wav_norm = wav * (32767 / max(0.01, np.max(np.abs(wav))))
-        scipy.io.wavfile.write(path, self.sample_rate, wav_norm.as_type(np.int16))
+        scipy.io.wavfile.write(path, self.sample_rate,
+                               wav_norm.as_type(np.int16))
 
     def load_wav(self, path, sr=None):
         """load wav -> trim_silence -> rescale"""
 
         x, sr = librosa.load(path, sr=None)
-        assert self.sample_rate == sr, "audio sample rate: {}Hz != processor sample rate: {}Hz".format(sr, self.sample_rate)
+        assert self.sample_rate == sr, "audio sample rate: {}Hz != processor sample rate: {}Hz".format(
+            sr, self.sample_rate)
         if self.do_trim_silence:
             try:
                 x = self.trim_silence(x)
             except ValueError:
-                print(" [!] File cannot be trimmed for silence - {}".format(path))
+                print(" [!] File cannot be trimmed for silence - {}".format(
+                    path))
         if self.sound_norm:
-            x = x / x.max() * 0.9 # why 0.9 ?
+            x = x / x.max() * 0.9  # why 0.9 ?
         return x
 
     def trim_silence(self, wav):
         """Trim soilent parts with a threshold and 0.01s margin"""
         margin = int(self.sample_rate * 0.01)
-        wav = wav[margin: -margin]
-        trimed_wav = librosa.effects.trim(wav, top_db=60, frame_length=self.win_length, hop_length=self.hop_length)[0]
+        wav = wav[margin:-margin]
+        trimed_wav = librosa.effects.trim(
+            wav,
+            top_db=60,
+            frame_length=self.win_length,
+            hop_length=self.hop_length)[0]
         return trimed_wav
 
     def apply_preemphasis(self, x):
         if self.preemphasis == 0.:
-            raise RuntimeError(" !! Preemphasis coefficient should be positive. ")
+            raise RuntimeError(
+                " !! Preemphasis coefficient should be positive. ")
         return scipy.signal.lfilter([1., -self.preemphasis], [1.], x)
 
     def apply_inv_preemphasis(self, x):
         if self.preemphasis == 0.:
-            raise RuntimeError(" !! Preemphasis coefficient should be positive. ")
+            raise RuntimeError(
+                " !! Preemphasis coefficient should be positive. ")
         return scipy.signal.lfilter([1.], [1., -self.preemphasis], x)
 
     def _amplitude_to_db(self, x):
@@ -125,12 +152,11 @@ class AudioProcessor(object):
         """return mel basis for mel scale"""
         if self.mel_fmax is not None:
             assert self.mel_fmax <= self.sample_rate // 2
-        return librosa.filters.mel(
-            self.sample_rate, 
-            self.n_fft, 
-            n_mels=self.num_mels,
-            fmin=self.mel_fmin,
-            fmax=self.mel_fmax)
+        return librosa.filters.mel(self.sample_rate,
+                                   self.n_fft,
+                                   n_mels=self.num_mels,
+                                   fmin=self.mel_fmin,
+                                   fmax=self.mel_fmax)
 
     def _normalize(self, S):
         """put values in [0, self.max_norm] or [-self.max_norm, self,max_norm]"""
@@ -156,25 +182,29 @@ class AudioProcessor(object):
             if self.symmetric_norm:
                 if self.clip_norm:
                     S_denorm = np.clip(S_denorm, -self.max_norm, self.max_norm)
-                S_denorm = (S_denorm + self.max_norm) * (-self.min_level_db) / (2 * self.max_norm) + self.min_level_db
+                S_denorm = (S_denorm + self.max_norm) * (
+                    -self.min_level_db) / (2 * self.max_norm
+                                           ) + self.min_level_db
                 return S_denorm
             else:
                 if self.clip_norm:
                     S_denorm = np.clip(S_denorm, 0, self.max_norm)
-                S_denorm = S_denorm * (-self.min_level_db)/ self.max_norm + self.min_level_db
+                S_denorm = S_denorm * (-self.min_level_db
+                                       ) / self.max_norm + self.min_level_db
                 return S_denorm
         else:
             return S
 
     def _stft(self, y):
         return librosa.stft(
-            y=y, 
+            y=y,
             n_fft=self.n_fft,
             win_length=self.win_length,
             hop_length=self.hop_length)
 
     def _istft(self, S):
-        return librosa.istft(S, hop_length=self.hop_length, win_length=self.win_length)
+        return librosa.istft(
+            S, hop_length=self.hop_length, win_length=self.win_length)
 
     def spectrogram(self, y):
         """compute linear spectrogram(amplitude)
@@ -195,7 +225,8 @@ class AudioProcessor(object):
             D = self._stft(self.apply_preemphasis(y))
         else:
             D = self._stft(y)
-        S = self._amplitude_to_db(self._linear_to_mel(np.abs(D))) - self.ref_level_db
+        S = self._amplitude_to_db(self._linear_to_mel(np.abs(
+            D))) - self.ref_level_db
         return self._normalize(S)
 
     def inv_spectrogram(self, spectrogram):
@@ -203,16 +234,16 @@ class AudioProcessor(object):
         S = self._denormalize(spectrogram)
         S = self._db_to_amplitude(S + self.ref_level_db)
         if self.preemphasis:
-            return self.apply_inv_preemphasis(self._griffin_lim(S ** self.power))
-        return self._griffin_lim(S ** self.power)
+            return self.apply_inv_preemphasis(self._griffin_lim(S**self.power))
+        return self._griffin_lim(S**self.power)
 
     def inv_melspectrogram(self, mel_spectrogram):
         S = self._denormalize(mel_spectrogram)
         S = self._db_to_amplitude(S + self.ref_level_db)
         S = self._mel_to_linear(np.abs(S))
         if self.preemphasis:
-            return self.apply_inv_preemphasis(self._griffin_lim(S ** self.power))
-        return self._griffin_lim(S ** self.power)
+            return self.apply_inv_preemphasis(self._griffin_lim(S**self.power))
+        return self._griffin_lim(S**self.power)
 
     def out_linear_to_mel(self, linear_spec):
         """convert output linear spec to mel spec"""
@@ -222,7 +253,7 @@ class AudioProcessor(object):
         S = self._amplitude_to_db(S) - self.ref_level_db
         mel = self._normalize(S)
         return mel
-        
+
     def _griffin_lim(self, S):
         angles = np.exp(2j * np.pi * np.random.rand(*S.shape))
         S_complex = np.abs(S).astype(np.complex)
@@ -234,18 +265,18 @@ class AudioProcessor(object):
 
     @staticmethod
     def mulaw_encode(wav, qc):
-        mu = 2 ** qc - 1
+        mu = 2**qc - 1
         # wav_abs = np.minimum(np.abs(wav), 1.0)
         signal = np.sign(wav) * np.log(1 + mu * np.abs(wav)) / np.log(1. + mu)
         # Quantize signal to the specified number of levels.
         signal = (signal + 1) / 2 * mu + 0.5
-        return np.floor(signal,)
+        return np.floor(signal, )
 
     @staticmethod
     def mulaw_decode(wav, qc):
         """Recovers waveform from quantized values."""
-        mu = 2 ** qc - 1
-        x = np.sign(wav) / mu * ((1 + mu) ** np.abs(wav) - 1)
+        mu = 2**qc - 1
+        x = np.sign(wav) / mu * ((1 + mu)**np.abs(wav) - 1)
         return x
 
     @staticmethod

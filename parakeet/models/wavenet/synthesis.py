@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import random
 from pprint import pprint
@@ -12,25 +26,42 @@ from wavenet import WaveNet
 
 
 def add_options_to_parser(parser):
-    parser.add_argument('--model', type=str, default='wavenet',
+    parser.add_argument(
+        '--model',
+        type=str,
+        default='wavenet',
         help="general name of the model")
-    parser.add_argument('--name', type=str,
-        help="specific name of the training model")
-    parser.add_argument('--root', type=str,
-        help="root path of the LJSpeech dataset")
+    parser.add_argument(
+        '--name', type=str, help="specific name of the training model")
+    parser.add_argument(
+        '--root', type=str, help="root path of the LJSpeech dataset")
 
-    parser.add_argument('--use_gpu', type=bool, default=True,
+    parser.add_argument(
+        '--use_gpu',
+        type=bool,
+        default=True,
         help="option to use gpu training")
 
-    parser.add_argument('--iteration', type=int, default=None,
+    parser.add_argument(
+        '--iteration',
+        type=int,
+        default=None,
         help=("which iteration of checkpoint to load, "
               "default to load the latest checkpoint"))
-    parser.add_argument('--checkpoint', type=str, default=None,
+    parser.add_argument(
+        '--checkpoint',
+        type=str,
+        default=None,
         help="path of the checkpoint to load")
 
-    parser.add_argument('--output', type=str, default="./syn_audios",
+    parser.add_argument(
+        '--output',
+        type=str,
+        default="./syn_audios",
         help="path to write synthesized audio files")
-    parser.add_argument('--sample', type=int,
+    parser.add_argument(
+        '--sample',
+        type=int,
         help="which of the valid samples to synthesize audio")
 
 
@@ -52,7 +83,7 @@ def synthesize(config):
         fluid.default_startup_program().random_seed = seed
         fluid.default_main_program().random_seed = seed
         print("Random Seed: ", seed)
-        
+
         # Build model.
         model = WaveNet(config, checkpoint_dir)
         model.build(training=False)

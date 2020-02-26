@@ -1,3 +1,16 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Utility module for restarting training when using SLURM.
 """
@@ -45,8 +58,8 @@ def parse_time(text):
     try:
         return parse_hours(hours) * 3600 + int(minutes) * 60 + int(seconds)
     except ValueError as e:
-        raise ValueError("Error parsing time {}. Got error {}.".format(
-            text, str(e)))
+        raise ValueError("Error parsing time {}. Got error {}.".format(text,
+                                                                       str(e)))
 
 
 def restart_command():
@@ -76,8 +89,10 @@ def restart_command():
     gres, partition = info.get("Gres"), info.get("Partition")
     stderr, stdout = info.get("StdErr"), info.get("StdOut")
     job_name = info.get("JobName")
-    command = ["sbatch", "--job-name={}".format(job_name),
-               "--ntasks={}".format(num_tasks)]
+    command = [
+        "sbatch", "--job-name={}".format(job_name),
+        "--ntasks={}".format(num_tasks)
+    ]
 
     if partition:
         command.extend(["--partition", partition])
@@ -98,12 +113,13 @@ def restart_command():
     dist_setting = ['-m', 'paddle.distributed.launch']
     wrap_cmd = ["srun", python, '-u'] + dist_setting + sys.argv
 
-    command.append(
-        "--wrap={}".format(" ".join(shlex.quote(arg) for arg in wrap_cmd)))
+    command.append("--wrap={}".format(" ".join(
+        shlex.quote(arg) for arg in wrap_cmd)))
     time_limit_string = info["TimeLimit"]
     if time_limit_string.lower() == "unlimited":
-        print("UNLIMITED detected: restart OFF, infinite learning ON.",
-              flush=True)
+        print(
+            "UNLIMITED detected: restart OFF, infinite learning ON.",
+            flush=True)
         return command, None
     time_limit = parse_time(time_limit_string)
     runtime = parse_time(info["RunTime"])

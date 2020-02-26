@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from collections import namedtuple
 
@@ -33,14 +47,16 @@ class Encoder(dg.Layer):
         self.dropout = dropout
         if n_speakers > 1:
             std = np.sqrt((1 - dropout) / speaker_dim)
-            self.sp_proj1 = Linear(speaker_dim,
-                                   embed_dim,
-                                   act="softsign",
-                                   param_attr=I.Normal(scale=std))
-            self.sp_proj2 = Linear(speaker_dim,
-                                   embed_dim,
-                                   act="softsign",
-                                   param_attr=I.Normal(scale=std))
+            self.sp_proj1 = Linear(
+                speaker_dim,
+                embed_dim,
+                act="softsign",
+                param_attr=I.Normal(scale=std))
+            self.sp_proj2 = Linear(
+                speaker_dim,
+                embed_dim,
+                act="softsign",
+                param_attr=I.Normal(scale=std))
         self.n_speakers = n_speakers
 
         self.convolutions = dg.LayerList()
@@ -51,31 +67,34 @@ class Encoder(dg.Layer):
             if in_channels != out_channels:
                 std = np.sqrt(std_mul / in_channels)
                 self.convolutions.append(
-                    Conv1D(in_channels,
-                           out_channels,
-                           1,
-                           act="relu",
-                           param_attr=I.Normal(scale=std)))
+                    Conv1D(
+                        in_channels,
+                        out_channels,
+                        1,
+                        act="relu",
+                        param_attr=I.Normal(scale=std)))
                 in_channels = out_channels
                 std_mul = 2.0
 
             self.convolutions.append(
-                Conv1DGLU(n_speakers,
-                          speaker_dim,
-                          in_channels,
-                          out_channels,
-                          filter_size,
-                          dilation,
-                          std_mul,
-                          dropout,
-                          causal=False,
-                          residual=True))
+                Conv1DGLU(
+                    n_speakers,
+                    speaker_dim,
+                    in_channels,
+                    out_channels,
+                    filter_size,
+                    dilation,
+                    std_mul,
+                    dropout,
+                    causal=False,
+                    residual=True))
             in_channels = out_channels
             std_mul = 4.0
 
         std = np.sqrt(std_mul * (1 - dropout) / in_channels)
         self.convolutions.append(
-            Conv1D(in_channels, embed_dim, 1, param_attr=I.Normal(scale=std)))
+            Conv1D(
+                in_channels, embed_dim, 1, param_attr=I.Normal(scale=std)))
 
     def forward(self, x, speaker_embed=None):
         """
@@ -96,9 +115,8 @@ class Encoder(dg.Layer):
                 representation for values.
         """
         x = self.embed(x)
-        x = F.dropout(x,
-                      self.dropout,
-                      dropout_implementation="upscale_in_train")
+        x = F.dropout(
+            x, self.dropout, dropout_implementation="upscale_in_train")
         x = F.transpose(x, [0, 2, 1])
 
         if self.n_speakers > 1 and speaker_embed is not None:

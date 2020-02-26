@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from itertools import chain
 
@@ -19,44 +33,45 @@ def upsampling_4x_blocks(n_speakers, speaker_dim, target_channels, dropout):
             2,
             stride=2,
             param_attr=I.Normal(scale=np.sqrt(1 / (2 * target_channels)))),
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=1,
-                  std_mul=1.,
-                  dropout=dropout),
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=3,
-                  std_mul=4.,
-                  dropout=dropout),
-        Conv1DTranspose(
+        Conv1DGLU(
+            n_speakers,
+            speaker_dim,
             target_channels,
             target_channels,
-            2,
-            stride=2,
-            param_attr=I.Normal(scale=np.sqrt(4. / (2 * target_channels)))),
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=1,
-                  std_mul=1.,
-                  dropout=dropout),
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=3,
-                  std_mul=4.,
-                  dropout=dropout)
+            3,
+            dilation=1,
+            std_mul=1.,
+            dropout=dropout), Conv1DGLU(
+                n_speakers,
+                speaker_dim,
+                target_channels,
+                target_channels,
+                3,
+                dilation=3,
+                std_mul=4.,
+                dropout=dropout), Conv1DTranspose(
+                    target_channels,
+                    target_channels,
+                    2,
+                    stride=2,
+                    param_attr=I.Normal(scale=np.sqrt(
+                        4. / (2 * target_channels)))), Conv1DGLU(
+                            n_speakers,
+                            speaker_dim,
+                            target_channels,
+                            target_channels,
+                            3,
+                            dilation=1,
+                            std_mul=1.,
+                            dropout=dropout), Conv1DGLU(
+                                n_speakers,
+                                speaker_dim,
+                                target_channels,
+                                target_channels,
+                                3,
+                                dilation=3,
+                                std_mul=4.,
+                                dropout=dropout)
     ]
     return upsampling_convolutions
 
@@ -69,36 +84,38 @@ def upsampling_2x_blocks(n_speakers, speaker_dim, target_channels, dropout):
             2,
             stride=2,
             param_attr=I.Normal(scale=np.sqrt(1. / (2 * target_channels)))),
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=1,
-                  std_mul=1.,
-                  dropout=dropout),
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=3,
-                  std_mul=4.,
-                  dropout=dropout)
+        Conv1DGLU(
+            n_speakers,
+            speaker_dim,
+            target_channels,
+            target_channels,
+            3,
+            dilation=1,
+            std_mul=1.,
+            dropout=dropout), Conv1DGLU(
+                n_speakers,
+                speaker_dim,
+                target_channels,
+                target_channels,
+                3,
+                dilation=3,
+                std_mul=4.,
+                dropout=dropout)
     ]
     return upsampling_convolutions
 
 
 def upsampling_1x_blocks(n_speakers, speaker_dim, target_channels, dropout):
     upsampling_convolutions = [
-        Conv1DGLU(n_speakers,
-                  speaker_dim,
-                  target_channels,
-                  target_channels,
-                  3,
-                  dilation=3,
-                  std_mul=4.,
-                  dropout=dropout)
+        Conv1DGLU(
+            n_speakers,
+            speaker_dim,
+            target_channels,
+            target_channels,
+            3,
+            dilation=3,
+            std_mul=4.,
+            dropout=dropout)
     ]
     return upsampling_convolutions
 
@@ -108,6 +125,7 @@ class Converter(dg.Layer):
     Vocoder that transforms mel spectrogram (or ecoder hidden states) 
     to waveform.
     """
+
     def __init__(self,
                  n_speakers,
                  speaker_dim,
@@ -161,33 +179,36 @@ class Converter(dg.Layer):
                 std = np.sqrt(std_mul / in_channels)
                 # CAUTION: relu
                 self.convolutions.append(
-                    Conv1D(in_channels,
-                           out_channels,
-                           1,
-                           act="relu",
-                           param_attr=I.Normal(scale=std)))
+                    Conv1D(
+                        in_channels,
+                        out_channels,
+                        1,
+                        act="relu",
+                        param_attr=I.Normal(scale=std)))
                 in_channels = out_channels
                 std_mul = 2.0
             self.convolutions.append(
-                Conv1DGLU(n_speakers,
-                          speaker_dim,
-                          in_channels,
-                          out_channels,
-                          filter_size,
-                          dilation=dilation,
-                          std_mul=std_mul,
-                          dropout=dropout))
+                Conv1DGLU(
+                    n_speakers,
+                    speaker_dim,
+                    in_channels,
+                    out_channels,
+                    filter_size,
+                    dilation=dilation,
+                    std_mul=std_mul,
+                    dropout=dropout))
             in_channels = out_channels
             std_mul = 4.0
 
         # final conv proj, channel transformed to linear dim
         std = np.sqrt(std_mul * (1 - dropout) / in_channels)
         # CAUTION: sigmoid
-        self.last_conv_proj = Conv1D(in_channels,
-                                     linear_dim,
-                                     1,
-                                     act="sigmoid",
-                                     param_attr=I.Normal(scale=std))
+        self.last_conv_proj = Conv1D(
+            in_channels,
+            linear_dim,
+            1,
+            act="sigmoid",
+            param_attr=I.Normal(scale=std))
 
     def forward(self, x, speaker_embed=None):
         """

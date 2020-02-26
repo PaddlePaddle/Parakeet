@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import six
 import numpy as np
 
@@ -9,8 +23,7 @@ class DatasetMixin(object):
         if isinstance(index, slice):
             start, stop, step = index.indices(len(self))
             return [
-                self.get_example(i)
-                for i in six.moves.range(start, stop, step)
+                self.get_example(i) for i in six.moves.range(start, stop, step)
             ]
         elif isinstance(index, (list, np.ndarray)):
             return [self.get_example(i) for i in index]
@@ -180,8 +193,7 @@ class ChainDataset(DatasetMixin):
 
     def get_example(self, i):
         if i < 0:
-            raise IndexError(
-                "ChainDataset doesnot support negative indexing.")
+            raise IndexError("ChainDataset doesnot support negative indexing.")
 
         for dataset in self._datasets:
             if i < len(dataset):
