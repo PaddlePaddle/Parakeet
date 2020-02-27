@@ -49,3 +49,7 @@ nltk.download("cmudict")
 - [Train a TransformerTTS  model with ljspeech dataset](./examples/transformer_tts)
 - [Train a FastSpeech model with ljspeech dataset](./examples/fastspeech)
 - [Train a WaveFlow model with ljspeech dataset](./examples/waveflow)
+
+## Copyright and License
+
+Parakeet is provided under the [Apache-2.0 license](LICENSE).
