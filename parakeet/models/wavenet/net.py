@@ -57,7 +57,7 @@ class UpsampleNet(dg.Layer):
     """
 
     def __init__(self, upscale_factors=[16, 16]):
-        super().__init__()
+        super(UpsampleNet, self).__init__()
         self.upscale_factors = list(upscale_factors)
         self.upsample_convs = dg.LayerList()
         for i, factor in enumerate(upscale_factors):
@@ -92,7 +92,7 @@ class UpsampleNet(dg.Layer):
 # AutoRegressive Model
 class ConditionalWavenet(dg.Layer):
     def __init__(self, encoder: UpsampleNet, decoder: WaveNet):
-        super().__init__()
+        super(ConditionalWavenet, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
 

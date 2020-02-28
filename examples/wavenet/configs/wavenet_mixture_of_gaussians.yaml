@@ -1,5 +1,4 @@
 data:
-  root: "/workspace/datasets/LJSpeech-1.1/"
   batch_size: 4
   train_clip_seconds: 0.5
   sample_rate: 22050
