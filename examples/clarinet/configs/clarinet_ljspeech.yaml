@@ -43,8 +43,8 @@ train:
   anneal_interval: 200000
   gradient_max_norm: 100.0
 
-  checkpoint_interval: 10
-  eval_interval: 10
+  checkpoint_interval: 1000
+  eval_interval: 1000
   
   max_iterations: 2000000
 
