@@ -28,21 +28,18 @@ Train the model using train.py, follow the usage displayed by `python train.py -
 
 ```text
 usage: train.py [-h] [--config CONFIG] [--device DEVICE] [--output OUTPUT]
-                [--data DATA] [--resume RESUME] [--conditioner CONDITIONER]
-                [--teacher TEACHER]
+                [--data DATA] [--resume RESUME] [--wavenet WAVENET]
 
 train a clarinet model with LJspeech and a trained wavenet model.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --config CONFIG       path of the config file.
-  --device DEVICE       device to use.
-  --output OUTPUT       path to save student.
-  --data DATA           path of LJspeech dataset.
-  --resume RESUME       checkpoint to load from.
-  --conditioner CONDITIONER
-                        conditioner checkpoint to use.
-  --teacher TEACHER     teacher checkpoint to use.
+  -h, --help         show this help message and exit
+  --config CONFIG    path of the config file.
+  --device DEVICE    device to use.
+  --output OUTPUT    path to save student.
+  --data DATA        path of LJspeech dataset.
+  --resume RESUME    checkpoint to load from.
+  --wavenet WAVENET  wavenet checkpoint to use.
 ```
 
 1. `--config` is the configuration file to use. The provided configurations can be used directly. And you can change some values in the configuration file and train the model with a different config.
@@ -57,8 +54,8 @@ optional arguments:
 ```
 
 5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
-6. `--conditioner` is the path of the checkpoint to load for the `conditioner` part of clarinet. if you do not specify `--resume`, then this must be provided.
-7. `--teacher` is the path of the checkpoint to load for the `teacher` part of clarinet. if you do not specify `--resume`, then this must be provided.
+6. `--wavenet` is the path of the wavenet checkpoint to load. if you do not specify `--resume`, then this must be provided.
+
 
 Before you start training a clarinet model, you should have trained a wavenet model with single gaussian as output distribution. Make sure the config for teacher matches that for the trained model.
 
