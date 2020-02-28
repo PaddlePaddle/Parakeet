@@ -30,7 +30,7 @@ train:
   snap_interval: 10000
   eval_interval: 10000
   
-  max_iterations: 200000
+  max_iterations: 2000000
 
 
 
