@@ -56,7 +56,7 @@ def eval_model(model, valid_loader, output_dir, sample_rate):
         audio_clips, mel_specs, audio_starts = batch
         wav_var = model.synthesis(mel_specs)
         wav_np = wav_var.numpy()[0]
-        sf.write(wav_np, path, samplerate=sample_rate)
+        sf.write(path, wav_np, samplerate=sample_rate)
         print("generated {}".format(path))
 
 

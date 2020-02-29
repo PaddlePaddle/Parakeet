@@ -134,7 +134,7 @@ class SliceDataset(DatasetMixin):
                 format(len(order), len(dataset)))
         self._order = order
 
-    def len(self):
+    def __len__(self):
         return self._size
 
     def get_example(self, i):

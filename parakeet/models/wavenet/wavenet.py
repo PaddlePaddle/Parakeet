@@ -39,7 +39,7 @@ def dequantize(quantized, n_bands):
 class ResidualBlock(dg.Layer):
     def __init__(self, residual_channels, condition_dim, filter_size,
                  dilation):
-        super().__init__()
+        super(ResidualBlock, self).__init__()
         dilated_channels = 2 * residual_channels
         # following clarinet's implementation, we do not have parametric residual
         # & skip connection.
@@ -135,7 +135,7 @@ class ResidualBlock(dg.Layer):
 class ResidualNet(dg.Layer):
     def __init__(self, n_loop, n_layer, residual_channels, condition_dim,
                  filter_size):
-        super().__init__()
+        super(ResidualNet, self).__init__()
         # double the dilation at each layer in a loop(n_loop layers)
         dilations = [2**i for i in range(n_loop)] * n_layer
         self.context_size = 1 + sum(dilations)
@@ -198,7 +198,7 @@ class ResidualNet(dg.Layer):
 class WaveNet(dg.Layer):
     def __init__(self, n_loop, n_layer, residual_channels, output_dim,
                  condition_dim, filter_size, loss_type, log_scale_min):
-        super().__init__()
+        super(WaveNet, self).__init__()
         if loss_type not in ["softmax", "mog"]:
             raise ValueError("loss_type {} is not supported".format(loss_type))
         if loss_type == "softmax":
