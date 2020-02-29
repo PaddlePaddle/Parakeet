@@ -220,9 +220,10 @@ class Flow(dg.Layer):
             # Pad width dim (time): dialated non-causal convolution
             pad_top, pad_bottom = (self.kernel_h - 1) * dilation_h, 0
             pad_left = pad_right = int((self.kernel_w - 1) * dilation_w / 2)
-            audio_pad = fluid.layers.pad2d(
-                audio, paddings=[pad_top, pad_bottom, pad_left, pad_right])
-            hidden = self.in_layers[i](audio_pad)
+            self.in_layers[i].layer._padding = [
+                pad_top, pad_bottom, pad_left, pad_right
+            ]
+            hidden = self.in_layers[i](audio)
             cond_hidden = self.cond_layers[i](mel)
             in_acts = hidden + cond_hidden
             out_acts = fluid.layers.tanh(in_acts[:, :self.n_channels, :]) * \
@@ -267,8 +268,9 @@ class Flow(dg.Layer):
             pad_top, pad_bottom = 0, 0
             pad_left = int((self.kernel_w - 1) * dilation_w / 2)
             pad_right = int((self.kernel_w - 1) * dilation_w / 2)
-            state = fluid.layers.pad2d(
-                state, paddings=[pad_top, pad_bottom, pad_left, pad_right])
+            self.in_layers[i].layer._padding = [
+                pad_top, pad_bottom, pad_left, pad_right
+            ]
             hidden = self.in_layers[i](state)
             cond_hidden = self.cond_layers[i](mel)
             in_acts = hidden + cond_hidden
