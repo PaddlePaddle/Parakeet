@@ -43,12 +43,12 @@ nltk.download("cmudict")
 
 ## Related Research
 
-- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654).
-- [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895).
-- [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
-- [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219).
-- [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499).
-- [ClariNet: Parallel Wave Generation in End-to-End Text-to-Speech](https://arxiv.org/abs/1807.07281).
+- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654)
+- [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895)
+- [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263)
+- [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219)
+- [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499)
+- [ClariNet: Parallel Wave Generation in End-to-End Text-to-Speech](https://arxiv.org/abs/1807.07281)
 
 ## Examples
 
