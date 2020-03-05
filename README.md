@@ -1,6 +1,9 @@
 # Parakeet
 
-Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on Paddle Fluid dynamic graph, with the support of many influential TTS models proposed by [Baidu Research](http://research.baidu.com) and other academic institutions.  
+Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on PaddlePaddle Fluid dynamic graph and includes many influential TTS models proposed by [Baidu Research](http://research.baidu.com) and other research groups.  
+
+In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research. WaveFlow is a small-footprint generative flow for raw audio, which is directly trained with maximum likelihood. It generates high-fidelity speech as WaveNet, while synthesizing serval orders of magnitude faster as it only requires a few sequential steps to generate very long waveforms. Furthermore, it can significantly reduce the likelihood gap that has existed between autoregressive models and flow-based models for efficient synthesis. Finally, our small-footprint WaveFlow has
+only 5.9M parameters, which is 15 times smaller than WaveGlow. It can generate 22.05 kHz high-fidelity audio around 40 times faster than real-time on a V100 GPU without engineered inference kernels.
 
 <div align="center">
   <img src="images/logo.png" width=450 /> <br>
@@ -8,7 +11,7 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 
 ### Setup
 
-Make sure the library `libsndfile1` installed, e.g., on Ubuntu
+Make sure the library `libsndfile1` is installed, e.g., on Ubuntu.
 
 ```bash
 sudo apt-get install libsndfile1
@@ -16,7 +19,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires paddlepaddle's version is above 1.7.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires paddlepaddle 1.7 or above.
 
 ### Install Parakeet
 
