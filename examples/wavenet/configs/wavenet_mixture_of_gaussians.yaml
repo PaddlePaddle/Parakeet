@@ -1,0 +1,36 @@
+data:
+  batch_size: 16
+  train_clip_seconds: 0.5
+  sample_rate: 22050
+  hop_length: 256
+  win_length: 1024
+  n_fft: 2048
+  n_mels: 80
+  valid_size: 16
+
+
+
+model:
+  upsampling_factors: [16, 16]
+  n_loop: 10
+  n_layer: 3
+  filter_size: 2
+  residual_channels: 128
+  loss_type: "mog"
+  output_dim: 30
+  log_scale_min: -9
+
+train:
+  learning_rate: 0.001
+  anneal_rate:  0.5
+  anneal_interval: 200000
+  gradient_max_norm: 100.0
+
+  checkpoint_interval: 10000
+  snap_interval: 10000
+  eval_interval: 10000
+  
+  max_iterations: 2000000
+
+
+

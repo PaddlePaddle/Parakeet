@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import numpy as np
 from matplotlib import cm
@@ -28,8 +42,9 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
                converter_channels, dropout):
     """just a simple function to create a deepvoice 3 model"""
     if n_speakers > 1:
-        spe = dg.Embedding((n_speakers, speaker_dim),
-                           param_attr=I.Normal(scale=speaker_embed_std))
+        spe = dg.Embedding(
+            (n_speakers, speaker_dim),
+            param_attr=I.Normal(scale=speaker_embed_std))
     else:
         spe = None
 
@@ -45,17 +60,17 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
         ConvSpec(h, k, 9),
         ConvSpec(h, k, 27),
         ConvSpec(h, k, 1),
-        ConvSpec(h, k, 3),
-    )
-    enc = Encoder(n_vocab,
-                  embed_dim,
-                  n_speakers,
-                  speaker_dim,
-                  padding_idx=None,
-                  embedding_weight_std=embedding_std,
-                  convolutions=encoder_convolutions,
-                  max_positions=max_positions,
-                  dropout=dropout)
+        ConvSpec(h, k, 3), )
+    enc = Encoder(
+        n_vocab,
+        embed_dim,
+        n_speakers,
+        speaker_dim,
+        padding_idx=None,
+        embedding_weight_std=embedding_std,
+        convolutions=encoder_convolutions,
+        max_positions=max_positions,
+        dropout=dropout)
     if freeze_embedding:
         freeze(enc.embed)
 
@@ -66,28 +81,28 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
         ConvSpec(h, k, 3),
         ConvSpec(h, k, 9),
         ConvSpec(h, k, 27),
-        ConvSpec(h, k, 1),
-    )
+        ConvSpec(h, k, 1), )
     attention = [True, False, False, False, True]
     force_monotonic_attention = [True, False, False, False, True]
-    dec = Decoder(n_speakers,
-                  speaker_dim,
-                  embed_dim,
-                  mel_dim,
-                  r=r,
-                  max_positions=max_positions,
-                  padding_idx=padding_idx,
-                  preattention=prenet_convolutions,
-                  convolutions=attentive_convolutions,
-                  attention=attention,
-                  dropout=dropout,
-                  use_memory_mask=use_memory_mask,
-                  force_monotonic_attention=force_monotonic_attention,
-                  query_position_rate=query_position_rate,
-                  key_position_rate=key_position_rate,
-                  window_range=WindowRange(window_behind, window_ahead),
-                  key_projection=key_projection,
-                  value_projection=value_projection)
+    dec = Decoder(
+        n_speakers,
+        speaker_dim,
+        embed_dim,
+        mel_dim,
+        r=r,
+        max_positions=max_positions,
+        padding_idx=padding_idx,
+        preattention=prenet_convolutions,
+        convolutions=attentive_convolutions,
+        attention=attention,
+        dropout=dropout,
+        use_memory_mask=use_memory_mask,
+        force_monotonic_attention=force_monotonic_attention,
+        query_position_rate=query_position_rate,
+        key_position_rate=key_position_rate,
+        window_range=WindowRange(window_behind, window_ahead),
+        key_projection=key_projection,
+        value_projection=value_projection)
     if not trainable_positional_encodings:
         freeze(dec.embed_keys_positions)
         freeze(dec.embed_query_positions)
@@ -97,15 +112,15 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
         ConvSpec(h, k, 1),
         ConvSpec(h, k, 3),
         ConvSpec(2 * h, k, 1),
-        ConvSpec(2 * h, k, 3),
-    )
-    cvt = Converter(n_speakers,
-                    speaker_dim,
-                    dec.state_dim if use_decoder_states else mel_dim,
-                    linear_dim,
-                    time_upsampling=downsample_factor,
-                    convolutions=postnet_convolutions,
-                    dropout=dropout)
+        ConvSpec(2 * h, k, 3), )
+    cvt = Converter(
+        n_speakers,
+        speaker_dim,
+        dec.state_dim if use_decoder_states else mel_dim,
+        linear_dim,
+        time_upsampling=downsample_factor,
+        convolutions=postnet_convolutions,
+        dropout=dropout)
     dv3 = DeepVoice3(enc, dec, cvt, spe, use_decoder_states)
     return dv3
 
@@ -115,8 +130,10 @@ def eval_model(model, text, replace_pronounciation_prob, min_level_db,
                ref_level_db, power, n_iter, win_length, hop_length,
                preemphasis):
     """generate waveform from text using a deepvoice 3 model"""
-    text = np.array(en.text_to_sequence(text, p=replace_pronounciation_prob),
-                    dtype=np.int64)
+    text = np.array(
+        en.text_to_sequence(
+            text, p=replace_pronounciation_prob),
+        dtype=np.int64)
     length = len(text)
     print("text sequence's length: {}".format(length))
     text_positions = np.arange(1, 1 + length)
@@ -145,10 +162,11 @@ def spec_to_waveform(spec, min_level_db, ref_level_db, power, n_iter,
     """
     denoramlized = np.clip(spec, 0, 1) * (-min_level_db) + min_level_db
     lin_scaled = np.exp((denoramlized + ref_level_db) / 20 * np.log(10))
-    wav = librosa.griffinlim(lin_scaled**power,
-                             n_iter=n_iter,
-                             hop_length=hop_length,
-                             win_length=win_length)
+    wav = librosa.griffinlim(
+        lin_scaled**power,
+        n_iter=n_iter,
+        hop_length=hop_length,
+        win_length=win_length)
     if preemphasis > 0:
         wav = signal.lfilter([1.], [1., -preemphasis], wav)
     return wav
@@ -225,28 +243,30 @@ def save_state(save_dir,
         plt.colorbar()
         plt.title("mel_input")
         plt.savefig(
-            os.path.join(path,
-                         "target_mel_spec_step{:09d}.png".format(global_step)))
+            os.path.join(path, "target_mel_spec_step{:09d}.png".format(
+                global_step)))
         plt.close()
 
-        writer.add_image("target/mel_spec",
-                         cm.viridis(mel_input),
-                         global_step,
-                         dataformats="HWC")
+        writer.add_image(
+            "target/mel_spec",
+            cm.viridis(mel_input),
+            global_step,
+            dataformats="HWC")
 
         plt.figure(figsize=(10, 3))
         display.specshow(mel_output)
         plt.colorbar()
         plt.title("mel_output")
         plt.savefig(
-            os.path.join(
-                path, "predicted_mel_spec_step{:09d}.png".format(global_step)))
+            os.path.join(path, "predicted_mel_spec_step{:09d}.png".format(
+                global_step)))
         plt.close()
 
-        writer.add_image("predicted/mel_spec",
-                         cm.viridis(mel_output),
-                         global_step,
-                         dataformats="HWC")
+        writer.add_image(
+            "predicted/mel_spec",
+            cm.viridis(mel_output),
+            global_step,
+            dataformats="HWC")
 
     if lin_input is not None and lin_output is not None:
         lin_input = lin_input[0].numpy().T
@@ -258,28 +278,30 @@ def save_state(save_dir,
         plt.colorbar()
         plt.title("mel_input")
         plt.savefig(
-            os.path.join(path,
-                         "target_lin_spec_step{:09d}.png".format(global_step)))
+            os.path.join(path, "target_lin_spec_step{:09d}.png".format(
+                global_step)))
         plt.close()
 
-        writer.add_image("target/lin_spec",
-                         cm.viridis(lin_input),
-                         global_step,
-                         dataformats="HWC")
+        writer.add_image(
+            "target/lin_spec",
+            cm.viridis(lin_input),
+            global_step,
+            dataformats="HWC")
 
         plt.figure(figsize=(10, 3))
         display.specshow(lin_output)
         plt.colorbar()
         plt.title("mel_input")
         plt.savefig(
-            os.path.join(
-                path, "predicted_lin_spec_step{:09d}.png".format(global_step)))
+            os.path.join(path, "predicted_lin_spec_step{:09d}.png".format(
+                global_step)))
         plt.close()
 
-        writer.add_image("predicted/lin_spec",
-                         cm.viridis(lin_output),
-                         global_step,
-                         dataformats="HWC")
+        writer.add_image(
+            "predicted/lin_spec",
+            cm.viridis(lin_output),
+            global_step,
+            dataformats="HWC")
 
     if alignments is not None and len(alignments.shape) == 4:
         path = os.path.join(save_dir, "alignments")
@@ -290,10 +312,11 @@ def save_state(save_dir,
                 "train_attn_layer_{}_step_{}.png".format(idx, global_step))
             plot_alignment(attn_layer, save_path)
 
-            writer.add_image("train_attn/layer_{}".format(idx),
-                             cm.viridis(attn_layer),
-                             global_step,
-                             dataformats="HWC")
+            writer.add_image(
+                "train_attn/layer_{}".format(idx),
+                cm.viridis(attn_layer),
+                global_step,
+                dataformats="HWC")
 
     if lin_output is not None:
         wav = spec_to_waveform(lin_output, min_level_db, ref_level_db, power,
@@ -302,7 +325,5 @@ def save_state(save_dir,
         save_path = os.path.join(
             path, "train_sample_step_{:09d}.wav".format(global_step))
         sf.write(save_path, wav, sample_rate)
-        writer.add_audio("train_sample",
-                         wav,
-                         global_step,
-                         sample_rate=sample_rate)
+        writer.add_audio(
+            "train_sample", wav, global_step, sample_rate=sample_rate)

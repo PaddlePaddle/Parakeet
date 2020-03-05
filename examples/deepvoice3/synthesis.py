@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import argparse
 import ruamel.yaml
@@ -22,11 +36,8 @@ if __name__ == "__main__":
     parser.add_argument("checkpoint", type=str, help="checkpoint to load.")
     parser.add_argument("text", type=str, help="text file to synthesize")
     parser.add_argument("output_path", type=str, help="path to save results")
-    parser.add_argument("-g",
-                        "--device",
-                        type=int,
-                        default=-1,
-                        help="device to use")
+    parser.add_argument(
+        "-g", "--device", type=int, default=-1, help="device to use")
 
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
@@ -76,15 +87,14 @@ if __name__ == "__main__":
         window_ahead = model_config["window_ahead"]
         key_projection = model_config["key_projection"]
         value_projection = model_config["value_projection"]
-        dv3 = make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
-                         padding_idx, embedding_std, max_positions, n_vocab,
-                         freeze_embedding, filter_size, encoder_channels,
-                         n_mels, decoder_channels, r,
-                         trainable_positional_encodings, use_memory_mask,
-                         query_position_rate, key_position_rate,
-                         window_backward, window_ahead, key_projection,
-                         value_projection, downsample_factor, linear_dim,
-                         use_decoder_states, converter_channels, dropout)
+        dv3 = make_model(
+            n_speakers, speaker_dim, speaker_embed_std, embed_dim, padding_idx,
+            embedding_std, max_positions, n_vocab, freeze_embedding,
+            filter_size, encoder_channels, n_mels, decoder_channels, r,
+            trainable_positional_encodings, use_memory_mask,
+            query_position_rate, key_position_rate, window_backward,
+            window_ahead, key_projection, value_projection, downsample_factor,
+            linear_dim, use_decoder_states, converter_channels, dropout)
 
         summary(dv3)
         state, _ = dg.load_dygraph(args.checkpoint)

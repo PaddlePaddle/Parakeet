@@ -1,3 +1,16 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -13,8 +26,15 @@ from parakeet.data.batch import TextIDBatcher, SpecBatcher
 from parakeet.data.dataset import DatasetMixin, TransformDataset, CacheDataset
 from parakeet.models.transformer_tts.utils import *
 
+
 class LJSpeechLoader:
-    def __init__(self, config, args, nranks, rank, is_vocoder=False, shuffle=True):
+    def __init__(self,
+                 config,
+                 args,
+                 nranks,
+                 rank,
+                 is_vocoder=False,
+                 shuffle=True):
         place = fluid.CUDAPlace(rank) if args.use_gpu else fluid.CPUPlace()
 
         LJSPEECH_ROOT = Path(args.data_path)
@@ -23,15 +43,28 @@ class LJSpeechLoader:
         dataset = TransformDataset(metadata, transformer)
         dataset = CacheDataset(dataset)
 
-        sampler = DistributedSampler(len(metadata), nranks, rank, shuffle=shuffle)
+        sampler = DistributedSampler(
+            len(metadata), nranks, rank, shuffle=shuffle)
 
         assert args.batch_size % nranks == 0
         each_bs = args.batch_size // nranks
         if is_vocoder:
-            dataloader = DataCargo(dataset, sampler=sampler, batch_size=each_bs, shuffle=shuffle, batch_fn=batch_examples_vocoder, drop_last=True)
+            dataloader = DataCargo(
+                dataset,
+                sampler=sampler,
+                batch_size=each_bs,
+                shuffle=shuffle,
+                batch_fn=batch_examples_vocoder,
+                drop_last=True)
         else:
-            dataloader = DataCargo(dataset, sampler=sampler, batch_size=each_bs, shuffle=shuffle, batch_fn=batch_examples, drop_last=True)
-        
+            dataloader = DataCargo(
+                dataset,
+                sampler=sampler,
+                batch_size=each_bs,
+                shuffle=shuffle,
+                batch_fn=batch_examples,
+                drop_last=True)
+
         self.reader = fluid.io.DataLoader.from_generator(
             capacity=32,
             iterable=True,
@@ -66,13 +99,13 @@ class LJSpeech(object):
         super(LJSpeech, self).__init__()
         self.config = config
         self._ljspeech_processor = audio.AudioProcessor(
-            sample_rate=config['audio']['sr'], 
-            num_mels=config['audio']['num_mels'], 
-            min_level_db=config['audio']['min_level_db'], 
-            ref_level_db=config['audio']['ref_level_db'], 
-            n_fft=config['audio']['n_fft'], 
-            win_length= config['audio']['win_length'], 
-            hop_length= config['audio']['hop_length'],
+            sample_rate=config['audio']['sr'],
+            num_mels=config['audio']['num_mels'],
+            min_level_db=config['audio']['min_level_db'],
+            ref_level_db=config['audio']['ref_level_db'],
+            n_fft=config['audio']['n_fft'],
+            win_length=config['audio']['win_length'],
+            hop_length=config['audio']['hop_length'],
             power=config['audio']['power'],
             preemphasis=config['audio']['preemphasis'],
             signal_norm=True,
@@ -84,7 +117,7 @@ class LJSpeech(object):
             griffin_lim_iters=60,
             do_trim_silence=False,
             sound_norm=False)
-            
+
     def __call__(self, metadatum):
         """All the code for generating an Example from a metadatum. If you want a 
         different preprocessing pipeline, you can override this method. 
@@ -93,13 +126,15 @@ class LJSpeech(object):
         method.
         """
         fname, raw_text, normalized_text = metadatum
-        
+
         # load -> trim -> preemphasis -> stft -> magnitude -> mel_scale -> logscale -> normalize
         wav = self._ljspeech_processor.load_wav(str(fname))
         mag = self._ljspeech_processor.spectrogram(wav).astype(np.float32)
         mel = self._ljspeech_processor.melspectrogram(wav).astype(np.float32)
-        phonemes = np.array(g2p.en.text_to_sequence(normalized_text), dtype=np.int64)
-        return (mag, mel, phonemes) # maybe we need to implement it as a map in the future
+        phonemes = np.array(
+            g2p.en.text_to_sequence(normalized_text), dtype=np.int64)
+        return (mag, mel, phonemes
+                )  # maybe we need to implement it as a map in the future
 
 
 def batch_examples(batch):
@@ -112,52 +147,81 @@ def batch_examples(batch):
     pos_mels = []
     for data in batch:
         _, mel, text = data
-        mel_inputs.append(np.concatenate([np.zeros([mel.shape[0], 1], np.float32), mel[:,:-1]], axis=-1))
+        mel_inputs.append(
+            np.concatenate(
+                [np.zeros([mel.shape[0], 1], np.float32), mel[:, :-1]],
+                axis=-1))
         mel_lens.append(mel.shape[1])
         text_lens.append(len(text))
         pos_texts.append(np.arange(1, len(text) + 1))
         pos_mels.append(np.arange(1, mel.shape[1] + 1))
         mels.append(mel)
         texts.append(text)
-    
+
     # Sort by text_len in descending order
-    texts = [i for i,_ in sorted(zip(texts, text_lens), key=lambda x: x[1], reverse=True)]
-    mels = [i for i,_ in sorted(zip(mels, text_lens), key=lambda x: x[1], reverse=True)]
-    mel_inputs = [i for i,_ in sorted(zip(mel_inputs, text_lens), key=lambda x: x[1], reverse=True)]
-    mel_lens = [i for i,_ in sorted(zip(mel_lens, text_lens), key=lambda x: x[1], reverse=True)]
-    pos_texts = [i for i,_ in sorted(zip(pos_texts, text_lens), key=lambda x: x[1], reverse=True)]
-    pos_mels = [i for i,_ in sorted(zip(pos_mels, text_lens), key=lambda x: x[1], reverse=True)]
+    texts = [
+        i
+        for i, _ in sorted(
+            zip(texts, text_lens), key=lambda x: x[1], reverse=True)
+    ]
+    mels = [
+        i
+        for i, _ in sorted(
+            zip(mels, text_lens), key=lambda x: x[1], reverse=True)
+    ]
+    mel_inputs = [
+        i
+        for i, _ in sorted(
+            zip(mel_inputs, text_lens), key=lambda x: x[1], reverse=True)
+    ]
+    mel_lens = [
+        i
+        for i, _ in sorted(
+            zip(mel_lens, text_lens), key=lambda x: x[1], reverse=True)
+    ]
+    pos_texts = [
+        i
+        for i, _ in sorted(
+            zip(pos_texts, text_lens), key=lambda x: x[1], reverse=True)
+    ]
+    pos_mels = [
+        i
+        for i, _ in sorted(
+            zip(pos_mels, text_lens), key=lambda x: x[1], reverse=True)
+    ]
     text_lens = sorted(text_lens, reverse=True)
 
     # Pad sequence with largest len of the batch
-    texts = TextIDBatcher(pad_id=0)(texts)   #(B, T)
-    pos_texts = TextIDBatcher(pad_id=0)(pos_texts) #(B,T)
-    pos_mels = TextIDBatcher(pad_id=0)(pos_mels) #(B,T)
-    mels = np.transpose(SpecBatcher(pad_value=0.)(mels), axes=(0,2,1)) #(B,T,num_mels)
-    mel_inputs = np.transpose(SpecBatcher(pad_value=0.)(mel_inputs), axes=(0,2,1))#(B,T,num_mels)
+    texts = TextIDBatcher(pad_id=0)(texts)  #(B, T)
+    pos_texts = TextIDBatcher(pad_id=0)(pos_texts)  #(B,T)
+    pos_mels = TextIDBatcher(pad_id=0)(pos_mels)  #(B,T)
+    mels = np.transpose(
+        SpecBatcher(pad_value=0.)(mels), axes=(0, 2, 1))  #(B,T,num_mels)
+    mel_inputs = np.transpose(
+        SpecBatcher(pad_value=0.)(mel_inputs), axes=(0, 2, 1))  #(B,T,num_mels)
     enc_slf_mask = get_attn_key_pad_mask(pos_texts, texts).astype(np.float32)
     enc_query_mask = get_non_pad_mask(pos_texts).astype(np.float32)
-    dec_slf_mask = get_dec_attn_key_pad_mask(pos_mels,mel_inputs).astype(np.float32)
-    enc_dec_mask = get_attn_key_pad_mask(enc_query_mask[:,:,0], mel_inputs).astype(np.float32)
+    dec_slf_mask = get_dec_attn_key_pad_mask(pos_mels,
+                                             mel_inputs).astype(np.float32)
+    enc_dec_mask = get_attn_key_pad_mask(enc_query_mask[:, :, 0],
+                                         mel_inputs).astype(np.float32)
     dec_query_slf_mask = get_non_pad_mask(pos_mels).astype(np.float32)
     dec_query_mask = get_non_pad_mask(pos_mels).astype(np.float32)
 
-    return (texts, mels, mel_inputs, pos_texts, pos_mels, np.array(text_lens), np.array(mel_lens),
-            enc_slf_mask, enc_query_mask, dec_slf_mask, enc_dec_mask, dec_query_slf_mask, dec_query_mask)
+    return (texts, mels, mel_inputs, pos_texts, pos_mels, np.array(text_lens),
+            np.array(mel_lens), enc_slf_mask, enc_query_mask, dec_slf_mask,
+            enc_dec_mask, dec_query_slf_mask, dec_query_mask)
+
 
 def batch_examples_vocoder(batch):
-    mels=[]
-    mags=[]
+    mels = []
+    mags = []
     for data in batch:
         mag, mel, _ = data
         mels.append(mel)
         mags.append(mag)
 
-    mels = np.transpose(SpecBatcher(pad_value=0.)(mels), axes=(0,2,1))
-    mags = np.transpose(SpecBatcher(pad_value=0.)(mags), axes=(0,2,1))
+    mels = np.transpose(SpecBatcher(pad_value=0.)(mels), axes=(0, 2, 1))
+    mags = np.transpose(SpecBatcher(pad_value=0.)(mags), axes=(0, 2, 1))
 
     return (mels, mags)
-
-
-
-        

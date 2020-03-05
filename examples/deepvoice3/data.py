@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import csv
 from pathlib import Path
@@ -79,10 +93,11 @@ class Transform(object):
         y = signal.lfilter([1., -self.preemphasis], [1.], wav)
 
         # STFT
-        D = librosa.stft(y=y,
-                         n_fft=self.n_fft,
-                         win_length=self.win_length,
-                         hop_length=self.hop_length)
+        D = librosa.stft(
+            y=y,
+            n_fft=self.n_fft,
+            win_length=self.win_length,
+            hop_length=self.hop_length)
         S = np.abs(D)
 
         # to db and normalize to 0-1
@@ -96,11 +111,8 @@ class Transform(object):
 
         # mel scale and to db and normalize to 0-1,
         # CAUTION: pass linear scale S, not dbscaled S
-        S_mel = librosa.feature.melspectrogram(S=S,
-                                               n_mels=self.n_mels,
-                                               fmin=self.fmin,
-                                               fmax=self.fmax,
-                                               power=1.)
+        S_mel = librosa.feature.melspectrogram(
+            S=S, n_mels=self.n_mels, fmin=self.fmin, fmax=self.fmax, power=1.)
         S_mel = 20 * np.log10(np.maximum(amplitude_min,
                                          S_mel)) - self.ref_level_db
         S_mel_norm = (S_mel - self.min_level_db) / (-self.min_level_db)
@@ -148,20 +160,18 @@ class DataCollector(object):
             (mix_grapheme_phonemes, text_length, speaker_id, S_norm,
              S_mel_norm, num_frames) = example
             text_sequences.append(
-                np.pad(mix_grapheme_phonemes,
-                       (0, max_text_length - text_length)))
+                np.pad(mix_grapheme_phonemes, (0, max_text_length - text_length
+                                               )))
             lin_specs.append(
-                np.pad(S_norm,
-                       ((0, 0), (self._pad_begin,
-                                 max_frames - self._pad_begin - num_frames))))
+                np.pad(S_norm, ((0, 0), (self._pad_begin, max_frames -
+                                         self._pad_begin - num_frames))))
             mel_specs.append(
-                np.pad(S_mel_norm,
-                       ((0, 0), (self._pad_begin,
-                                 max_frames - self._pad_begin - num_frames))))
+                np.pad(S_mel_norm, ((0, 0), (self._pad_begin, max_frames -
+                                             self._pad_begin - num_frames))))
             done_flags.append(
                 np.pad(np.zeros((int(np.ceil(num_frames // self._factor)), )),
-                       (0, max_decoder_length -
-                        int(np.ceil(num_frames // self._factor))),
+                       (0, max_decoder_length - int(
+                           np.ceil(num_frames // self._factor))),
                        constant_values=1))
         text_sequences = np.array(text_sequences).astype(np.int64)
         lin_specs = np.transpose(np.array(lin_specs),

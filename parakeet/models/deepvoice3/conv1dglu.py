@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 
 from paddle import fluid
@@ -15,6 +29,7 @@ class Conv1DGLU(dg.Layer):
     has residual connection from the input x, and scale the output by 
     np.sqrt(0.5).
     """
+
     def __init__(self,
                  n_speakers,
                  speaker_dim,
@@ -50,20 +65,20 @@ class Conv1DGLU(dg.Layer):
             ), "this block uses residual connection"\
                 "the input_channes should equals num_filters"
         std = np.sqrt(std_mul * (1 - dropout) / (filter_size * in_channels))
-        self.conv = Conv1DCell(in_channels,
-                               2 * num_filters,
-                               filter_size,
-                               dilation,
-                               causal,
-                               param_attr=I.Normal(scale=std))
+        self.conv = Conv1DCell(
+            in_channels,
+            2 * num_filters,
+            filter_size,
+            dilation,
+            causal,
+            param_attr=I.Normal(scale=std))
 
         if n_speakers > 1:
             assert (speaker_dim is not None
                     ), "speaker embed should not be null in multi-speaker case"
             std = np.sqrt(1 / speaker_dim)
-            self.fc = Linear(speaker_dim,
-                             num_filters,
-                             param_attr=I.Normal(scale=std))
+            self.fc = Linear(
+                speaker_dim, num_filters, param_attr=I.Normal(scale=std))
 
     def forward(self, x, speaker_embed=None):
         """
@@ -82,9 +97,8 @@ class Conv1DGLU(dg.Layer):
                 C_out means the output channels of Conv1DGLU.
         """
         residual = x
-        x = F.dropout(x,
-                      self.dropout,
-                      dropout_implementation="upscale_in_train")
+        x = F.dropout(
+            x, self.dropout, dropout_implementation="upscale_in_train")
         x = self.conv(x)
         content, gate = F.split(x, num_or_sections=2, dim=1)
 
@@ -118,9 +132,8 @@ class Conv1DGLU(dg.Layer):
                 C_out means the output channels of Conv1DGLU.
         """
         residual = x_t
-        x_t = F.dropout(x_t,
-                        self.dropout,
-                        dropout_implementation="upscale_in_train")
+        x_t = F.dropout(
+            x_t, self.dropout, dropout_implementation="upscale_in_train")
         x_t = self.conv.add_input(x_t)
         content_t, gate_t = F.split(x_t, num_or_sections=2, dim=1)
 

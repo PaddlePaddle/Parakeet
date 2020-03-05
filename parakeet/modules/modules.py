@@ -210,8 +210,7 @@ class Conv1DGLU(dg.Layer):
         """
 
         residual = x
-        x = fluid.layers.dropout(
-            x, self.dropout)
+        x = fluid.layers.dropout(x, self.dropout)
         x = self.conv(x)
 
         content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
@@ -240,8 +239,7 @@ class Conv1DGLU(dg.Layer):
         residual = x
 
         # add step input and produce step output
-        x = fluid.layers.dropout(
-            x, self.dropout)
+        x = fluid.layers.dropout(x, self.dropout)
         x = self.conv.add_input(x)
 
         content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
@@ -535,8 +533,8 @@ class Conv1D_GU(dg.Layer):
         content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
 
         # Gated Unit.
-        x = fluid.layers.elementwise_mul(fluid.layers.sigmoid(gate),
-                                         fluid.layers.tanh(content))
+        x = fluid.layers.elementwise_mul(
+            fluid.layers.sigmoid(gate), fluid.layers.tanh(content))
 
         if skip is None:
             skip = x
@@ -570,8 +568,8 @@ class Conv1D_GU(dg.Layer):
         content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
 
         # Gated Unit.
-        x = fluid.layers.elementwise_mul(fluid.layers.sigmoid(gate),
-                                         fluid.layers.tanh(content))
+        x = fluid.layers.elementwise_mul(
+            fluid.layers.sigmoid(gate), fluid.layers.tanh(content))
 
         if skip is None:
             skip = x

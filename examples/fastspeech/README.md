@@ -57,7 +57,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 
 If you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--fastspeech_step``
 
-For more help on arguments: 
+For more help on arguments:
 ``python train.py --help``.
 
 ## Synthesis
@@ -75,5 +75,5 @@ or you can run the script file directly.
 sh synthesis.sh
 ```
 
-For more help on arguments: 
+For more help on arguments:
 ``python synthesis.py --help``.

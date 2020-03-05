@@ -50,7 +50,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 
 If you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--transformer_step``
 
-For more help on arguments: 
+For more help on arguments:
 ``python train_transformer.py --help``.
 
 ## Train Vocoder
@@ -78,7 +78,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 ```
 If you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--vocoder_step``
 
-For more help on arguments: 
+For more help on arguments:
 ``python train_vocoder.py --help``.
 
 ## Synthesis
@@ -101,5 +101,5 @@ sh synthesis.sh
 
 And the audio file will be saved in ``--sample_path``.
 
-For more help on arguments: 
+For more help on arguments:
 ``python synthesis.py --help``.

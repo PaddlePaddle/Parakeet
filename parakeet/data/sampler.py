@@ -1,3 +1,16 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 At most cases, we have non-stream dataset, which means we can random access it with __getitem__, and we can get the length of the dataset with __len__.
 
@@ -6,9 +19,9 @@ This suffices for a sampler. We implemente sampler as iterable of valid indices.
 So the sampler is only responsible for generating valid indices.
 """
 
-
 import numpy as np
 import random
+
 
 class Sampler(object):
     def __init__(self, data_source):
@@ -23,7 +36,7 @@ class Sampler(object):
 class SequentialSampler(Sampler):
     def __init__(self, data_source):
         self.data_source = data_source
-    
+
     def __iter__(self):
         return iter(range(len(self.data_source)))
 
@@ -42,12 +55,14 @@ class RandomSampler(Sampler):
                              "replacement={}".format(self.replacement))
 
         if self._num_samples is not None and not replacement:
-            raise ValueError("With replacement=False, num_samples should not be specified, "
-                             "since a random permutation will be performed.")
+            raise ValueError(
+                "With replacement=False, num_samples should not be specified, "
+                "since a random permutation will be performed.")
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError("num_samples should be a positive integer "
-                             "value, but got num_samples={}".format(self.num_samples))
+                             "value, but got num_samples={}".format(
+                                 self.num_samples))
 
     @property
     def num_samples(self):
@@ -59,7 +74,9 @@ class RandomSampler(Sampler):
     def __iter__(self):
         n = len(self.data_source)
         if self.replacement:
-            return iter(np.random.randint(0, n, size=(self.num_samples,), dtype=np.int64).tolist())
+            return iter(
+                np.random.randint(
+                    0, n, size=(self.num_samples, ), dtype=np.int64).tolist())
         return iter(np.random.permutation(n).tolist())
 
     def __len__(self):
@@ -76,7 +93,8 @@ class SubsetRandomSampler(Sampler):
         self.indices = indices
 
     def __iter__(self):
-        return (self.indices[i] for i in np.random.permutation(len(self.indices)))
+        return (self.indices[i]
+                for i in np.random.permutation(len(self.indices)))
 
     def __len__(self):
         return len(self.indices)
@@ -89,9 +107,14 @@ class PartialyRandomizedSimilarTimeLengthSampler(Sampler):
     3. Permutate mini-batchs
     """
 
-    def __init__(self, lengths, batch_size=4, batch_group_size=None,
+    def __init__(self,
+                 lengths,
+                 batch_size=4,
+                 batch_group_size=None,
                  permutate=True):
-        _lengths = np.array(lengths, dtype=np.int64) # maybe better implement length as a sort key
+        _lengths = np.array(
+            lengths,
+            dtype=np.int64)  # maybe better implement length as a sort key
         self.lengths = np.sort(_lengths)
         self.sorted_indices = np.argsort(_lengths)
 
@@ -112,20 +135,21 @@ class PartialyRandomizedSimilarTimeLengthSampler(Sampler):
         for i in range(len(indices) // batch_group_size):
             s = i * batch_group_size
             e = s + batch_group_size
-            random.shuffle(indices[s: e]) # inplace
+            random.shuffle(indices[s:e])  # inplace
 
         # Permutate batches
         if self.permutate:
             perm = np.arange(len(indices[:e]) // self.batch_size)
             random.shuffle(perm)
-            indices[:e] = indices[:e].reshape(-1, self.batch_size)[perm, :].reshape(-1)
+            indices[:e] = indices[:e].reshape(
+                -1, self.batch_size)[perm, :].reshape(-1)
 
         # Handle last elements
         s += batch_group_size
         #print(indices)
         if s < len(indices):
             random.shuffle(indices[s:])
-        
+
         return iter(indices)
 
     def __len__(self):
@@ -150,14 +174,19 @@ class WeightedRandomSampler(Sampler):
     def __init__(self, weights, num_samples, replacement):
         if not isinstance(num_samples, int) or num_samples <= 0:
             raise ValueError("num_samples should be a positive integer "
-                             "value, but got num_samples={}".format(num_samples))
+                             "value, but got num_samples={}".format(
+                                 num_samples))
         self.weights = np.array(weights, dtype=np.float64)
         self.num_samples = num_samples
         self.replacement = replacement
 
     def __iter__(self):
-        return iter(np.random.choice(len(self.weights), size=(self.num_samples, ),  
-                                     replace=self.replacement, p=self.weights).tolist())
+        return iter(
+            np.random.choice(
+                len(self.weights),
+                size=(self.num_samples, ),
+                replace=self.replacement,
+                p=self.weights).tolist())
 
     def __len__(self):
         return self.num_samples
@@ -184,7 +213,7 @@ class DistributedSampler(Sampler):
 
         # Subset samples for each trainer.
         indices = indices[self.rank:self.total_size:self.num_trainers]
-        assert len(indices) ==  self.num_samples
+        assert len(indices) == self.num_samples
 
         return iter(indices)
 
@@ -209,8 +238,7 @@ class BatchSampler(Sampler):
     def __init__(self, sampler, batch_size, drop_last):
         if not isinstance(sampler, Sampler):
             raise ValueError("sampler should be an instance of "
-                             "Sampler, but got sampler={}"
-                             .format(sampler))
+                             "Sampler, but got sampler={}".format(sampler))
         if not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("batch_size should be a positive integer value, "
                              "but got batch_size={}".format(batch_size))

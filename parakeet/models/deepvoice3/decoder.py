@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle.fluid.layers as F
 import paddle.fluid.initializer as I
@@ -80,25 +94,25 @@ def unfold_adjacent_frames(folded_frames, r):
 
 class Decoder(dg.Layer):
     def __init__(
-        self,
-        n_speakers,
-        speaker_dim,
-        embed_dim,
-        mel_dim,
-        r=1,
-        max_positions=512,
-        padding_idx=None,  # remove it!
-        preattention=(ConvSpec(128, 5, 1), ) * 4,
-        convolutions=(ConvSpec(128, 5, 1), ) * 4,
-        attention=True,
-        dropout=0.0,
-        use_memory_mask=False,
-        force_monotonic_attention=False,
-        query_position_rate=1.0,
-        key_position_rate=1.0,
-        window_range=WindowRange(-1, 3),
-        key_projection=True,
-        value_projection=True):
+            self,
+            n_speakers,
+            speaker_dim,
+            embed_dim,
+            mel_dim,
+            r=1,
+            max_positions=512,
+            padding_idx=None,  # remove it!
+            preattention=(ConvSpec(128, 5, 1), ) * 4,
+            convolutions=(ConvSpec(128, 5, 1), ) * 4,
+            attention=True,
+            dropout=0.0,
+            use_memory_mask=False,
+            force_monotonic_attention=False,
+            query_position_rate=1.0,
+            key_position_rate=1.0,
+            window_range=WindowRange(-1, 3),
+            key_projection=True,
+            value_projection=True):
         super(Decoder, self).__init__()
 
         self.dropout = dropout
@@ -111,23 +125,17 @@ class Decoder(dg.Layer):
 
         conv_channels = convolutions[0].out_channels
         # only when padding idx is 0 can we easilt handle it
-        self.embed_keys_positions = PositionEmbedding(max_positions,
-                                                      embed_dim,
-                                                      padding_idx=0)
-        self.embed_query_positions = PositionEmbedding(max_positions,
-                                                       conv_channels,
-                                                       padding_idx=0)
+        self.embed_keys_positions = PositionEmbedding(
+            max_positions, embed_dim, padding_idx=0)
+        self.embed_query_positions = PositionEmbedding(
+            max_positions, conv_channels, padding_idx=0)
 
         if n_speakers > 1:
             std = np.sqrt((1 - dropout) / speaker_dim)
-            self.speaker_proj1 = Linear(speaker_dim,
-                                        1,
-                                        act="sigmoid",
-                                        param_attr=I.Normal(scale=std))
-            self.speaker_proj2 = Linear(speaker_dim,
-                                        1,
-                                        act="sigmoid",
-                                        param_attr=I.Normal(scale=std))
+            self.speaker_proj1 = Linear(
+                speaker_dim, 1, act="sigmoid", param_attr=I.Normal(scale=std))
+            self.speaker_proj2 = Linear(
+                speaker_dim, 1, act="sigmoid", param_attr=I.Normal(scale=std))
 
         # prenet
         self.prenet = dg.LayerList()
@@ -138,24 +146,26 @@ class Decoder(dg.Layer):
                 # conv1d & relu
                 std = np.sqrt(std_mul / in_channels)
                 self.prenet.append(
-                    Conv1D(in_channels,
-                           out_channels,
-                           1,
-                           act="relu",
-                           param_attr=I.Normal(scale=std)))
+                    Conv1D(
+                        in_channels,
+                        out_channels,
+                        1,
+                        act="relu",
+                        param_attr=I.Normal(scale=std)))
                 in_channels = out_channels
                 std_mul = 2.0
             self.prenet.append(
-                Conv1DGLU(n_speakers,
-                          speaker_dim,
-                          in_channels,
-                          out_channels,
-                          filter_size,
-                          dilation,
-                          std_mul,
-                          dropout,
-                          causal=True,
-                          residual=True))
+                Conv1DGLU(
+                    n_speakers,
+                    speaker_dim,
+                    in_channels,
+                    out_channels,
+                    filter_size,
+                    dilation,
+                    std_mul,
+                    dropout,
+                    causal=True,
+                    residual=True))
             in_channels = out_channels
             std_mul = 4.0
 
@@ -184,16 +194,17 @@ class Decoder(dg.Layer):
             assert (
                 in_channels == out_channels
             ), "the stack of convolution & attention does not change channels"
-            conv_layer = Conv1DGLU(n_speakers,
-                                   speaker_dim,
-                                   in_channels,
-                                   out_channels,
-                                   filter_size,
-                                   dilation,
-                                   std_mul,
-                                   dropout,
-                                   causal=True,
-                                   residual=False)
+            conv_layer = Conv1DGLU(
+                n_speakers,
+                speaker_dim,
+                in_channels,
+                out_channels,
+                filter_size,
+                dilation,
+                std_mul,
+                dropout,
+                causal=True,
+                residual=False)
             attn_layer = Attention(
                 out_channels,
                 embed_dim,
@@ -211,10 +222,8 @@ class Decoder(dg.Layer):
 
         # 1 * 1 conv to transform channels
         std = np.sqrt(std_mul * (1 - dropout) / in_channels)
-        self.last_conv = Conv1D(in_channels,
-                                mel_dim * r,
-                                1,
-                                param_attr=I.Normal(scale=std))
+        self.last_conv = Conv1D(
+            in_channels, mel_dim * r, 1, param_attr=I.Normal(scale=std))
 
         # mel (before sigmoid) to done hat
         std = np.sqrt(1 / in_channels)
@@ -308,9 +317,8 @@ class Decoder(dg.Layer):
         # (B, C, T)
         frames = F.transpose(frames, [0, 2, 1])
         x = frames
-        x = F.dropout(x,
-                      self.dropout,
-                      dropout_implementation="upscale_in_train")
+        x = F.dropout(
+            x, self.dropout, dropout_implementation="upscale_in_train")
         # Prenet
         for layer in self.prenet:
             if isinstance(layer, Conv1DGLU):
@@ -408,14 +416,13 @@ class Decoder(dg.Layer):
             test_inputs = fold_adjacent_frames(test_inputs, self.r)
             test_inputs = F.transpose(test_inputs, [0, 2, 1])
 
-        initial_input = F.zeros((batch_size, self.mel_dim * self.r, 1),
-                                dtype=keys.dtype)
+        initial_input = F.zeros(
+            (batch_size, self.mel_dim * self.r, 1), dtype=keys.dtype)
 
         t = 0  # decoder time step
         while True:
-            frame_pos = F.fill_constant((batch_size, 1),
-                                        value=t + 1,
-                                        dtype="int64")
+            frame_pos = F.fill_constant(
+                (batch_size, 1), value=t + 1, dtype="int64")
             w = self.query_position_rate
             if self.n_speakers > 1:
                 w = w * F.squeeze(self.speaker_proj2(speaker_embed), [-1])
@@ -433,9 +440,8 @@ class Decoder(dg.Layer):
                     current_input = initial_input
 
             x_t = current_input
-            x_t = F.dropout(x_t,
-                            self.dropout,
-                            dropout_implementation="upscale_in_train")
+            x_t = F.dropout(
+                x_t, self.dropout, dropout_implementation="upscale_in_train")
 
             # Prenet
             for layer in self.prenet:
@@ -453,15 +459,15 @@ class Decoder(dg.Layer):
                     x_t = F.transpose(x_t, [0, 2, 1])
                     if frame_pos_embed is not None:
                         x_t += frame_pos_embed
-                    x_t, attn_scores = attn(
-                        x_t, (keys, values), mask,
-                        last_attended[i] if test_inputs is None else None)
+                    x_t, attn_scores = attn(x_t, (keys, values), mask,
+                                            last_attended[i]
+                                            if test_inputs is None else None)
                     x_t = F.transpose(x_t, [0, 2, 1])
                     step_attn_scores.append(attn_scores)  #(B, T_dec=1, T_enc)
                     # update last attended when necessary
                     if self.force_monotonic_attention[i]:
-                        last_attended[i] = np.argmax(attn_scores.numpy(),
-                                                     axis=-1)[0][0]
+                        last_attended[i] = np.argmax(
+                            attn_scores.numpy(), axis=-1)[0][0]
                 x_t = F.scale(residual + x_t, np.sqrt(0.5))
             if len(step_attn_scores):
                 # (B, 1, T_enc) again
@@ -485,8 +491,8 @@ class Decoder(dg.Layer):
             t += 1
 
             if test_inputs is None:
-                if F.reduce_min(done_t).numpy(
-                )[0] > 0.5 and t > self.min_decoder_steps:
+                if F.reduce_min(done_t).numpy()[
+                        0] > 0.5 and t > self.min_decoder_steps:
                     break
                 elif t > self.max_decoder_steps:
                     break

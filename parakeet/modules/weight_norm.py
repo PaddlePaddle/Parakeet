@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 from paddle import fluid
 import paddle.fluid.dygraph as dg
@@ -8,8 +22,13 @@ from parakeet.modules import customized as L
 
 def norm(param, dim, power):
     powered = F.pow(param, power)
+    in_dtype = powered.dtype
+    if in_dtype == fluid.core.VarDesc.VarType.FP16:
+        powered = F.cast(powered, "float32")
     powered_norm = F.reduce_sum(powered, dim=dim, keep_dim=False)
     norm_ = F.pow(powered_norm, 1. / power)
+    if in_dtype == fluid.core.VarDesc.VarType.FP16:
+        norm_ = F.cast(norm_, "float16")
     return norm_
 
 
@@ -46,6 +65,15 @@ def compute_weight(v, g, dim, power):
     return weight
 
 
+def assign_by_cast(i, o):
+    fluid.default_main_program().current_block().append_op(
+        type="cast",
+        inputs={"X": i},
+        outputs={"Out": o},
+        attrs={"in_dtype": i.dtype,
+               "out_dtype": o.dtype})
+
+
 class WeightNormWrapper(dg.Layer):
     def __init__(self, layer, param_name="weight", dim=0, power=2):
         super(WeightNormWrapper, self).__init__()
@@ -65,13 +93,13 @@ class WeightNormWrapper(dg.Layer):
             w_v,
             self.create_parameter(
                 shape=original_weight.shape, dtype=original_weight.dtype))
-        F.assign(original_weight, getattr(self, w_v))
+        assign_by_cast(original_weight, getattr(self, w_v))
         delattr(layer, param_name)
         temp = norm_except(getattr(self, w_v), self.dim, self.power)
         self.add_parameter(
             w_g, self.create_parameter(
                 shape=temp.shape, dtype=temp.dtype))
-        F.assign(temp, getattr(self, w_g))
+        assign_by_cast(temp, getattr(self, w_g))
 
         # also set this when setting up
         setattr(self.layer, self.param_name,

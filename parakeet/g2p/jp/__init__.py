@@ -1,6 +1,5 @@
 # coding: utf-8
 
-
 import MeCab
 import jaconv
 from random import random
@@ -30,9 +29,9 @@ def _yomi(mecab_result):
 
 
 def _mix_pronunciation(tokens, yomis, p):
-    return "".join(
-        yomis[idx] if yomis[idx] is not None and random() < p else tokens[idx]
-        for idx in range(len(tokens)))
+    return "".join(yomis[idx]
+                   if yomis[idx] is not None and random() < p else tokens[idx]
+                   for idx in range(len(tokens)))
 
 
 def mix_pronunciation(text, p):
@@ -59,8 +58,7 @@ def normalize_delimitor(text):
 
 
 def text_to_sequence(text, p=0.0):
-    for c in [" ", "　", "「", "」", "『", "』", "・", "【", "】",
-              "（", "）", "(", ")"]:
+    for c in [" ", "　", "「", "」", "『", "』", "・", "【", "】", "（", "）", "(", ")"]:
         text = text.replace(c, "")
     text = text.replace("!", "！")
     text = text.replace("?", "？")
