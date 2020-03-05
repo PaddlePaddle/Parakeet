@@ -1,14 +1,19 @@
 # Parakeet
 
-Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on Paddle Fluid dynamic graph, with the support of many influential TTS models proposed by [Baidu Research](http://research.baidu.com) and other academic institutions.  
+Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on PaddlePaddle Fluid dynamic graph and includes many influential TTS models proposed by [Baidu Research](http://research.baidu.com) and other research groups.  
 
 <div align="center">
   <img src="images/logo.png" width=450 /> <br>
 </div>
 
+In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research. 
+- WaveFlow can synthesize 22.05 kHz high-fidelity speech around 40x faster than real-time on a Nvidia V100 GPU without engineered inference kernels, which is faster than WaveGlow and serveral orders of magnitude faster than WaveNet.
+- WaveFlow is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M) and comparable to WaveNet (4.6M).
+- WaveFlow is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in Parallel WaveNet and ClariNet, which simplifies the training pipeline and reduces the cost of development. 
+
 ### Setup
 
-Make sure the library `libsndfile1` installed, e.g., on Ubuntu
+Make sure the library `libsndfile1` is installed, e.g., on Ubuntu.
 
 ```bash
 sudo apt-get install libsndfile1
@@ -16,7 +21,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires paddlepaddle's version is above 1.7.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires paddlepaddle 1.7 or above.
 
 ### Install Parakeet
 
