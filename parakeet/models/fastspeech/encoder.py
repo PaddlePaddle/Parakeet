@@ -18,11 +18,12 @@ class Encoder(dg.Layer):
                  dropout=0.1):
         super(Encoder, self).__init__()
         n_position = len_max_seq + 1
+        self.n_head = n_head
 
-        self.src_word_emb = dg.Embedding(size=[n_src_vocab, d_model], padding_idx=0)
+        self.src_word_emb = dg.Embedding(size=[n_src_vocab, d_model], padding_idx=0,
+                                         param_attr=fluid.initializer.Normal(loc=0.0, scale=1.0))
         self.pos_inp = get_sinusoid_encoding_table(n_position, d_model, padding_idx=0)
         self.position_enc = dg.Embedding(size=[n_position, d_model],
-                                 padding_idx=0,
                                  param_attr=fluid.ParamAttr(
                                      initializer=fluid.initializer.NumpyArrayInitializer(self.pos_inp),
                                      trainable=False))
@@ -30,7 +31,7 @@ class Encoder(dg.Layer):
         for i, layer in enumerate(self.layer_stack):
             self.add_sublayer('fft_{}'.format(i), layer)
 
-    def forward(self, character, text_pos):
+    def forward(self, character, text_pos, non_pad_mask, slf_attn_mask=None):
         """
         Encoder layer of FastSpeech.
         
@@ -46,10 +47,7 @@ class Encoder(dg.Layer):
             enc_slf_attn_list (list<Variable>), Len(n_layers), Shape(B * n_head, text_T, text_T), the encoder self attention list.
         """
         enc_slf_attn_list = []
-        # -- prepare masks
-        # shape character (N, T)
-        slf_attn_mask = get_attn_key_pad_mask(seq_k=character, seq_q=character)
-        non_pad_mask = get_non_pad_mask(character)
+        slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])
 
         # -- Forward
         enc_output = self.src_word_emb(character) + self.position_enc(text_pos) #(N, T, C)
@@ -61,4 +59,4 @@ class Encoder(dg.Layer):
                 slf_attn_mask=slf_attn_mask)
             enc_slf_attn_list += [enc_slf_attn]
         
-        return enc_output, non_pad_mask, enc_slf_attn_list
+        return enc_output, enc_slf_attn_list

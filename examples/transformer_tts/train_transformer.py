@@ -69,19 +69,24 @@ def main(args):
             pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d'%epoch)
-                character, mel, mel_input, pos_text, pos_mel, text_length, _ = data
+                character, mel, mel_input, pos_text, pos_mel, text_length, _, enc_slf_mask, enc_query_mask, dec_slf_mask, enc_dec_mask, dec_query_slf_mask, dec_query_mask= data
 
                 global_step += 1
-                mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(character, mel_input, pos_text, pos_mel)
                 
-
-                label = (pos_mel == 0).astype(np.float32)
-                    
+                mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(character, mel_input, pos_text, pos_mel, dec_slf_mask=dec_slf_mask, 
+                                                                                           enc_slf_mask=enc_slf_mask, enc_query_mask=enc_query_mask, 
+                                                                                           enc_dec_mask=enc_dec_mask, dec_query_slf_mask=dec_query_slf_mask,
+                                                                                           dec_query_mask=dec_query_mask)
+                
+ 
                 mel_loss = layers.mean(layers.abs(layers.elementwise_sub(mel_pred, mel)))
                 post_mel_loss = layers.mean(layers.abs(layers.elementwise_sub(postnet_pred, mel)))
                 loss = mel_loss + post_mel_loss
+
+                
                 # Note: When used stop token loss the learning did not work.
                 if args.stop_token:
+                    label = (pos_mel == 0).astype(np.float32)
                     stop_loss = cross_entropy(stop_preds, label)
                     loss = loss + stop_loss
 
@@ -123,6 +128,7 @@ def main(args):
                                 x = np.uint8(cm.viridis(prob.numpy()[j*16]) * 255)
                                 writer.add_image('Attention_dec_%d_0'%global_step, x, i*4+j, dataformats="HWC")
                                 
+                
                 if args.use_data_parallel:
                     loss = model.scale_loss(loss)
                     loss.backward()
@@ -131,6 +137,7 @@ def main(args):
                     loss.backward()
                 optimizer.minimize(loss, grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg['grad_clip_thresh']))
                 model.clear_gradients()
+                
                 
                 # save checkpoint
                 if local_rank==0 and global_step % args.save_step == 0:

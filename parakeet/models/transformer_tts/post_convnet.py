@@ -76,11 +76,13 @@ class PostConvNet(dg.Layer):
             batch_norm = self.batch_norm_list[i]
             conv = self.conv_list[i]
             
-            input = layers.dropout(layers.tanh(batch_norm(conv(input)[:,:,:len])), self.dropout)
+            input = layers.dropout(layers.tanh(batch_norm(conv(input)[:,:,:len])), self.dropout, 
+                                   dropout_implementation='upscale_in_train')
         conv = self.conv_list[self.num_conv-1]
         input = conv(input)[:,:,:len]
         if self.batchnorm_last:
             batch_norm = self.batch_norm_list[self.num_conv-1]
-            input = layers.dropout(batch_norm(input), self.dropout)
+            input = layers.dropout(batch_norm(input), self.dropout, 
+                                   dropout_implementation='upscale_in_train')
         output = layers.transpose(input, [0,2,1])
         return output

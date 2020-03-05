@@ -1,5 +1,6 @@
 import six
 import numpy as np
+from tqdm import tqdm
 
 
 class DatasetMixin(object):
@@ -45,6 +46,17 @@ class TransformDataset(DatasetMixin):
         in_data = self._dataset[i]
         return self._transform(in_data)
 
+class CacheDataset(DatasetMixin):
+    def __init__(self, dataset):
+        self._dataset = dataset
+        pbar = tqdm(range(len(self._dataset)))
+        self._cache = [self._dataset[i] for i in pbar]
+
+    def __len__(self):
+        return len(self._dataset)
+
+    def get_example(self, i):
+        return self._cache[i]
 
 class TupleDataset(object):
     def __init__(self, *datasets):

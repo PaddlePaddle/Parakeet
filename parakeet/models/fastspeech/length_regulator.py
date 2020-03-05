@@ -121,11 +121,11 @@ class DurationPredictor(dg.Layer):
         out = layers.transpose(encoder_output, [0,2,1])
         out = self.conv1(out)
         out = layers.transpose(out, [0,2,1])
-        out = layers.dropout(layers.relu(self.layer_norm1(out)), self.dropout)
+        out = layers.dropout(layers.relu(self.layer_norm1(out)), self.dropout, dropout_implementation='upscale_in_train')
         out = layers.transpose(out, [0,2,1])
         out = self.conv2(out)
         out = layers.transpose(out, [0,2,1])
-        out = layers.dropout(layers.relu(self.layer_norm2(out)), self.dropout)
+        out = layers.dropout(layers.relu(self.layer_norm2(out)), self.dropout, dropout_implementation='upscale_in_train')
         out = layers.relu(self.linear(out))
         out = layers.squeeze(out, axes=[-1])
         

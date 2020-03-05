@@ -211,7 +211,7 @@ class Conv1DGLU(dg.Layer):
 
         residual = x
         x = fluid.layers.dropout(
-            x, self.dropout, dropout_implementation="upscale_in_train")
+            x, self.dropout)
         x = self.conv(x)
 
         content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)
@@ -241,7 +241,7 @@ class Conv1DGLU(dg.Layer):
 
         # add step input and produce step output
         x = fluid.layers.dropout(
-            x, self.dropout, dropout_implementation="upscale_in_train")
+            x, self.dropout)
         x = self.conv.add_input(x)
 
         content, gate = fluid.layers.split(x, num_or_sections=2, dim=1)

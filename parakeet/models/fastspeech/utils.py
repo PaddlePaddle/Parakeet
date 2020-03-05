@@ -14,7 +14,7 @@ def get_alignment(attn_probs, mel_lens, n_head):
                 max_F = F
                 max_attn = attn
     alignment = compute_duration(max_attn, mel_lens)
-    return alignment
+    return alignment, max_attn
     
 def score_F(attn):
     max = np.max(attn, axis=-1)

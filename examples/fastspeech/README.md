@@ -55,7 +55,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --config_path='config/fastspeech.yaml' \
 ```
 
-if you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--fastspeech_step``
+If you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--fastspeech_step``
 
 For more help on arguments: 
 ``python train.py --help``.

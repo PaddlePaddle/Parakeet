@@ -11,6 +11,7 @@ import paddle.fluid.dygraph as dg
 from parakeet.g2p.en import text_to_sequence
 from parakeet import audio
 from parakeet.models.fastspeech.fastspeech import FastSpeech
+from parakeet.models.transformer_tts.utils import *
 
 def load_checkpoint(step, model_path):
     model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
@@ -41,11 +42,22 @@ def synthesis(text_input, args):
         model.eval()
 
         text = np.asarray(text_to_sequence(text_input))
-        text = fluid.layers.unsqueeze(dg.to_variable(text),[0])
+        text = np.expand_dims(text, axis=0)
         pos_text = np.arange(1, text.shape[1]+1)
-        pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text),[0])
+        pos_text = np.expand_dims(pos_text, axis=0)
+        enc_non_pad_mask = get_non_pad_mask(pos_text).astype(np.float32)
+        enc_slf_attn_mask = get_attn_key_pad_mask(pos_text, text).astype(np.float32)
+        
+        text = dg.to_variable(text)
+        pos_text = dg.to_variable(pos_text)
+        enc_non_pad_mask = dg.to_variable(enc_non_pad_mask)
+        enc_slf_attn_mask = dg.to_variable(enc_slf_attn_mask)
 
-        mel_output, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
+        mel_output, mel_output_postnet = model(text, pos_text, alpha=args.alpha,
+                                               enc_non_pad_mask=enc_non_pad_mask,
+                                                enc_slf_attn_mask=enc_slf_attn_mask,
+                                                dec_non_pad_mask=None,
+                                                dec_slf_attn_mask=None)
 
         _ljspeech_processor = audio.AudioProcessor(
             sample_rate=cfg['audio']['sr'], 

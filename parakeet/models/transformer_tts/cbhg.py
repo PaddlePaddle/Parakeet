@@ -124,6 +124,7 @@ class CBHG(dg.Layer):
         conv_list = []
         conv_input = input_
         
+        
         for i, (conv, batchnorm) in enumerate(zip(self.conv_list, self.batchnorm_list)):
             conv_input = self._conv_fit_dim(conv(conv_input), i+1)
             conv_input = layers.relu(batchnorm(conv_input))

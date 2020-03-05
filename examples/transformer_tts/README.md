@@ -1,5 +1,5 @@
 # TransformerTTS
-Paddle fluid implementation of TransformerTTS, a neural TTS with Transformer. The implementation is based on [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895).
+PaddlePaddle fluid implementation of TransformerTTS, a neural TTS with Transformer. The implementation is based on [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895).
 
 ## Dataset
 
@@ -48,7 +48,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --config_path='config/train_transformer.yaml' \
 ```
 
-if you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--transformer_step``
+If you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--transformer_step``
 
 For more help on arguments: 
 ``python train_transformer.py --help``.
@@ -76,7 +76,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --data_path=${DATAPATH} \
 --config_path='config/train_vocoder.yaml' \
 ```
-if you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--vocoder_step``
+If you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--vocoder_step``
 
 For more help on arguments: 
 ``python train_vocoder.py --help``.

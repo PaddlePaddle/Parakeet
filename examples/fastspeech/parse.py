@@ -17,6 +17,9 @@ def add_config_options_to_parser(parser):
         help="use gpu or not during training.")
     parser.add_argument('--use_data_parallel', type=int, default=0,
         help="use data parallel or not during training.")
+    parser.add_argument('--alpha', type=float, default=1.0,
+        help="The hyperparameter to determine the length of the expanded sequence \
+                mel, thereby controlling the voice speed.")
 
     parser.add_argument('--data_path', type=str, default='./dataset/LJSpeech-1.1',
         help="the path of dataset.")
