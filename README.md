@@ -6,10 +6,10 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
   <img src="images/logo.png" width=450 /> <br>
 </div>
 
-In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research. 
+In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research.
 - WaveFlow can synthesize 22.05 kHz high-fidelity speech around 40x faster than real-time on a Nvidia V100 GPU without engineered inference kernels, which is faster than WaveGlow and serveral orders of magnitude faster than WaveNet.
 - WaveFlow is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M) and comparable to WaveNet (4.6M).
-- WaveFlow is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in Parallel WaveNet and ClariNet, which simplifies the training pipeline and reduces the cost of development. 
+- WaveFlow is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in Parallel WaveNet and ClariNet, which simplifies the training pipeline and reduces the cost of development.
 
 ### Setup
 
@@ -43,10 +43,12 @@ nltk.download("cmudict")
 
 ## Related Research
 
-- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654)
-- [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895)
+- [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654).
+- [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895).
 - [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
-- [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219)
+- [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219).
+- [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499).
+- [ClariNet: Parallel Wave Generation in End-to-End Text-to-Speech](https://arxiv.org/abs/1807.07281).
 
 ## Examples
 
@@ -54,6 +56,8 @@ nltk.download("cmudict")
 - [Train a TransformerTTS  model with ljspeech dataset](./examples/transformer_tts)
 - [Train a FastSpeech model with ljspeech dataset](./examples/fastspeech)
 - [Train a WaveFlow model with ljspeech dataset](./examples/waveflow)
+- [Train a WaveNet model with ljspeech dataset](./examples/wavenet)
+- [Train a Clarinet model with ljspeech dataset](./examples/clarinet)
 
 ## Copyright and License
 
