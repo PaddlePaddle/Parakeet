@@ -23,7 +23,7 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 
 ```text
 ├── data.py          data_processing
-├── ljspeech.yaml    (example) configuration file
+├── configs/         (example) configuration files
 ├── sentences.txt    sample sentences
 ├── synthesis.py     script to synthesize waveform from text
 ├── train.py         script to train a model
@@ -72,7 +72,7 @@ optional arguments:
 Example script:
 
 ```bash
-python train.py --config=./ljspeech.yaml --data=./LJSpeech-1.1/ --output=experiment --device=0
+python train.py --config=configs/ljspeech.yaml --data=./LJSpeech-1.1/ --output=experiment --device=0
 ```
 
 You can monitor training log via tensorboard, using the script below.
@@ -110,5 +110,5 @@ optional arguments:
 Example script:
 
 ```bash
-python synthesis.py --config=./ljspeech.yaml --device=0 experiment/checkpoints/model_step_005000000 sentences.txt generated
+python synthesis.py --config=configs/ljspeech.yaml --device=0 experiment/checkpoints/model_step_005000000 sentences.txt generated
 ```
