@@ -23,7 +23,7 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 
 ```text
 ├── data.py          data_processing
-├── configs/    (example) configuration files
+├── configs/         (example) configuration files
 ├── sentences.txt    sample sentences
 ├── synthesis.py     script to synthesize waveform from text
 ├── train.py         script to train a model

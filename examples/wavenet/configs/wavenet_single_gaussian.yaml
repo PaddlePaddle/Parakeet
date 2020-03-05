@@ -1,5 +1,5 @@
 data:
-  batch_size: 32
+  batch_size: 16
   train_clip_seconds: 0.5
   sample_rate: 22050
   hop_length: 256
