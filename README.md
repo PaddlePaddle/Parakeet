@@ -2,8 +2,11 @@
 
 Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on PaddlePaddle Fluid dynamic graph and includes many influential TTS models proposed by [Baidu Research](http://research.baidu.com) and other research groups.  
 
-In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research. WaveFlow is a small-footprint generative flow for raw audio, which is directly trained with maximum likelihood. It generates high-fidelity speech as WaveNet, while synthesizing serval orders of magnitude faster as it only requires a few sequential steps to generate very long waveforms. Furthermore, it can significantly reduce the likelihood gap that has existed between autoregressive models and flow-based models for efficient synthesis. Finally, our small-footprint WaveFlow has
-only 5.9M parameters, which is 15 times smaller than WaveGlow. It can generate 22.05 kHz high-fidelity audio around 40 times faster than real-time on a V100 GPU without engineered inference kernels.
+In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research. 
+- WaveFlow can synthesize 22.05 kHz high-fidelity speech around 40x faster than real-time on a Nvidia V100 GPU without engineered inference kernels, which is faster than WaveGlow and serveral orders of magnitude faster than WaveNet.
+- WaveFlow is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M) and comparable to WaveNet (4.6M).
+- WaveFlow is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in Parallel WaveNet and ClariNet, which simplifies the training pipeline and reduces the cost of development. 
+
 
 <div align="center">
   <img src="images/logo.png" width=450 /> <br>
