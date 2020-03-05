@@ -1,8 +1,8 @@
-# Deepvoice 3
+# Deep Voice 3
 
-Paddle implementation of deepvoice 3 in dynamic graph, a convolutional network based text-to-speech synthesis model. The implementation is based on [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654).
+PaddlePaddle dynamic graph implementation of Deep Voice 3, a convolutional network based text-to-speech generative model. The implementation is based on [Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning](https://arxiv.org/abs/1710.07654).
 
-We implement Deepvoice 3 in paddle fluid with dynamic graph, which is convenient for flexible network architectures.
+We implement Deep Voice 3 using Paddle Fluid with dynamic graph, which is convenient for building flexible network architectures.
 
 ## Dataset
 
@@ -15,9 +15,9 @@ tar xjvf LJSpeech-1.1.tar.bz2
 
 ## Model Architecture
 
-![DeepVoice3 model architecture](./images/model_architecture.png)
+![Deep Voice 3 model architecture](./images/model_architecture.png)
 
-The model consists of an encoder, a decoder and a converter (and a speaker embedding for multispeaker models). The encoder, together with the decoder forms the seq2seq part of the model, and the converter forms the postnet part.
+The model consists of an encoder, a decoder and a converter (and a speaker embedding for multispeaker models). The encoder and the decoder together form the seq2seq part of the model, and the converter forms the postnet part.
 
 ## Project Structure
 
@@ -37,7 +37,7 @@ Train the model using train.py, follow the usage displayed by `python train.py -
 ```text
 usage: train.py [-h] [-c CONFIG] [-s DATA] [-r RESUME] [-o OUTPUT] [-g DEVICE]
 
-Train a deepvoice 3 model with LJSpeech dataset.
+Train a Deep Voice 3 model with LJSpeech dataset.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -55,7 +55,7 @@ optional arguments:
 1. `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
 2. `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
 3. `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
-4. `--output` is the directory to save results, all result are saved in this directory. The structure of the output directory is shown below.
+4. `--output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
 
 ```text
 ├── checkpoints      # checkpoint
@@ -69,7 +69,7 @@ optional arguments:
 
 5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
-example script:
+Example script:
 
 ```bash
 python train.py --config=configs/ljspeech.yaml --data=./LJSpeech-1.1/ --output=experiment --device=0
@@ -86,7 +86,7 @@ tensorboard --logdir=.
 ```text
 usage: synthesis.py [-h] [-c CONFIG] [-g DEVICE] checkpoint text output_path
 
-Synthsize waveform with a checkpoint.
+Synthsize waveform from a checkpoint.
 
 positional arguments:
   checkpoint            checkpoint to load.
@@ -107,7 +107,7 @@ optional arguments:
 4. `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`) and attention plots (*.png) for each sentence.
 5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
-example script:
+Example script:
 
 ```bash
 python synthesis.py --config=configs/ljspeech.yaml --device=0 experiment/checkpoints/model_step_005000000 sentences.txt generated
