@@ -1,5 +1,5 @@
 # Fastspeech
-Paddle fluid implementation of Fastspeech, a feed-forward network based on Transformer. The implementation is based on [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
+PaddlePaddle dynamic graph implementation of Fastspeech, a feed-forward network based on Transformer. The implementation is based on [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
 
 ## Dataset
 
@@ -14,7 +14,7 @@ tar xjvf LJSpeech-1.1.tar.bz2
 
 ![FastSpeech model architecture](./images/model_architecture.png)
 
-FastSpeech is a feed-forward structure based on Transformer, instead of using the encoder-attention-decoder based architecture. This model extract attention alignments from an encoder-decoder based teacher model for phoneme duration prediction, which is used by a length
+FastSpeech is a feed-forward structure based on Transformer, instead of using the encoder-attention-decoder based architecture. This model extracts attention alignments from an encoder-decoder based teacher model for phoneme duration prediction, which is used by a length
 regulator to expand the source phoneme sequence to match the length of the target
 mel-spectrogram sequence for parallel mel-spectrogram generation. We use the TransformerTTS as teacher model.
 The model consists of encoder, decoder and length regulator three parts.
@@ -28,7 +28,7 @@ The model consists of encoder, decoder and length regulator three parts.
 
 ## Train Transformer
 
-FastSpeech model can train with ``train.py``.
+FastSpeech model can be trained with ``train.py``.
 ```bash
 python train.py \
 --use_gpu=1 \
@@ -38,11 +38,11 @@ python train.py \
 --transformer_step=160000 \
 --config_path='config/fastspeech.yaml' \
 ```
-or you can run the script file directly.
+Or you can run the script file directly.
 ```bash
 sh train.sh
 ```
-If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follow:
+If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follows:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -55,7 +55,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --config_path='config/fastspeech.yaml' \
 ```
 
-if you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--fastspeech_step``
+If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--fastspeech_step``.
 
 For more help on arguments:
 ``python train.py --help``.
@@ -70,7 +70,7 @@ python synthesis.py \
 --fastspeech_step=112000 \
 ```
 
-or you can run the script file directly.
+Or you can run the script file directly.
 ```bash
 sh synthesis.sh
 ```
