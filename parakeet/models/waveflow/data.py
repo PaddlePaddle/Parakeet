@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 
 import librosa
@@ -32,7 +33,7 @@ class Dataset(ljspeech.LJSpeech):
 
     def _get_example(self, metadatum):
         fname, _, _ = metadatum
-        wav_path = self.root.joinpath("wavs", fname + ".wav")
+        wav_path = os.path.join(self.root, "wavs", fname + ".wav")
 
         loaded_sr, audio = read(wav_path)
         assert loaded_sr == self.config.sample_rate

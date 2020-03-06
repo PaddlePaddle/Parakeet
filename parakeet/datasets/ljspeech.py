@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
+import os
 import numpy as np
 import pandas as pd
 import librosa
@@ -27,13 +27,11 @@ from ..data.batch import TextIDBatcher, SpecBatcher
 class LJSpeech(DatasetMixin):
     def __init__(self, root):
         super(LJSpeech, self).__init__()
-        assert isinstance(root, (
-            str, Path)), "root should be a string or Path object"
-        self.root = root if isinstance(root, Path) else Path(root)
+        self.root = root
         self.metadata = self._prepare_metadata()
 
     def _prepare_metadata(self):
-        csv_path = self.root.joinpath("metadata.csv")
+        csv_path = os.path.join(self.root, "metadata.csv")
         metadata = pd.read_csv(
             csv_path,
             sep="|",
@@ -51,7 +49,7 @@ class LJSpeech(DatasetMixin):
         """
 
         fname, raw_text, normalized_text = metadatum
-        wav_path = self.root.joinpath("wavs", fname + ".wav")
+        wav_path = os.path.join(self.root, "wavs", fname + ".wav")
 
         # load -> trim -> preemphasis -> stft -> magnitude -> mel_scale -> logscale -> normalize
         wav, sample_rate = librosa.load(
