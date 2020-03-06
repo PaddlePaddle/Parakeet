@@ -44,13 +44,13 @@ Note that filter is applied to all the examples in the base dataset when initial
 
 ### CacheDataset
 
-By default, we preprocess dataset lazily in `DatasetMixin.get_example`. An example is preprocessed only only requested. But `CacheDataset` caches a base dataset (preprocesses all examples and cache s them eagerly beforehand). When preprocessing the dataset is slow, you can use Cachedataset to speed it up, but caching may consume a lot of RAM if the dataset is large.
+By default, we preprocess dataset lazily in `DatasetMixin.get_example`. An example is preprocessed only only requested. But `CacheDataset` caches the base dataset lazily, so each example is processed only once when it is first requested. When preprocessing the dataset is slow, you can use Cachedataset to speed it up, but caching may consume a lot of RAM if the dataset is large.
 
-Finally, if preprocessing the dataset is slow and the processed dataset is too large to cache, you can write your own code to save them into files or databases and defines a Dataset to load them. Dataset is flexible, so you can create your own dataset painlessly.
+Finally, if preprocessing the dataset is slow and the processed dataset is too large to cache, you can write your own code to save them into files or databases, and then define a Dataset to load them. `Dataset` is flexible, so you can create your own dataset painlessly.
 
 ## DataCargo
 
-`DataCargo`, like `Dataset`, is an iterable of batches. We need datacargo because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate over it by `iter(datacargo)` or `for batch in datacargo`. It is an iterable but not an iterator, in that in can be iterated more than once.
+`DataCargo`, like `Dataset`, is an iterable of batches. We need datacargo because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable but not an iterator, in that in can be iterated more than once.
 
 ### batch function
 
@@ -104,7 +104,7 @@ Dataset   -->  Iterable[Example]  | iter(Dataset)    ->  Iterator[Example]
 DataCargo -->  Iterable[Batch]    | iter(DataCargo)  ->  Iterator[Batch]
 ```
 
- In order to construct an iterator of batches from an iterator of examples, we construct a DataCargo from a Dataset.
+In order to construct an iterator of batches from an iterator of examples, we construct a DataCargo from a Dataset.
 
 
 
