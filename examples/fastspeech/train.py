@@ -67,12 +67,12 @@ def main(args):
 
     with dg.guard(place):
         with fluid.unique_name.guard():
-            transformerTTS = TransformerTTS(cfg)
+            transformer_tts = TransformerTTS(cfg)
             model_dict, _ = load_checkpoint(
                 str(args.transformer_step),
                 os.path.join(args.transtts_path, "transformer"))
-            transformerTTS.set_dict(model_dict)
-            transformerTTS.eval()
+            transformer_tts.set_dict(model_dict)
+            transformer_tts.eval()
 
         model = FastSpeech(cfg)
         model.train()
@@ -105,7 +105,7 @@ def main(args):
                  mel_lens, enc_slf_mask, enc_query_mask, dec_slf_mask,
                  enc_dec_mask, dec_query_slf_mask, dec_query_mask) = data
 
-                _, _, attn_probs, _, _, _ = transformerTTS(
+                _, _, attn_probs, _, _, _ = transformer_tts(
                     character,
                     mel_input,
                     pos_text,
