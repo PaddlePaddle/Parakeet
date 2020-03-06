@@ -1,5 +1,5 @@
 # TransformerTTS
-Paddle fluid implementation of TransformerTTS, a neural TTS with Transformer. The implementation is based on [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895).
+PaddlePaddle dynamic graph implementation of TransformerTTS, a neural TTS with Transformer. The implementation is based on [Neural Speech Synthesis with Transformer Network](https://arxiv.org/abs/1809.08895).
 
 ## Dataset
 
@@ -12,7 +12,7 @@ tar xjvf LJSpeech-1.1.tar.bz2
 ## Model Architecture
 
 ![TransformerTTS model architecture](./images/model_architecture.jpg)
-The model adapt the multi-head attention mechanism to replace the RNN structures and also the original attention mechanism in [Tacotron2](https://arxiv.org/abs/1712.05884). The model consists of two main parts, encoder and decoder. We also implemented CBHG model of tacotron as a vocoder part and converted the spectrogram into raw wave using griffin-lim algorithm.
+The model adopts the multi-head attention mechanism to replace the RNN structures and also the original attention mechanism in [Tacotron2](https://arxiv.org/abs/1712.05884). The model consists of two main parts, encoder and decoder. We also implement the CBHG model of Tacotron as the vocoder part and convert the spectrogram into raw wave using Griffin-Lim algorithm.
 
 ## Project Structure
 ```text
@@ -25,7 +25,7 @@ The model adapt the multi-head attention mechanism to replace the RNN structures
 
 ## Train Transformer
 
-TransformerTTS model can train with ``train_transformer.py``.
+TransformerTTS model can be trained with ``train_transformer.py``.
 ```bash
 python train_trasformer.py \
 --use_gpu=1 \
@@ -33,11 +33,11 @@ python train_trasformer.py \
 --data_path=${DATAPATH} \
 --config_path='config/train_transformer.yaml' \
 ```
-or you can run the script file directly.
+Or you can run the script file directly.
 ```bash
 sh train_transformer.sh
 ```
-If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follow:
+If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follows:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -48,13 +48,13 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --config_path='config/train_transformer.yaml' \
 ```
 
-if you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--transformer_step``
+If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--transformer_step``.
 
 For more help on arguments:
 ``python train_transformer.py --help``.
 
 ## Train Vocoder
-Vocoder model can train with ``train_vocoder.py``.
+Vocoder model can be trained with ``train_vocoder.py``.
 ```bash
 python train_vocoder.py \
 --use_gpu=1 \
@@ -62,11 +62,11 @@ python train_vocoder.py \
 --data_path=${DATAPATH} \
 --config_path='config/train_vocoder.yaml' \
 ```
-or you can run the script file directly.
+Or you can run the script file directly.
 ```bash
 sh train_vocoder.sh
 ```
-If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follow:
+If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follows:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -76,13 +76,13 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --data_path=${DATAPATH} \
 --config_path='config/train_vocoder.yaml' \
 ```
-if you wish to resume from an exists model, please set ``--checkpoint_path`` and ``--vocoder_step``
+If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--vocoder_step``.
 
 For more help on arguments:
 ``python train_vocoder.py --help``.
 
 ## Synthesis
-After training the transformerTTS and vocoder model, audio can be synthesized with ``synthesis.py``.
+After training the TransformerTTS and vocoder model, audio can be synthesized with ``synthesis.py``.
 ```bash
 python synthesis.py \
 --max_len=50 \
@@ -94,7 +94,7 @@ python synthesis.py \
 --config_path='config/synthesis.yaml' \
 ```
 
-or you can run the script file directly.
+Or you can run the script file directly.
 ```bash
 sh synthesis.sh
 ```
