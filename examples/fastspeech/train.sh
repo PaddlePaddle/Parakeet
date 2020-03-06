@@ -1,6 +1,6 @@
 # train model
 # if you wish to resume from an exists model, uncomment --checkpoint_path and --fastspeech_step
-CUDA_VISIBLE_DEVICES=0\
+export CUDA_VISIBLE_DEVICES=0
 python -u train.py \
 --batch_size=32 \
 --epochs=10000 \

@@ -18,7 +18,6 @@ def get_alignment(attn_probs, mel_lens, n_head):
     max_F = 0
     assert attn_probs[0].shape[0] % n_head == 0
     batch_size = int(attn_probs[0].shape[0] // n_head)
-    #max_attn = attn_probs[0].numpy()[0,batch_size]
     for i in range(len(attn_probs)):
         multi_attn = attn_probs[i].numpy()
         for j in range(n_head):
@@ -28,7 +27,7 @@ def get_alignment(attn_probs, mel_lens, n_head):
                 max_F = F
                 max_attn = attn
     alignment = compute_duration(max_attn, mel_lens)
-    return alignment
+    return alignment, max_attn
 
 
 def score_F(attn):
