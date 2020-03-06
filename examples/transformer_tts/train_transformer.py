@@ -14,7 +14,7 @@
 import os
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
-from pathlib import Path
+#from pathlib import Path
 from collections import OrderedDict
 import argparse
 from parse import add_config_options_to_parser

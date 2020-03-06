@@ -63,13 +63,14 @@ class TransformDataset(DatasetMixin):
 class CacheDataset(DatasetMixin):
     def __init__(self, dataset):
         self._dataset = dataset
-        pbar = tqdm(range(len(self._dataset)))
-        self._cache = [self._dataset[i] for i in pbar]
+        self._cache = dict()
 
     def __len__(self):
         return len(self._dataset)
 
     def get_example(self, i):
+        if not i in self._cache:
+            self._cache[i] = self._dataset[i]
         return self._cache[i]
 
 
