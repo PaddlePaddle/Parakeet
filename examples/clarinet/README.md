@@ -42,10 +42,10 @@ optional arguments:
   --wavenet WAVENET  wavenet checkpoint to use.
 ```
 
-1. `--config` is the configuration file to use. The provided configurations can be used directly. And you can change some values in the configuration file and train the model with a different config.
-2. `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-3. `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
-4. `--output` is the directory to save results, all result are saved in this directory. The structure of the output directory is shown below.
+- `--config` is the configuration file to use. The provided configurations can be used directly. And you can change some values in the configuration file and train the model with a different config.
+- `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
+- `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
+- `--output` is the directory to save results, all result are saved in this directory. The structure of the output directory is shown below.
 
 ```text
 ├── checkpoints      # checkpoint
@@ -53,8 +53,8 @@ optional arguments:
 └── log              # tensorboard log
 ```
 
-5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
-6. `--wavenet` is the path of the wavenet checkpoint to load. If you do not specify `--resume`, then this must be provided.
+- `--device` is the device (gpu id) to use for training. `-1` means CPU.
+- `--wavenet` is the path of the wavenet checkpoint to load. If you do not specify `--resume`, then this must be provided.
 
 
 Before you start training a ClariNet model, you should have trained a WaveNet model with single Gaussian output distribution. Make sure the config of the teacher model matches that of the trained model.
@@ -90,11 +90,11 @@ optional arguments:
   --data DATA      path of LJspeech dataset.
 ```
 
-1. `--config` is the configuration file to use. You should use the same configuration with which you train you model.
-2.  `--data` is the path of the LJspeech dataset. A dataset is not needed for synthesis, but since the input is mel spectrogram, we need to get mel spectrogram from audio files.
-3. `checkpoint` is the checkpoint to load.
-4. `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`).
-5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
+- `--config` is the configuration file to use. You should use the same configuration with which you train you model.
+-  `--data` is the path of the LJspeech dataset. A dataset is not needed for synthesis, but since the input is mel spectrogram, we need to get mel spectrogram from audio files.
+- `checkpoint` is the checkpoint to load.
+- `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`).
+- `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
 Example script:
 

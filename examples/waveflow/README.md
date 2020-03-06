@@ -1,6 +1,10 @@
-# WaveFlow with Paddle Fluid
+# WaveFlow
 
-Paddle fluid implementation of [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219).
+PaddlePaddle dynamic graph implementation of [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219).
+
+- WaveFlow can synthesize 22.05 kHz high-fidelity speech around 40x faster than real-time on a Nvidia V100 GPU without engineered inference kernels, which is faster than [WaveGlow] (https://github.com/NVIDIA/waveglow) and serveral orders of magnitude faster than WaveNet.
+- WaveFlow is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M) and comparable to WaveNet (4.6M).
+- WaveFlow is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in Parallel WaveNet and ClariNet, which simplifies the training pipeline and reduces the cost of development. 
 
 ## Project Structure
 ```text
@@ -72,7 +76,7 @@ Use `export CUDA_VISIBLE_DEVICES=0,1,2,3` to set the GPUs that you want to use t
 
 ### Monitor with Tensorboard
 
-By default, the logs are saved in `./runs/waveflow/${ModelName}/logs/`. You can monitor logs by tensorboard.
+By default, the logs are saved in `./runs/waveflow/${ModelName}/logs/`. You can monitor logs using TensorBoard.
 
 ```bash
 tensorboard --logdir=${log_dir} --port=8888
@@ -112,7 +116,7 @@ python -u benchmark.py \
 
 ### Low-precision inference
 
-This model supports the float16 low-precsion inference. By appending the argument
+This model supports the float16 low-precision inference. By appending the argument
 
 ```bash
     --use_fp16=true

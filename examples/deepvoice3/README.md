@@ -52,10 +52,10 @@ optional arguments:
                         device to use
 ```
 
-1. `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
-2. `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-3. `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
-4. `--output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
+- `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
+- `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
+- `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
+- `--output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
 
 ```text
 ├── checkpoints      # checkpoint
@@ -67,7 +67,7 @@ optional arguments:
     └── waveform     # waveform (.wav files)
 ```
 
-5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
+- `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
 Example script:
 
@@ -101,11 +101,11 @@ optional arguments:
                         device to use
 ```
 
-1. `--config` is the configuration file to use. You should use the same configuration with which you train you model.
-2. `checkpoint` is the checkpoint to load.
-3. `text`is the text file to synthesize.
-4. `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`) and attention plots (*.png) for each sentence.
-5. `--device` is the device (gpu id) to use for training. `-1` means CPU.
+- `--config` is the configuration file to use. You should use the same configuration with which you train you model.
+- `checkpoint` is the checkpoint to load.
+- `text`is the text file to synthesize.
+- `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`) and attention plots (*.png) for each sentence.
+- `--device` is the device (gpu id) to use for training. `-1` means CPU.
 
 Example script:
 
