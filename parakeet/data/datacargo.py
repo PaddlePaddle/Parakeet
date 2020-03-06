@@ -98,6 +98,8 @@ class DataIterator(object):
         minibatch = self._batch_fn(minibatch)  # list[Example] -> Batch
         return minibatch
 
+    next = __next__  # Python 2 compatibility
+
     def _next_index(self):
         if six.PY3:
             return next(self._sampler_iter)

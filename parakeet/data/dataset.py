@@ -59,6 +59,20 @@ class TransformDataset(DatasetMixin):
         return self._transform(in_data)
 
 
+class CacheDataset(DatasetMixin):
+    def __init__(self, dataset):
+        self._dataset = dataset
+        self._cache = dict()
+
+    def __len__(self):
+        return len(self._dataset)
+
+    def get_example(self, i):
+        if not i in self._cache:
+            self._cache[i] = self._dataset[i]
+        return self._cache[i]
+
+
 class TupleDataset(object):
     def __init__(self, *datasets):
         if not datasets:
