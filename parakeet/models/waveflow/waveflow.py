@@ -179,10 +179,13 @@ class WaveFlow():
         mels_list = [mels for _, mels in self.validloader()]
         if sample is not None:
             mels_list = [mels_list[sample]]
+        else:
+            sample = 0
 
-        for sample, mel in enumerate(mels_list):
-            filename = "{}/valid_{}.wav".format(output, sample)
-            print("Synthesize sample {}, save as {}".format(sample, filename))
+        for idx, mel in enumerate(mels_list):
+            abs_idx = sample + idx
+            filename = "{}/valid_{}.wav".format(output, abs_idx)
+            print("Synthesize sample {}, save as {}".format(abs_idx, filename))
 
             start_time = time.time()
             audio = self.waveflow.synthesize(mel, sigma=self.config.sigma)
