@@ -80,6 +80,7 @@ class Subset(DatasetMixin):
             # whole audio for valid set
             pass
         else:
+            # Randomly crop segment_length from audios in the training set.
             # audio shape: [len]
             if audio.shape[0] >= segment_length:
                 max_audio_start = audio.shape[0] - segment_length
