@@ -293,6 +293,14 @@ class Flow(dg.Layer):
 
 
 class WaveFlowModule(dg.Layer):
+    """WaveFlow model implementation.
+
+    Args:
+        config (obj): model configuration parameters.
+
+    Returns:
+        WaveFlowModule
+    """
     def __init__(self, config):
         super(WaveFlowModule, self).__init__()
         self.n_flows = config.n_flows
@@ -321,6 +329,22 @@ class WaveFlowModule(dg.Layer):
             self.perms.append(perm)
 
     def forward(self, audio, mel):
+        """Training forward pass.
+
+        Use a conditioner to upsample mel spectrograms into hidden states.
+        These hidden states along with the audio are passed to a stack of Flow
+        modules to obtain the final latent variable z and a list of log scaling
+        variables, which are then passed to the WaveFlowLoss module to calculate
+        the negative log likelihood.
+
+        Args:
+            audio (obj): audio samples.
+            mel (obj): mel spectrograms.
+
+        Returns:
+            z (obj): latent variable.
+            log_s_list(list): list of log scaling variables.
+        """
         mel = self.conditioner(mel)
         assert mel.shape[2] >= audio.shape[1]
         # Prune out the tail of audio/mel so that time/n_group == 0.
@@ -361,6 +385,20 @@ class WaveFlowModule(dg.Layer):
         return z, log_s_list
 
     def synthesize(self, mel, sigma=1.0):
+        """Use model to synthesize waveform.
+
+        Use a conditioner to upsample mel spectrograms into hidden states.
+        These hidden states along with initial random gaussian latent variable
+        are passed to a stack of Flow modules to obtain the audio output.
+
+        Args:
+            mel (obj): mel spectrograms.
+            sigma (float, optional): standard deviation of the guassian latent
+                variable. Defaults to 1.0.
+
+        Returns:
+            audio (obj): synthesized audio.
+        """
         if self.dtype == "float16":
             mel = fluid.layers.cast(mel, self.dtype)
         mel = self.conditioner.infer(mel)
