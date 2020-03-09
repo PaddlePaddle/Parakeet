@@ -28,6 +28,25 @@ from .waveflow_modules import WaveFlowLoss, WaveFlowModule
 
 
 class WaveFlow():
+    """Wrapper class of WaveFlow model that supports multiple APIs.
+
+    This module provides APIs for model building, training, validation,
+    inference, benchmarking, and saving.
+
+    Args:
+        config (obj): config info.
+        checkpoint_dir (str): path for checkpointing.
+        parallel (bool, optional): whether use multiple GPUs for training.
+            Defaults to False.
+        rank (int, optional): the rank of the process in a multi-process
+            scenario. Defaults to 0.
+        nranks (int, optional): the total number of processes. Defaults to 1.
+        tb_logger (obj, optional): logger to visualize metrics.
+            Defaults to None.
+
+    Returns:
+        WaveFlow
+    """
     def __init__(self,
                  config,
                  checkpoint_dir,
@@ -44,6 +63,15 @@ class WaveFlow():
         self.dtype = "float16" if config.use_fp16 else "float32"
 
     def build(self, training=True):
+        """Initialize the model.
+
+        Args:
+            training (bool, optional): Whether the model is built for training or inference.
+                Defaults to True.
+
+        Returns:
+            None
+        """
         config = self.config
         dataset = LJSpeech(config, self.nranks, self.rank)
         self.trainloader = dataset.trainloader
@@ -99,6 +127,14 @@ class WaveFlow():
             self.waveflow = waveflow
 
     def train_step(self, iteration):
+        """Train the model for one step.
+
+        Args:
+            iteration (int): current iteration number.
+
+        Returns:
+            None
+        """
         self.waveflow.train()
 
         start_time = time.time()
@@ -135,6 +171,14 @@ class WaveFlow():
 
     @dg.no_grad
     def valid_step(self, iteration):
+        """Run the model on the validation dataset.
+
+        Args:
+            iteration (int): current iteration number.
+
+        Returns:
+            None
+        """
         self.waveflow.eval()
         tb = self.tb_logger
 
@@ -167,6 +211,14 @@ class WaveFlow():
 
     @dg.no_grad
     def infer(self, iteration):
+        """Run the model to synthesize audios.
+
+        Args:
+            iteration (int): iteration number of the loaded checkpoint.
+
+        Returns:
+            None
+        """
         self.waveflow.eval()
 
         config = self.config
@@ -179,10 +231,13 @@ class WaveFlow():
         mels_list = [mels for _, mels in self.validloader()]
         if sample is not None:
             mels_list = [mels_list[sample]]
+        else:
+            sample = 0
 
-        for sample, mel in enumerate(mels_list):
-            filename = "{}/valid_{}.wav".format(output, sample)
-            print("Synthesize sample {}, save as {}".format(sample, filename))
+        for idx, mel in enumerate(mels_list):
+            abs_idx = sample + idx
+            filename = "{}/valid_{}.wav".format(output, abs_idx)
+            print("Synthesize sample {}, save as {}".format(abs_idx, filename))
 
             start_time = time.time()
             audio = self.waveflow.synthesize(mel, sigma=self.config.sigma)
@@ -200,6 +255,14 @@ class WaveFlow():
 
     @dg.no_grad
     def benchmark(self):
+        """Run the model to benchmark synthesis speed.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         self.waveflow.eval()
 
         mels_list = [mels for _, mels in self.validloader()]
@@ -220,6 +283,14 @@ class WaveFlow():
             print("{} X real-time".format(audio_time / syn_time))
 
     def save(self, iteration):
+        """Save model checkpoint.
+
+        Args:
+            iteration (int): iteration number of the model to be saved.
+
+        Returns:
+            None
+        """
         utils.save_latest_parameters(self.checkpoint_dir, iteration,
                                      self.waveflow, self.optimizer)
         utils.save_latest_checkpoint(self.checkpoint_dir, iteration)

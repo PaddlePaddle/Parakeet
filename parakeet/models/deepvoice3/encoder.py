@@ -34,10 +34,20 @@ class Encoder(dg.Layer):
                  padding_idx=None,
                  embedding_weight_std=0.1,
                  convolutions=(ConvSpec(64, 5, 1), ) * 7,
-                 max_positions=512,
                  dropout=0.):
-        super(Encoder, self).__init__()
+        """[summary]
 
+        Args:
+            n_vocab (int): vocabulary size of the text embedding.
+            embed_dim (int): embedding size of the text embedding.
+            n_speakers (int): number of speakers.
+            speaker_dim (int): speaker embedding size.
+            padding_idx (int, optional): padding index of text embedding. Defaults to None.
+            embedding_weight_std (float, optional): standard deviation of the embedding weights when intialized. Defaults to 0.1.
+            convolutions (Iterable[ConvSpec], optional): specifications of the convolutional layers. ConvSpec is a namedtuple of output channels, filter_size and dilation. Defaults to (ConvSpec(64, 5, 1), )*7.
+            dropout (float, optional): dropout probability. Defaults to 0..
+        """
+        super(Encoder, self).__init__()
         self.embedding_weight_std = embedding_weight_std
         self.embed = dg.Embedding(
             (n_vocab, embed_dim),
@@ -101,18 +111,12 @@ class Encoder(dg.Layer):
         Encode text sequence.
         
         Args:
-            x (Variable): Shape(B, T_enc), dtype: int64. Ihe input text
-                indices. T_enc means the timesteps of decoder input x.
-            speaker_embed (Variable, optional): Shape(batch_size, speaker_dim),
-                dtype: float32. Speaker embeddings. This arg is not None only
-                when the model is a multispeaker model.
+            x (Variable): shape(B, T_enc), dtype: int64. Ihe input text indices. T_enc means the timesteps of decoder input x.
+            speaker_embed (Variable, optional): shape(B, C_sp), dtype: float, speaker embeddings. This arg is not None only when the model is a multispeaker model.
 
         Returns:
-            keys (Variable), Shape(B, T_enc, C_emb), the encoded
-                representation for keys, where C_emb menas the text embedding
-                size.
-            values (Variable), Shape(B, T_enc, C_emb), the encoded
-                representation for values.
+            keys (Variable), Shape(B, T_enc, C_emb), dtype: float, the encoded epresentation for keys, where C_emb menas the text embedding size.
+            values (Variable), Shape(B, T_enc, C_emb), dtype: float, the encoded representation for values.
         """
         x = self.embed(x)
         x = F.dropout(

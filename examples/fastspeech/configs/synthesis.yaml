@@ -3,8 +3,8 @@ audio:
   n_fft: 2048
   sr: 22050
   preemphasis: 0.97
-  hop_length: 275
-  win_length: 1102
+  hop_length: 256
+  win_length: 1024
   power: 1.2
   min_level_db: -100
   ref_level_db: 20

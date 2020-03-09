@@ -71,7 +71,8 @@ class PositionwiseFeedForward(dg.Layer):
         x = self.w_2(layers.relu(self.w_1(x)))
 
         # dropout
-        x = layers.dropout(x, self.dropout)
+        x = layers.dropout(
+            x, self.dropout, dropout_implementation='upscale_in_train')
 
         x = layers.transpose(x, [0, 2, 1])
         # residual connection

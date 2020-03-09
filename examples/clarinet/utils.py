@@ -67,13 +67,13 @@ def save_checkpoint(model, optim, checkpoint_dir, global_step):
 
 def load_model(model, path):
     model_dict, _ = dg.load_dygraph(path)
-    model.state_dict(model_dict)
+    model.set_dict(model_dict)
     print("loaded model from {}.pdparams".format(path))
 
 
 def load_checkpoint(model, optim, path):
     model_dict, optim_dict = dg.load_dygraph(path)
-    model.state_dict(model_dict)
+    model.set_dict(model_dict)
     print("loaded model from {}.pdparams".format(path))
     if optim_dict:
         optim.set_dict(optim_dict)

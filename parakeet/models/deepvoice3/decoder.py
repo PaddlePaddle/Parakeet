@@ -36,15 +36,12 @@ def gen_mask(valid_lengths, max_len, dtype="float32"):
      [0, 0, 0, 0, 0, 0, 0]].
 
     Args:
-        valid_lengths (Variable): Shape(B), dtype: int64. A 1D-Tensor containing
-            the valid lengths (timesteps) of each example, where B means
-            beatch_size.
-        max_len (int): The length (number of timesteps) of the mask.
-        dtype (str, optional): A string that specifies the data type of the
-            returned mask.
+        valid_lengths (Variable): shape(B, ), dtype: int64. A rank-1 Tensor containing the valid lengths (timesteps) of each example, where B means beatch_size.
+        max_len (int): The length (number of time steps) of the mask.
+        dtype (str, optional): A string that specifies the data type of the returned mask. Defaults to 'float32'.
 
     Returns:
-        mask (Variable): A mask computed from valid lengths.
+        mask (Variable): shape(B, max_len), dtype: float, a mask computed from valid lengths.
     """
     mask = F.sequence_mask(valid_lengths, maxlen=max_len, dtype=dtype)
     mask = 1 - mask
@@ -54,14 +51,13 @@ def gen_mask(valid_lengths, max_len, dtype="float32"):
 def fold_adjacent_frames(frames, r):
     """fold multiple adjacent frames.
     
-    Arguments:
-        frames {Variable} -- shape(batch_size, time_steps, channels), the spectrogram
-        r {int} -- frames per step.
+    Args:
+        frames (Variable): shape(B, T, C), the spectrogram.
+        r (int): frames per step.
     
     Returns:
-        Variable -- shape(batch_size, time_steps // r, r *channels), folded frames
+        Variable: shape(B, T // r, r * C), folded frames.
     """
-
     if r == 1:
         return frames
     batch_size, time_steps, channels = frames.shape
@@ -75,16 +71,15 @@ def fold_adjacent_frames(frames, r):
 
 
 def unfold_adjacent_frames(folded_frames, r):
-    """fold multiple adjacent frames.
+    """unfold the folded frames.
     
-    Arguments:
-        folded_frames {Variable} -- shape(batch_size, time_steps // r, r * channels), the spectrogram
-        r {int} -- frames per step.
+    Args:
+        folded_frames (Variable): shape(B, T, C), the folded spectrogram.
+        r (int): frames per step.
     
     Returns:
-        Variable -- shape(batch_size, time_steps, channels), folded frames
+        Variable: shape(B, T * r, C // r), unfolded frames.
     """
-
     if r == 1:
         return folded_frames
     batch_size, time_steps, channels = folded_frames.shape
@@ -93,26 +88,44 @@ def unfold_adjacent_frames(folded_frames, r):
 
 
 class Decoder(dg.Layer):
-    def __init__(
-            self,
-            n_speakers,
-            speaker_dim,
-            embed_dim,
-            mel_dim,
-            r=1,
-            max_positions=512,
-            padding_idx=None,  # remove it!
-            preattention=(ConvSpec(128, 5, 1), ) * 4,
-            convolutions=(ConvSpec(128, 5, 1), ) * 4,
-            attention=True,
-            dropout=0.0,
-            use_memory_mask=False,
-            force_monotonic_attention=False,
-            query_position_rate=1.0,
-            key_position_rate=1.0,
-            window_range=WindowRange(-1, 3),
-            key_projection=True,
-            value_projection=True):
+    def __init__(self,
+                 n_speakers,
+                 speaker_dim,
+                 embed_dim,
+                 mel_dim,
+                 r=1,
+                 max_positions=512,
+                 preattention=(ConvSpec(128, 5, 1), ) * 4,
+                 convolutions=(ConvSpec(128, 5, 1), ) * 4,
+                 attention=True,
+                 dropout=0.0,
+                 use_memory_mask=False,
+                 force_monotonic_attention=False,
+                 query_position_rate=1.0,
+                 key_position_rate=1.0,
+                 window_range=WindowRange(-1, 3),
+                 key_projection=True,
+                 value_projection=True):
+        """Decoder of the Deep Voice 3 model.
+
+        Args:
+            n_speakers (int): number of speakers.
+            speaker_dim (int): speaker embedding size.
+            embed_dim (int): text embedding size.
+            mel_dim (int): channel of mel input.(mel bands)
+            r (int, optional): number of frames generated per decoder step. Defaults to 1.
+            max_positions (int, optional): max position for text and decoder steps. Defaults to 512.
+            convolutions (Iterable[ConvSpec], optional): specification of causal convolutional layers inside the decoder. ConvSpec is a namedtuple of output_channels, filter_size and dilation. Defaults to (ConvSpec(128, 5, 1), )*4.
+            attention (bool or List[bool], optional): whether to use attention, it should have the same length with `convolutions` if it is a list of bool, indicating whether to have an Attention layer coupled with the corresponding convolutional layer. If it is a bool, it is repeated len(convolutions) times internally. Defaults to True.
+            dropout (float, optional): dropout probability. Defaults to 0.0.
+            use_memory_mask (bool, optional): whether to use memory mask at the Attention layer. It should have the same length with `attention` if it is a list of bool, indicating whether to use memory mask at the corresponding Attention layer. If it is a bool, it is repeated len(attention) times internally. Defaults to False.
+            force_monotonic_attention (bool, optional): whether to use monotonic_attention at the Attention layer when inferencing. It should have the same length with `attention` if it is a list of bool, indicating whether to use monotonic_attention at the corresponding Attention layer. If it is a bool, it is repeated len(attention) times internally. Defaults to False.
+            query_position_rate (float, optional): position_rate of the PositionEmbedding for query. Defaults to 1.0.
+            key_position_rate (float, optional): position_rate of the PositionEmbedding for key. Defaults to 1.0.
+            window_range (WindowRange, optional): window range of monotonic attention. Defaults to WindowRange(-1, 3).
+            key_projection (bool, optional): `key_projection` of Attention layers. Defaults to True.
+            value_projection (bool, optional): `value_projection` of Attention layers Defaults to True.
+        """
         super(Decoder, self).__init__()
 
         self.dropout = dropout
@@ -125,10 +138,9 @@ class Decoder(dg.Layer):
 
         conv_channels = convolutions[0].out_channels
         # only when padding idx is 0 can we easilt handle it
-        self.embed_keys_positions = PositionEmbedding(
-            max_positions, embed_dim, padding_idx=0)
-        self.embed_query_positions = PositionEmbedding(
-            max_positions, conv_channels, padding_idx=0)
+        self.embed_keys_positions = PositionEmbedding(max_positions, embed_dim)
+        self.embed_query_positions = PositionEmbedding(max_positions,
+                                                       conv_channels)
 
         if n_speakers > 1:
             std = np.sqrt((1 - dropout) / speaker_dim)
@@ -248,41 +260,20 @@ class Decoder(dg.Layer):
         Compute decoder outputs with ground truth mel spectrogram.
 
         Args:
-            encoder_out (Tuple(Variable, Variable)): 
-                keys (Variable): shape(B, T_enc, C_emb), the key
-                    representation from an encoder, where C_emb means
-                    text embedding size.
-                values (Variable): shape(B, T_enc, C_emb), the value
-                    representation from an encoder, where C_emb means
-                    text embedding size.
-            lengths (Variable): shape(batch_size,), dtype: int64, valid lengths
-                of text inputs for each example.
-            inputs (Variable): shape(B, T_mel, C_mel), ground truth
-                mel-spectrogram, which is used as decoder inputs when training.
-            text_positions (Variable): shape(B, T_enc), dtype: int64.
-                Positions indices for text inputs for the encoder, where 
-                T_enc means the encoder timesteps.
-            frame_positions (Variable): shape(B, T_mel // r), dtype: 
-                int64. Positions indices for each decoder time steps.
-            speaker_embed: shape(batch_size, speaker_dim), speaker embedding, 
-                only used for multispeaker model.
-
+            encoder_out (keys, values): 
+                keys (Variable): shape(B, T_enc, C_emb), dtype: float, the key representation from an encoder, where C_emb means text embedding size.
+                values (Variable): shape(B, T_enc, C_emb), dtype: float, the value representation from an encoder, where C_emb means text embedding size.
+            lengths (Variable): shape(batch_size,), dtype: int64, valid lengths of text inputs for each example.
+            inputs (Variable): shape(B, T_mel, C_mel), ground truth mel-spectrogram, which is used as decoder inputs when training.
+            text_positions (Variable): shape(B, T_enc), dtype: int64. Positions indices for text inputs for the encoder, where T_enc means the encoder timesteps.
+            frame_positions (Variable): shape(B, T_mel // r), dtype: int64. Positions indices for each decoder time steps.
+            speaker_embed (Variable, optionals): shape(batch_size, speaker_dim), speaker embedding, only used for multispeaker model.
 
         Returns:
-            outputs (Variable): Shape(B, T_mel // r, r * C_mel). Decoder
-                outputs, where C_mel means the channels of mel-spectrogram, r 
-                means the outputs per decoder step, T_mel means the length(time
-                steps) of mel spectrogram. Note that, when r > 1, the decoder
-                outputs r frames of mel spectrogram per step.
-            alignments (Variable): Shape(N, B, T_mel // r, T_enc), the alignment
-                tensor between the decoder and the encoder, where N means number
-                of Attention Layers, T_mel means the length of mel spectrogram,
-                r means the outputs per decoder step, T_enc means the encoder
-                time steps.
-            done (Variable): Shape(B, T_mel // r), probability that the
-                outputs should stop.
-            decoder_states (Variable): Shape(B, T_mel // r, C_dec), decoder
-                hidden states, where C_dec means the channels of decoder states.
+            outputs (Variable): shape(B, T_mel, C_mel), dtype: float, decoder outputs, where C_mel means the channels of mel-spectrogram, T_mel means the length(time steps) of mel spectrogram. 
+            alignments (Variable): shape(N, B, T_mel // r, T_enc), dtype: float, the alignment tensor between the decoder and the encoder, where N means number of Attention Layers, T_mel means the length of mel spectrogram, r means the outputs per decoder step, T_enc means the encoder time steps.
+            done (Variable): shape(B, T_mel // r), dtype: float, probability that the last frame has been generated.
+            decoder_states (Variable): shape(B, T_mel, C_dec // r), ddtype: float, decoder hidden states, where C_dec means the channels of decoder states (the output channels of the last `convolutions`). Note that it should be perfectlt devided by `r`.
         """
         if speaker_embed is not None:
             speaker_embed = F.dropout(
@@ -366,6 +357,8 @@ class Decoder(dg.Layer):
         return r
 
     def start_sequence(self):
+        """Prepare the Decoder to decode. This method is called by `decode`.
+        """
         for layer in self.prenet:
             if isinstance(layer, Conv1DGLU):
                 layer.start_sequence()
@@ -379,6 +372,25 @@ class Decoder(dg.Layer):
                text_positions,
                speaker_embed=None,
                test_inputs=None):
+        """Decode from the encoder's output and other conditions.
+
+        Args:
+            encoder_out (keys, values): 
+                keys (Variable): shape(B, T_enc, C_emb), dtype: float, the key representation from an encoder, where C_emb means text embedding size.
+                values (Variable): shape(B, T_enc, C_emb), dtype: float, the value representation from an encoder, where C_emb means text embedding size.
+            text_positions (Variable): shape(B, T_enc), dtype: int64. Positions indices for text inputs for the encoder, where T_enc means the encoder timesteps.
+            speaker_embed (Variable, optional): shape(B, C_sp), speaker embedding, only used for multispeaker model.
+            test_inputs (Variable, optional): shape(B, T_test, C_mel). test input, it is only used for debugging. Defaults to None.
+
+        Returns:
+            outputs (Variable): shape(B, T_mel, C_mel), dtype: float, decoder outputs, where C_mel means the channels of mel-spectrogram, T_mel means the length(time steps) of mel spectrogram. 
+            alignments (Variable): shape(N, B, T_mel // r, T_enc), dtype: float, the alignment tensor between the decoder and the encoder, where N means number of Attention Layers, T_mel means the length of mel spectrogram, r means the outputs per decoder step, T_enc means the encoder time steps.
+            done (Variable): shape(B, T_mel // r), dtype: float, probability that the last frame has been generated. If the probability is larger than 0.5 at a step, the generation stops.
+            decoder_states (Variable): shape(B, T_mel, C_dec // r), ddtype: float, decoder hidden states, where C_dec means the channels of decoder states (the output channels of the last `convolutions`). Note that it should be perfectlt devided by `r`.
+
+        Note:
+            Only single instance inference is supported now, so B = 1.
+        """
         self.start_sequence()
         keys, values = encoder_out
         batch_size = keys.shape[0]

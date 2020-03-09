@@ -9,3 +9,6 @@ audio:
   min_level_db: -100
   ref_level_db: 20
   outputs_per_step: 1
+
+hidden_size: 256
+embedding_size: 512

@@ -22,6 +22,15 @@ import paddle.fluid.dygraph as dg
 class DeepVoice3(dg.Layer):
     def __init__(self, encoder, decoder, converter, speaker_embedding,
                  use_decoder_states):
+        """Deep Voice 3 TTS model.
+
+        Args:
+            encoder (Layer): the encoder.
+            decoder (Layer): the decoder.
+            converter (Layer): the converter.
+            speaker_embedding (Layer): the speaker embedding (for multispeaker cases).
+            use_decoder_states (bool): use decoder states instead of predicted mel spectrogram as the input of the converter.
+        """
         super(DeepVoice3, self).__init__()
         if speaker_embedding is None:
             self.n_speakers = 1
@@ -34,6 +43,24 @@ class DeepVoice3(dg.Layer):
 
     def forward(self, text_sequences, text_positions, valid_lengths,
                 speaker_indices, mel_inputs, frame_positions):
+        """Compute predicted value in a teacher forcing training manner.
+
+        Args:
+            text_sequences (Variable): shape(B, T_enc), dtype: int64, text indices.
+            text_positions (Variable): shape(B, T_enc), dtype: int64, positions of text indices.
+            valid_lengths (Variable): shape(B, ), dtype: int64, valid lengths of utterances.
+            speaker_indices (Variable): shape(B, ), dtype: int64, speaker indices for utterances.
+            mel_inputs (Variable): shape(B, T_mel, C_mel), dytpe: int64, ground truth mel spectrogram.
+            frame_positions (Variable): shape(B, T_dec), dtype: int64, positions of decoder steps.
+
+        Returns:
+            (mel_outputs, linear_outputs, alignments, done)
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
+            alignments (Variable): shape(N, B, T_dec, T_enc), dtype: float, predicted attention.
+            done (Variable): shape(B, T_dec), dtype: float, predicted done probability.
+            (T_mel: time steps of mel spectrogram, T_lin: time steps of linear spectrogra, T_dec, time steps of decoder, T_enc: time steps of encoder.)
+        """
         if hasattr(self, "speaker_embedding"):
             speaker_embed = self.speaker_embedding(speaker_indices)
         else:
@@ -49,6 +76,21 @@ class DeepVoice3(dg.Layer):
         return mel_outputs, linear_outputs, alignments, done
 
     def transduce(self, text_sequences, text_positions, speaker_indices=None):
+        """Generate output without teacher forcing. Only batch_size = 1 is supported.
+
+        Args:
+            text_sequences (Variable): shape(B, T_enc), dtype: int64, text indices.
+            text_positions (Variable): shape(B, T_enc), dtype: int64, positions of text indices.
+            speaker_indices (Variable): shape(B, ), dtype: int64, speaker indices for utterances.
+
+        Returns:
+            (mel_outputs, linear_outputs, alignments, done)
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
+            alignments (Variable): shape(B, T_dec, T_enc), dtype: float, predicted average attention of all attention layers.
+            done (Variable): shape(B, T_dec), dtype: float, predicted done probability.
+            (T_mel: time steps of mel spectrogram, T_lin: time steps of linear spectrogra, T_dec, time steps of decoder, T_enc: time steps of encoder.)
+        """
         if hasattr(self, "speaker_embedding"):
             speaker_embed = self.speaker_embedding(speaker_indices)
         else:

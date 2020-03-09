@@ -1,7 +1,7 @@
 
 # train model
 # if you wish to resume from an exists model, uncomment --checkpoint_path and --transformer_step
-CUDA_VISIBLE_DEVICES=0 \
+export CUDA_VISIBLE_DEVICES=2
 python -u train_transformer.py \
 --batch_size=32 \
 --epochs=10000 \

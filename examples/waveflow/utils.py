@@ -109,6 +109,16 @@ def add_yaml_config(config):
 
 
 def load_latest_checkpoint(checkpoint_dir, rank=0):
+    """Get the iteration number corresponding to the latest saved checkpoint
+
+    Args:
+        checkpoint_dir (str): the directory where checkpoint is saved.
+        rank (int, optional): the rank of the process in multi-process setting.
+            Defaults to 0.
+
+    Returns:
+        int: the latest iteration number.
+    """
     checkpoint_path = os.path.join(checkpoint_dir, "checkpoint")
     # Create checkpoint index file if not exist.
     if (not os.path.isfile(checkpoint_path)) and rank == 0:
@@ -129,6 +139,15 @@ def load_latest_checkpoint(checkpoint_dir, rank=0):
 
 
 def save_latest_checkpoint(checkpoint_dir, iteration):
+    """Save the iteration number of the latest model to be checkpointed.
+
+    Args:
+        checkpoint_dir (str): the directory where checkpoint is saved.
+        iteration (int): the latest iteration number.
+
+    Returns:
+        None
+    """
     checkpoint_path = os.path.join(checkpoint_dir, "checkpoint")
     # Update the latest checkpoint index.
     with open(checkpoint_path, "w") as handle:
@@ -142,6 +161,24 @@ def load_parameters(checkpoint_dir,
                     iteration=None,
                     file_path=None,
                     dtype="float32"):
+    """Load a specific model checkpoint from disk.
+
+    Args:
+        checkpoint_dir (str): the directory where checkpoint is saved.
+        rank (int): the rank of the process in multi-process setting.
+        model (obj): model to load parameters.
+        optimizer (obj, optional): optimizer to load states if needed.
+            Defaults to None.
+        iteration (int, optional): if specified, load the specific checkpoint,
+            if not specified, load the latest one. Defaults to None.
+        file_path (str, optional): if specified, load the checkpoint
+            stored in the file_path. Defaults to None.
+        dtype (str, optional): precision of the model parameters.
+            Defaults to float32.
+
+    Returns:
+        None
+    """
     if file_path is None:
         if iteration is None:
             iteration = load_latest_checkpoint(checkpoint_dir, rank)
@@ -165,6 +202,18 @@ def load_parameters(checkpoint_dir,
 
 
 def save_latest_parameters(checkpoint_dir, iteration, model, optimizer=None):
+    """Checkpoint the latest trained model parameters.
+
+    Args:
+        checkpoint_dir (str): the directory where checkpoint is saved.
+        iteration (int): the latest iteration number.
+        model (obj): model to be checkpointed.
+        optimizer (obj, optional): optimizer to be checkpointed.
+            Defaults to None.
+
+    Returns:
+        None
+    """
     file_path = "{}/step-{}".format(checkpoint_dir, iteration)
     model_dict = model.state_dict()
     dg.save_dygraph(model_dict, file_path)

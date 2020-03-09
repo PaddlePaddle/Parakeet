@@ -16,6 +16,7 @@ from scipy.io.wavfile import write
 from parakeet.g2p.en import text_to_sequence
 import numpy as np
 from tqdm import tqdm
+from matplotlib import cm
 from tensorboardX import SummaryWriter
 from ruamel import yaml
 import paddle.fluid as fluid
@@ -25,6 +26,7 @@ import argparse
 from parse import add_config_options_to_parser
 from pprint import pprint
 from collections import OrderedDict
+from parakeet.models.transformer_tts.utils import *
 from parakeet import audio
 from parakeet.models.transformer_tts.vocoder import Vocoder
 from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
@@ -78,14 +80,18 @@ def synthesis(text_input, args):
         pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text), [0])
 
         pbar = tqdm(range(args.max_len))
-
         for i in pbar:
+            dec_slf_mask = get_triu_tensor(
+                mel_input.numpy(), mel_input.numpy()).astype(np.float32)
+            dec_slf_mask = fluid.layers.cast(
+                dg.to_variable(dec_slf_mask == 0), np.float32)
             pos_mel = np.arange(1, mel_input.shape[1] + 1)
             pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel), [0])
             mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
-                text, mel_input, pos_text, pos_mel)
+                text, mel_input, pos_text, pos_mel, dec_slf_mask)
             mel_input = fluid.layers.concat(
                 [mel_input, postnet_pred[:, -1:, :]], axis=1)
+
         mag_pred = model_vocoder(postnet_pred)
 
         _ljspeech_processor = audio.AudioProcessor(
@@ -111,6 +117,33 @@ def synthesis(text_input, args):
         wav = _ljspeech_processor.inv_spectrogram(
             fluid.layers.transpose(
                 fluid.layers.squeeze(mag_pred, [0]), [1, 0]).numpy())
+        global_step = 0
+        for i, prob in enumerate(attn_probs):
+            for j in range(4):
+                x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
+                writer.add_image(
+                    'Attention_%d_0' % global_step,
+                    x,
+                    i * 4 + j,
+                    dataformats="HWC")
+
+        for i, prob in enumerate(attn_enc):
+            for j in range(4):
+                x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
+                writer.add_image(
+                    'Attention_enc_%d_0' % global_step,
+                    x,
+                    i * 4 + j,
+                    dataformats="HWC")
+
+        for i, prob in enumerate(attn_dec):
+            for j in range(4):
+                x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
+                writer.add_image(
+                    'Attention_dec_%d_0' % global_step,
+                    x,
+                    i * 4 + j,
+                    dataformats="HWC")
         writer.add_audio(text_input, wav, 0, cfg['audio']['sr'])
         if not os.path.exists(args.sample_path):
             os.mkdir(args.sample_path)
@@ -124,4 +157,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Synthesis model")
     add_config_options_to_parser(parser)
     args = parser.parse_args()
-    synthesis("Transformer model is so fast!", args)
+    synthesis(
+        "They emphasized the necessity that the information now being furnished be handled with judgment and care.",
+        args)

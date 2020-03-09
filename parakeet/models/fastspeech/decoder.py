@@ -32,6 +32,7 @@ class Decoder(dg.Layer):
         super(Decoder, self).__init__()
 
         n_position = len_max_seq + 1
+        self.n_head = n_head
         self.pos_inp = get_sinusoid_encoding_table(
             n_position, d_model, padding_idx=0)
         self.position_enc = dg.Embedding(
@@ -55,7 +56,7 @@ class Decoder(dg.Layer):
         for i, layer in enumerate(self.layer_stack):
             self.add_sublayer('fft_{}'.format(i), layer)
 
-    def forward(self, enc_seq, enc_pos):
+    def forward(self, enc_seq, enc_pos, non_pad_mask, slf_attn_mask=None):
         """
         Decoder layer of FastSpeech.
         
@@ -69,10 +70,7 @@ class Decoder(dg.Layer):
             dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
         """
         dec_slf_attn_list = []
-
-        # -- Prepare masks
-        slf_attn_mask = get_attn_key_pad_mask(seq_k=enc_pos, seq_q=enc_pos)
-        non_pad_mask = get_non_pad_mask(enc_pos)
+        slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])
 
         # -- Forward
         dec_output = enc_seq + self.position_enc(enc_pos)
