@@ -26,15 +26,27 @@ class FFTBlock(dg.Layer):
                  d_inner,
                  n_head,
                  d_k,
-                 d_v,
+                 d_q,
                  filter_size,
                  padding,
                  dropout=0.2):
+        """Feed forward structure based on self-attention.
+
+        Args:
+            d_model (int): the dim of hidden layer in multihead attention.
+            d_inner (int): the dim of hidden layer in ffn.
+            n_head (int): the head number of multihead attention.
+            d_k (int): the dim of key in multihead attention.
+            d_q (int): the dim of query in multihead attention.
+            filter_size (int): the conv kernel size.
+            padding (int): the conv padding size.
+            dropout (float, optional): dropout probability. Defaults to 0.2.
+        """
         super(FFTBlock, self).__init__()
         self.slf_attn = MultiheadAttention(
             d_model,
             d_k,
-            d_v,
+            d_q,
             num_head=n_head,
             is_bias=True,
             dropout=dropout,
@@ -48,20 +60,18 @@ class FFTBlock(dg.Layer):
 
     def forward(self, enc_input, non_pad_mask, slf_attn_mask=None):
         """
-        Feed Forward Transformer block in FastSpeech.
+        Feed forward block of FastSpeech
         
         Args:
-            enc_input (Variable): The embedding characters input. 
-                Shape: (B, T, C), T means the timesteps of input, dtype: float32.   
-            non_pad_mask (Variable): The mask of sequence.
-                Shape: (B, T, 1), dtype: int64.
-            slf_attn_mask (Variable, optional): The mask of self attention. Defaults to None.
-                Shape(B, len_q, len_k), len_q means the sequence length of query, 
-                len_k means the sequence length of key, dtype: int64.   
+            enc_input (Variable): shape(B, T, C), dtype float32, the embedding characters input, 
+                where T means the timesteps of input.   
+            non_pad_mask (Variable): shape(B, T, 1), dtype int64, the mask of sequence.
+            slf_attn_mask (Variable, optional): shape(B, len_q, len_k), dtype int64, the mask of self attention,
+                where len_q means the sequence length of query and len_k means the sequence length of key. Defaults to None. 
                      
         Returns:
-            output (Variable), the output after self-attention & ffn. Shape: (B, T, C).
-            slf_attn (Variable), the self attention. Shape: (B * n_head, T, T),
+            output (Variable): shape(B, T, C), the output after self-attention & ffn. 
+            slf_attn (Variable): shape(B * n_head, T, T), the self attention.
         """
         output, slf_attn = self.slf_attn(
             enc_input, enc_input, enc_input, mask=slf_attn_mask)

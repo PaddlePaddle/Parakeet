@@ -23,6 +23,14 @@ from parakeet.models.transformer_tts.post_convnet import PostConvNet
 
 class Decoder(dg.Layer):
     def __init__(self, num_hidden, config, num_head=4, n_layers=3):
+        """Decoder layer of TransformerTTS.
+
+        Args:
+            num_hidden (int): the number of source vocabulary.
+            config: the yaml configs used in decoder.
+            n_layers (int, optional): the layers number of multihead attention. Defaults to 4.
+            num_head (int, optional): the head number of multihead attention. Defaults to 3.
+        """
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
         self.num_head = num_head
@@ -109,38 +117,26 @@ class Decoder(dg.Layer):
                 m_self_mask=None,
                 zero_mask=None):
         """
-        Decoder layer of TransformerTTS.
+        Compute decoder outputs.
+        
         Args:
-            key (Variable): The input key of decoder.
-                Shape: (B, T_text, C), T_text means the timesteps of input text,
-                dtype: float32. 
-            value (Variable): The . input value of decoder.
-                Shape: (B, T_text, C), dtype: float32.
-            query (Variable): The input query of decoder.
-                Shape: (B, T_mel, C), T_mel means the timesteps of input spectrum,
-                dtype: float32.
-            positional (Variable): The spectrum position. 
-                Shape: (B, T_mel), dtype: int64.
-            mask (Variable): the mask of decoder self attention.
-                Shape: (B, T_mel, T_mel), dtype: int64.
-            m_mask (Variable, optional): the query mask of encoder-decoder attention. Defaults to None.
-                Shape: (B, T_mel, 1), dtype: int64.
-            m_self_mask (Variable, optional): the query mask of decoder self attention. Defaults to None.
-                Shape: (B, T_mel, 1), dtype: int64.
-            zero_mask (Variable, optional): query mask of encoder-decoder attention. Defaults to None.
-                Shape: (B, T_mel, T_text), dtype: int64.
+            key (Variable): shape(B, T_text, C), dtype float32, the input key of decoder,
+                where T_text means the timesteps of input text,
+            value (Variable): shape(B, T_text, C), dtype float32, the input value of decoder.
+            query (Variable): shape(B, T_mel, C), dtype float32, the input query of decoder,
+                where T_mel means the timesteps of input spectrum,
+            positional (Variable): shape(B, T_mel), dtype int64, the spectrum position. 
+            mask (Variable): shape(B, T_mel, T_mel), dtype int64, the mask of decoder self attention.
+            m_mask (Variable, optional): shape(B, T_mel, 1), dtype int64, the query mask of encoder-decoder attention. Defaults to None.
+            m_self_mask (Variable, optional): shape(B, T_mel, 1), dtype int64, the query mask of decoder self attention. Defaults to None.
+            zero_mask (Variable, optional): shape(B, T_mel, T_text), dtype int64, query mask of encoder-decoder attention. Defaults to None.
                 
         Returns:
-            mel_out (Variable): the decoder output after mel linear projection.
-                Shape: (B, T_mel, C).
-            out (Variable): the decoder output after post mel network.
-                Shape: (B, T_mel, C).
-            stop_tokens (Variable): the stop tokens of output.
-                Shape: (B, T_mel, 1)
-            attn_list (list[Variable]): the encoder-decoder attention list.
-                Len: n_layers.
-            selfattn_list (list[Variable]): the decoder self attention list.
-                Len: n_layers.
+            mel_out (Variable): shape(B, T_mel, C), the decoder output after mel linear projection.
+            out (Variable): shape(B, T_mel, C), the decoder output after post mel network.
+            stop_tokens (Variable): shape(B, T_mel, 1), the stop tokens of output.
+            attn_list (list[Variable]): len(n_layers), the encoder-decoder attention list.
+            selfattn_list (list[Variable]): len(n_layers), the decoder self attention list.
         """
 
         # get decoder mask with triangular matrix

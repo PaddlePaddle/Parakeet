@@ -19,6 +19,14 @@ import paddle.fluid.layers as layers
 
 class PreNet(dg.Layer):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0.2):
+        """Prenet before passing through the network.
+
+        Args:
+            input_size (int): the input channel size.
+            hidden_size (int): the size of hidden layer in network.
+            output_size (int): the output channel size.
+            dropout_rate (float, optional): dropout probability. Defaults to 0.2.
+        """
         super(PreNet, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -44,20 +52,20 @@ class PreNet(dg.Layer):
 
     def forward(self, x):
         """
-        Pre Net before passing through the network.
+        Prepare network input.
         
         Args:
-            x (Variable): The input value.
-                Shape: (B, T, C), dtype: float32.
+            x (Variable): shape(B, T, C), dtype float32, the input value.
+                
         Returns:
-            (Variable), the result after pernet. Shape: (B, T, C),
+            output (Variable): shape(B, T, C), the result after pernet.
         """
         x = layers.dropout(
             layers.relu(self.linear1(x)),
             self.dropout_rate,
             dropout_implementation='upscale_in_train')
-        x = layers.dropout(
+        output = layers.dropout(
             layers.relu(self.linear2(x)),
             self.dropout_rate,
             dropout_implementation='upscale_in_train')
-        return x
+        return output

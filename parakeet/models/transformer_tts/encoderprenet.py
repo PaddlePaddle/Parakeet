@@ -22,6 +22,13 @@ import numpy as np
 
 class EncoderPrenet(dg.Layer):
     def __init__(self, embedding_size, num_hidden, use_cudnn=True):
+        """ Encoder prenet layer of TransformerTTS.
+
+        Args:
+            embedding_size (int): the size of embedding.
+            num_hidden (int): the size of hidden layer in network.
+            use_cudnn (bool, optional): use cudnn or not. Defaults to True.
+        """
         super(EncoderPrenet, self).__init__()
         self.embedding_size = embedding_size
         self.num_hidden = num_hidden
@@ -82,14 +89,13 @@ class EncoderPrenet(dg.Layer):
 
     def forward(self, x):
         """
-        Encoder prenet layer of TransformerTTS.
+        Prepare encoder input.
+        
         Args:
-            x (Variable): The input character.
-                Shape: (B, T_text), T_text means the timesteps of input text,
-                dtype: float32. 
+            x (Variable): shape(B, T_text), dtype float32, the input character, where T_text means the timesteps of input text.
                 
         Returns:
-            (Variable): the encoder prenet output. Shape: (B, T_text, C).
+            (Variable): shape(B, T_text, C), the encoder prenet output.
         """
 
         x = self.embedding(x)

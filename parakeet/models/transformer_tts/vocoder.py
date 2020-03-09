@@ -20,6 +20,12 @@ from parakeet.models.transformer_tts.cbhg import CBHG
 
 class Vocoder(dg.Layer):
     def __init__(self, config, batch_size):
+        """CBHG Network (mel -> linear)
+
+        Args:
+            config: the yaml configs used in Vocoder model.
+            batch_size (int): the batch size of input.
+        """
         super(Vocoder, self).__init__()
         self.pre_proj = Conv1D(
             num_channels=config['audio']['num_mels'],
@@ -33,14 +39,13 @@ class Vocoder(dg.Layer):
 
     def forward(self, mel):
         """
-        CBHG Network (mel -> linear)
+        Compute mel spectrum to linear spectrum.
+        
         Args:
-            mel (Variable): The input mel spectrum.
-                Shape: (B, C, T), dtype: float32. 
+            mel (Variable): shape(B, C, T), dtype float32, the input mel spectrum.
                 
         Returns:
-            (Variable): the linear output.
-                Shape: (B, T, C).
+            mag_pred (Variable): shape(B, T, C), the linear output.
         """
         mel = layers.transpose(mel, [0, 2, 1])
         mel = self.pre_proj(mel)

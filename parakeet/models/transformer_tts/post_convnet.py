@@ -29,6 +29,19 @@ class PostConvNet(dg.Layer):
                  use_cudnn=True,
                  dropout=0.1,
                  batchnorm_last=False):
+        """Decocder post conv net of TransformerTTS.
+
+        Args:
+            n_mels (int, optional): the number of mel bands when calculating mel spectrograms. Defaults to 80.
+            num_hidden (int, optional): the size of hidden layer in network. Defaults to 512.
+            filter_size (int, optional): the filter size of Conv.  Defaults to 5.
+            padding (int, optional): the padding size of Conv. Defaults to 0.
+            num_conv (int, optional): the num of Conv layers in network. Defaults to 5.
+            outputs_per_step (int, optional): the num of output frames per step . Defaults to 1.
+            use_cudnn (bool, optional): use cudnn in Conv or not. Defaults to True.
+            dropout (float, optional): dropout probability. Defaults to 0.1.
+            batchnorm_last (bool, optional): if batchnorm at last layer or not. Defaults to False.
+        """
         super(PostConvNet, self).__init__()
 
         self.dropout = dropout
@@ -93,13 +106,13 @@ class PostConvNet(dg.Layer):
 
     def forward(self, input):
         """
-        Decocder Post Conv Net of TransformerTTS.
+        Compute the mel spectrum.
         
         Args:
-            input (Variable):  The result of mel linear projection. 
-                Shape: (B, T, C), dtype: float32.
+            input (Variable): shape(B, T, C), dtype float32, the result of mel linear projection. 
+               
         Returns:
-           (Variable): the result after postconvnet. Shape: (B, T, C),
+           output (Variable): shape(B, T, C), the result after postconvnet.
         """
 
         input = layers.transpose(input, [0, 2, 1])

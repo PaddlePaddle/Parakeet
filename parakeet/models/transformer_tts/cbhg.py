@@ -30,6 +30,17 @@ class CBHG(dg.Layer):
                  num_gru_layers=2,
                  max_pool_kernel_size=2,
                  is_post=False):
+        """CBHG Module
+
+        Args:
+            hidden_size (int): dimension of hidden unit.
+            batch_size (int): batch size of input.
+            K (int, optional): number of convolution banks. Defaults to 16.
+            projection_size (int, optional): dimension of projection unit. Defaults to 256.
+            num_gru_layers (int, optional): number of layers of GRUcell. Defaults to 2.
+            max_pool_kernel_size (int, optional): max pooling kernel size. Defaults to 2
+            is_post (bool, optional): whether post processing or not. Defaults to False.
+        """
         super(CBHG, self).__init__()
 
         self.hidden_size = hidden_size
@@ -169,13 +180,13 @@ class CBHG(dg.Layer):
 
     def forward(self, input_):
         """
-        CBHG Module
+        Convert linear spectrum to Mel spectrum.
+
         Args:
-            input_(Variable): The sequentially input.
-                Shape: (B, C, T), dtype: float32. 
+            input_ (Variable): shape(B, C, T), dtype float32, the sequentially input.  
 
         Returns:
-            (Variable): the CBHG output.
+            out (Variable): shape(B, C, T), the CBHG output.
         """
 
         conv_list = []
@@ -217,6 +228,12 @@ class CBHG(dg.Layer):
 
 class Highwaynet(dg.Layer):
     def __init__(self, num_units, num_layers=4):
+        """Highway network
+
+        Args:
+            num_units (int): dimension of hidden unit.
+            num_layers (int, optional): number of highway layers. Defaults to 4.
+        """
         super(Highwaynet, self).__init__()
         self.num_units = num_units
         self.num_layers = num_layers
@@ -250,13 +267,13 @@ class Highwaynet(dg.Layer):
 
     def forward(self, input_):
         """
-        Highway network
-        Args:
-            input_(Variable): The sequentially input.
-                Shape: (B, T, C), dtype: float32. 
+        Compute result of Highway network.
 
+        Args:
+            input_(Variable): shape(B, T, C), dtype float32, the sequentially input.
+            
         Returns:
-            (Variable): the Highway output.
+            out(Variable): the Highway output.
         """
         out = input_
 

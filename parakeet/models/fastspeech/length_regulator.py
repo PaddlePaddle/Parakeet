@@ -22,6 +22,14 @@ from parakeet.modules.customized import Conv1D
 
 class LengthRegulator(dg.Layer):
     def __init__(self, input_size, out_channels, filter_size, dropout=0.1):
+        """Length Regulator block in FastSpeech.
+
+        Args:
+            input_size (int): the channel number of input.
+            out_channels (int): the output channel number.
+            filter_size (int): the filter size of duration predictor.
+            dropout (float, optional): dropout probability. Defaults to 0.1.
+        """
         super(LengthRegulator, self).__init__()
         self.duration_predictor = DurationPredictor(
             input_size=input_size,
@@ -66,20 +74,18 @@ class LengthRegulator(dg.Layer):
 
     def forward(self, x, alpha=1.0, target=None):
         """
-        Length Regulator block in FastSpeech.
+        Compute length of mel from encoder output use TransformerTTS attention
         
         Args:
-            x (Variable): The encoder output.
-                Shape: (B, T, C), dtype: float32.
-            alpha (float32, optional): The hyperparameter to determine the length of 
+            x (Variable): shape(B, T, C), dtype float32, the encoder output.
+            alpha (float32, optional): the hyperparameter to determine the length of 
                 the expanded sequence mel, thereby controlling the voice speed. Defaults to 1.0.
-            target (Variable, optional): The duration of phoneme compute from pretrained transformerTTS. 
-                Defaults to None. Shape: (B, T_text), dtype: int64.
+            target (Variable, optional): shape(B, T_text), dtype int64, the duration of phoneme compute from pretrained transformerTTS. 
+                Defaults to None. 
 
         Returns:
-            output (Variable), the output after exppand. Shape: (B, T, C), 
-            duration_predictor_output (Variable), the output of duration predictor.
-                Shape: (B, T, C).
+            output (Variable): shape(B, T, C), the output after exppand.
+            duration_predictor_output (Variable): shape(B, T, C), the output of duration predictor.
         """
         duration_predictor_output = self.duration_predictor(x)
         if fluid.framework._dygraph_tracer()._train_mode:
@@ -95,6 +101,14 @@ class LengthRegulator(dg.Layer):
 
 class DurationPredictor(dg.Layer):
     def __init__(self, input_size, out_channels, filter_size, dropout=0.1):
+        """Duration Predictor block in FastSpeech.
+
+        Args:
+            input_size (int): the channel number of input.
+            out_channels (int): the output channel number.
+            filter_size (int): the filter size.
+            dropout (float, optional): dropout probability. Defaults to 0.1.
+        """
         super(DurationPredictor, self).__init__()
         self.input_size = input_size
         self.out_channels = out_channels
@@ -137,12 +151,13 @@ class DurationPredictor(dg.Layer):
 
     def forward(self, encoder_output):
         """
-        Duration Predictor block in FastSpeech.
+        Predict the duration of each character.
         
         Args:
-            encoder_output (Variable): Shape(B, T, C), dtype: float32. The encoder output.
+            encoder_output (Variable): shape(B, T, C), dtype float32, the encoder output.
+        
         Returns:
-            out (Variable), Shape(B, T, C), the output of duration predictor.
+            out (Variable): shape(B, T, C), the output of duration predictor.
         """
         # encoder_output.shape(N, T, C)
         out = layers.transpose(encoder_output, [0, 2, 1])
