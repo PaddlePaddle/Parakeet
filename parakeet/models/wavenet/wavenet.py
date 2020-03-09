@@ -48,7 +48,7 @@ def dequantize(quantized, n_bands):
         n_bands (int): number of bands. The input integer Tensor's value is in the range [0, n_bans).
 
     Returns:
-        Variable: the dequantized tensor, dtype: float32.
+        Variable: the dequantized tensor, dtype float3232.
     """
     value = (F.cast(quantized, "float32") + 0.5) * (2.0 / n_bands) - 1.0
     return value
@@ -93,7 +93,7 @@ class ResidualBlock(dg.Layer):
         """Conv1D gated-tanh Block.
 
         Args:
-            x (Variable): shape(B, C_res, T), the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.) dtype: float.
+            x (Variable): shape(B, C_res, T), the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.) dtype float32.
             condition (Variable, optional): shape(B, C_cond, T), the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels). Defaults to None.
 
         Returns:
@@ -131,8 +131,8 @@ class ResidualBlock(dg.Layer):
         """Add a step input. This method works similarily with `forward` but in a `step-in-step-out` fashion.
 
         Args:
-            x (Variable): shape(B, C_res, T=1), input for a step, dtype: float.
-            condition (Variable, optional): shape(B, C_cond, T=1). condition for a step, dtype: float. Defaults to None.
+            x (Variable): shape(B, C_res, T=1), input for a step, dtype float32.
+            condition (Variable, optional): shape(B, C_cond, T=1). condition for a step, dtype float32. Defaults to None.
 
         Returns:
             (residual, skip_connection)
@@ -182,11 +182,11 @@ class ResidualNet(dg.Layer):
     def forward(self, x, condition=None):
         """
         Args:
-            x (Variable): shape(B, C_res, T), dtype: float, the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.)
-            condition (Variable, optional): shape(B, C_cond, T), dtype: float, the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels) Defaults to None.
+            x (Variable): shape(B, C_res, T), dtype float32, the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.)
+            condition (Variable, optional): shape(B, C_cond, T), dtype float32, the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels) Defaults to None.
 
         Returns:
-            skip_connection (Variable): shape(B, C_res, T), dtype: float, the output.
+            skip_connection (Variable): shape(B, C_res, T), dtype float32, the output.
         """
         for i, func in enumerate(self.residual_blocks):
             x, skip = func(x, condition)
@@ -207,11 +207,11 @@ class ResidualNet(dg.Layer):
         """Add a step input. This method works similarily with `forward` but in a `step-in-step-out` fashion.
 
         Args:
-            x (Variable): shape(B, C_res, T=1), dtype: float, input for a step.
-            condition (Variable, optional): shape(B, C_cond, T=1), dtype: float, condition for a step. Defaults to None.
+            x (Variable): shape(B, C_res, T=1), dtype float32, input for a step.
+            condition (Variable, optional): shape(B, C_cond, T=1), dtype float32, condition for a step. Defaults to None.
 
         Returns:
-            skip_connection (Variable): shape(B, C_res, T=1), dtype: float, the output for a step.
+            skip_connection (Variable): shape(B, C_res, T=1), dtype float32, the output for a step.
         """
 
         for i, func in enumerate(self.residual_blocks):
@@ -269,11 +269,11 @@ class WaveNet(dg.Layer):
         """compute the output distribution (represented by its parameters).
 
         Args:
-            x (Variable): shape(B, T), dtype: float, the input waveform.
-            condition (Variable, optional): shape(B, C_cond, T), dtype: float, the upsampled condition. Defaults to None.
+            x (Variable): shape(B, T), dtype float32, the input waveform.
+            condition (Variable, optional): shape(B, C_cond, T), dtype float32, the upsampled condition. Defaults to None.
 
         Returns:
-            Variable: shape(B, T, C_output), dtype: float, the parameter of the output distributions.
+            Variable: shape(B, T, C_output), dtype float32, the parameter of the output distributions.
         """
 
         # Causal Conv
@@ -304,11 +304,11 @@ class WaveNet(dg.Layer):
         """compute the output distribution (represented by its parameters) for a step. It works similarily with the `forward` method but in a `step-in-step-out` fashion.
 
         Args:
-            x (Variable): shape(B, T=1), dtype: float, a step of the input waveform.
-            condition (Variable, optional): shape(B, C_cond, T=1), dtype: float, a step of the upsampled condition. Defaults to None.
+            x (Variable): shape(B, T=1), dtype float32, a step of the input waveform.
+            condition (Variable, optional): shape(B, C_cond, T=1), dtype float32, a step of the upsampled condition. Defaults to None.
 
         Returns:
-            Variable: shape(B, T=1, C_output), dtype: float, the parameter of the output distributions.
+            Variable: shape(B, T=1, C_output), dtype float32, the parameter of the output distributions.
         """
         # Causal Conv
         if self.loss_type == "softmax":
@@ -332,11 +332,11 @@ class WaveNet(dg.Layer):
         """compute the loss where output distribution is a categorial distribution.
 
         Args:
-            y (Variable): shape(B, T, C_output), dtype: float, the logits of the output distribution.
-            t (Variable): shape(B, T), dtype: float, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+            y (Variable): shape(B, T, C_output), dtype float32, the logits of the output distribution.
+            t (Variable): shape(B, T), dtype float32, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
 
         Returns:
-            Variable: shape(1, ), dtype: float, the loss.
+            Variable: shape(1, ), dtype float32, the loss.
         """
         # context size is not taken into account
         y = y[:, self.context_size:, :]
@@ -371,11 +371,11 @@ class WaveNet(dg.Layer):
         """compute the loss where output distribution is a mixture of Gaussians.
 
         Args:
-            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
-            t (Variable): shape(B, T), dtype: float, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+            y (Variable): shape(B, T, C_output), dtype float32, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
+            t (Variable): shape(B, T), dtype float32, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
 
         Returns:
-            Variable: shape(1, ), dtype: float, the loss.
+            Variable: shape(1, ), dtype float32, the loss.
         """
         n_mixture = self.output_dim // 3
 
@@ -408,7 +408,7 @@ class WaveNet(dg.Layer):
     def sample_from_mog(self, y):
         """Sample from the output distribution where the output distribution is a mixture of Gaussians.
         Args:
-            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
+            y (Variable): shape(B, T, C_output), dtype float32, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
 
         Returns:
             Variable: shape(B, T), waveform sampled from the output distribution.
@@ -438,7 +438,7 @@ class WaveNet(dg.Layer):
     def sample(self, y):
         """Sample from the output distribution.
         Args:
-            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution.
+            y (Variable): shape(B, T, C_output), dtype float32, the parameterd of the output distribution.
 
         Returns:
             Variable: shape(B, T), waveform sampled from the output distribution.
@@ -452,11 +452,11 @@ class WaveNet(dg.Layer):
         """compute the loss where output distribution is a mixture of Gaussians.
 
         Args:
-            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution.
-            t (Variable): shape(B, T), dtype: float, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+            y (Variable): shape(B, T, C_output), dtype float32, the parameterd of the output distribution.
+            t (Variable): shape(B, T), dtype float32, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
 
         Returns:
-            Variable: shape(1, ), dtype: float, the loss.
+            Variable: shape(1, ), dtype float32, the loss.
         """
         if self.loss_type == "softmax":
             return self.compute_softmax_loss(y, t)

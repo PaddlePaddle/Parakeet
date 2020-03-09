@@ -60,16 +60,16 @@ class Clarinet(dg.Layer):
         """Compute loss of Clarinet model.
 
         Args:
-            audio (Variable): shape(B, T_audio), dtype: float, ground truth waveform.
-            mel (Variable): shape(B, F, T_mel), dtype: float, condition(mel spectrogram here).
-            audio_start (Variable): shape(B, ), dtype: int64, audio starts positions.
+            audio (Variable): shape(B, T_audio), dtype flaot32, ground truth waveform.
+            mel (Variable): shape(B, F, T_mel), dtype flaot32, condition(mel spectrogram here).
+            audio_start (Variable): shape(B, ), dtype int64, audio starts positions.
             clip_kl (bool, optional): whether to clip kl_loss by maximum=100. Defaults to True.
 
         Returns:
             Dict(str, Variable)
-            loss (Variable): shape(1, ), dtype: float, total loss.
-            kl (Variable): shape(1, ), dtype: float, kl divergence between the teacher's output distribution and student's output distribution.
-            regularization (Variable): shape(1, ), dtype: float, a regularization term of the KL divergence.
+            loss (Variable): shape(1, ), dtype flaot32, total loss.
+            kl (Variable): shape(1, ), dtype flaot32, kl divergence between the teacher's output distribution and student's output distribution.
+            regularization (Variable): shape(1, ), dtype flaot32, a regularization term of the KL divergence.
             spectrogram_frame_loss (Variable): shape(1, ), dytpe: float, stft loss, the L1-distance of the magnitudes of the spectrograms of the ground truth waveform and synthesized waveform.
         """
         batch_size, audio_length = audio.shape  # audio clip's length
@@ -170,12 +170,12 @@ class STFT(dg.Layer):
         """Compute the stft transform.
 
         Args:
-            x (Variable): shape(B, T), dtype: float, the input waveform.
+            x (Variable): shape(B, T), dtype flaot32, the input waveform.
 
         Returns:
             (real, imag)
-            real (Variable): shape(B, C, 1, T), dtype: float, the real part of the spectrogram. (C = 1 + n_fft // 2)
-            imag (Variable): shape(B, C, 1, T), dtype: float, the image part of the spectrogram. (C = 1 + n_fft // 2) 
+            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram. (C = 1 + n_fft // 2)
+            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram. (C = 1 + n_fft // 2) 
         """
         # x(batch_size, time_steps)
         # pad it first with reflect mode
@@ -194,11 +194,11 @@ class STFT(dg.Layer):
 
         Args:
             (real, imag)
-            real (Variable): shape(B, C, 1, T), dtype: float, the real part of the spectrogram.
-            imag (Variable): shape(B, C, 1, T), dtype: float, the image part of the spectrogram.
+            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram.
+            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram.
 
         Returns:
-            Variable: shape(B, C, 1, T), dtype: float, the power spectrogram.
+            Variable: shape(B, C, 1, T), dtype flaot32, the power spectrogram.
         """
         real, imag = self(x)
         power = real**2 + imag**2
@@ -209,11 +209,11 @@ class STFT(dg.Layer):
 
         Args:
             (real, imag)
-            real (Variable): shape(B, C, 1, T), dtype: float, the real part of the spectrogram.
-            imag (Variable): shape(B, C, 1, T), dtype: float, the image part of the spectrogram.
+            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram.
+            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram.
 
         Returns:
-            Variable: shape(B, C, 1, T), dtype: float, the magnitude spectrogram. It is the square root of the power spectrogram.
+            Variable: shape(B, C, 1, T), dtype flaot32, the magnitude spectrogram. It is the square root of the power spectrogram.
         """
         power = self.power(x)
         magnitude = F.sqrt(power)

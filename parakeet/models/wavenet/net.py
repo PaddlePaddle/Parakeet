@@ -30,7 +30,7 @@ def crop(x, audio_start, audio_length):
     """Crop the upsampled condition to match audio_length. The upsampled condition has the same time steps as the whole audio does. But since audios are sliced to 0.5 seconds randomly while conditions are not, upsampled conditions should also be sliced to extaclt match the time steps of the audio slice.
 
     Args:
-        x (Variable): shape(B, C, T), dtype: float, the upsample condition.
+        x (Variable): shape(B, C, T), dtype float32, the upsample condition.
         audio_start (Variable): shape(B, ), dtype: int64, the index the starting point.
         audio_length (int): the length of the audio (number of samples it contaions).
 
@@ -79,10 +79,10 @@ class UpsampleNet(dg.Layer):
         """Compute the upsampled condition.
 
         Args:
-            x (Variable): shape(B, F, T), dtype: float, the condition (mel spectrogram here.) (F means the frequency bands). In the internal Conv2DTransposes, the frequency dimension is treated as `height` dimension instead of `in_channels`.
+            x (Variable): shape(B, F, T), dtype float32, the condition (mel spectrogram here.) (F means the frequency bands). In the internal Conv2DTransposes, the frequency dimension is treated as `height` dimension instead of `in_channels`.
 
         Returns:
-            Variable: shape(B, F, T * upscale_factor), dtype: float, the upsampled condition.
+            Variable: shape(B, F, T * upscale_factor), dtype float32, the upsampled condition.
         """
         x = F.unsqueeze(x, axes=[1])
         for sublayer in self.upsample_convs:
@@ -108,8 +108,8 @@ class ConditionalWavenet(dg.Layer):
         """Compute the output distribution given the mel spectrogram and the input(for teacher force training).
 
         Args:
-            audio (Variable): shape(B, T_audio), dtype: float, ground truth waveform, used for teacher force training.
-            mel ([Variable): shape(B, F, T_mel), dtype: float, mel spectrogram. Note that it is the spectrogram for the whole utterance.
+            audio (Variable): shape(B, T_audio), dtype float32, ground truth waveform, used for teacher force training.
+            mel ([Variable): shape(B, F, T_mel), dtype float32, mel spectrogram. Note that it is the spectrogram for the whole utterance.
             audio_start (Variable): shape(B, ), dtype: int, audio slices' start positions for each utterance.
 
         Returns:
@@ -130,11 +130,11 @@ class ConditionalWavenet(dg.Layer):
         """compute loss with respect to the output distribution and the targer audio.
 
         Args:
-            y (Variable): shape(B, T - 1, C_output), dtype: float, parameters of the output distribution.
-            t (Variable): shape(B, T), dtype: float, target waveform.
+            y (Variable): shape(B, T - 1, C_output), dtype float32, parameters of the output distribution.
+            t (Variable): shape(B, T), dtype float32, target waveform.
 
         Returns:
-            Variable: shape(1, ), dtype: float, the loss.
+            Variable: shape(1, ), dtype float32, the loss.
         """
         t = t[:, 1:]
         loss = self.decoder.loss(y, t)
@@ -144,10 +144,10 @@ class ConditionalWavenet(dg.Layer):
         """Sample from the output distribution.
 
         Args:
-            y (Variable): shape(B, T, C_output), dtype: float, parameters of the output distribution.
+            y (Variable): shape(B, T, C_output), dtype float32, parameters of the output distribution.
 
         Returns:
-            Variable: shape(B, T), dtype: float, sampled waveform from the output distribution.
+            Variable: shape(B, T), dtype float32, sampled waveform from the output distribution.
         """
         samples = self.decoder.sample(y)
         return samples

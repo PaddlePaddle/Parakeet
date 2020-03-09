@@ -93,8 +93,8 @@ class Conv1DGLU(dg.Layer):
     def forward(self, x, speaker_embed=None):
         """
         Args:
-            x (Variable): shape(B, C_in, T), dtype: float, the input of Conv1DGLU layer, where B means batch_size, C_in means the input channels T means input time steps.
-            speaker_embed (Variable): shape(B, C_sp), dtype: float, speaker embed, where C_sp means speaker embedding size.
+            x (Variable): shape(B, C_in, T), dtype float32, the input of Conv1DGLU layer, where B means batch_size, C_in means the input channels T means input time steps.
+            speaker_embed (Variable): shape(B, C_sp), dtype float32, speaker embed, where C_sp means speaker embedding size.
 
         Returns:
             x (Variable): shape(B, C_out, T), the output of Conv1DGLU, where
@@ -127,8 +127,8 @@ class Conv1DGLU(dg.Layer):
         Takes a step of inputs and return a step of outputs. It works similarily with the `forward` method, but in a `step-in-step-out` fashion.
 
         Args:
-            x_t (Variable): shape(B, C_in, T=1), dtype: float, the input of Conv1DGLU layer, where B means batch_size, C_in means the input channels.
-            speaker_embed (Variable): Shape(B, C_sp), dtype: float, speaker embed, where C_sp means speaker embedding size. 
+            x_t (Variable): shape(B, C_in, T=1), dtype float32, the input of Conv1DGLU layer, where B means batch_size, C_in means the input channels.
+            speaker_embed (Variable): Shape(B, C_sp), dtype float32, speaker embed, where C_sp means speaker embedding size. 
 
         Returns:
             x (Variable): shape(B, C_out), the output of Conv1DGLU, where C_out means the `num_filter`.

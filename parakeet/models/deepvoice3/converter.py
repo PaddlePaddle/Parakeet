@@ -257,9 +257,9 @@ class Converter(dg.Layer):
         Convert mel spectrogram or decoder hidden states to linear spectrogram.
         
         Args:
-            x (Variable): Shape(B, T_mel, C_in), dtype: float, converter inputs, where C_in means the input channel for the converter. Note that it can be either C_mel (channel of mel spectrogram) or C_dec // r.
+            x (Variable): Shape(B, T_mel, C_in), dtype float32, converter inputs, where C_in means the input channel for the converter. Note that it can be either C_mel (channel of mel spectrogram) or C_dec // r.
                 When use mel_spectrogram as the input of converter, C_in = C_mel; and when use decoder states as the input of converter, C_in = C_dec // r.
-            speaker_embed (Variable, optional): shape(B, C_sp), dtype: float, speaker embedding, where C_sp means the speaker embedding size.
+            speaker_embed (Variable, optional): shape(B, C_sp), dtype float32, speaker embedding, where C_sp means the speaker embedding size.
 
         Returns:
             out (Variable): Shape(B, T_lin, C_lin), the output linear spectrogram, where C_lin means the channel of linear spectrogram and T_linear means the length(time steps) of linear spectrogram. T_line = time_upsampling * T_mel, which depends on the time_upsampling of the converter.

@@ -112,11 +112,11 @@ class Encoder(dg.Layer):
         
         Args:
             x (Variable): shape(B, T_enc), dtype: int64. Ihe input text indices. T_enc means the timesteps of decoder input x.
-            speaker_embed (Variable, optional): shape(B, C_sp), dtype: float, speaker embeddings. This arg is not None only when the model is a multispeaker model.
+            speaker_embed (Variable, optional): shape(B, C_sp), dtype float32, speaker embeddings. This arg is not None only when the model is a multispeaker model.
 
         Returns:
-            keys (Variable), Shape(B, T_enc, C_emb), dtype: float, the encoded epresentation for keys, where C_emb menas the text embedding size.
-            values (Variable), Shape(B, T_enc, C_emb), dtype: float, the encoded representation for values.
+            keys (Variable), Shape(B, T_enc, C_emb), dtype float32, the encoded epresentation for keys, where C_emb menas the text embedding size.
+            values (Variable), Shape(B, T_enc, C_emb), dtype float32, the encoded representation for values.
         """
         x = self.embed(x)
         x = F.dropout(

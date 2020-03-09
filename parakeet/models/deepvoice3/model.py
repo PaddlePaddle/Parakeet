@@ -55,10 +55,10 @@ class DeepVoice3(dg.Layer):
 
         Returns:
             (mel_outputs, linear_outputs, alignments, done)
-            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
-            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
-            alignments (Variable): shape(N, B, T_dec, T_enc), dtype: float, predicted attention.
-            done (Variable): shape(B, T_dec), dtype: float, predicted done probability.
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype float32, predicted mel spectrogram.
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype float32, predicted mel spectrogram.
+            alignments (Variable): shape(N, B, T_dec, T_enc), dtype float32, predicted attention.
+            done (Variable): shape(B, T_dec), dtype float32, predicted done probability.
             (T_mel: time steps of mel spectrogram, T_lin: time steps of linear spectrogra, T_dec, time steps of decoder, T_enc: time steps of encoder.)
         """
         if hasattr(self, "speaker_embedding"):
@@ -85,10 +85,10 @@ class DeepVoice3(dg.Layer):
 
         Returns:
             (mel_outputs, linear_outputs, alignments, done)
-            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
-            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype: float, predicted mel spectrogram.
-            alignments (Variable): shape(B, T_dec, T_enc), dtype: float, predicted average attention of all attention layers.
-            done (Variable): shape(B, T_dec), dtype: float, predicted done probability.
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype float32, predicted mel spectrogram.
+            mel_outputs (Variable): shape(B, T_mel, C_mel), dtype float32, predicted mel spectrogram.
+            alignments (Variable): shape(B, T_dec, T_enc), dtype float32, predicted average attention of all attention layers.
+            done (Variable): shape(B, T_dec), dtype float32, predicted done probability.
             (T_mel: time steps of mel spectrogram, T_lin: time steps of linear spectrogra, T_dec, time steps of decoder, T_enc: time steps of encoder.)
         """
         if hasattr(self, "speaker_embedding"):

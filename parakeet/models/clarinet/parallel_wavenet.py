@@ -51,13 +51,13 @@ class ParallelWaveNet(dg.Layer):
 
         Args:
             z (Variable): shape(B, T), random noise sampled from a standard gaussian disribution.
-            condition (Variable, optional): shape(B, F, T), dtype: float, the upsampled condition. Defaults to None.
+            condition (Variable, optional): shape(B, F, T), dtype float, the upsampled condition. Defaults to None.
 
         Returns:
             (z, out_mu, out_log_std)
-            z (Variable): shape(B, T), dtype: float, transformed noise, it is the synthesized waveform.
-            out_mu (Variable): shape(B, T), dtype: float, means of the output distributions.
-            out_log_std (Variable): shape(B, T), dtype: float, log standard deviations of the output distributions.
+            z (Variable): shape(B, T), dtype float, transformed noise, it is the synthesized waveform.
+            out_mu (Variable): shape(B, T), dtype float, means of the output distributions.
+            out_log_std (Variable): shape(B, T), dtype float, log standard deviations of the output distributions.
         """
         for i, flow in enumerate(self.flows):
             theta = flow(z, condition)  # w, mu, log_std [0: T]

@@ -67,16 +67,16 @@ class Attention(dg.Layer):
         Compute contextualized representation and alignment scores.
         
         Args:
-            query (Variable): shape(B, T_dec, C_q), dtype: float, the query tensor, where C_q means the query dim.
+            query (Variable): shape(B, T_dec, C_q), dtype float32, the query tensor, where C_q means the query dim.
             encoder_out (keys, values): 
-                keys (Variable): shape(B, T_enc, C_emb), dtype: float, the key representation from an encoder, where C_emb means embed dim.
-                values (Variable): shape(B, T_enc, C_emb), dtype: float, the value representation from an encoder, where C_emb means embed dim.
-            mask (Variable, optional): shape(B, T_enc), dtype: float, mask generated with valid text lengths. Pad tokens corresponds to 1, and valid tokens correspond to 0.
+                keys (Variable): shape(B, T_enc, C_emb), dtype float32, the key representation from an encoder, where C_emb means embed dim.
+                values (Variable): shape(B, T_enc, C_emb), dtype float32, the value representation from an encoder, where C_emb means embed dim.
+            mask (Variable, optional): shape(B, T_enc), dtype float32, mask generated with valid text lengths. Pad tokens corresponds to 1, and valid tokens correspond to 0.
             last_attended (int, optional): The position that received the most attention at last time step. This is only used at inference.
 
         Outpus:
-            x (Variable): shape(B, T_dec, C_q), dtype: float, the contextualized representation from attention mechanism.
-            attn_scores (Variable): shape(B, T_dec, T_enc), dtype: float, the alignment tensor, where T_dec means the number of decoder time steps and T_enc means number the number of decoder time steps.
+            x (Variable): shape(B, T_dec, C_q), dtype float32, the contextualized representation from attention mechanism.
+            attn_scores (Variable): shape(B, T_dec, T_enc), dtype float32, the alignment tensor, where T_dec means the number of decoder time steps and T_enc means number the number of decoder time steps.
         """
         keys, values = encoder_out
         residual = query

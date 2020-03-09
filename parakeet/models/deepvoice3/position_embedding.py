@@ -22,7 +22,7 @@ def compute_position_embedding(radians, speaker_position_rate):
     """Compute sin/cos interleaved matrix from the radians.
     
     Arg:
-        radians (Variable): shape(n_vocab, embed_dim), dtype: float, the radians matrix.
+        radians (Variable): shape(n_vocab, embed_dim), dtype float32, the radians matrix.
         speaker_position_rate (Variable): shape(B, ), speaker positioning rate.
     
     Returns:
@@ -98,7 +98,7 @@ class PositionEmbedding(dg.Layer):
                 example. It can also be a Variable with shape (B, ), which 
                 contains a speaker position rate for each utterance.
         Returns:
-            out (Variable): shape(B, T, C_pos), dtype: float, position embedding, where C_pos 
+            out (Variable): shape(B, T, C_pos), dtype float32, position embedding, where C_pos 
                 means position embedding size.
         """
         batch_size, time_steps = indices.shape

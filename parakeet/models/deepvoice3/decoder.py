@@ -41,7 +41,7 @@ def gen_mask(valid_lengths, max_len, dtype="float32"):
         dtype (str, optional): A string that specifies the data type of the returned mask. Defaults to 'float32'.
 
     Returns:
-        mask (Variable): shape(B, max_len), dtype: float, a mask computed from valid lengths.
+        mask (Variable): shape(B, max_len), dtype float32, a mask computed from valid lengths.
     """
     mask = F.sequence_mask(valid_lengths, maxlen=max_len, dtype=dtype)
     mask = 1 - mask
@@ -261,8 +261,8 @@ class Decoder(dg.Layer):
 
         Args:
             encoder_out (keys, values): 
-                keys (Variable): shape(B, T_enc, C_emb), dtype: float, the key representation from an encoder, where C_emb means text embedding size.
-                values (Variable): shape(B, T_enc, C_emb), dtype: float, the value representation from an encoder, where C_emb means text embedding size.
+                keys (Variable): shape(B, T_enc, C_emb), dtype float32, the key representation from an encoder, where C_emb means text embedding size.
+                values (Variable): shape(B, T_enc, C_emb), dtype float32, the value representation from an encoder, where C_emb means text embedding size.
             lengths (Variable): shape(batch_size,), dtype: int64, valid lengths of text inputs for each example.
             inputs (Variable): shape(B, T_mel, C_mel), ground truth mel-spectrogram, which is used as decoder inputs when training.
             text_positions (Variable): shape(B, T_enc), dtype: int64. Positions indices for text inputs for the encoder, where T_enc means the encoder timesteps.
@@ -270,10 +270,10 @@ class Decoder(dg.Layer):
             speaker_embed (Variable, optionals): shape(batch_size, speaker_dim), speaker embedding, only used for multispeaker model.
 
         Returns:
-            outputs (Variable): shape(B, T_mel, C_mel), dtype: float, decoder outputs, where C_mel means the channels of mel-spectrogram, T_mel means the length(time steps) of mel spectrogram. 
-            alignments (Variable): shape(N, B, T_mel // r, T_enc), dtype: float, the alignment tensor between the decoder and the encoder, where N means number of Attention Layers, T_mel means the length of mel spectrogram, r means the outputs per decoder step, T_enc means the encoder time steps.
-            done (Variable): shape(B, T_mel // r), dtype: float, probability that the last frame has been generated.
-            decoder_states (Variable): shape(B, T_mel, C_dec // r), ddtype: float, decoder hidden states, where C_dec means the channels of decoder states (the output channels of the last `convolutions`). Note that it should be perfectlt devided by `r`.
+            outputs (Variable): shape(B, T_mel, C_mel), dtype float32, decoder outputs, where C_mel means the channels of mel-spectrogram, T_mel means the length(time steps) of mel spectrogram. 
+            alignments (Variable): shape(N, B, T_mel // r, T_enc), dtype float32, the alignment tensor between the decoder and the encoder, where N means number of Attention Layers, T_mel means the length of mel spectrogram, r means the outputs per decoder step, T_enc means the encoder time steps.
+            done (Variable): shape(B, T_mel // r), dtype float32, probability that the last frame has been generated.
+            decoder_states (Variable): shape(B, T_mel, C_dec // r), ddtype float32, decoder hidden states, where C_dec means the channels of decoder states (the output channels of the last `convolutions`). Note that it should be perfectlt devided by `r`.
         """
         if speaker_embed is not None:
             speaker_embed = F.dropout(
@@ -376,17 +376,17 @@ class Decoder(dg.Layer):
 
         Args:
             encoder_out (keys, values): 
-                keys (Variable): shape(B, T_enc, C_emb), dtype: float, the key representation from an encoder, where C_emb means text embedding size.
-                values (Variable): shape(B, T_enc, C_emb), dtype: float, the value representation from an encoder, where C_emb means text embedding size.
+                keys (Variable): shape(B, T_enc, C_emb), dtype float32, the key representation from an encoder, where C_emb means text embedding size.
+                values (Variable): shape(B, T_enc, C_emb), dtype float32, the value representation from an encoder, where C_emb means text embedding size.
             text_positions (Variable): shape(B, T_enc), dtype: int64. Positions indices for text inputs for the encoder, where T_enc means the encoder timesteps.
             speaker_embed (Variable, optional): shape(B, C_sp), speaker embedding, only used for multispeaker model.
             test_inputs (Variable, optional): shape(B, T_test, C_mel). test input, it is only used for debugging. Defaults to None.
 
         Returns:
-            outputs (Variable): shape(B, T_mel, C_mel), dtype: float, decoder outputs, where C_mel means the channels of mel-spectrogram, T_mel means the length(time steps) of mel spectrogram. 
-            alignments (Variable): shape(N, B, T_mel // r, T_enc), dtype: float, the alignment tensor between the decoder and the encoder, where N means number of Attention Layers, T_mel means the length of mel spectrogram, r means the outputs per decoder step, T_enc means the encoder time steps.
-            done (Variable): shape(B, T_mel // r), dtype: float, probability that the last frame has been generated. If the probability is larger than 0.5 at a step, the generation stops.
-            decoder_states (Variable): shape(B, T_mel, C_dec // r), ddtype: float, decoder hidden states, where C_dec means the channels of decoder states (the output channels of the last `convolutions`). Note that it should be perfectlt devided by `r`.
+            outputs (Variable): shape(B, T_mel, C_mel), dtype float32, decoder outputs, where C_mel means the channels of mel-spectrogram, T_mel means the length(time steps) of mel spectrogram. 
+            alignments (Variable): shape(N, B, T_mel // r, T_enc), dtype float32, the alignment tensor between the decoder and the encoder, where N means number of Attention Layers, T_mel means the length of mel spectrogram, r means the outputs per decoder step, T_enc means the encoder time steps.
+            done (Variable): shape(B, T_mel // r), dtype float32, probability that the last frame has been generated. If the probability is larger than 0.5 at a step, the generation stops.
+            decoder_states (Variable): shape(B, T_mel, C_dec // r), ddtype float32, decoder hidden states, where C_dec means the channels of decoder states (the output channels of the last `convolutions`). Note that it should be perfectlt devided by `r`.
 
         Note:
             Only single instance inference is supported now, so B = 1.

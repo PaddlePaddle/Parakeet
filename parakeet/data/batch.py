@@ -34,7 +34,7 @@ def batch_text_id(minibatch, pad_id=0, dtype=np.int64):
     """Pad sequences to text_ids to the largest length and batch them.
     
     Args:
-        minibatch (List[np.ndarray]): list of rank-1 arrays, shape(T,), dtype: np.int64, text_ids.
+        minibatch (List[np.ndarray]): list of rank-1 arrays, shape(T,), dtype np.int64, text_ids.
         pad_id (int, optional): the id which correspond to the special pad token. Defaults to 0.
         dtype (np.dtype, optional): the data dtype of the output. Defaults to np.int64.
 
@@ -75,7 +75,7 @@ def batch_wav(minibatch, pad_value=0., dtype=np.float32):
     """pad audios to the largest length and batch them.
 
     Args:
-        minibatch (List[np.ndarray]): list of rank-1 float arrays(mono-channel audio, shape(T,)) or list of rank-2 float arrays(multi-channel audio, shape(C, T), C stands for numer of channels, T stands for length), dtype: float.
+        minibatch (List[np.ndarray]): list of rank-1 float arrays(mono-channel audio, shape(T,)) or list of rank-2 float arrays(multi-channel audio, shape(C, T), C stands for numer of channels, T stands for length), dtype float.
         pad_value (float, optional): the pad value. Defaults to 0..
         dtype (np.dtype, optional): the data type of the output. Defaults to np.float32.
 
@@ -126,7 +126,7 @@ def batch_spec(minibatch, pad_value=0., dtype=np.float32):
     """Pad spectra to the largest length and batch them.
 
     Args:
-        minibatch (List[np.ndarray]): list of rank-2 arrays of shape(F, T) for mono-channel spectrograms, or list of rank-3 arrays of shape(C, F, T) for multi-channel spectrograms(F stands for frequency bands.), dtype: float.
+        minibatch (List[np.ndarray]): list of rank-2 arrays of shape(F, T) for mono-channel spectrograms, or list of rank-3 arrays of shape(C, F, T) for multi-channel spectrograms(F stands for frequency bands.), dtype float.
         pad_value (float, optional): the pad value. Defaults to 0..
         dtype (np.dtype, optional): data type of the output. Defaults to np.float32.
 

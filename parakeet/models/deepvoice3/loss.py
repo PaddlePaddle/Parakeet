@@ -23,10 +23,10 @@ import paddle.fluid.dygraph as dg
 def masked_mean(inputs, mask):
     """
     Args:
-        inputs (Variable): shape(B, T, C), dtype: float, the input.
-        mask (Variable): shape(B, T), dtype: float, a mask. 
+        inputs (Variable): shape(B, T, C), dtype float32, the input.
+        mask (Variable): shape(B, T), dtype float32, a mask. 
     Returns:
-        loss (Variable): shape(1, ), dtype: float, masked mean.
+        loss (Variable): shape(1, ), dtype float32, masked mean.
     """
     channels = inputs.shape[-1]
     masked_inputs = F.elementwise_mul(inputs, mask, axis=0)
@@ -46,7 +46,7 @@ def guided_attention(N, max_N, T, max_T, g):
         g (float): sigma to adjust the degree of diagonal guide.
 
     Returns:
-        np.ndarray: shape(max_N, max_T), dtype: float, the diagonal guide.
+        np.ndarray: shape(max_N, max_T), dtype float32, the diagonal guide.
     """
     W = np.zeros((max_N, max_T), dtype=np.float32)
     for n in range(N):
@@ -66,7 +66,7 @@ def guided_attentions(encoder_lengths, decoder_lengths, max_decoder_len,
         g (float, optional): sigma to adjust the degree of diagonal guide.. Defaults to 0.2.
 
     Returns:
-        np.ndarray: shape(B, max_T, max_N), dtype: float, the diagonal guide. (max_N: max encoder length, max_T: max decoder length.)
+        np.ndarray: shape(B, max_T, max_N), dtype float32, the diagonal guide. (max_N: max encoder length, max_T: max decoder length.)
     """
     B = len(encoder_lengths)
     max_input_len = encoder_lengths.max()
@@ -111,13 +111,13 @@ class TTSLoss(object):
         """L1 loss for spectrogram.
 
         Args:
-            prediction (Variable): shape(B, T, C), dtype: float, predicted spectrogram.
-            target (Variable): shape(B, T, C), dtype: float, target spectrogram.
+            prediction (Variable): shape(B, T, C), dtype float32, predicted spectrogram.
+            target (Variable): shape(B, T, C), dtype float32, target spectrogram.
             mask (Variable): shape(B, T), mask.
             priority_bin (int, optional): frequency bands for linear spectrogram loss to be prioritized. Defaults to None.
 
         Returns:
-            Variable: shape(1,), dtype: float, l1 loss(with mask and possibly priority bin applied.)
+            Variable: shape(1,), dtype float32, l1 loss(with mask and possibly priority bin applied.)
         """
         abs_diff = F.abs(prediction - target)
 
@@ -149,12 +149,12 @@ class TTSLoss(object):
         """Binary cross entropy loss for spectrogram. All the values in the spectrogram are treated as logits in a logistic regression.
 
         Args:
-            prediction (Variable): shape(B, T, C), dtype: float, predicted spectrogram.
-            target (Variable): shape(B, T, C), dtype: float, target spectrogram.
+            prediction (Variable): shape(B, T, C), dtype float32, predicted spectrogram.
+            target (Variable): shape(B, T, C), dtype float32, target spectrogram.
             mask (Variable): shape(B, T), mask.
 
         Returns:
-            Variable: shape(1,), dtype: float, binary cross entropy loss.
+            Variable: shape(1,), dtype float32, binary cross entropy loss.
         """
         flattened_prediction = F.reshape(prediction, [-1, 1])
         flattened_target = F.reshape(target, [-1, 1])
@@ -175,11 +175,11 @@ class TTSLoss(object):
         """Compute done loss
 
         Args:
-            done_hat (Variable): shape(B, T), dtype: float, predicted done probability(the probability that the final frame has been generated.)
-            done (Variable): shape(B, T), dtype: float, ground truth done probability(the probability that the final frame has been generated.)
+            done_hat (Variable): shape(B, T), dtype float32, predicted done probability(the probability that the final frame has been generated.)
+            done (Variable): shape(B, T), dtype float32, ground truth done probability(the probability that the final frame has been generated.)
 
         Returns:
-            Variable: shape(1, ), dtype: float, done loss.
+            Variable: shape(1, ), dtype float32, done loss.
         """
         flat_done_hat = F.reshape(done_hat, [-1, 1])
         flat_done = F.reshape(done, [-1, 1])
@@ -193,12 +193,12 @@ class TTSLoss(object):
         Given valid encoder_lengths and decoder_lengths, compute a diagonal guide, and compute loss from the predicted attention and the guide.
         
         Args:
-            predicted_attention (Variable): shape(*, B, T_dec, T_enc), dtype: float, the alignment tensor, where B means batch size, T_dec means number of time steps of the decoder, T_enc means the number of time steps of the encoder, * means other possible dimensions.
+            predicted_attention (Variable): shape(*, B, T_dec, T_enc), dtype float32, the alignment tensor, where B means batch size, T_dec means number of time steps of the decoder, T_enc means the number of time steps of the encoder, * means other possible dimensions.
             input_lengths (numpy.ndarray): shape(B,), dtype:int64, valid lengths (time steps) of encoder outputs.
             target_lengths (numpy.ndarray): shape(batch_size,), dtype:int64, valid lengths (time steps) of decoder outputs.
         
         Returns:
-            loss (Variable): shape(1, ), dtype: float, attention loss.
+            loss (Variable): shape(1, ), dtype float32, attention loss.
         """
         n_attention, batch_size, max_target_len, max_input_len = (
             predicted_attention.shape)
@@ -226,13 +226,13 @@ class TTSLoss(object):
         """Total loss
 
         Args:
-            mel_hyp (Variable): shape(B, T, C_mel), dtype, float, predicted mel spectrogram.
-            lin_hyp (Variable): shape(B, T, C_lin), dtype, float, predicted linear spectrogram.
-            done_hyp (Variable): shape(B, T), dtype, float, predicted done probability.
-            attn_hyp (Variable): shape(N, B, T_dec, T_enc), dtype: float, predicted attention.
-            mel_ref (Variable): shape(B, T, C_mel), dtype, float, ground truth mel spectrogram.
-            lin_ref (Variable): shape(B, T, C_lin), dtype, float, ground truth linear spectrogram.
-            done_ref (Variable): shape(B, T), dtype, float, ground truth done flag.
+            mel_hyp (Variable): shape(B, T, C_mel), dtype float32, predicted mel spectrogram.
+            lin_hyp (Variable): shape(B, T, C_lin), dtype float32, predicted linear spectrogram.
+            done_hyp (Variable): shape(B, T), dtype float32, predicted done probability.
+            attn_hyp (Variable): shape(N, B, T_dec, T_enc), dtype float32, predicted attention.
+            mel_ref (Variable): shape(B, T, C_mel), dtype float32, ground truth mel spectrogram.
+            lin_ref (Variable): shape(B, T, C_lin), dtype float32, ground truth linear spectrogram.
+            done_ref (Variable): shape(B, T), dtype float32, ground truth done flag.
             input_lengths (Variable): shape(B, ), dtype: int, encoder valid lengths.
             n_frames (Variable): shape(B, ), dtype: int, decoder valid lengths.
             compute_lin_loss (bool, optional): whether to compute linear loss. Defaults to True.
