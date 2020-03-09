@@ -51,7 +51,9 @@ def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
 
 
 def get_non_pad_mask(seq):
-    return layers.unsqueeze((seq != 0).astype(np.float32), [-1])
+    mask = (seq != 0).astype(np.float32)
+    mask = np.expand_dims(mask, axis=-1)
+    return mask
 
 
 def get_attn_key_pad_mask(seq_k, seq_q):
@@ -60,8 +62,22 @@ def get_attn_key_pad_mask(seq_k, seq_q):
     # Expand to fit the shape of key query attention matrix.
     len_q = seq_q.shape[1]
     padding_mask = (seq_k != 0).astype(np.float32)
-    padding_mask = layers.expand(
-        layers.unsqueeze(padding_mask, [1]), [1, len_q, 1])
+    padding_mask = np.expand_dims(padding_mask, axis=1)
+    padding_mask = padding_mask.repeat([len_q], axis=1)
+    padding_mask = (padding_mask == 0).astype(np.float32) * (-2**32 + 1)
+    return padding_mask
+
+
+def get_dec_attn_key_pad_mask(seq_k, seq_q):
+    ''' For masking out the padding part of key sequence. '''
+
+    # Expand to fit the shape of key query attention matrix.
+    len_q = seq_q.shape[1]
+    padding_mask = (seq_k == 0).astype(np.float32)
+    padding_mask = np.expand_dims(padding_mask, axis=1)
+    triu_tensor = get_triu_tensor(seq_q, seq_q)
+    padding_mask = padding_mask.repeat([len_q], axis=1) + triu_tensor
+    padding_mask = (padding_mask != 0).astype(np.float32) * (-2**32 + 1)
     return padding_mask
 
 

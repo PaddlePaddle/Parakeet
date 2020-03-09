@@ -157,8 +157,6 @@ def upsampling_1x_blocks(n_speakers, speaker_dim, target_channels, dropout):
 
 
 class Converter(dg.Layer):
-    """Vocoder that transforms mel spectrogram (or ecoder hidden states) to waveform."""
-
     def __init__(self,
                  n_speakers,
                  speaker_dim,
@@ -167,7 +165,7 @@ class Converter(dg.Layer):
                  convolutions=(ConvSpec(256, 5, 1), ) * 4,
                  time_upsampling=1,
                  dropout=0.0):
-        """[summary]
+        """Vocoder that transforms mel spectrogram (or ecoder hidden states) to waveform.
 
         Args:
             n_speakers (int): number of speakers.

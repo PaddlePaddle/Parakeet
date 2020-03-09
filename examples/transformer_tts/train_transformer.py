@@ -14,7 +14,7 @@
 import os
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
-from pathlib import Path
+#from pathlib import Path
 from collections import OrderedDict
 import argparse
 from parse import add_config_options_to_parser
@@ -89,21 +89,31 @@ def main(args):
             pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d' % epoch)
-                character, mel, mel_input, pos_text, pos_mel, text_length, _ = data
+                character, mel, mel_input, pos_text, pos_mel, text_length, _, enc_slf_mask, enc_query_mask, dec_slf_mask, enc_dec_mask, dec_query_slf_mask, dec_query_mask = data
 
                 global_step += 1
-                mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
-                    character, mel_input, pos_text, pos_mel)
 
-                label = (pos_mel == 0).astype(np.float32)
+                mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
+                    character,
+                    mel_input,
+                    pos_text,
+                    pos_mel,
+                    dec_slf_mask=dec_slf_mask,
+                    enc_slf_mask=enc_slf_mask,
+                    enc_query_mask=enc_query_mask,
+                    enc_dec_mask=enc_dec_mask,
+                    dec_query_slf_mask=dec_query_slf_mask,
+                    dec_query_mask=dec_query_mask)
 
                 mel_loss = layers.mean(
                     layers.abs(layers.elementwise_sub(mel_pred, mel)))
                 post_mel_loss = layers.mean(
                     layers.abs(layers.elementwise_sub(postnet_pred, mel)))
                 loss = mel_loss + post_mel_loss
+
                 # Note: When used stop token loss the learning did not work.
                 if args.stop_token:
+                    label = (pos_mel == 0).astype(np.float32)
                     stop_loss = cross_entropy(stop_preds, label)
                     loss = loss + stop_loss
 

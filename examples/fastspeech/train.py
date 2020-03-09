@@ -21,6 +21,7 @@ from parse import add_config_options_to_parser
 from pprint import pprint
 from ruamel import yaml
 from tqdm import tqdm
+from matplotlib import cm
 from collections import OrderedDict
 from tensorboardX import SummaryWriter
 import paddle.fluid.dygraph as dg
@@ -66,12 +67,12 @@ def main(args):
 
     with dg.guard(place):
         with fluid.unique_name.guard():
-            transformerTTS = TransformerTTS(cfg)
+            transformer_tts = TransformerTTS(cfg)
             model_dict, _ = load_checkpoint(
                 str(args.transformer_step),
                 os.path.join(args.transtts_path, "transformer"))
-            transformerTTS.set_dict(model_dict)
-            transformerTTS.eval()
+            transformer_tts.set_dict(model_dict)
+            transformer_tts.eval()
 
         model = FastSpeech(cfg)
         model.train()
@@ -100,13 +101,33 @@ def main(args):
 
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d' % epoch)
-                character, mel, mel_input, pos_text, pos_mel, text_length, mel_lens = data
+                (character, mel, mel_input, pos_text, pos_mel, text_length,
+                 mel_lens, enc_slf_mask, enc_query_mask, dec_slf_mask,
+                 enc_dec_mask, dec_query_slf_mask, dec_query_mask) = data
 
-                _, _, attn_probs, _, _, _ = transformerTTS(
-                    character, mel_input, pos_text, pos_mel)
-                alignment = dg.to_variable(
-                    get_alignment(attn_probs, mel_lens, cfg[
-                        'transformer_head'])).astype(np.float32)
+                _, _, attn_probs, _, _, _ = transformer_tts(
+                    character,
+                    mel_input,
+                    pos_text,
+                    pos_mel,
+                    dec_slf_mask=dec_slf_mask,
+                    enc_slf_mask=enc_slf_mask,
+                    enc_query_mask=enc_query_mask,
+                    enc_dec_mask=enc_dec_mask,
+                    dec_query_slf_mask=dec_query_slf_mask,
+                    dec_query_mask=dec_query_mask)
+                alignment, max_attn = get_alignment(attn_probs, mel_lens,
+                                                    cfg['transformer_head'])
+                alignment = dg.to_variable(alignment).astype(np.float32)
+
+                if local_rank == 0 and global_step % 5 == 1:
+                    x = np.uint8(
+                        cm.viridis(max_attn[8, :mel_lens.numpy()[8]]) * 255)
+                    writer.add_image(
+                        'Attention_%d_0' % global_step,
+                        x,
+                        0,
+                        dataformats="HWC")
 
                 global_step += 1
 
@@ -115,7 +136,11 @@ def main(args):
                     character,
                     pos_text,
                     mel_pos=pos_mel,
-                    length_target=alignment)
+                    length_target=alignment,
+                    enc_non_pad_mask=enc_query_mask,
+                    enc_slf_attn_mask=enc_slf_mask,
+                    dec_non_pad_mask=dec_query_slf_mask,
+                    dec_slf_attn_mask=dec_slf_mask)
                 mel_output, mel_output_postnet, duration_predictor_output, _, _ = result
                 mel_loss = layers.mse_loss(mel_output, mel)
                 mel_postnet_loss = layers.mse_loss(mel_output_postnet, mel)

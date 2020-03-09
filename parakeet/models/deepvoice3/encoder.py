@@ -35,7 +35,7 @@ class Encoder(dg.Layer):
                  embedding_weight_std=0.1,
                  convolutions=(ConvSpec(64, 5, 1), ) * 7,
                  dropout=0.):
-        """[summary]
+        """Encoder of Deep Voice 3.
 
         Args:
             n_vocab (int): vocabulary size of the text embedding.

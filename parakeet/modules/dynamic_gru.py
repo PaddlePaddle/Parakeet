@@ -53,11 +53,9 @@ class DynamicGRU(dg.Layer):
             if self.is_reverse:
                 i = inputs.shape[1] - 1 - i
             input_ = inputs[:, i:i + 1, :]
-            input_ = layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False)
+            input_ = layers.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False)
+            hidden_ = layers.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
         if self.is_reverse:
             res = res[::-1]

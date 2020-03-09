@@ -56,6 +56,12 @@ class PreNet(dg.Layer):
         Returns:
             x (Variable), Shape(B, T, C), the result after pernet.
         """
-        x = layers.dropout(layers.relu(self.linear1(x)), self.dropout_rate)
-        x = layers.dropout(layers.relu(self.linear2(x)), self.dropout_rate)
+        x = layers.dropout(
+            layers.relu(self.linear1(x)),
+            self.dropout_rate,
+            dropout_implementation='upscale_in_train')
+        x = layers.dropout(
+            layers.relu(self.linear2(x)),
+            self.dropout_rate,
+            dropout_implementation='upscale_in_train')
         return x
