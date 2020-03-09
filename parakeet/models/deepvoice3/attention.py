@@ -31,6 +31,16 @@ class Attention(dg.Layer):
                  window_range=WindowRange(-1, 3),
                  key_projection=True,
                  value_projection=True):
+        """Attention Layer for Deep Voice 3.
+
+        Args:
+            query_dim (int): the dimension of query vectors. (The size of a single vector of query.)
+            embed_dim (int): the dimension of keys and values.
+            dropout (float, optional): dropout probability of attention. Defaults to 0.0.
+            window_range (WindowRange, optional): range of attention, this is only used at inference. Defaults to WindowRange(-1, 3).
+            key_projection (bool, optional): whether the `Attention` Layer has a Linear Layer for the keys to pass through before computing attention. Defaults to True.
+            value_projection (bool, optional): whether the `Attention` Layer has a Linear Layer for the values to pass through before computing attention. Defaults to True.
+        """
         super(Attention, self).__init__()
         std = np.sqrt(1 / query_dim)
         self.query_proj = Linear(
@@ -54,29 +64,19 @@ class Attention(dg.Layer):
 
     def forward(self, query, encoder_out, mask=None, last_attended=None):
         """
-        Compute pooled context representation and alignment scores.
+        Compute contextualized representation and alignment scores.
         
         Args:
-            query (Variable): shape(B, T_dec, C_q), the query tensor,
-                where C_q means the channel of query.
-            encoder_out (Tuple(Variable, Variable)): 
-                keys (Variable): shape(B, T_enc, C_emb), the key
-                    representation from an encoder, where C_emb means
-                    text embedding size.
-                values (Variable): shape(B, T_enc, C_emb), the value
-                    representation from an encoder, where C_emb means
-                    text embedding size.
-            mask (Variable, optional): Shape(B, T_enc), mask generated with 
-                valid text lengths.
-            last_attended (int, optional): The position that received most
-                attention at last timestep. This is only used at decoding.
+            query (Variable): shape(B, T_dec, C_q), dtype: float, the query tensor, where C_q means the query dim.
+            encoder_out (keys, values): 
+                keys (Variable): shape(B, T_enc, C_emb), dtype: float, the key representation from an encoder, where C_emb means embed dim.
+                values (Variable): shape(B, T_enc, C_emb), dtype: float, the value representation from an encoder, where C_emb means embed dim.
+            mask (Variable, optional): shape(B, T_enc), dtype: float, mask generated with valid text lengths. Pad tokens corresponds to 1, and valid tokens correspond to 0.
+            last_attended (int, optional): The position that received the most attention at last time step. This is only used at inference.
 
         Outpus:
-            x (Variable): Shape(B, T_dec, C_q), the context representation
-                pooled from attention mechanism.
-            attn_scores (Variable): shape(B, T_dec, T_enc), the alignment
-                tensor, where T_dec means the number of decoder time steps and 
-                T_enc means number the number of decoder time steps.
+            x (Variable): shape(B, T_dec, C_q), dtype: float, the contextualized representation from attention mechanism.
+            attn_scores (Variable): shape(B, T_dec, T_enc), dtype: float, the alignment tensor, where T_dec means the number of decoder time steps and T_enc means number the number of decoder time steps.
         """
         keys, values = encoder_out
         residual = query
@@ -85,7 +85,6 @@ class Attention(dg.Layer):
         if self.key_projection:
             keys = self.key_proj(keys)
         x = self.query_proj(query)
-        # TODO: check the code
 
         x = F.matmul(x, keys, transpose_y=True)
 
@@ -97,7 +96,6 @@ class Attention(dg.Layer):
 
         # if last_attended is provided, focus only on a window range around it
         # to enforce monotonic attention.
-        # TODO: if last attended is a shape(B,) array
         if last_attended is not None:
             locality_mask = np.ones(shape=x.shape, dtype=np.float32)
             backward, ahead = self.window_range
@@ -116,7 +114,7 @@ class Attention(dg.Layer):
             x, self.dropout, dropout_implementation="upscale_in_train")
         x = F.matmul(x, values)
         encoder_length = keys.shape[1]
-        # CAUTION: is it wrong? let it be now
+
         x = F.scale(x, encoder_length * np.sqrt(1.0 / encoder_length))
         x = self.out_proj(x)
         x = F.scale((x + residual), np.sqrt(0.5))

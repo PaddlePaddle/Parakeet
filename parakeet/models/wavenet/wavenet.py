@@ -27,11 +27,29 @@ from parakeet.modules.weight_norm import Linear, Conv1D, Conv1DCell, Conv2DTrans
 
 # for wavenet with softmax loss
 def quantize(values, n_bands):
+    """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in [0, n_bands).
+
+    Args:
+        values (Variable): dtype: flaot32 or float64. the floating point value.
+        n_bands (int): the number of bands. The output integer Tensor's value is in the range [0, n_bans).
+
+    Returns:
+        Variable: the quantized tensor, dtype: int64.
+    """
     quantized = F.cast((values + 1.0) / 2.0 * n_bands, "int64")
     return quantized
 
 
 def dequantize(quantized, n_bands):
+    """Linearlly dequantize an integer Tensor into a float Tensor in the range [-1, 1).
+
+    Args:
+        quantized (Variable): dtype: int64. The quantized value in the range [0, n_bands).
+        n_bands (int): number of bands. The input integer Tensor's value is in the range [0, n_bans).
+
+    Returns:
+        Variable: the dequantized tensor, dtype: float32.
+    """
     value = (F.cast(quantized, "float32") + 0.5) * (2.0 / n_bands) - 1.0
     return value
 
@@ -39,6 +57,14 @@ def dequantize(quantized, n_bands):
 class ResidualBlock(dg.Layer):
     def __init__(self, residual_channels, condition_dim, filter_size,
                  dilation):
+        """A Residual block in wavenet. It does not have parametric residual or skip connection. It consists of a Conv1DCell and an Conv1D(filter_size = 1) to integrate the condition.
+
+        Args:
+            residual_channels (int): the channels of the input, residual and skip.
+            condition_dim (int): the channels of the condition.
+            filter_size (int): filter size of the internal convolution cell.
+            dilation (int): dilation of the internal convolution cell.
+        """
         super(ResidualBlock, self).__init__()
         dilated_channels = 2 * residual_channels
         # following clarinet's implementation, we do not have parametric residual
@@ -64,17 +90,16 @@ class ResidualBlock(dg.Layer):
         self.condition_dim = condition_dim
 
     def forward(self, x, condition=None):
-        """Conv1D gated tanh Block
-        
-        Arguments:
-            x {Variable} -- shape(batch_size, residual_channels, time_steps), the input.
-        
-        Keyword Arguments:
-            condition {Variable} -- shape(batch_size, condition_dim, time_steps), upsampled local condition, it has the shape time steps as the input x. (default: {None})
-        
+        """Conv1D gated-tanh Block.
+
+        Args:
+            x (Variable): shape(B, C_res, T), the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.) dtype: float.
+            condition (Variable, optional): shape(B, C_cond, T), the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels). Defaults to None.
+
         Returns:
-            Variable -- shape(batch_size, residual_channels, time_steps), the output which is used as the input of the next layer.
-            Variable -- shape(batch_size, residual_channels, time_steps), the output which is stacked alongside with other layers' as the output of wavenet.
+            (residual, skip_connection)
+            residual (Variable): shape(B, C_res, T), the residual, which is used as the input to the next layer of ResidualBlock.
+            skip_connection (Variable): shape(B, C_res, T), the skip connection. This output is accumulated with that of other ResidualBlocks. 
         """
         time_steps = x.shape[-1]
         h = x
@@ -98,20 +123,21 @@ class ResidualBlock(dg.Layer):
         return residual, skip_connection
 
     def start_sequence(self):
+        """Prepare the ResidualBlock to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """
         self.conv.start_sequence()
 
     def add_input(self, x, condition=None):
-        """add a step input.
-        
-        Arguments:
-            x {Variable} -- shape(batch_size, in_channels, time_steps=1), step input
-        
-        Keyword Arguments:
-            condition {Variable} -- shape(batch_size, condition_dim, time_steps=1) (default: {None})
-        
+        """Add a step input. This method works similarily with `forward` but in a `step-in-step-out` fashion.
+
+        Args:
+            x (Variable): shape(B, C_res, T=1), input for a step, dtype: float.
+            condition (Variable, optional): shape(B, C_cond, T=1). condition for a step, dtype: float. Defaults to None.
+
         Returns:
-            Variable -- shape(batch_size, in_channels, time_steps=1), residual connection, which is the input for the next layer
-            Variable -- shape(batch_size, in_channels, time_steps=1), skip connection
+            (residual, skip_connection)
+            residual (Variable): shape(B, C_res, T=1), the residual for a step, which is used as the input to the next layer of ResidualBlock.
+            skip_connection (Variable): shape(B, C_res, T=1), the skip connection for a step. This output is accumulated with that of other ResidualBlocks. 
         """
         h = x
 
@@ -135,6 +161,15 @@ class ResidualBlock(dg.Layer):
 class ResidualNet(dg.Layer):
     def __init__(self, n_loop, n_layer, residual_channels, condition_dim,
                  filter_size):
+        """The residual network in wavenet. It consists of `n_layer` stacks, each of which consists of `n_loop` ResidualBlocks.
+
+        Args:
+            n_loop (int): number of ResidualBlocks in a stack.
+            n_layer (int): number of stacks in the `ResidualNet`.
+            residual_channels (int): channels of each `ResidualBlock`'s input.
+            condition_dim (int): channels of the condition.
+            filter_size (int): filter size of the internal Conv1DCell of each `ResidualBlock`.
+        """
         super(ResidualNet, self).__init__()
         # double the dilation at each layer in a loop(n_loop layers)
         dilations = [2**i for i in range(n_loop)] * n_layer
@@ -145,19 +180,14 @@ class ResidualNet(dg.Layer):
         ])
 
     def forward(self, x, condition=None):
-        """n_layer layers of n_loop Residual Blocks.
-        
-        Arguments:
-            x {Variable} -- shape(batch_size, residual_channels, time_steps), input of the residual net.
-        
-        Keyword Arguments:
-            condition {Variable} -- shape(batch_size, condition_dim, time_steps), upsampled conditions, which has the same time steps as the input. (default: {None})
-        
-        Returns:
-            Variable -- shape(batch_size, skip_channels, time_steps), output of the residual net.
         """
+        Args:
+            x (Variable): shape(B, C_res, T), dtype: float, the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.)
+            condition (Variable, optional): shape(B, C_cond, T), dtype: float, the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels) Defaults to None.
 
-        #before_resnet = time.time()
+        Returns:
+            skip_connection (Variable): shape(B, C_res, T), dtype: float, the output.
+        """
         for i, func in enumerate(self.residual_blocks):
             x, skip = func(x, condition)
             if i == 0:
@@ -165,24 +195,23 @@ class ResidualNet(dg.Layer):
             else:
                 skip_connections = F.scale(skip_connections + skip,
                                            np.sqrt(0.5))
-        #print("resnet: ", time.time() - before_resnet)
         return skip_connections
 
     def start_sequence(self):
+        """Prepare the ResidualNet to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """
         for block in self.residual_blocks:
             block.start_sequence()
 
     def add_input(self, x, condition=None):
-        """add step input and return step output.
-        
-        Arguments:
-            x {Variable} -- shape(batch_size, residual_channels, time_steps=1), step input.
-        
-        Keyword Arguments:
-            condition {Variable} -- shape(batch_size, condition_dim, time_steps=1), step condition (default: {None})
-        
+        """Add a step input. This method works similarily with `forward` but in a `step-in-step-out` fashion.
+
+        Args:
+            x (Variable): shape(B, C_res, T=1), dtype: float, input for a step.
+            condition (Variable, optional): shape(B, C_cond, T=1), dtype: float, condition for a step. Defaults to None.
+
         Returns:
-            Variable -- shape(batch_size, skip_channels, time_steps=1), step output, parameters of the output distribution.
+            skip_connection (Variable): shape(B, C_res, T=1), dtype: float, the output for a step.
         """
 
         for i, func in enumerate(self.residual_blocks):
@@ -198,6 +227,18 @@ class ResidualNet(dg.Layer):
 class WaveNet(dg.Layer):
     def __init__(self, n_loop, n_layer, residual_channels, output_dim,
                  condition_dim, filter_size, loss_type, log_scale_min):
+        """Wavenet that transform upsampled mel spectrogram into waveform.
+
+        Args:
+            n_loop (int): n_loop for the internal ResidualNet.
+            n_layer (int): n_loop for the internal ResidualNet.
+            residual_channels (int): the channel of the input.
+            output_dim (int): the channel of the output distribution. 
+            condition_dim (int): the channel of the condition.
+            filter_size (int): the filter size of the internal ResidualNet.
+            loss_type (str): loss type of the wavenet. Possible values are 'softmax' and 'mog'. If `loss_type` is 'softmax', the output is the logits of the catrgotical(multinomial) distribution, `output_dim` means the number of classes of the categorical distribution. If `loss_type` is mog(mixture of gaussians), the output is the parameters of a mixture of gaussians, which consists of weight(in the form of logit) of each gaussian distribution and its mean and log standard deviaton. So when `loss_type` is 'mog', `output_dim` should be perfectly divided by 3.
+            log_scale_min (int): the minimum value of log standard deviation of the output gaussian distributions. Note that this value is only used for computing loss if `loss_type` is 'mog', values less than `log_scale_min` is clipped when computing loss.
+        """
         super(WaveNet, self).__init__()
         if loss_type not in ["softmax", "mog"]:
             raise ValueError("loss_type {} is not supported".format(loss_type))
@@ -225,19 +266,16 @@ class WaveNet(dg.Layer):
         self.log_scale_min = log_scale_min
 
     def forward(self, x, condition=None):
-        """(Possibly) Conditonal Wavenet.
-        
-        Arguments:
-            x {Variable} -- shape(batch_size, time_steps), the input signal of wavenet. The waveform in 0.5 seconds.
-        
-        Keyword Arguments:
-            conditions {Variable} -- shape(batch_size, condition_dim, 1, time_steps), the upsampled local condition. (default: {None})
-        
+        """compute the output distribution (represented by its parameters).
+
+        Args:
+            x (Variable): shape(B, T), dtype: float, the input waveform.
+            condition (Variable, optional): shape(B, C_cond, T), dtype: float, the upsampled condition. Defaults to None.
+
         Returns:
-            Variable -- shape(batch_size, time_steps, output_dim), output distributions at each time_steps. 
+            Variable: shape(B, T, C_output), dtype: float, the parameter of the output distributions.
         """
 
-        # CAUTION: rank-4 condition here
         # Causal Conv
         if self.loss_type == "softmax":
             x = F.clip(x, min=-1., max=0.99999)
@@ -258,21 +296,20 @@ class WaveNet(dg.Layer):
         return y
 
     def start_sequence(self):
+        """Prepare the WaveNet to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """
         self.resnet.start_sequence()
 
     def add_input(self, x, condition=None):
-        """add step input
-        
-        Arguments:
-            x {Variable} -- shape(batch_size, time_steps=1), step input.
-        
-        Keyword Arguments:
-            condition {Variable} -- shape(batch_size, condition_dim , 1, time_steps=1) (default: {None})
-        
-        Returns:
-            Variable -- ouput parameter for the distribution.
-        """
+        """compute the output distribution (represented by its parameters) for a step. It works similarily with the `forward` method but in a `step-in-step-out` fashion.
 
+        Args:
+            x (Variable): shape(B, T=1), dtype: float, a step of the input waveform.
+            condition (Variable, optional): shape(B, C_cond, T=1), dtype: float, a step of the upsampled condition. Defaults to None.
+
+        Returns:
+            Variable: shape(B, T=1, C_output), dtype: float, the parameter of the output distributions.
+        """
         # Causal Conv
         if self.loss_type == "softmax":
             x = quantize(x, self.output_dim)
@@ -292,16 +329,15 @@ class WaveNet(dg.Layer):
         return y
 
     def compute_softmax_loss(self, y, t):
-        """compute loss, it is basically a language_model-like loss.
-        
-        Arguments:
-            y {Variable} -- shape(batch_size, time_steps - 1, output_dim), output distribution of multinomial distribution.
-            t {Variable} -- shape(batch_size, time_steps - 1), target waveform.
-        
-        Returns:
-            Variable -- shape(1,), loss
-        """
+        """compute the loss where output distribution is a categorial distribution.
 
+        Args:
+            y (Variable): shape(B, T, C_output), dtype: float, the logits of the output distribution.
+            t (Variable): shape(B, T), dtype: float, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+
+        Returns:
+            Variable: shape(1, ), dtype: float, the loss.
+        """
         # context size is not taken into account
         y = y[:, self.context_size:, :]
         t = t[:, self.context_size:]
@@ -314,15 +350,14 @@ class WaveNet(dg.Layer):
         return reduced_loss
 
     def sample_from_softmax(self, y):
-        """sample from output distribution.
-        
-        Arguments:
-            y {Variable} -- shape(batch_size, time_steps - 1, output_dim), output distribution.
-        
-        Returns:
-            Variable -- shape(batch_size, time_steps - 1), samples.
-        """
+        """Sample from the output distribution where the output distribution is a categorical distriobution.
 
+        Args:
+            y (Variable): shape(B, T, C_output), the logits of the output distribution
+
+        Returns:
+            Variable: shape(B, T), waveform sampled from the output distribution.
+        """
         # dequantize
         batch_size, time_steps, output_dim, = y.shape
         y = F.reshape(y, (batch_size * time_steps, output_dim))
@@ -333,17 +368,15 @@ class WaveNet(dg.Layer):
         return samples
 
     def compute_mog_loss(self, y, t):
-        """compute the loss with an mog output distribution.
-        WARNING: this is not a legal probability, but a density. so it might be greater than 1.
-        
-        Arguments:
-            y {Variable} -- shape(batch_size, time_steps, output_dim), output distribution's parameter. To represent a mixture of Gaussians. The output for each example at each time_step consists of 3 parts. The mean, the stddev, and a weight for that gaussian.
-            t {Variable} -- shape(batch_size, time_steps), target waveform.
+        """compute the loss where output distribution is a mixture of Gaussians.
+
+        Args:
+            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
+            t (Variable): shape(B, T), dtype: float, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
 
         Returns:
-            Variable -- loss, note that it is computed with the pdf of the MoG distribution. 
+            Variable: shape(1, ), dtype: float, the loss.
         """
-
         n_mixture = self.output_dim // 3
 
         # context size is not taken in to account
@@ -373,15 +406,13 @@ class WaveNet(dg.Layer):
         return loss
 
     def sample_from_mog(self, y):
-        """sample from output distribution.
-        
-        Arguments:
-            y {Variable} -- shape(batch_size, time_steps - 1, output_dim), output distribution.
-        
-        Returns:
-            Variable -- shape(batch_size, time_steps - 1), samples.
-        """
+        """Sample from the output distribution where the output distribution is a mixture of Gaussians.
+        Args:
+            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
 
+        Returns:
+            Variable: shape(B, T), waveform sampled from the output distribution.
+        """
         batch_size, time_steps, output_dim = y.shape
         n_mixture = output_dim // 3
 
@@ -405,31 +436,28 @@ class WaveNet(dg.Layer):
         return samples
 
     def sample(self, y):
-        """sample from output distribution.
-        
-        Arguments:
-            y {Variable} -- shape(batch_size, time_steps - 1, output_dim), output distribution.
-        
-        Returns:
-            Variable -- shape(batch_size, time_steps - 1), samples.
-        """
+        """Sample from the output distribution.
+        Args:
+            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution.
 
+        Returns:
+            Variable: shape(B, T), waveform sampled from the output distribution.
+        """
         if self.loss_type == "softmax":
             return self.sample_from_softmax(y)
         else:
             return self.sample_from_mog(y)
 
     def loss(self, y, t):
-        """compute loss.
-        
-        Arguments:
-            y {Variable} -- shape(batch_size, time_steps - 1, output_dim), output distribution of multinomial distribution.
-            t {Variable} -- shape(batch_size, time_steps - 1), target waveform.
-        
-        Returns:
-            Variable -- shape(1,), loss
-        """
+        """compute the loss where output distribution is a mixture of Gaussians.
 
+        Args:
+            y (Variable): shape(B, T, C_output), dtype: float, the parameterd of the output distribution.
+            t (Variable): shape(B, T), dtype: float, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+
+        Returns:
+            Variable: shape(1, ), dtype: float, the loss.
+        """
         if self.loss_type == "softmax":
             return self.compute_softmax_loss(y, t)
         else:

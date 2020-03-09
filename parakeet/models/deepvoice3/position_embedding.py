@@ -19,14 +19,14 @@ import paddle.fluid.dygraph as dg
 
 
 def compute_position_embedding(radians, speaker_position_rate):
-    """compute sin/cos separately and scatter them to a zero.
+    """Compute sin/cos interleaved matrix from the radians.
     
-    Arguments:
-        radians {Variable} -- shape(n_vocab, embed_dim), the radians matrix.
-        speaker_position_rate {Variable} -- shape(batch_size, ), speaker positioning rate.
+    Arg:
+        radians (Variable): shape(n_vocab, embed_dim), dtype: float, the radians matrix.
+        speaker_position_rate (Variable): shape(B, ), speaker positioning rate.
     
     Returns:
-        Variable -- shape(batch_size, n_vocab, embed_dim), the sin, cos matrix.
+        Variable: shape(B, n_vocab, embed_dim), the sin, cos interleaved matrix.
     """
     _, embed_dim = radians.shape
     batch_size = speaker_position_rate.shape[0]
@@ -48,10 +48,20 @@ def position_encoding_init(n_position,
                            d_pos_vec,
                            position_rate=1.0,
                            padding_idx=None):
-    """init the position encoding table"""
+    """Init the position encoding.
+
+    Args:
+        n_position (int): max position, vocab size for position embedding.
+        d_pos_vec (int): position embedding size.
+        position_rate (float, optional): position rate (this should only be used when all the utterances are from one speaker.). Defaults to 1.0.
+        padding_idx (int, optional): padding index for the position embedding(it is set as 0 internally if not provided.). Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
+    # init the position encoding table
     # keep idx 0 for padding token position encoding zero vector
     # CAUTION: it is radians here, sin and cos are not applied
-    # CAUTION: difference here
     indices_range = np.expand_dims(np.arange(n_position), -1)
     embed_range = 2 * (np.arange(d_pos_vec) // 2)
     radians = position_rate \
@@ -63,31 +73,32 @@ def position_encoding_init(n_position,
 
 
 class PositionEmbedding(dg.Layer):
-    def __init__(self,
-                 n_position,
-                 d_pos_vec,
-                 position_rate=1.0,
-                 param_attr=None,
-                 max_norm=None,
-                 padding_idx=None):
+    def __init__(self, n_position, d_pos_vec, position_rate=1.0):
+        """Position Embedding for Deep Voice 3.
+
+        Args:
+            n_position (int): max position, vocab size for position embedding.
+            d_pos_vec (int): position embedding size.
+            position_rate (float, optional): position rate (this should only be used when all the utterances are from one speaker.). Defaults to 1.0.
+        """
         super(PositionEmbedding, self).__init__()
         self.weight = self.create_parameter((n_position, d_pos_vec))
         self.weight.set_value(
-            position_encoding_init(n_position, d_pos_vec, position_rate,
-                                   padding_idx).astype("float32"))
+            position_encoding_init(n_position, d_pos_vec, position_rate)
+            .astype("float32"))
 
     def forward(self, indices, speaker_position_rate=None):
         """
         Args:
-            indices (Variable): Shape (B, T), dtype: int64, position
+            indices (Variable): shape (B, T), dtype: int64, position
                 indices, where B means the batch size, T means the time steps.
             speaker_position_rate (Variable | float, optional), position
                 rate. It can be a float point number or a Variable with 
                 shape (1,), then this speaker_position_rate is used for every 
-                example. It can also be a Variable with shape (B, 1), which 
-                contains a speaker position rate for each speaker.
+                example. It can also be a Variable with shape (B, ), which 
+                contains a speaker position rate for each utterance.
         Returns:
-            out (Variable): Shape(B, T, C_pos), position embedding, where C_pos 
+            out (Variable): shape(B, T, C_pos), dtype: float, position embedding, where C_pos 
                 means position embedding size.
         """
         batch_size, time_steps = indices.shape

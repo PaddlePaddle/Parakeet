@@ -69,7 +69,6 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
         padding_idx=None,
         embedding_weight_std=embedding_std,
         convolutions=encoder_convolutions,
-        max_positions=max_positions,
         dropout=dropout)
     if freeze_embedding:
         freeze(enc.embed)
@@ -91,7 +90,6 @@ def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
         mel_dim,
         r=r,
         max_positions=max_positions,
-        padding_idx=padding_idx,
         preattention=prenet_convolutions,
         convolutions=attentive_convolutions,
         attention=attention,
