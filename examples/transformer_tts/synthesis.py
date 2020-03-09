@@ -84,7 +84,7 @@ def synthesis(text_input, args):
             dec_slf_mask = get_triu_tensor(
                 mel_input.numpy(), mel_input.numpy()).astype(np.float32)
             dec_slf_mask = fluid.layers.cast(
-                dg.to_variable(dec_slf_mask == 0), np.float32)
+                dg.to_variable(dec_slf_mask != 0), np.float32) * (-2**32 + 1)
             pos_mel = np.arange(1, mel_input.shape[1] + 1)
             pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel), [0])
             mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
@@ -157,6 +157,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Synthesis model")
     add_config_options_to_parser(parser)
     args = parser.parse_args()
-    synthesis(
-        "They emphasized the necessity that the information now being furnished be handled with judgment and care.",
-        args)
+    synthesis("Parakeet stands for Paddle PARAllel text-to-speech toolkit.",
+              args)

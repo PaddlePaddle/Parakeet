@@ -59,15 +59,25 @@ class Decoder(dg.Layer):
     def forward(self, enc_seq, enc_pos, non_pad_mask, slf_attn_mask=None):
         """
         Decoder layer of FastSpeech.
-        
         Args:
-            enc_seq (Variable), Shape(B, text_T, C), dtype: float32. 
-                The output of length regulator.
-            enc_pos (Variable, optional): Shape(B, T_mel),
-                dtype: int64. The spectrum position. T_mel means the timesteps of input spectrum.
+            enc_seq (Variable): The output of length regulator.
+                Shape: (B, T_text, C), T_text means the timesteps of input text, 
+                dtype: float32. 
+            enc_pos (Variable): The spectrum position. 
+                Shape: (B, T_mel), T_mel means the timesteps of input spectrum, 
+                dtype: int64.
+            non_pad_mask (Variable): the mask with non pad.
+                Shape: (B, T_mel, 1),
+                dtype: int64.
+            slf_attn_mask (Variable, optional): the mask of mel spectrum. Defaults to None.
+                Shape: (B, T_mel, T_mel),
+                dtype: int64.
+
         Returns:
-            dec_output (Variable), Shape(B, mel_T, C), the decoder output.
-            dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
+            dec_output (Variable): the decoder output.
+                Shape: (B, T_mel, C).
+            dec_slf_attn_list (list[Variable]): the decoder self attention list.
+                Len: n_layers.
         """
         dec_slf_attn_list = []
         slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])

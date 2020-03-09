@@ -51,15 +51,17 @@ class FFTBlock(dg.Layer):
         Feed Forward Transformer block in FastSpeech.
         
         Args:
-            enc_input (Variable): Shape(B, T, C), dtype: float32. The embedding characters input. 
-                T means the timesteps of input.
-            non_pad_mask (Variable): Shape(B, T, 1), dtype: int64. The mask of sequence.
-            slf_attn_mask (Variable): Shape(B, len_q, len_k), dtype: int64. The mask of self attention. 
-                len_q means the sequence length of query, len_k means the sequence length of key.
-
+            enc_input (Variable): The embedding characters input. 
+                Shape: (B, T, C), T means the timesteps of input, dtype: float32.   
+            non_pad_mask (Variable): The mask of sequence.
+                Shape: (B, T, 1), dtype: int64.
+            slf_attn_mask (Variable, optional): The mask of self attention. Defaults to None.
+                Shape(B, len_q, len_k), len_q means the sequence length of query, 
+                len_k means the sequence length of key, dtype: int64.   
+                     
         Returns:
-            output (Variable), Shape(B, T, C), the output after self-attention & ffn.
-            slf_attn (Variable), Shape(B * n_head, T, T), the self attention.
+            output (Variable), the output after self-attention & ffn. Shape: (B, T, C).
+            slf_attn (Variable), the self attention. Shape: (B * n_head, T, T),
         """
         output, slf_attn = self.slf_attn(
             enc_input, enc_input, enc_input, mask=slf_attn_mask)

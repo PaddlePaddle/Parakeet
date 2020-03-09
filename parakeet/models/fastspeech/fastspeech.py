@@ -82,34 +82,45 @@ class FastSpeech(dg.Layer):
                 text_pos,
                 enc_non_pad_mask,
                 dec_non_pad_mask,
+                mel_pos=None,
                 enc_slf_attn_mask=None,
                 dec_slf_attn_mask=None,
-                mel_pos=None,
                 length_target=None,
                 alpha=1.0):
         """
         FastSpeech model.
         
         Args:
-            character (Variable): Shape(B, T_text), dtype: float32. The input text
-                characters. T_text means the timesteps of input characters.
-            text_pos (Variable): Shape(B, T_text), dtype: int64. The input text
-                position. T_text means the timesteps of input characters.
-            mel_pos (Variable, optional): Shape(B, T_mel),
-                dtype: int64. The spectrum position. T_mel means the timesteps of input spectrum.
-            length_target (Variable, optional): Shape(B, T_text),
-                dtype: int64. The duration of phoneme compute from pretrained transformerTTS.
-            alpha (Constant): 
-                dtype: float32. The hyperparameter to determine the length of the expanded sequence 
-                mel, thereby controlling the voice speed.
+            character (Variable): The input text characters. 
+                Shape: (B, T_text), T_text means the timesteps of input characters, dtype: float32.
+            text_pos (Variable): The input text position. 
+                Shape: (B, T_text), dtype: int64.
+            mel_pos (Variable, optional): The spectrum position. 
+                Shape: (B, T_mel), T_mel means the timesteps of input spectrum, dtype: int64. 
+            enc_non_pad_mask (Variable): the mask with non pad.
+                Shape: (B, T_text, 1),
+                dtype: int64.
+            dec_non_pad_mask (Variable): the mask with non pad.
+                Shape: (B, T_mel, 1),
+                dtype: int64.
+            enc_slf_attn_mask (Variable, optional): the mask of input characters. Defaults to None.
+                Shape: (B, T_text, T_text),
+                dtype: int64.
+            slf_attn_mask (Variable, optional): the mask of mel spectrum. Defaults to None.
+                Shape: (B, T_mel, T_mel),
+                dtype: int64.
+            length_target (Variable, optional): The duration of phoneme compute from pretrained transformerTTS.
+                Defaults to None. Shape: (B, T_text), dtype: int64. 
+            alpha (float32, optional): The hyperparameter to determine the length of the expanded sequence 
+                mel, thereby controlling the voice speed. Defaults to 1.0.
 
         Returns:
-            mel_output (Variable), Shape(B, mel_T, C), the mel output before postnet.
-            mel_output_postnet (Variable), Shape(B, mel_T, C), the mel output after postnet.
-            duration_predictor_output (Variable), Shape(B, text_T), the duration of phoneme compute 
-            with duration predictor.
-            enc_slf_attn_list (Variable), Shape(B, text_T, text_T), the encoder self attention list.
-            dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
+            mel_output (Variable), the mel output before postnet. Shape: (B, T_mel, C), 
+            mel_output_postnet (Variable), the mel output after postnet. Shape: (B, T_mel, C).
+            duration_predictor_output (Variable), the duration of phoneme compute with duration predictor. 
+                Shape: (B, T_text).
+            enc_slf_attn_list (List[Variable]), the encoder self attention list. Len: enc_n_layers.
+            dec_slf_attn_list (List[Variable]), the decoder self attention list. Len: dec_n_layers.
         """
 
         encoder_output, enc_slf_attn_list = self.encoder(
@@ -118,7 +129,6 @@ class FastSpeech(dg.Layer):
             enc_non_pad_mask,
             slf_attn_mask=enc_slf_attn_mask)
         if fluid.framework._dygraph_tracer()._train_mode:
-
             length_regulator_output, duration_predictor_output = self.length_regulator(
                 encoder_output, target=length_target, alpha=alpha)
             decoder_output, dec_slf_attn_list = self.decoder(

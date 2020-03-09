@@ -69,15 +69,17 @@ class LengthRegulator(dg.Layer):
         Length Regulator block in FastSpeech.
         
         Args:
-            x (Variable): Shape(B, T, C), dtype: float32. The encoder output.
-            alpha (Constant): dtype: float32. The hyperparameter to determine the length of 
-                the expanded sequence mel, thereby controlling the voice speed.
-            target (Variable): (Variable, optional): Shape(B, T_text),
-                dtype: int64. The duration of phoneme compute from pretrained transformerTTS.
+            x (Variable): The encoder output.
+                Shape: (B, T, C), dtype: float32.
+            alpha (float32, optional): The hyperparameter to determine the length of 
+                the expanded sequence mel, thereby controlling the voice speed. Defaults to 1.0.
+            target (Variable, optional): The duration of phoneme compute from pretrained transformerTTS. 
+                Defaults to None. Shape: (B, T_text), dtype: int64.
 
         Returns:
-            output (Variable), Shape(B, T, C), the output after exppand.
-            duration_predictor_output (Variable), Shape(B, T, C), the output of duration predictor.
+            output (Variable), the output after exppand. Shape: (B, T, C), 
+            duration_predictor_output (Variable), the output of duration predictor.
+                Shape: (B, T, C).
         """
         duration_predictor_output = self.duration_predictor(x)
         if fluid.framework._dygraph_tracer()._train_mode:

@@ -64,17 +64,24 @@ class Encoder(dg.Layer):
     def forward(self, character, text_pos, non_pad_mask, slf_attn_mask=None):
         """
         Encoder layer of FastSpeech.
-        
         Args:
-            character (Variable): Shape(B, T_text), dtype: float32. The input text
-                characters. T_text means the timesteps of input characters.
-            text_pos (Variable): Shape(B, T_text), dtype: int64. The input text
-                position. T_text means the timesteps of input characters.
-
+            character (Variable): The input text characters. 
+                Shape: (B, T_text), T_text means the timesteps of input characters,
+                dtype: float32.
+            text_pos (Variable): The input text position. 
+                Shape: (B, T_text), dtype: int64.
+            non_pad_mask (Variable): the mask with non pad.
+                Shape: (B, T_text, 1),
+                dtype: int64.
+            slf_attn_mask (Variable, optional): the mask of input characters. Defaults to None.
+                Shape: (B, T_text, T_text),
+                dtype: int64.
+                
         Returns:
-            enc_output (Variable), Shape(B, text_T, C), the encoder output.
-            non_pad_mask (Variable), Shape(B, T_text, 1), the mask with non pad.
-            enc_slf_attn_list (list<Variable>), Len(n_layers), Shape(B * n_head, text_T, text_T), the encoder self attention list.
+            enc_output (Variable), the encoder output. Shape(B, T_text, C)
+            non_pad_mask (Variable), the mask with non pad. Shape(B, T_text, 1)
+            enc_slf_attn_list (list[Variable]), the encoder self attention list.
+                Len: n_layers.
         """
         enc_slf_attn_list = []
         slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])

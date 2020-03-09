@@ -62,9 +62,10 @@ class PositionwiseFeedForward(dg.Layer):
         Feed Forward Network.
         
         Args:
-            input (Variable): Shape(B, T, C), dtype: float32. The input value.
+            input (Variable): The input value. 
+                Shape: (B, T, C), dtype: float32.
         Returns:
-            output (Variable), Shape(B, T, C), the result after FFN.
+            output (Variable), the result after FFN. Shape: (B, T, C).
         """
         x = layers.transpose(input, [0, 2, 1])
         #FFN Networt

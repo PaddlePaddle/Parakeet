@@ -93,12 +93,13 @@ class PostConvNet(dg.Layer):
 
     def forward(self, input):
         """
-        Post Conv Net.
+        Decocder Post Conv Net of TransformerTTS.
         
         Args:
-            input (Variable): Shape(B, T, C), dtype: float32. The input value.
+            input (Variable):  The result of mel linear projection. 
+                Shape: (B, T, C), dtype: float32.
         Returns:
-            output (Variable), Shape(B, T, C), the result after postconvnet.
+           (Variable): the result after postconvnet. Shape: (B, T, C),
         """
 
         input = layers.transpose(input, [0, 2, 1])

@@ -20,7 +20,7 @@ from parakeet.models.transformer_tts.encoderprenet import EncoderPrenet
 
 
 class Encoder(dg.Layer):
-    def __init__(self, embedding_size, num_hidden, num_head=4):
+    def __init__(self, embedding_size, num_hidden, num_head=4, n_layers=3):
         super(Encoder, self).__init__()
         self.num_hidden = num_hidden
         self.num_head = num_head
@@ -42,7 +42,7 @@ class Encoder(dg.Layer):
             use_cudnn=True)
         self.layers = [
             MultiheadAttention(num_hidden, num_hidden // num_head,
-                               num_hidden // num_head) for _ in range(3)
+                               num_hidden // num_head) for _ in range(n_layers)
         ]
         for i, layer in enumerate(self.layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
@@ -51,12 +51,31 @@ class Encoder(dg.Layer):
                 num_hidden,
                 num_hidden * num_head,
                 filter_size=1,
-                use_cudnn=True) for _ in range(3)
+                use_cudnn=True) for _ in range(n_layers)
         ]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
 
     def forward(self, x, positional, mask=None, query_mask=None):
+        """
+        Encoder layer of TransformerTTS.
+        Args:
+            x (Variable): The input character.
+                Shape: (B, T_text), T_text means the timesteps of input text,
+                dtype: float32. 
+            positional (Variable): The characters position. 
+                Shape: (B, T_text), dtype: int64.
+            mask (Variable, optional): the mask of encoder self attention. Defaults to None.
+                Shape: (B, T_text, T_text), dtype: int64.
+            query_mask (Variable, optional): the query mask of encoder self attention. Defaults to None.
+                Shape: (B, T_text, 1), dtype: int64.
+                
+        Returns:
+            x (Variable): the encoder output.
+                Shape: (B, T_text, C).
+            attentions (list[Variable]): the encoder self attention list.
+                Len: n_layers.
+        """
 
         if fluid.framework._dygraph_tracer()._train_mode:
             seq_len_key = x.shape[1]
@@ -66,12 +85,12 @@ class Encoder(dg.Layer):
         else:
             query_mask, mask = None, None
         # Encoder pre_network
-        x = self.encoder_prenet(x)  #(N,T,C)
+        x = self.encoder_prenet(x)
 
         # Get positional encoding
         positional = self.pos_emb(positional)
 
-        x = positional * self.alpha + x  #(N, T, C)
+        x = positional * self.alpha + x
 
         # Positional dropout
         x = layers.dropout(x, 0.1, dropout_implementation='upscale_in_train')

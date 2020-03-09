@@ -66,12 +66,17 @@ class ScaledDotProductAttention(dg.Layer):
         Scaled Dot Product Attention.
         
         Args:
-            key (Variable): Shape(B, T, C), dtype: float32. The input key of attention.
-            value (Variable): Shape(B, T, C), dtype: float32. The input value of attention.
-            query (Variable): Shape(B, T, C), dtype: float32. The input query of attention.
-            mask (Variable): Shape(B, len_q, len_k), dtype: float32. The mask of key.
-            query_mask (Variable): Shape(B, len_q, 1), dtype: float32. The mask of query.
-            dropout (Constant): dtype: float32. The probability of dropout.
+            key (Variable): The input key of scaled dot product attention.
+                Shape: (B, T, C), dtype: float32.
+            value (Variable):  The input value of scaled dot product attention.
+                Shape: (B, T, C), dtype: float32.
+            query (Variable): The input query of scaled dot product attention.
+                Shape: (B, T, C), dtype: float32. 
+            mask (Variable, optional): The mask of key.  Defaults to None.
+                Shape(B, T_q, T_k), dtype: float32.
+            query_mask (Variable, optional):  The mask of query.  Defaults to None.
+                Shape(B, T_q, T_q), dtype: float32.
+            dropout (float32, optional): The probability of dropout.  Defaults to 0.1.
         Returns:
             result (Variable), Shape(B, T, C), the result of mutihead attention.
             attention (Variable), Shape(n_head * B, T, C), the attention of key.
@@ -131,14 +136,19 @@ class MultiheadAttention(dg.Layer):
         Multihead Attention.
         
         Args:
-            key (Variable): Shape(B, T, C), dtype: float32. The input key of attention.
-            value (Variable): Shape(B, T, C), dtype: float32. The input value of attention.
-            query_input (Variable): Shape(B, T, C), dtype: float32. The input query of attention.
-            mask (Variable): Shape(B, len_q, len_k), dtype: float32. The mask of key.
-            query_mask (Variable): Shape(B, len_q, 1), dtype: float32. The mask of query.
+            key (Variable): The input key of attention.
+                Shape: (B, T, C), dtype: float32.
+            value (Variable): The input value of attention.
+                Shape: (B, T, C), dtype: float32.
+            query_input (Variable): The input query of attention.
+                Shape: (B, T, C), dtype: float32. 
+            mask (Variable, optional): The mask of key. Defaults to None.
+                Shape: (B, T_query, T_key), dtype: float32.
+            query_mask (Variable, optional): The mask of query. Defaults to None.
+                Shape: (B, T_query, T_key), dtype: float32.
         Returns:
-            result (Variable), Shape(B, T, C), the result of mutihead attention.
-            attention (Variable), Shape(n_head * B, T, C), the attention of key.
+            result (Variable), the result of mutihead attention. Shape: (B, T, C).
+            attention (Variable), the attention of key and query. Shape: (num_head * B, T, C)
         """
 
         batch_size = key.shape[0]
@@ -146,7 +156,6 @@ class MultiheadAttention(dg.Layer):
         seq_len_query = query_input.shape[1]
 
         # Make multihead attention
-        # key & value.shape = (batch_size, seq_len, feature)(feature = num_head * num_hidden_per_attn)
         key = layers.reshape(
             self.key(key), [batch_size, seq_len_key, self.num_head, self.d_k])
         value = layers.reshape(
@@ -155,18 +164,6 @@ class MultiheadAttention(dg.Layer):
         query = layers.reshape(
             self.query(query_input),
             [batch_size, seq_len_query, self.num_head, self.d_q])
-
-        key = layers.reshape(
-            layers.transpose(key, [2, 0, 1, 3]), [-1, seq_len_key, self.d_k])
-        value = layers.reshape(
-            layers.transpose(value, [2, 0, 1, 3]),
-            [-1, seq_len_key, self.d_k])
-        query = layers.reshape(
-            layers.transpose(query, [2, 0, 1, 3]),
-            [-1, seq_len_query, self.d_q])
-
-        result, attention = self.scal_attn(
-            key, value, query, mask=mask, query_mask=query_mask)
 
         key = layers.reshape(
             layers.transpose(key, [2, 0, 1, 3]), [-1, seq_len_key, self.d_k])

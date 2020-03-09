@@ -43,9 +43,10 @@ class DynamicGRU(dg.Layer):
         Dynamic GRU block.
         
         Args:
-            input (Variable): Shape(B, T, C), dtype: float32. The input value.
+            input (Variable): The input value.
+                Shape: (B, T, C), dtype: float32. 
         Returns:
-            output (Variable), Shape(B, T, C), the result compute by GRU.
+            output (Variable), the result compute by GRU. Shape: (B, T, C).
         """
         hidden = self.h_0
         res = []

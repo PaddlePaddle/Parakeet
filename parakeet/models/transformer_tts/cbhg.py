@@ -31,15 +31,7 @@ class CBHG(dg.Layer):
                  max_pool_kernel_size=2,
                  is_post=False):
         super(CBHG, self).__init__()
-        """
-        :param hidden_size: dimension of hidden unit
-        :param batch_size: batch size
-        :param K: # of convolution banks
-        :param projection_size: dimension of projection unit
-        :param num_gru_layers: # of layers of GRUcell
-        :param max_pool_kernel_size: max pooling kernel size
-        :param is_post: whether post processing or not
-        """
+
         self.hidden_size = hidden_size
         self.projection_size = projection_size
         self.conv_list = []
@@ -176,7 +168,15 @@ class CBHG(dg.Layer):
             return x
 
     def forward(self, input_):
-        # input_.shape = [N, C, T]
+        """
+        CBHG Module
+        Args:
+            input_(Variable): The sequentially input.
+                Shape: (B, C, T), dtype: float32. 
+
+        Returns:
+            (Variable): the CBHG output.
+        """
 
         conv_list = []
         conv_input = input_
@@ -249,6 +249,15 @@ class Highwaynet(dg.Layer):
             self.add_sublayer("gates_{}".format(i), gate)
 
     def forward(self, input_):
+        """
+        Highway network
+        Args:
+            input_(Variable): The sequentially input.
+                Shape: (B, T, C), dtype: float32. 
+
+        Returns:
+            (Variable): the Highway output.
+        """
         out = input_
 
         for linear, gate in zip(self.linears, self.gates):

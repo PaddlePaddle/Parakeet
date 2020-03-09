@@ -81,8 +81,18 @@ class EncoderPrenet(dg.Layer):
                 low=-k, high=k)))
 
     def forward(self, x):
+        """
+        Encoder prenet layer of TransformerTTS.
+        Args:
+            x (Variable): The input character.
+                Shape: (B, T_text), T_text means the timesteps of input text,
+                dtype: float32. 
+                
+        Returns:
+            (Variable): the encoder prenet output. Shape: (B, T_text, C).
+        """
 
-        x = self.embedding(x)  #(batch_size, seq_len, embending_size)
+        x = self.embedding(x)
         x = layers.transpose(x, [0, 2, 1])
         for batch_norm, conv in zip(self.batch_norm_list, self.conv_list):
             x = layers.dropout(

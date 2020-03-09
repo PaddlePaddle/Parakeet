@@ -22,7 +22,7 @@ from parakeet.models.transformer_tts.post_convnet import PostConvNet
 
 
 class Decoder(dg.Layer):
-    def __init__(self, num_hidden, config, num_head=4):
+    def __init__(self, num_hidden, config, num_head=4, n_layers=3):
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
         self.num_head = num_head
@@ -58,20 +58,20 @@ class Decoder(dg.Layer):
 
         self.selfattn_layers = [
             MultiheadAttention(num_hidden, num_hidden // num_head,
-                               num_hidden // num_head) for _ in range(3)
+                               num_hidden // num_head) for _ in range(n_layers)
         ]
         for i, layer in enumerate(self.selfattn_layers):
             self.add_sublayer("self_attn_{}".format(i), layer)
         self.attn_layers = [
             MultiheadAttention(num_hidden, num_hidden // num_head,
-                               num_hidden // num_head) for _ in range(3)
+                               num_hidden // num_head) for _ in range(n_layers)
         ]
         for i, layer in enumerate(self.attn_layers):
             self.add_sublayer("attn_{}".format(i), layer)
         self.ffns = [
             PositionwiseFeedForward(
                 num_hidden, num_hidden * num_head, filter_size=1)
-            for _ in range(3)
+            for _ in range(n_layers)
         ]
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
@@ -108,6 +108,40 @@ class Decoder(dg.Layer):
                 m_mask=None,
                 m_self_mask=None,
                 zero_mask=None):
+        """
+        Decoder layer of TransformerTTS.
+        Args:
+            key (Variable): The input key of decoder.
+                Shape: (B, T_text, C), T_text means the timesteps of input text,
+                dtype: float32. 
+            value (Variable): The . input value of decoder.
+                Shape: (B, T_text, C), dtype: float32.
+            query (Variable): The input query of decoder.
+                Shape: (B, T_mel, C), T_mel means the timesteps of input spectrum,
+                dtype: float32.
+            positional (Variable): The spectrum position. 
+                Shape: (B, T_mel), dtype: int64.
+            mask (Variable): the mask of decoder self attention.
+                Shape: (B, T_mel, T_mel), dtype: int64.
+            m_mask (Variable, optional): the query mask of encoder-decoder attention. Defaults to None.
+                Shape: (B, T_mel, 1), dtype: int64.
+            m_self_mask (Variable, optional): the query mask of decoder self attention. Defaults to None.
+                Shape: (B, T_mel, 1), dtype: int64.
+            zero_mask (Variable, optional): query mask of encoder-decoder attention. Defaults to None.
+                Shape: (B, T_mel, T_text), dtype: int64.
+                
+        Returns:
+            mel_out (Variable): the decoder output after mel linear projection.
+                Shape: (B, T_mel, C).
+            out (Variable): the decoder output after post mel network.
+                Shape: (B, T_mel, C).
+            stop_tokens (Variable): the stop tokens of output.
+                Shape: (B, T_mel, 1)
+            attn_list (list[Variable]): the encoder-decoder attention list.
+                Len: n_layers.
+            selfattn_list (list[Variable]): the decoder self attention list.
+                Len: n_layers.
+        """
 
         # get decoder mask with triangular matrix
 
@@ -121,7 +155,7 @@ class Decoder(dg.Layer):
         else:
             m_mask, m_self_mask, zero_mask = None, None, None
 
-# Decoder pre-network
+        # Decoder pre-network
         query = self.decoder_prenet(query)
 
         # Centered position

@@ -6,6 +6,7 @@ python -u synthesis.py \
 --checkpoint_path='checkpoint/' \
 --fastspeech_step=71000 \
 --log_dir='./log' \
+--config_path='configs/synthesis.yaml' \
 
 if [ $? -ne 0 ]; then
     echo "Failed in synthesis!"
