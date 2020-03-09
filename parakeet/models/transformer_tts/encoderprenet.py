@@ -27,7 +27,10 @@ class EncoderPrenet(dg.Layer):
         self.num_hidden = num_hidden
         self.use_cudnn = use_cudnn
         self.embedding = dg.Embedding(
-            size=[len(symbols), embedding_size], padding_idx=None)
+            size=[len(symbols), embedding_size],
+            padding_idx=0,
+            param_attr=fluid.initializer.Normal(
+                loc=0.0, scale=1.0))
         self.conv_list = []
         k = math.sqrt(1 / embedding_size)
         self.conv_list.append(
@@ -78,10 +81,14 @@ class EncoderPrenet(dg.Layer):
                 low=-k, high=k)))
 
     def forward(self, x):
+
         x = self.embedding(x)  #(batch_size, seq_len, embending_size)
         x = layers.transpose(x, [0, 2, 1])
         for batch_norm, conv in zip(self.batch_norm_list, self.conv_list):
-            x = layers.dropout(layers.relu(batch_norm(conv(x))), 0.2)
+            x = layers.dropout(
+                layers.relu(batch_norm(conv(x))),
+                0.2,
+                dropout_implementation='upscale_in_train')
         x = layers.transpose(x, [0, 2, 1])  #(N,T,C)
         x = self.projection(x)
 

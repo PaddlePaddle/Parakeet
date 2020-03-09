@@ -46,7 +46,7 @@ class FFTBlock(dg.Layer):
             padding=padding,
             dropout=dropout)
 
-    def forward(self, enc_input, non_pad_mask=None, slf_attn_mask=None):
+    def forward(self, enc_input, non_pad_mask, slf_attn_mask=None):
         """
         Feed Forward Transformer block in FastSpeech.
         
@@ -63,6 +63,7 @@ class FFTBlock(dg.Layer):
         """
         output, slf_attn = self.slf_attn(
             enc_input, enc_input, enc_input, mask=slf_attn_mask)
+
         output *= non_pad_mask
 
         output = self.pos_ffn(output)

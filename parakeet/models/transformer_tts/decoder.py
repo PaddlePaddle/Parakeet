@@ -14,7 +14,7 @@
 import math
 import paddle.fluid.dygraph as dg
 import paddle.fluid as fluid
-from parakeet.modules.utils import *
+from parakeet.models.transformer_tts.utils import *
 from parakeet.modules.multihead_attention import MultiheadAttention
 from parakeet.modules.ffn import PositionwiseFeedForward
 from parakeet.models.transformer_tts.prenet import PreNet
@@ -25,6 +25,7 @@ class Decoder(dg.Layer):
     def __init__(self, num_hidden, config, num_head=4):
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
+        self.num_head = num_head
         param = fluid.ParamAttr()
         self.alpha = self.create_parameter(
             shape=(1, ),
@@ -98,30 +99,29 @@ class Decoder(dg.Layer):
             outputs_per_step=config['audio']['outputs_per_step'],
             use_cudnn=True)
 
-    def forward(self, key, value, query, c_mask, positional):
+    def forward(self,
+                key,
+                value,
+                query,
+                positional,
+                mask,
+                m_mask=None,
+                m_self_mask=None,
+                zero_mask=None):
 
         # get decoder mask with triangular matrix
 
         if fluid.framework._dygraph_tracer()._train_mode:
-            m_mask = get_non_pad_mask(positional)
-            mask = get_attn_key_pad_mask((positional == 0).astype(np.float32),
-                                         query)
-            triu_tensor = dg.to_variable(
-                get_triu_tensor(query.numpy(), query.numpy())).astype(
-                    np.float32)
-            mask = mask + triu_tensor
-            mask = fluid.layers.cast(mask == 0, np.float32)
+            m_mask = layers.expand(m_mask, [self.num_head, 1, key.shape[1]])
+            m_self_mask = layers.expand(m_self_mask,
+                                        [self.num_head, 1, query.shape[1]])
+            mask = layers.expand(mask, [self.num_head, 1, 1])
+            zero_mask = layers.expand(zero_mask, [self.num_head, 1, 1])
 
-            # (batch_size, decoder_len, encoder_len)
-            zero_mask = get_attn_key_pad_mask(
-                layers.squeeze(c_mask, [-1]), query)
         else:
-            mask = get_triu_tensor(query.numpy(),
-                                   query.numpy()).astype(np.float32)
-            mask = fluid.layers.cast(dg.to_variable(mask == 0), np.float32)
-            m_mask, zero_mask = None, None
+            m_mask, m_self_mask, zero_mask = None, None, None
 
-        # Decoder pre-network
+# Decoder pre-network
         query = self.decoder_prenet(query)
 
         # Centered position
@@ -132,7 +132,8 @@ class Decoder(dg.Layer):
         query = positional * self.alpha + query
 
         #positional dropout
-        query = fluid.layers.dropout(query, 0.1)
+        query = fluid.layers.dropout(
+            query, 0.1, dropout_implementation='upscale_in_train')
 
         # Attention decoder-decoder, encoder-decoder
         selfattn_list = list()
@@ -141,12 +142,13 @@ class Decoder(dg.Layer):
         for selfattn, attn, ffn in zip(self.selfattn_layers, self.attn_layers,
                                        self.ffns):
             query, attn_dec = selfattn(
-                query, query, query, mask=mask, query_mask=m_mask)
+                query, query, query, mask=mask, query_mask=m_self_mask)
             query, attn_dot = attn(
                 key, value, query, mask=zero_mask, query_mask=m_mask)
             query = ffn(query)
             selfattn_list.append(attn_dec)
             attn_list.append(attn_dot)
+
         # Mel linear projection
         mel_out = self.mel_linear(query)
         # Post Mel Network

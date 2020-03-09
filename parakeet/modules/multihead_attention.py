@@ -78,17 +78,15 @@ class ScaledDotProductAttention(dg.Layer):
         """
         # Compute attention score
         attention = layers.matmul(
-            query, key, transpose_y=True)  #transpose the last dim in y
-        attention = attention / math.sqrt(self.d_key)
+            query, key, transpose_y=True, alpha=self.d_key
+            **-0.5)  #transpose the last dim in y
 
         # Mask key to ignore padding
         if mask is not None:
-            attention = attention * mask
-            mask = (mask == 0).astype(np.float32) * (-2**32 + 1)
             attention = attention + mask
-
         attention = layers.softmax(attention)
-        attention = layers.dropout(attention, dropout)
+        attention = layers.dropout(
+            attention, dropout, dropout_implementation='upscale_in_train')
 
         # Mask query to ignore padding
         if query_mask is not None:
@@ -142,16 +140,10 @@ class MultiheadAttention(dg.Layer):
             result (Variable), Shape(B, T, C), the result of mutihead attention.
             attention (Variable), Shape(n_head * B, T, C), the attention of key.
         """
+
         batch_size = key.shape[0]
         seq_len_key = key.shape[1]
         seq_len_query = query_input.shape[1]
-
-        # repeat masks h times
-        if query_mask is not None:
-            query_mask = layers.expand(query_mask,
-                                       [self.num_head, 1, seq_len_key])
-        if mask is not None:
-            mask = layers.expand(mask, (self.num_head, 1, 1))
 
         # Make multihead attention
         # key & value.shape = (batch_size, seq_len, feature)(feature = num_head * num_hidden_per_attn)
@@ -176,6 +168,18 @@ class MultiheadAttention(dg.Layer):
         result, attention = self.scal_attn(
             key, value, query, mask=mask, query_mask=query_mask)
 
+        key = layers.reshape(
+            layers.transpose(key, [2, 0, 1, 3]), [-1, seq_len_key, self.d_k])
+        value = layers.reshape(
+            layers.transpose(value, [2, 0, 1, 3]),
+            [-1, seq_len_key, self.d_k])
+        query = layers.reshape(
+            layers.transpose(query, [2, 0, 1, 3]),
+            [-1, seq_len_query, self.d_q])
+
+        result, attention = self.scal_attn(
+            key, value, query, mask=mask, query_mask=query_mask)
+
         # concat all multihead result
         result = layers.reshape(
             result, [self.num_head, batch_size, seq_len_query, self.d_q])
@@ -184,7 +188,10 @@ class MultiheadAttention(dg.Layer):
             [batch_size, seq_len_query, -1])
         if self.is_concat:
             result = layers.concat([query_input, result], axis=-1)
-        result = layers.dropout(self.fc(result), self.dropout)
+        result = layers.dropout(
+            self.fc(result),
+            self.dropout,
+            dropout_implementation='upscale_in_train')
         result = result + query_input
 
         result = self.layer_norm(result)

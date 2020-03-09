@@ -23,7 +23,8 @@ from parakeet import audio
 from parakeet.data.sampler import *
 from parakeet.data.datacargo import DataCargo
 from parakeet.data.batch import TextIDBatcher, SpecBatcher
-from parakeet.data.dataset import DatasetMixin, TransformDataset
+from parakeet.data.dataset import DatasetMixin, TransformDataset, CacheDataset
+from parakeet.models.transformer_tts.utils import *
 
 
 class LJSpeechLoader:
@@ -40,6 +41,8 @@ class LJSpeechLoader:
         metadata = LJSpeechMetaData(LJSPEECH_ROOT)
         transformer = LJSpeech(config)
         dataset = TransformDataset(metadata, transformer)
+        dataset = CacheDataset(dataset)
+
         sampler = DistributedSampler(
             len(metadata), nranks, rank, shuffle=shuffle)
 
@@ -196,8 +199,18 @@ def batch_examples(batch):
         SpecBatcher(pad_value=0.)(mels), axes=(0, 2, 1))  #(B,T,num_mels)
     mel_inputs = np.transpose(
         SpecBatcher(pad_value=0.)(mel_inputs), axes=(0, 2, 1))  #(B,T,num_mels)
+    enc_slf_mask = get_attn_key_pad_mask(pos_texts, texts).astype(np.float32)
+    enc_query_mask = get_non_pad_mask(pos_texts).astype(np.float32)
+    dec_slf_mask = get_dec_attn_key_pad_mask(pos_mels,
+                                             mel_inputs).astype(np.float32)
+    enc_dec_mask = get_attn_key_pad_mask(enc_query_mask[:, :, 0],
+                                         mel_inputs).astype(np.float32)
+    dec_query_slf_mask = get_non_pad_mask(pos_mels).astype(np.float32)
+    dec_query_mask = get_non_pad_mask(pos_mels).astype(np.float32)
+
     return (texts, mels, mel_inputs, pos_texts, pos_mels, np.array(text_lens),
-            np.array(mel_lens))
+            np.array(mel_lens), enc_slf_mask, enc_query_mask, dec_slf_mask,
+            enc_dec_mask, dec_query_slf_mask, dec_query_mask)
 
 
 def batch_examples_vocoder(batch):

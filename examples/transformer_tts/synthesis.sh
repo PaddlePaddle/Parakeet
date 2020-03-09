@@ -2,10 +2,10 @@
 # train model
 CUDA_VISIBLE_DEVICES=0 \
 python -u synthesis.py \
---max_len=50 \
+--max_len=600 \
 --transformer_step=160000 \
---vocoder_step=70000 \
---use_gpu=1
+--vocoder_step=90000 \
+--use_gpu=1 \
 --checkpoint_path='./checkpoint' \
 --log_dir='./log' \
 --sample_path='./sample' \
