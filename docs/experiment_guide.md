@@ -19,7 +19,7 @@ Dataset is an iterable object of examples. `DatasetMixin` provides the standard 
 
 Data processing is splited into two phases: sample-level processing and batching.
 
-1. Sample-level processing. This process is transforming an example into another example. This process can be defined as `get_example` method of a dataset, or as a `transform` (callable object) and build a `TransformDataset` with it.
+1. Sample-level processing. This process is transforming an example into another example. This process can be defined as `get_example()` method of a dataset, or as a `transform` (callable object) and build a `TransformDataset` with it.
 
 2. Batching. It is the process of transforming a list of examples into a batch. The rationale is to transform an array of structures into a structure of arrays. We generally define a batch function (or a callable object) to do this.
 
