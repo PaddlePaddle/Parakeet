@@ -60,13 +60,9 @@ nltk.download("punkt")
 nltk.download("cmudict")
 ```
 
-
-
-
 ## Examples
 
 Entries to the introduction, and the launch of training and synthsis for different example models:
-
 
 - [>>> WaveFlow](./examples/waveflow)
 - [>>> Clarinet](./examples/clarinet)
@@ -99,21 +95,20 @@ Parakeet also releases some well-trained parameters for the example models, whic
             To be added soon
             </th>
             <th>
-            <audio id="audio" controls="" preload="none">
-                <source  src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
-            </audio> <br>
-            <audio id="audio" controls="" preload="none">
-                <source  src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_1.wav">
-            </audio><br>
-            <audio id="audio" controls="" preload="none">
-                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_2.wav">
-            </audio><br>
-            <audio id="audio" controls="" preload="none">
-                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
-            </audio><br>
-            <audio id="audio" controls="" preload="none">
-                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
-            </audio>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>            
             </th>
         </tr>
     </tbody>
