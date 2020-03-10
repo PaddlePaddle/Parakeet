@@ -40,7 +40,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle 1.7.0 or above.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.7.0** or above.
 
 ### Install Parakeet
 
@@ -121,7 +121,7 @@ Parakeet also releases some well-trained parameters for the example models, whic
 
 - TTS models
 
-Click each link to download, then one can get the compressed package which contains the pre-trained model and the `yaml` config describing how to train the model.
+Click each link to download, then you can get the compressed package which contains the pre-trained model and the `yaml` config describing how to train the model.
 
 
 ## Copyright and License
