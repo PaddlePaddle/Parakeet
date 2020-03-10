@@ -52,7 +52,7 @@ Finally, if preprocessing the dataset is slow and the processed dataset is too l
 
 ## DataCargo
 
-`DataCargo`, like `Dataset`, is an iterable, but it is an iterable of batches. We need `Datacargo` because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable but not an iterator, in that in can be iterated more than once.
+`DataCargo`, like `Dataset`, is an iterable object, but it is an iterable oject of batches. We need `Datacargo` because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable object but not an iterator, in that in can be iterated more than once.
 
 ### batch function
 
@@ -91,7 +91,7 @@ Usually we need to define the batch function as an callable object which stores 
 
 Equipped with a batch function(we have known __how to batch__), here comes the next question. __What to batch?__ We need to decide which examples to pick when creating a batch. Since a dataset is a list of examples, we only need to pick indices for the corresponding examples. A sampler object is what we use to do this.
 
-A `Sampler` is represented as an iterable of integers. Assume the dataset has `N` examples, then an iterable of intergers in the range`[0, N)` is an appropriate sampler for this dataset to build a `DataCargo`.
+A `Sampler` is represented as an iterable object of integers. Assume the dataset has `N` examples, then an iterable object of intergers in the range`[0, N)` is an appropriate sampler for this dataset to build a `DataCargo`.
 
 We provide several samplers that is ready to use. The `SequentialSampler`, `RandomSampler` and so on.
 
@@ -323,7 +323,7 @@ for batch in train_cargo:
     # your training code here
 ```
 
-In the code above, processing of the data and training of the model run in the same process. So the next batch starts to load after the training of the current batch has finished. There is actually better solutions for this. Data processing and model training can be run asynchronously. To accomplish this, we would use `DataLoader` from Paddle. This serves as an adapter to transform an Iterable of batches into another iterable of batches, which runs asynchronously and transform each ndarray into `Variable`.
+In the code above, processing of the data and training of the model run in the same process. So the next batch starts to load after the training of the current batch has finished. There is actually better solutions for this. Data processing and model training can be run asynchronously. To accomplish this, we would use `DataLoader` from Paddle. This serves as an adapter to transform an iterable object of batches into another iterable object of batches, which runs asynchronously and transform each ndarray into `Variable`.
 
 ```python
 # connects our data cargos with corresponding DataLoader
