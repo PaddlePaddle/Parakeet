@@ -2,7 +2,7 @@
 
 For a general deep learning experiment, there are 4 parts to care for.
 
-1. Preprocess dataset to meet the needs for model training and iterate them in batches;
+1. Preprocess dataset to meet the needs for model training and iterate over them in batches;
 2. Define the model and the optimizer;
 3. Write the training process (including forward-backward computation, parameter update, logging, evaluation, etc.)
 4. Configure and launch the experiment.
@@ -13,13 +13,13 @@ For processing data, `parakeet.data` provides `DatasetMixin`, `DataCargo` and `D
 
 Dataset is an iterable object of examples. `DatasetMixin` provides the standard indexing interface, and other classes in [parakeet.data.dataset](../parakeet/data/dataset.py) provide flexible interfaces for building customized datasets.
 
-`DataCargo` is an iterable object of batches. It differs from a dataset in that it can be iterated in batches. In addition to a dataset, a `Sampler` and a `batch function` are required to build a `DataCargo`. `Sampler` specifies which examples to pick, and `batch function` specifies how to create a batch from them. Commonly used `Samplers` are provides by [parakeet.data](../parakeet/data/). Users should define a `batch function` for a datasets, in order to batch its examples.
+`DataCargo` is an iterable object of batches. It differs from a dataset in that it can be iterated over in batches. In addition to a dataset, a `Sampler` and a `batch function` are required to build a `DataCargo`. `Sampler` specifies which examples to pick, and `batch function` specifies how to create a batch from them. Commonly used `Samplers` are provided by [parakeet.data](../parakeet/data/). Users should define a `batch function` for a datasets, in order to batch its examples.
 
- `DataIterator` is an iterator class for `DataCargo`. It is create when explicitly creating an iterator of a `DataCargo` by `iter(DataCargo)`, or iterating a `DataCargo` with `for` loop.
+ `DataIterator` is an iterator class for `DataCargo`. It is create when explicitly creating an iterator of a `DataCargo` by `iter(DataCargo)`, or iterating over a `DataCargo` with `for` loop.
 
 Data processing is splited into two phases: sample-level processing and batching.
 
-1. Sample-level processing. This process is transforming an example into another example. This process can be defined as `get_example()` method of a dataset, or as a `transform` (callable object) and build a `TransformDataset` with it.
+1. Sample-level processing. This process is transforming an example into another. This process can be defined as `get_example()` method of a dataset, or as a `transform` (callable object) and build a `TransformDataset` with it.
 
 2. Batching. It is the process of transforming a list of examples into a batch. The rationale is to transform an array of structures into a structure of arrays. We generally define a batch function (or a callable object) to do this.
 
@@ -37,7 +37,7 @@ The user need to define a customized transform and a batch function to accomplis
 
 ## Model
 
-Parakeet provides commonly used functions, modules and models for the users to define their own models. Functions contains no trainable `Parameter`s, and are used in modules and models. Modules and modes are subclasses of `fluid.dygraph.Layer`. The distinction is that `module`s tend to be generic, simple and highly reusable, while `model`s tend to be task-sepcific, complicated and not that reusable. Some models are so complicated that we extract building blocks from it as separate classes but if these building blocks are not common and reusable enough, they are considered as submodels.
+Parakeet provides commonly used functions, modules and models for the users to define their own models. Functions contain no trainable `Parameter`s, and are used in modules and models. Modules and modes are subclasses of `fluid.dygraph.Layer`. The distinction is that `module`s tend to be generic, simple and highly reusable, while `model`s tend to be task-sepcific, complicated and not that reusable. Some models are so complicated that we extract building blocks from it as separate classes but if these building blocks are not common and reusable enough, they are considered as submodels.
 
 In the structure of the project, modules are placed in [parakeet.modules](../parakeet/modules/), while models are in [parakeet.models](../parakeet/models) and grouped into folders like `waveflow` and `wavenet`, which include the whole model and their submodels.
 
@@ -55,9 +55,9 @@ Training process is basically running a training loop for multiple times. A typi
 4. Updating Parameters;
 5. Evaluating the model on validation dataset;
 6. Logging or saving intermediate results;
-7. Saving checkpoint of the model and the optimizer.
+7. Saving checkpoints of the model and the optimizer.
 
-In section `DataProcrssing` we have cover 1 and 2.
+In section `DataProcessing` we have cover 1 and 2.
 
 `Model` and `Optimizer` cover 3 and 4.
 
@@ -66,7 +66,7 @@ To keep the training loop clear, it's a good idea to define functions for saving
 Code is typically organized in this way:
 
 ```text
-├── configs          (example configuration)
+├── configs/         (example configuration)
 ├── data.py          (definition of custom Dataset, transform and batch function)
 ├── README.md        (README for the experiment)
 ├── synthesis.py     (code for inference)
@@ -76,11 +76,11 @@ Code is typically organized in this way:
 
 ## Configuration
 
-Deep learning experiments have many options to configure. These configurations can be roughly grouped into different types: configurations about path of the dataset and path to save results, configurations about how to process data, configuration about the model and configurations about the training process.
+Deep learning experiments have many options to configure. These configurations can be roughly grouped into different types: configurations about path of the dataset and path to save results, configurations about how to process data, configurations about the model and configurations about the training process.
 
 Some configurations tend to change when running the code at different times, for example, path of the data and path to save results and whether to load model before training, etc. For these configurations, it's better to define them as command line arguments. We use `argparse` to handle them.
 
-Other groups of configuration may overlap with others. For example, data processing and model may have some common options. The recommended way is to save them as configuration files, for example, `yaml` or `json`. We prefer `yaml`, for it is more human-reabable.
+Other groups of configurations may overlap with others. For example, data processing and model may have some common options. The recommended way is to save them as configuration files, for example, `yaml` or `json`. We prefer `yaml`, for it is more human-reabable.
 
 
 
