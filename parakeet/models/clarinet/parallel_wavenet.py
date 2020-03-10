@@ -29,6 +29,15 @@ from parakeet.models.wavenet import WaveNet
 class ParallelWaveNet(dg.Layer):
     def __init__(self, n_loops, n_layers, residual_channels, condition_dim,
                  filter_size):
+        """ParallelWaveNet, an inverse autoregressive flow model, it contains several flows(WaveNets).
+
+        Args:
+            n_loops (List[int]): `n_loop` for each flow.
+            n_layers (List[int]): `n_layer` for each flow.
+            residual_channels (int): `residual_channels` for every flow.
+            condition_dim (int): `condition_dim` for every flow.
+            filter_size (int): `filter_size` for every flow.
+        """
         super(ParallelWaveNet, self).__init__()
         self.flows = dg.LayerList()
         for n_loop, n_layer in zip(n_loops, n_layers):
@@ -38,20 +47,18 @@ class ParallelWaveNet(dg.Layer):
                         filter_size, "mog", -100.0))
 
     def forward(self, z, condition=None):
-        """Inverse Autoregressive Flow. Several wavenets.
-        
-        Arguments:
-            z {Variable} -- shape(batch_size, time_steps), hidden variable, sampled from a standard normal distribution.
-        
-        Keyword Arguments:
-            condition {Variable} -- shape(batch_size, condition_dim, time_steps), condition, basically upsampled mel spectrogram. (default: {None})
-        
-        Returns:
-            Variable -- shape(batch_size, time_steps), transformed z.
-            Variable -- shape(batch_size, time_steps), output distribution's mu.
-            Variable -- shape(batch_size, time_steps), output distribution's log_std.
-        """
+        """Transform a random noise sampled from a standard Gaussian distribution into sample from the target distribution. And output the mean and log standard deviation of the output distribution.
 
+        Args:
+            z (Variable): shape(B, T), random noise sampled from a standard gaussian disribution.
+            condition (Variable, optional): shape(B, F, T), dtype float, the upsampled condition. Defaults to None.
+
+        Returns:
+            (z, out_mu, out_log_std)
+            z (Variable): shape(B, T), dtype float, transformed noise, it is the synthesized waveform.
+            out_mu (Variable): shape(B, T), dtype float, means of the output distributions.
+            out_log_std (Variable): shape(B, T), dtype float, log standard deviations of the output distributions.
+        """
         for i, flow in enumerate(self.flows):
             theta = flow(z, condition)  # w, mu, log_std [0: T]
             w, mu, log_std = F.split(theta, 3, dim=-1)  # (B, T, 1) for each

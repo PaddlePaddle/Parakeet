@@ -18,9 +18,23 @@ from tqdm import tqdm
 
 
 class DatasetMixin(object):
-    """standard indexing interface for dataset."""
+    """Standard indexing interface for dataset. Inherit this class to 
+    get the indexing interface. Since it is a mixin class which does 
+    not have an `__init__` class, the subclass not need to call  
+    `super().__init__()`.
+    """
 
     def __getitem__(self, index):
+        """Standard indexing interface for dataset.
+
+        Args:
+            index (slice, list[int], np.array or int): the index. if can be int, slice, list of integers, or ndarray of integers. It calls `get_example` to pick an example. 
+
+        Returns:
+            Example, or List[Example]:  If `index` is an interger, it returns an 
+                    example. If `index` is a slice, a list of intergers or an array of intergers,
+                    it returns a list of examples.
+        """
         if isinstance(index, slice):
             start, stop, step = index.indices(len(self))
             return [
@@ -33,6 +47,12 @@ class DatasetMixin(object):
             return self.get_example(index)
 
     def get_example(self, i):
+        """Get an example from the dataset. Custom datasets should have 
+        this method implemented.
+
+        Args:
+            i (int): example index.
+        """
         raise NotImplementedError
 
     def __len__(self):
@@ -44,9 +64,13 @@ class DatasetMixin(object):
 
 
 class TransformDataset(DatasetMixin):
-    """Transform a dataset to another with a transform."""
-
     def __init__(self, dataset, transform):
+        """Dataset which is transformed from another with a transform.
+
+        Args:
+            dataset (DatasetMixin): the base dataset.
+            transform (callable): the transform which takes an example of the base dataset as parameter and return a new example.
+        """
         self._dataset = dataset
         self._transform = transform
 
@@ -54,14 +78,17 @@ class TransformDataset(DatasetMixin):
         return len(self._dataset)
 
     def get_example(self, i):
-        # CAUTION: only int is supported?
-        # CAUTION: dataset support support __getitem__ and __len__
         in_data = self._dataset[i]
         return self._transform(in_data)
 
 
 class CacheDataset(DatasetMixin):
     def __init__(self, dataset):
+        """A lazy cache of the base dataset.
+
+        Args:
+            dataset (DatasetMixin): the base dataset to cache.
+        """
         self._dataset = dataset
         self._cache = dict()
 
@@ -76,6 +103,11 @@ class CacheDataset(DatasetMixin):
 
 class TupleDataset(object):
     def __init__(self, *datasets):
+        """A compound dataset made from several datasets of the same length. An example of the `TupleDataset` is a tuple of examples from the constituent datasets.
+
+        Args:
+            datasets: tuple[DatasetMixin], the constituent datasets.
+        """
         if not datasets:
             raise ValueError("no datasets are given")
         length = len(datasets[0])
@@ -106,6 +138,11 @@ class TupleDataset(object):
 
 class DictDataset(object):
     def __init__(self, **datasets):
+        """A compound dataset made from several datasets of the same length. An example of the `DictDataset` is a dict of examples from the constituent datasets.
+
+        Args:
+            datasets: Dict[DatasetMixin], the constituent datasets.
+        """
         if not datasets:
             raise ValueError("no datasets are given")
         length = None
@@ -135,6 +172,14 @@ class DictDataset(object):
 
 class SliceDataset(DatasetMixin):
     def __init__(self, dataset, start, finish, order=None):
+        """A Dataset which is a slice of the base dataset.
+
+        Args:
+            dataset (DatasetMixin): the base dataset.
+            start (int): the start of the slice.
+            finish (int): the end of the slice, not inclusive.
+            order (List[int], optional): the order, it is a permutation of the valid example ids of the base dataset. If `order` is provided, the slice is taken in `order`. Defaults to None.
+        """
         if start < 0 or finish > len(dataset):
             raise ValueError("subset overruns the dataset.")
         self._dataset = dataset
@@ -169,6 +214,12 @@ class SliceDataset(DatasetMixin):
 
 class SubsetDataset(DatasetMixin):
     def __init__(self, dataset, indices):
+        """A Dataset which is a subset of the base dataset.
+
+        Args:
+            dataset (DatasetMixin): the base dataset.
+            indices (Iterable[int]): the indices of the examples to pick.
+        """
         self._dataset = dataset
         if len(indices) > len(dataset):
             raise ValueError("subset's size larger that dataset's size!")
@@ -185,6 +236,12 @@ class SubsetDataset(DatasetMixin):
 
 class FilterDataset(DatasetMixin):
     def __init__(self, dataset, filter_fn):
+        """A filtered dataset.
+
+        Args:
+            dataset (DatasetMixin): the base dataset.
+            filter_fn (callable): a callable which takes an example of the base dataset and return a boolean.
+        """
         self._dataset = dataset
         self._indices = [
             i for i in range(len(dataset)) if filter_fn(dataset[i])
@@ -201,6 +258,11 @@ class FilterDataset(DatasetMixin):
 
 class ChainDataset(DatasetMixin):
     def __init__(self, *datasets):
+        """A concatenation of the several datasets which the same structure.
+
+        Args:
+            datasets (Iterable[DatasetMixin]): datasets to concat.
+        """
         self._datasets = datasets
 
     def __len__(self):

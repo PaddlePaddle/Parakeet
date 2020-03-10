@@ -24,10 +24,7 @@ from parakeet.modules.weight_norm import Conv1D, Conv1DCell, Conv2D, Linear
 
 class Conv1DGLU(dg.Layer):
     """
-    A Convolution 1D block with GLU activation. It also applys dropout for the 
-    input x. It fuses speaker embeddings through a FC activated by softsign. It
-    has residual connection from the input x, and scale the output by 
-    np.sqrt(0.5).
+    A Convolution 1D block with GLU activation. It also applys dropout for the input x. It integrates speaker embeddings through a Linear activated by softsign. It has residual connection from the input x, and scale the output by np.sqrt(0.5).
     """
 
     def __init__(self,
@@ -41,8 +38,21 @@ class Conv1DGLU(dg.Layer):
                  dropout=0.0,
                  causal=False,
                  residual=True):
-        super(Conv1DGLU, self).__init__()
+        """[summary]
 
+        Args:
+            n_speakers (int): number of speakers.
+            speaker_dim (int): speaker embedding's size.
+            in_channels (int): channels of the input.
+            num_filters (int): channels of the output.
+            filter_size (int, optional): filter size of the internal Conv1DCell. Defaults to 1.
+            dilation (int, optional): dilation of the internal Conv1DCell. Defaults to 1.
+            std_mul (float, optional): [description]. Defaults to 4.0.
+            dropout (float, optional): dropout probability. Defaults to 0.0.
+            causal (bool, optional): padding of the Conv1DCell. It shoudl be True if `add_input` method of `Conv1DCell` is ever used. Defaults to False.
+            residual (bool, optional): whether to use residual connection. If True, in_channels shoudl equals num_filters. Defaults to True.
+        """
+        super(Conv1DGLU, self).__init__()
         # conv spec
         self.in_channels = in_channels
         self.n_speakers = n_speakers
@@ -83,18 +93,12 @@ class Conv1DGLU(dg.Layer):
     def forward(self, x, speaker_embed=None):
         """
         Args:
-            x (Variable): Shape(B, C_in, T), the input of Conv1DGLU
-                layer, where B means batch_size, C_in means the input channels
-                T means input time steps.
-            speaker_embed_bct1 (Variable): Shape(B, C_sp), expanded
-                speaker embed, where C_sp means speaker embedding size. Note
-                that when using residual connection, the Conv1DGLU does not
-                change the number of channels, so out channels equals input
-                channels.
+            x (Variable): shape(B, C_in, T), dtype float32, the input of Conv1DGLU layer, where B means batch_size, C_in means the input channels T means input time steps.
+            speaker_embed (Variable): shape(B, C_sp), dtype float32, speaker embed, where C_sp means speaker embedding size.
 
         Returns:
-            x (Variable): Shape(B, C_out, T), the output of Conv1DGLU, where
-                C_out means the output channels of Conv1DGLU.
+            x (Variable): shape(B, C_out, T), the output of Conv1DGLU, where
+                C_out means the `num_filters`.
         """
         residual = x
         x = F.dropout(
@@ -114,22 +118,20 @@ class Conv1DGLU(dg.Layer):
         return x
 
     def start_sequence(self):
+        """Prepare the Conv1DGLU to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """
         self.conv.start_sequence()
 
     def add_input(self, x_t, speaker_embed=None):
         """
+        Takes a step of inputs and return a step of outputs. It works similarily with the `forward` method, but in a `step-in-step-out` fashion.
+
         Args:
-            x (Variable): Shape(B, C_in), the input of Conv1DGLU
-                layer, where B means batch_size, C_in means the input channels.
-            speaker_embed_bct1 (Variable): Shape(B, C_sp), expanded
-                speaker embed, where C_sp means speaker embedding size. Note
-                that when using residual connection, the Conv1DGLU does not
-                change the number of channels, so out channels equals input
-                channels.
+            x_t (Variable): shape(B, C_in, T=1), dtype float32, the input of Conv1DGLU layer, where B means batch_size, C_in means the input channels.
+            speaker_embed (Variable): Shape(B, C_sp), dtype float32, speaker embed, where C_sp means speaker embedding size. 
 
         Returns:
-            x (Variable): Shape(B, C_out), the output of Conv1DGLU, where
-                C_out means the output channels of Conv1DGLU.
+            x (Variable): shape(B, C_out), the output of Conv1DGLU, where C_out means the `num_filter`.
         """
         residual = x_t
         x_t = F.dropout(

@@ -2,59 +2,61 @@
 
 This short guide shows the design of `parakeet.data` and how we use it in an experiment.
 
-The most concepts of parakeet are Dataset, DataCargo, Sampler, batch function and DataIterator.
+The most important concepts of `parakeet.data` are `DatasetMixin`, `DataCargo`, `Sampler`, `batch function` and `DataIterator`.
 
 ## Dataset
 
-`Dataset`, as we assume here, is a list of examples. You gen get its length by `len(dataset)`(which means it length is known, and we have to implement `__len__` method for it). And you can access its items randomly by `dataset[i]`(which means we have to implement `__getitem__` method for it). Furthermore,  you can iterable over it by `iter(dataset)` or `for example in dataset`, which means we have to implement `__iter__` method for it.
+Dataset, as we assume here, is a list of examples. You can get its length by `len(dataset)`(which means it length is known, and we have to implement `__len__` method for it). And you can access its items randomly by `dataset[i]`(which means we have to implement `__getitem__` method for it). Furthermore,  you can iterate over it by `iter(dataset)` or `for example in dataset`, which means we have to implement `__iter__` method for it.
+
+### DatasetMixin
 
 We provide an `DatasetMixin` object which provides the above methods. You can inherit `DatasetMixin` and implement `get_example` method for it to define your own dataset class. The `get_example` method is called by `__getitem__` method automatically.
 
-We also provide several other datasets that is built based on other datasets.
+We also define several high-order Dataset classes, the obejcts of which can be built from some given Dataset objects.
 
 ### TupleDataset
 
-Dataset that is combined by sevral datasets of the same length. An `example` of a tupledataset is a tuple of examples of its constituent datasets.
+Dataset that is a combination of sevral datasets of the same length. An example of a `Tupledataset` is a tuple of examples of its constituent datasets.
 
 ### DictDataset
 
-Dataset that is combined by sevral datasets of the same length. An `example` of the tupledataset is a dict of examples of its constituent datasets.
+Dataset that is a combination of sevral datasets of the same length. An example of the `Dictdataset` is a dict of examples of its constituent datasets.
 
 ### SliceDataset
 
-SliceDataset is a slice of the base dataset.
+`SliceDataset` is a slice of the base dataset.
 
 ### SubsetDataset
 
-SubsetDataset is a subset of the base dataset.
+`SubsetDataset` is a subset of the base dataset.
 
 ### ChainDataset
 
-ChainDataset is the concatenation of several datastes with the same fields.
+`ChainDataset` is the concatenation of several datastes with the same fields.
 
 ### TransformDataset
 
-A `TransformeDataset` is created by applying a `transform` to the base dataset. The `transform` is a callable object which takes an `example` of the base dataset and returns an `example` of the `TransformDataset`. The transform is lazy, which means it is applied to an example only when requested.
+A `TransformeDataset` is created by applying a `transform` to the base dataset. The `transform` is a callable object which takes an `example` of the base dataset as parameter and returns an `example` of the `TransformDataset`. The transformation is lazy, which means it is applied to an example only when requested.
 
 ### FilterDataset
 
-A `FilterDataset` is created by applying a `filter` to the base dataset. A `filter` is a predicate that takes an `example` of the base dataset and returns a boolean. Only those examples that pass the filter are included in the FilterDataset.
+A `FilterDataset` is created by applying a `filter` to the base dataset. A `filter` is a predicate that takes an `example` of the base dataset as parameter and returns a boolean. Only those examples that pass the filter are included in the `FilterDataset`.
 
-Note that filter is applied to all the examples in the base dataset when initializing a FilterDataset.
+Note that the filter is applied to all the examples in the base dataset when initializing a `FilterDataset`.
 
 ### CacheDataset
 
-By default, we preprocess dataset lazily in `DatasetMixin.get_example`. An example is preprocessed only only requested. But `CacheDataset` caches the base dataset lazily, so each example is processed only once when it is first requested. When preprocessing the dataset is slow, you can use Cachedataset to speed it up, but caching may consume a lot of RAM if the dataset is large.
+By default, we preprocess dataset lazily in `DatasetMixin.get_example`. An example is preprocessed whenever requested. But `CacheDataset` caches the base dataset lazily, so each example is processed only once when it is first requested. When preprocessing the dataset is slow, you can use `Cachedataset` to speed it up, but caching may consume a lot of RAM if the dataset is large.
 
 Finally, if preprocessing the dataset is slow and the processed dataset is too large to cache, you can write your own code to save them into files or databases, and then define a Dataset to load them. `Dataset` is flexible, so you can create your own dataset painlessly.
 
 ## DataCargo
 
-`DataCargo`, like `Dataset`, is an iterable of batches. We need datacargo because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable but not an iterator, in that in can be iterated more than once.
+`DataCargo`, like `Dataset`, is an iterable, but it is an iterable of batches. We need `Datacargo` because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable but not an iterator, in that in can be iterated more than once.
 
 ### batch function
 
-The concept of `batch` is something transformed from a list of examples. Assume that an example is a structure(tuple in python, or struct in C and C++) consists of several fields, then a list of examples is an array of structure(AOS, a dataset is an AOS). Then a batch here is a structure of arrays (SOA). Here is an example:
+The concept of `batch` is something transformed from a list of examples. Assume that an example is a structure(tuple in python, or struct in C and C++) consists of several fields, then a list of examples is an array of structures(AOS, e.g. a dataset is an AOS). Then a batch here is a structure of arrays (SOA). Here is an example:
 
 The table below represents 2 examples, each of which contains 5 fields.
 
@@ -63,7 +65,7 @@ The table below represents 2 examples, each of which contains 5 fields.
 | 1.2    | 1.1    | 1.3   | 1.4   | 0.8     |
 | 1.6    | 1.4    | 1.2   | 0.6   | 1.4     |
 
-The AOS representation and SOA representation of the table is show below.
+The AOS representation and SOA representation of the table are shown below.
 
 AOS:
 ```text
@@ -81,15 +83,15 @@ SOA:
  [0.8, 1.4])
 ```
 
-For the example above, converting an AOS to an SOA is trivial, just stack every field for all the examples. But it is not always the case. When a field contains a sequence, you may have to pad all the sequences to the largest length then stack them together. In some other cases, we may want to add a field for the batch, for example, `valid_length` for each example. So in general, a function to transform an AOS to SOA is needed to build a datacargo from a dataset. We call this the batch function (`batch_fn`), but you can use any callable if you need to.
+For the example above, converting an AOS to an SOA is trivial, just stacking every field for all the examples. But it is not always the case. When a field contains a sequence, you may have to pad all the sequences to the largest length then stack them together. In some other cases, we may want to add a field for the batch, for example, `valid_length` for each example. So in general, a function to transform an AOS to SOA is needed to build a `Datacargo` from a dataset. We call this the batch function (`batch_fn`), but you can use any callable object if you need to.
 
-Usually we need to define an callable object which stores all the options and configurations as its members as our `batch_fn`. Its `__call__` method transforms a list of examples into a batch.
+Usually we need to define the batch function as an callable object which stores all the options and configurations as its members. Its `__call__` method transforms a list of examples into a batch.
 
-### sampler
+### Sampler
 
 Equipped with a batch function(we have known __how to batch__), here comes the next question. __What to batch?__ We need to decide which examples to pick when creating a batch. Since a dataset is a list of examples, we only need to pick indices for the corresponding examples. A sampler object is what we use to do this.
 
-A sampler is represented as an iterable of integers. Assume the dataset has `N` examples, then an iterable of intergers in the range`[0, N)` is an appropriate sampler for this dataset to build a `DataCargo`.
+A `Sampler` is represented as an iterable of integers. Assume the dataset has `N` examples, then an iterable of intergers in the range`[0, N)` is an appropriate sampler for this dataset to build a `DataCargo`.
 
 We provide several samplers that is ready to use. The `SequentialSampler`, `RandomSampler` and so on.
 
@@ -215,9 +217,9 @@ class Transform(object):
         return audio, mel_spectrogram
 ```
 
-`Transform` loads the audio file, and extracts `mel_spectrogram` from the audio. This transform actually needs a lot of options to specify, namely, the sample rate of the audio files, the `n_fft`, `win_length`, `hop_length` of `stft` transformation, and `n_mels` for transforming spectrogram into mel_spectrogram. So we define it as a callable class. You can also use a closure, or a `partial` if you want to.
+`Transform` loads the audio files, and extracts `mel_spectrogram` from them. This transformation actually needs a lot of options to specify, namely, the sample rate of the audio files, the `n_fft`, `win_length`, `hop_length` of `stft` transformation, and `n_mels` for transforming spectrogram into mel_spectrogram. So we define it as a callable class. You can also use a closure, or a `partial` if you want to.
 
-Then we defines a functor to batch examples into a batch. Because the two fields ( `audio` and `mel_spectrogram`) are both sequences, batching them is not trivial. Also, because the wavenet model trains in audio clips of a fixed length(0.5 seconds, for example), we have to truncate the audio when creating batches. We want to crop it randomly when creating batches, instead of truncating it when preprocessing each example, because it allows for an audio to be truncated at different positions.
+Then we defines a functor to batch examples into a batch. Because the two fields ( `audio` and `mel_spectrogram`) are both sequences, batching them is not trivial. Also, because the wavenet model trains in audio clips of a fixed length(0.5 seconds, for example), we have to truncate the audio when creating batches. We want to crop audio randomly when creating batches, instead of truncating them when preprocessing each example, because it allows for an audio to be truncated at different positions.
 
 ```python
 class DataCollector(object):
@@ -321,7 +323,7 @@ for batch in train_cargo:
     # your training code here
 ```
 
-In the code above, processing of the data and training of the model runs in the same process. So the next batch starts to load after the training of the current batch has finished. There is actually better solution for this. Data processing and model training can be run asynchronously. To accomplish this, we would use `DataLoader` from Paddle. This serves as an adapter to transform an Iterable of batches into another iterable of batches, which runs asynchronously and transform each ndarray into `Variable`.
+In the code above, processing of the data and training of the model run in the same process. So the next batch starts to load after the training of the current batch has finished. There is actually better solutions for this. Data processing and model training can be run asynchronously. To accomplish this, we would use `DataLoader` from Paddle. This serves as an adapter to transform an Iterable of batches into another iterable of batches, which runs asynchronously and transform each ndarray into `Variable`.
 
 ```python
 # connects our data cargos with corresponding DataLoader

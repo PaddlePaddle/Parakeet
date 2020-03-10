@@ -37,28 +37,41 @@ class Clarinet(dg.Layer):
                  stft,
                  min_log_scale=-6.0,
                  lmd=4.0):
+        """Clarinet model.
+
+        Args:
+            encoder (UpsampleNet): an UpsampleNet to upsample mel spectrogram.
+            teacher (WaveNet): a WaveNet, the teacher.
+            student (ParallelWaveNet): a ParallelWaveNet model, the student.
+            stft (STFT): a STFT model to perform differentiable stft transform.
+            min_log_scale (float, optional): used only for computing loss, the minimal value of log standard deviation of the output distribution of both the teacher and the student . Defaults to -6.0.
+            lmd (float, optional): weight for stft loss. Defaults to 4.0.
+        """
         super(Clarinet, self).__init__()
-        self.lmd = lmd
         self.encoder = encoder
         self.teacher = teacher
         self.student = student
-
-        self.min_log_scale = min_log_scale
         self.stft = stft
 
-    def forward(self, audio, mel, audio_start, clip_kl=True):
-        """Compute loss for a distill model
-        
-        Arguments:
-            audio {Variable} -- shape(batch_size, time_steps), target waveform.
-            mel {Variable} -- shape(batch_size, condition_dim, time_steps // hop_length), original mel spectrogram, not upsampled yet.
-            audio_starts {Variable} -- shape(batch_size, ), the index of the start sample.
-            clip_kl (bool) -- whether to clip kl divergence if it is greater than 10.0.
-        
-        Returns:
-            Variable -- shape(1,), loss
-        """
+        self.lmd = lmd
+        self.min_log_scale = min_log_scale
 
+    def forward(self, audio, mel, audio_start, clip_kl=True):
+        """Compute loss of Clarinet model.
+
+        Args:
+            audio (Variable): shape(B, T_audio), dtype flaot32, ground truth waveform.
+            mel (Variable): shape(B, F, T_mel), dtype flaot32, condition(mel spectrogram here).
+            audio_start (Variable): shape(B, ), dtype int64, audio starts positions.
+            clip_kl (bool, optional): whether to clip kl_loss by maximum=100. Defaults to True.
+
+        Returns:
+            Dict(str, Variable)
+            loss (Variable): shape(1, ), dtype flaot32, total loss.
+            kl (Variable): shape(1, ), dtype flaot32, kl divergence between the teacher's output distribution and student's output distribution.
+            regularization (Variable): shape(1, ), dtype flaot32, a regularization term of the KL divergence.
+            spectrogram_frame_loss (Variable): shape(1, ), dytpe: float, stft loss, the L1-distance of the magnitudes of the spectrograms of the ground truth waveform and synthesized waveform.
+        """
         batch_size, audio_length = audio.shape  # audio clip's length
 
         z = F.gaussian_random(audio.shape)
@@ -104,13 +117,13 @@ class Clarinet(dg.Layer):
 
     @dg.no_grad
     def synthesis(self, mel):
-        """Synthesize waveform conditioned on the mel spectrogram.
-        
-        Arguments:
-            mel {Variable} -- shape(batch_size, frequqncy_bands, frames)
-        
+        """Synthesize waveform using the encoder and the student network.
+
+        Args:
+            mel (Variable): shape(B, F, T_mel), the condition(mel spectrogram here).
+
         Returns:
-            Variable -- shape(batch_size, frames * upsample_factor)
+            Variable: shape(B, T_audio), the synthesized waveform. (T_audio = T_mel * upscale_factor, where upscale_factor is the `upscale_factor` of the encoder.)
         """
         condition = self.encoder(mel)
         samples_shape = (condition.shape[0], condition.shape[-1])
@@ -121,6 +134,14 @@ class Clarinet(dg.Layer):
 
 class STFT(dg.Layer):
     def __init__(self, n_fft, hop_length, win_length, window="hanning"):
+        """A module for computing differentiable stft transform. See `librosa.stft` for more details.
+
+        Args:
+            n_fft (int): number of samples in a frame.
+            hop_length (int): number of samples shifted between adjacent frames.
+            win_length (int): length of the window function.
+            window (str, optional): name of window function, see `scipy.signal.get_window` for more details. Defaults to "hanning".
+        """
         super(STFT, self).__init__()
         self.hop_length = hop_length
         self.n_bin = 1 + n_fft // 2
@@ -146,6 +167,16 @@ class STFT(dg.Layer):
         self.weight = dg.to_variable(w)
 
     def forward(self, x):
+        """Compute the stft transform.
+
+        Args:
+            x (Variable): shape(B, T), dtype flaot32, the input waveform.
+
+        Returns:
+            (real, imag)
+            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram. (C = 1 + n_fft // 2)
+            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram. (C = 1 + n_fft // 2) 
+        """
         # x(batch_size, time_steps)
         # pad it first with reflect mode
         pad_start = F.reverse(x[:, 1:1 + self.n_fft // 2], axis=1)
@@ -159,11 +190,31 @@ class STFT(dg.Layer):
         return real, imag
 
     def power(self, x):
+        """Compute the power spectrogram.
+
+        Args:
+            (real, imag)
+            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram.
+            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram.
+
+        Returns:
+            Variable: shape(B, C, 1, T), dtype flaot32, the power spectrogram.
+        """
         real, imag = self(x)
         power = real**2 + imag**2
         return power
 
     def magnitude(self, x):
+        """Compute the magnitude spectrogram.
+
+        Args:
+            (real, imag)
+            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram.
+            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram.
+
+        Returns:
+            Variable: shape(B, C, 1, T), dtype flaot32, the magnitude spectrogram. It is the square root of the power spectrogram.
+        """
         power = self.power(x)
         magnitude = F.sqrt(power)
         return magnitude
