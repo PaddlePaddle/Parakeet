@@ -100,25 +100,25 @@ Parakeet also releases some well-trained parameters for the example models, whic
             </th>
             <th>
             <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
-           </audio> <br>
+                <source  src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
+            </audio> <br>
             <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_1.wav">
-      </audio><br>
+                <source  src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_1.wav">
+            </audio><br>
             <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_2.wav">
-      </audio><br>
-      <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
-      </audio><br>
-      <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
-      </audio>
+                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_2.wav">
+            </audio><br>
+            <audio id="audio" controls="" preload="none">
+                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
+            </audio><br>
+            <audio id="audio" controls="" preload="none">
+                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
+            </audio>
             </th>
-
         </tr>
     </tbody>
 </table>
+
 
 **Note:** The input samples are drawn from validation dataset that are not visible in training.
 
