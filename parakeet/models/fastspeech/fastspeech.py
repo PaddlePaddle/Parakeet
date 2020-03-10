@@ -62,7 +62,7 @@ class FastSpeech(dg.Layer):
             dropout=0.1)
         self.weight = fluid.ParamAttr(
             initializer=fluid.initializer.XavierInitializer())
-        k = math.sqrt(1 / cfg['fs_hidden_size'])
+        k = math.sqrt(1.0 / cfg['fs_hidden_size'])
         self.bias = fluid.ParamAttr(initializer=fluid.initializer.Uniform(
             low=-k, high=k))
         self.mel_linear = dg.Linear(

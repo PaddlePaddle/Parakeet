@@ -39,7 +39,7 @@ class EncoderPrenet(dg.Layer):
             param_attr=fluid.initializer.Normal(
                 loc=0.0, scale=1.0))
         self.conv_list = []
-        k = math.sqrt(1 / embedding_size)
+        k = math.sqrt(1.0 / embedding_size)
         self.conv_list.append(
             Conv1D(
                 num_channels=embedding_size,
@@ -52,7 +52,7 @@ class EncoderPrenet(dg.Layer):
                     initializer=fluid.initializer.Uniform(
                         low=-k, high=k)),
                 use_cudnn=use_cudnn))
-        k = math.sqrt(1 / num_hidden)
+        k = math.sqrt(1.0 / num_hidden)
         for _ in range(2):
             self.conv_list.append(
                 Conv1D(
@@ -78,7 +78,7 @@ class EncoderPrenet(dg.Layer):
         for i, layer in enumerate(self.batch_norm_list):
             self.add_sublayer("batch_norm_list_{}".format(i), layer)
 
-        k = math.sqrt(1 / num_hidden)
+        k = math.sqrt(1.0 / num_hidden)
         self.projection = dg.Linear(
             num_hidden,
             num_hidden,

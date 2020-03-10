@@ -41,7 +41,7 @@ class PositionwiseFeedForward(dg.Layer):
         self.use_cudnn = use_cudnn
         self.dropout = dropout
 
-        k = math.sqrt(1 / d_in)
+        k = math.sqrt(1.0 / d_in)
         self.w_1 = Conv1D(
             num_channels=d_in,
             num_filters=num_hidden,
@@ -52,7 +52,7 @@ class PositionwiseFeedForward(dg.Layer):
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Uniform(
                 low=-k, high=k)),
             use_cudnn=use_cudnn)
-        k = math.sqrt(1 / num_hidden)
+        k = math.sqrt(1.0 / num_hidden)
         self.w_2 = Conv1D(
             num_channels=num_hidden,
             num_filters=d_in,

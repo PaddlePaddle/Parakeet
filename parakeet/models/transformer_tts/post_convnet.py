@@ -48,7 +48,7 @@ class PostConvNet(dg.Layer):
         self.num_conv = num_conv
         self.batchnorm_last = batchnorm_last
         self.conv_list = []
-        k = math.sqrt(1 / (n_mels * outputs_per_step))
+        k = math.sqrt(1.0 / (n_mels * outputs_per_step))
         self.conv_list.append(
             Conv1D(
                 num_channels=n_mels * outputs_per_step,
@@ -62,7 +62,7 @@ class PostConvNet(dg.Layer):
                         low=-k, high=k)),
                 use_cudnn=use_cudnn))
 
-        k = math.sqrt(1 / num_hidden)
+        k = math.sqrt(1.0 / num_hidden)
         for _ in range(1, num_conv - 1):
             self.conv_list.append(
                 Conv1D(
