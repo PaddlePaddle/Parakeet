@@ -11,9 +11,9 @@ For a general deep learning experiment, there are 4 parts to care for.
 
 For processing data, `parakeet.data` provides `DatasetMixin`, `DataCargo` and `DataIterator`.
 
-Dataset is an iterable of examples. `DatasetMixin` provides the standard indexing interface, and other classes in [parakeet.data.dataset](../parakeet/data/dataset.py) provide flexible interfaces for building customized datasets.
+Dataset is an iterable object of examples. `DatasetMixin` provides the standard indexing interface, and other classes in [parakeet.data.dataset](../parakeet/data/dataset.py) provide flexible interfaces for building customized datasets.
 
-`DataCargo` is an iterable of batches. It differs from a dataset in that it can be iterated in batches. In addition to a dataset, a `Sampler` and a `batch function` are required to build a `DataCargo`. `Sampler` specifies which examples to pick, and `batch function` specifies how to create a batch from them. Commonly used `Samplers` are provides by [parakeet.data](../parakeet/data/). Users should define a `batch function` for a datasets, in order to batch its examples.
+`DataCargo` is an iterable object of batches. It differs from a dataset in that it can be iterated in batches. In addition to a dataset, a `Sampler` and a `batch function` are required to build a `DataCargo`. `Sampler` specifies which examples to pick, and `batch function` specifies how to create a batch from them. Commonly used `Samplers` are provides by [parakeet.data](../parakeet/data/). Users should define a `batch function` for a datasets, in order to batch its examples.
 
  `DataIterator` is an iterator class for `DataCargo`. It is create when explicitly creating an iterator of a `DataCargo` by `iter(DataCargo)`, or iterating a `DataCargo` with `for` loop.
 
