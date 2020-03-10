@@ -30,16 +30,19 @@ class CBHG(dg.Layer):
                  num_gru_layers=2,
                  max_pool_kernel_size=2,
                  is_post=False):
+        """CBHG Module
+
+        Args:
+            hidden_size (int): dimension of hidden unit.
+            batch_size (int): batch size of input.
+            K (int, optional): number of convolution banks. Defaults to 16.
+            projection_size (int, optional): dimension of projection unit. Defaults to 256.
+            num_gru_layers (int, optional): number of layers of GRUcell. Defaults to 2.
+            max_pool_kernel_size (int, optional): max pooling kernel size. Defaults to 2
+            is_post (bool, optional): whether post processing or not. Defaults to False.
+        """
         super(CBHG, self).__init__()
-        """
-        :param hidden_size: dimension of hidden unit
-        :param batch_size: batch size
-        :param K: # of convolution banks
-        :param projection_size: dimension of projection unit
-        :param num_gru_layers: # of layers of GRUcell
-        :param max_pool_kernel_size: max pooling kernel size
-        :param is_post: whether post processing or not
-        """
+
         self.hidden_size = hidden_size
         self.projection_size = projection_size
         self.conv_list = []
@@ -176,7 +179,15 @@ class CBHG(dg.Layer):
             return x
 
     def forward(self, input_):
-        # input_.shape = [N, C, T]
+        """
+        Convert linear spectrum to Mel spectrum.
+
+        Args:
+            input_ (Variable): shape(B, C, T), dtype float32, the sequentially input.  
+
+        Returns:
+            out (Variable): shape(B, C, T), the CBHG output.
+        """
 
         conv_list = []
         conv_input = input_
@@ -217,6 +228,12 @@ class CBHG(dg.Layer):
 
 class Highwaynet(dg.Layer):
     def __init__(self, num_units, num_layers=4):
+        """Highway network
+
+        Args:
+            num_units (int): dimension of hidden unit.
+            num_layers (int, optional): number of highway layers. Defaults to 4.
+        """
         super(Highwaynet, self).__init__()
         self.num_units = num_units
         self.num_layers = num_layers
@@ -249,6 +266,15 @@ class Highwaynet(dg.Layer):
             self.add_sublayer("gates_{}".format(i), gate)
 
     def forward(self, input_):
+        """
+        Compute result of Highway network.
+
+        Args:
+            input_(Variable): shape(B, T, C), dtype float32, the sequentially input.
+            
+        Returns:
+            out(Variable): the Highway output.
+        """
         out = input_
 
         for linear, gate in zip(self.linears, self.gates):

@@ -14,7 +14,7 @@ python -u train_transformer.py \
 --data_path='../../dataset/LJSpeech-1.1' \
 --save_path='./checkpoint' \
 --log_dir='./log' \
---config_path='config/train_transformer.yaml' \
+--config_path='configs/train_transformer.yaml' \
 #--checkpoint_path='./checkpoint' \
 #--transformer_step=160000 \
 

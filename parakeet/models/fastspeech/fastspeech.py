@@ -25,7 +25,11 @@ from parakeet.models.fastspeech.decoder import Decoder
 
 class FastSpeech(dg.Layer):
     def __init__(self, cfg):
-        " FastSpeech"
+        """FastSpeech model.
+
+        Args:
+            cfg: the yaml configs used in FastSpeech model.
+        """
         super(FastSpeech, self).__init__()
 
         self.encoder = Encoder(
@@ -34,7 +38,7 @@ class FastSpeech(dg.Layer):
             n_layers=cfg['encoder_n_layer'],
             n_head=cfg['encoder_head'],
             d_k=cfg['fs_hidden_size'] // cfg['encoder_head'],
-            d_v=cfg['fs_hidden_size'] // cfg['encoder_head'],
+            d_q=cfg['fs_hidden_size'] // cfg['encoder_head'],
             d_model=cfg['fs_hidden_size'],
             d_inner=cfg['encoder_conv1d_filter_size'],
             fft_conv1d_kernel=cfg['fft_conv1d_filter'],
@@ -50,7 +54,7 @@ class FastSpeech(dg.Layer):
             n_layers=cfg['decoder_n_layer'],
             n_head=cfg['decoder_head'],
             d_k=cfg['fs_hidden_size'] // cfg['decoder_head'],
-            d_v=cfg['fs_hidden_size'] // cfg['decoder_head'],
+            d_q=cfg['fs_hidden_size'] // cfg['decoder_head'],
             d_model=cfg['fs_hidden_size'],
             d_inner=cfg['decoder_conv1d_filter_size'],
             fft_conv1d_kernel=cfg['fft_conv1d_filter'],
@@ -82,34 +86,37 @@ class FastSpeech(dg.Layer):
                 text_pos,
                 enc_non_pad_mask,
                 dec_non_pad_mask,
+                mel_pos=None,
                 enc_slf_attn_mask=None,
                 dec_slf_attn_mask=None,
-                mel_pos=None,
                 length_target=None,
                 alpha=1.0):
         """
-        FastSpeech model.
+        Compute mel output from text character.
         
         Args:
-            character (Variable): Shape(B, T_text), dtype: float32. The input text
-                characters. T_text means the timesteps of input characters.
-            text_pos (Variable): Shape(B, T_text), dtype: int64. The input text
-                position. T_text means the timesteps of input characters.
-            mel_pos (Variable, optional): Shape(B, T_mel),
-                dtype: int64. The spectrum position. T_mel means the timesteps of input spectrum.
-            length_target (Variable, optional): Shape(B, T_text),
-                dtype: int64. The duration of phoneme compute from pretrained transformerTTS.
-            alpha (Constant): 
-                dtype: float32. The hyperparameter to determine the length of the expanded sequence 
-                mel, thereby controlling the voice speed.
+            character (Variable): shape(B, T_text), dtype float32, the input text characters, 
+                where T_text means the timesteps of input characters, 
+            text_pos (Variable): shape(B, T_text), dtype int64, the input text position. 
+            mel_pos (Variable, optional): shape(B, T_mel), dtype int64, the spectrum position, 
+                where T_mel means the timesteps of input spectrum,  
+            enc_non_pad_mask (Variable): shape(B, T_text, 1), dtype int64, the mask with non pad.
+            dec_non_pad_mask (Variable): shape(B, T_mel, 1), dtype int64, the mask with non pad.
+            enc_slf_attn_mask (Variable, optional): shape(B, T_text, T_text), dtype int64, 
+                the mask of input characters. Defaults to None.
+            slf_attn_mask (Variable, optional): shape(B, T_mel, T_mel), dtype int64,
+                the mask of mel spectrum. Defaults to None.
+            length_target (Variable, optional): shape(B, T_text), dtype int64, 
+                the duration of phoneme compute from pretrained transformerTTS. Defaults to None. 
+            alpha (float32, optional): The hyperparameter to determine the length of the expanded sequence 
+                mel, thereby controlling the voice speed. Defaults to 1.0.
 
         Returns:
-            mel_output (Variable), Shape(B, mel_T, C), the mel output before postnet.
-            mel_output_postnet (Variable), Shape(B, mel_T, C), the mel output after postnet.
-            duration_predictor_output (Variable), Shape(B, text_T), the duration of phoneme compute 
-            with duration predictor.
-            enc_slf_attn_list (Variable), Shape(B, text_T, text_T), the encoder self attention list.
-            dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
+            mel_output (Variable): shape(B, T_mel, C), the mel output before postnet.
+            mel_output_postnet (Variable): shape(B, T_mel, C), the mel output after postnet.
+            duration_predictor_output (Variable): shape(B, T_text), the duration of phoneme compute with duration predictor. 
+            enc_slf_attn_list (List[Variable]): len(enc_n_layers), the encoder self attention list. 
+            dec_slf_attn_list (List[Variable]): len(dec_n_layers), the decoder self attention list.
         """
 
         encoder_output, enc_slf_attn_list = self.encoder(
@@ -118,7 +125,6 @@ class FastSpeech(dg.Layer):
             enc_non_pad_mask,
             slf_attn_mask=enc_slf_attn_mask)
         if fluid.framework._dygraph_tracer()._train_mode:
-
             length_regulator_output, duration_predictor_output = self.length_regulator(
                 encoder_output, target=length_target, alpha=alpha)
             decoder_output, dec_slf_attn_list = self.decoder(

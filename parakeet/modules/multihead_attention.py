@@ -50,6 +50,11 @@ class Linear(dg.Layer):
 
 class ScaledDotProductAttention(dg.Layer):
     def __init__(self, d_key):
+        """Scaled dot product attention module.
+
+        Args:
+            d_key (int): the dim of key in multihead attention.
+        """
         super(ScaledDotProductAttention, self).__init__()
 
         self.d_key = d_key
@@ -63,18 +68,18 @@ class ScaledDotProductAttention(dg.Layer):
                 query_mask=None,
                 dropout=0.1):
         """
-        Scaled Dot Product Attention.
+        Compute scaled dot product attention.
         
         Args:
-            key (Variable): Shape(B, T, C), dtype: float32. The input key of attention.
-            value (Variable): Shape(B, T, C), dtype: float32. The input value of attention.
-            query (Variable): Shape(B, T, C), dtype: float32. The input query of attention.
-            mask (Variable): Shape(B, len_q, len_k), dtype: float32. The mask of key.
-            query_mask (Variable): Shape(B, len_q, 1), dtype: float32. The mask of query.
-            dropout (Constant): dtype: float32. The probability of dropout.
+            key (Variable): shape(B, T, C), dtype float32, the input key of scaled dot product attention.
+            value (Variable): shape(B, T, C), dtype float32, the input value of scaled dot product attention.
+            query (Variable): shape(B, T, C), dtype float32, the input query of scaled dot product attention.
+            mask (Variable, optional): shape(B, T_q, T_k), dtype float32, the mask of key.  Defaults to None.
+            query_mask (Variable, optional): shape(B, T_q, T_q), dtype float32, the mask of query.  Defaults to None.
+            dropout (float32, optional): the probability of dropout. Defaults to 0.1.
         Returns:
-            result (Variable), Shape(B, T, C), the result of mutihead attention.
-            attention (Variable), Shape(n_head * B, T, C), the attention of key.
+            result (Variable): shape(B, T, C), the result of mutihead attention.
+            attention (Variable): shape(n_head * B, T, C), the attention of key.
         """
         # Compute attention score
         attention = layers.matmul(
@@ -105,6 +110,17 @@ class MultiheadAttention(dg.Layer):
                  is_bias=False,
                  dropout=0.1,
                  is_concat=True):
+        """Multihead Attention.
+
+        Args:
+            num_hidden (int): the number of hidden layer in network.
+            d_k (int): the dim of key in multihead attention.
+            d_q (int): the dim of query in multihead attention.
+            num_head (int, optional): the head number of multihead attention. Defaults to 4.
+            is_bias (bool, optional): whether have bias in linear layers. Default to False.
+            dropout (float, optional): dropout probability of FFTBlock. Defaults to 0.1.
+            is_concat (bool, optional): whether concat query and result. Default to True.
+        """
         super(MultiheadAttention, self).__init__()
         self.num_hidden = num_hidden
         self.num_head = num_head
@@ -128,17 +144,18 @@ class MultiheadAttention(dg.Layer):
 
     def forward(self, key, value, query_input, mask=None, query_mask=None):
         """
-        Multihead Attention.
+        Compute attention.
         
         Args:
-            key (Variable): Shape(B, T, C), dtype: float32. The input key of attention.
-            value (Variable): Shape(B, T, C), dtype: float32. The input value of attention.
-            query_input (Variable): Shape(B, T, C), dtype: float32. The input query of attention.
-            mask (Variable): Shape(B, len_q, len_k), dtype: float32. The mask of key.
-            query_mask (Variable): Shape(B, len_q, 1), dtype: float32. The mask of query.
+            key (Variable): shape(B, T, C), dtype float32, the input key of attention.
+            value (Variable): shape(B, T, C), dtype float32, the input value of attention.
+            query_input (Variable): shape(B, T, C), dtype float32, the input query of attention.
+            mask (Variable, optional): shape(B, T_query, T_key), dtype float32, the mask of key. Defaults to None.
+            query_mask (Variable, optional): shape(B, T_query, T_key), dtype float32, the mask of query. Defaults to None.
+                
         Returns:
-            result (Variable), Shape(B, T, C), the result of mutihead attention.
-            attention (Variable), Shape(n_head * B, T, C), the attention of key.
+            result (Variable): shape(B, T, C), the result of mutihead attention. 
+            attention (Variable): shape(num_head * B, T, C), the attention of key and query. 
         """
 
         batch_size = key.shape[0]
@@ -146,7 +163,6 @@ class MultiheadAttention(dg.Layer):
         seq_len_query = query_input.shape[1]
 
         # Make multihead attention
-        # key & value.shape = (batch_size, seq_len, feature)(feature = num_head * num_hidden_per_attn)
         key = layers.reshape(
             self.key(key), [batch_size, seq_len_key, self.num_head, self.d_k])
         value = layers.reshape(
@@ -155,18 +171,6 @@ class MultiheadAttention(dg.Layer):
         query = layers.reshape(
             self.query(query_input),
             [batch_size, seq_len_query, self.num_head, self.d_q])
-
-        key = layers.reshape(
-            layers.transpose(key, [2, 0, 1, 3]), [-1, seq_len_key, self.d_k])
-        value = layers.reshape(
-            layers.transpose(value, [2, 0, 1, 3]),
-            [-1, seq_len_key, self.d_k])
-        query = layers.reshape(
-            layers.transpose(query, [2, 0, 1, 3]),
-            [-1, seq_len_query, self.d_q])
-
-        result, attention = self.scal_attn(
-            key, value, query, mask=mask, query_mask=query_mask)
 
         key = layers.reshape(
             layers.transpose(key, [2, 0, 1, 3]), [-1, seq_len_key, self.d_k])

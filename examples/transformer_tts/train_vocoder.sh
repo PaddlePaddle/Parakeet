@@ -12,7 +12,7 @@ python -u train_vocoder.py \
 --data_path='../../dataset/LJSpeech-1.1' \
 --save_path='./checkpoint' \
 --log_dir='./log' \
---config_path='config/train_vocoder.yaml' \
+--config_path='configs/train_vocoder.yaml' \
 #--checkpoint_path='./checkpoint' \
 #--vocoder_step=27000 \
 
