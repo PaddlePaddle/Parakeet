@@ -9,7 +9,7 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 In particular, it features the latest [WaveFlow] (https://arxiv.org/abs/1912.01219) model proposed by Baidu Research.
 
 - WaveFlow can synthesize 22.05 kHz high-fidelity speech around 40x faster than real-time on a Nvidia V100 GPU without engineered inference kernels, which is faster than [WaveGlow] (https://github.com/NVIDIA/waveglow) and serveral orders of magnitude faster than WaveNet.
-- WaveFlow is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M) and comparable to WaveNet (4.6M).
+- WaveFlow is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M).
 - WaveFlow is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in Parallel WaveNet and ClariNet, which simplifies the training pipeline and reduces the cost of development.
 
 ## Overview
@@ -100,25 +100,25 @@ Parakeet also releases some well-trained parameters for the example models, whic
             </th>
             <th>
             <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
-           </audio> <br>
+                <source  src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
+            </audio> <br>
             <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_1.wav">
-      </audio><br>
+                <source  src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_1.wav">
+            </audio><br>
             <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_2.wav">
-      </audio><br>
-      <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
-      </audio><br>
-      <audio id="audio" controls="" preload="none">
-      <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
-      </audio>
+                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_2.wav">
+            </audio><br>
+            <audio id="audio" controls="" preload="none">
+                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
+            </audio><br>
+            <audio id="audio" controls="" preload="none">
+                <source id="mp3" src="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
+            </audio>
             </th>
-
         </tr>
     </tbody>
 </table>
+
 
 **Note:** The input samples are drawn from validation dataset that are not visible in training.
 
