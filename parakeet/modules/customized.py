@@ -106,6 +106,14 @@ class Conv1D(dg.Conv2D):
             dtype=dtype)
 
     def forward(self, x):
+        """Compute Conv1D by unsqueeze the input and squeeze the output.
+
+        Args:
+            x (Variable): shape(B, C_in, T_in), dtype float32, input of Conv1D.
+
+        Returns:
+            Variable: shape(B, C_out, T_out), dtype float32, output of Conv1D.
+        """
         x = F.unsqueeze(x, [2])
         x = super(Conv1D, self).forward(x)  # maybe risky here
         x = F.squeeze(x, [2])
@@ -141,6 +149,14 @@ class Conv1DTranspose(dg.Conv2DTranspose):
             dtype=dtype)
 
     def forward(self, x):
+        """Compute Conv1DTranspose by unsqueeze the input and squeeze the output.
+
+        Args:
+            x (Variable): shape(B, C_in, T_in), dtype float32, input of Conv1DTranspose.
+
+        Returns:
+            Variable: shape(B, C_out, T_out), dtype float32, output of Conv1DTranspose.
+        """
         x = F.unsqueeze(x, [2])
         x = super(Conv1DTranspose, self).forward(x)  # maybe risky here
         x = F.squeeze(x, [2])
@@ -188,6 +204,14 @@ class Conv1DCell(Conv1D):
             dtype=dtype)
 
     def forward(self, x):
+        """Compute Conv1D by unsqueeze the input and squeeze the output.
+
+        Args:
+            x (Variable): shape(B, C_in, T), dtype float32, input of Conv1D.
+
+        Returns:
+            Variable: shape(B, C_out, T), dtype float32, output of Conv1D.
+        """
         # it ensures that ouput time steps == input time steps
         time_steps = x.shape[-1]
         x = super(Conv1DCell, self).forward(x)
@@ -200,6 +224,8 @@ class Conv1DCell(Conv1D):
         return self._receptive_field
 
     def start_sequence(self):
+        """Prepare the Conv1DCell to generate a new sequence, this method should be called before calling add_input multiple times.
+        """
         if not self.causal:
             raise ValueError(
                 "Only causal conv1d shell should use start sequence")
@@ -211,6 +237,14 @@ class Conv1DCell(Conv1D):
         self._reshaped_weight = F.reshape(self.weight, (self._num_filters, -1))
 
     def add_input(self, x_t):
+        """This method works similarily with forward but in a `step-in-step-out` fashion.
+
+        Args:
+            x (Variable): shape(B, C_in, T=1), dtype float32, input of Conv1D.
+
+        Returns:
+            Variable: shape(B, C_out, T=1), dtype float32, output of Conv1D.
+        """
         batch_size, c_in, _ = x_t.shape
         if self._buffer is None:
             self._buffer = F.zeros(
