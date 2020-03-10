@@ -22,11 +22,12 @@ PaddlePaddle dynamic graph implementation of [WaveFlow: A Compact Flow-based Mod
 
 There are many hyperparameters to be tuned depending on the specification of model and dataset you are working on.
 We provide `wavenet_ljspeech.yaml` as a hyperparameter set that works well on the LJSpeech dataset.
+Note that we use [convolutional queue](https://arxiv.org/abs/1611.09482) at audio synthesis to cache the intermediate hidden states, which will speed up the autoregressive inference over the height dimension. Current implementation only supports height dimension equals 8 or 16, i.e., where there is no dilation on the height dimension. Therefore, you can only set value of `n_group` key in the yaml config file to be either 8 or 16.
 
-Note that `train.py`, `synthesis.py`, and `benchmark.py` all accept a `--config` parameter. To ensure consistency, you should use the same config yaml file for both training, synthesizing and benchmarking. You can also overwrite these preset hyperparameters with command line by updating parameters after `--config`.
+Also note that `train.py`, `synthesis.py`, and `benchmark.py` all accept a `--config` parameter. To ensure consistency, you should use the same config yaml file for both training, synthesizing and benchmarking. You can also overwrite these preset hyperparameters with command line by updating parameters after `--config`.
 For example `--config=${yaml} --batch_size=8` can overwrite the corresponding hyperparameters in the `${yaml}` config file. For more details about these hyperparameters, check `utils.add_config_options_to_parser`.
 
-Note that you also need to specify some additional parameters for `train.py`, `synthesis.py`, and `benchmark.py`, and the details can be found in `train.add_options_to_parser`, `synthesis.add_options_to_parser`, and `benchmark.add_options_to_parser`, respectively.
+Additionally, you need to specify some additional parameters for `train.py`, `synthesis.py`, and `benchmark.py`, and the details can be found in `train.add_options_to_parser`, `synthesis.add_options_to_parser`, and `benchmark.add_options_to_parser`, respectively.
 
 ### Dataset
 

@@ -391,6 +391,12 @@ class WaveFlowModule(dg.Layer):
         These hidden states along with initial random gaussian latent variable
         are passed to a stack of Flow modules to obtain the audio output.
 
+        Note that we use convolutional queue (https://arxiv.org/abs/1611.09482)
+        to cache the intermediate hidden states, which will speed up the
+        autoregressive inference over the height dimension. Current
+        implementation only supports height dimension (self.n_group) equals
+        8 or 16, i.e., where there is no dilation on the height dimension.
+
         Args:
             mel (obj): mel spectrograms.
             sigma (float, optional): standard deviation of the guassian latent
