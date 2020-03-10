@@ -13,7 +13,7 @@ python -u train.py \
 --transformer_step=160000 \
 --save_path='./checkpoint' \
 --log_dir='./log' \
---config_path='config/fastspeech.yaml' \
+--config_path='configs/fastspeech.yaml' \
 #--checkpoint_path='./checkpoint' \
 #--fastspeech_step=97000 \
 

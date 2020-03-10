@@ -24,12 +24,27 @@ class Encoder(dg.Layer):
                  n_layers,
                  n_head,
                  d_k,
-                 d_v,
+                 d_q,
                  d_model,
                  d_inner,
                  fft_conv1d_kernel,
                  fft_conv1d_padding,
                  dropout=0.1):
+        """Encoder layer of FastSpeech.
+
+        Args:
+            n_src_vocab (int): the number of source vocabulary.
+            len_max_seq (int): the max mel len of sequence.
+            n_layers (int): the layers number of FFTBlock.
+            n_head (int): the head number of multihead attention.
+            d_k (int): the dim of key in multihead attention.
+            d_q (int): the dim of query in multihead attention.
+            d_model (int): the dim of hidden layer in multihead attention.
+            d_inner (int): the dim of hidden layer in ffn.
+            fft_conv1d_kernel (int): the conv kernel size in FFTBlock.
+            fft_conv1d_padding (int): the conv padding size in FFTBlock.
+            dropout (float, optional): dropout probability of FFTBlock. Defaults to 0.1.
+        """
         super(Encoder, self).__init__()
         n_position = len_max_seq + 1
         self.n_head = n_head
@@ -53,7 +68,7 @@ class Encoder(dg.Layer):
                 d_inner,
                 n_head,
                 d_k,
-                d_v,
+                d_q,
                 fft_conv1d_kernel,
                 fft_conv1d_padding,
                 dropout=dropout) for _ in range(n_layers)
@@ -63,18 +78,20 @@ class Encoder(dg.Layer):
 
     def forward(self, character, text_pos, non_pad_mask, slf_attn_mask=None):
         """
-        Encoder layer of FastSpeech.
-        
-        Args:
-            character (Variable): Shape(B, T_text), dtype: float32. The input text
-                characters. T_text means the timesteps of input characters.
-            text_pos (Variable): Shape(B, T_text), dtype: int64. The input text
-                position. T_text means the timesteps of input characters.
+        Encode text sequence.
 
+        Args:
+            character (Variable): shape(B, T_text), dtype float32, the input text characters, 
+                where T_text means the timesteps of input characters,
+            text_pos (Variable): shape(B, T_text), dtype int64, the input text position. 
+            non_pad_mask (Variable): shape(B, T_text, 1), dtype int64, the mask with non pad.
+            slf_attn_mask (Variable, optional): shape(B, T_text, T_text), dtype int64, 
+                the mask of input characters. Defaults to None.
+        
         Returns:
-            enc_output (Variable), Shape(B, text_T, C), the encoder output.
-            non_pad_mask (Variable), Shape(B, T_text, 1), the mask with non pad.
-            enc_slf_attn_list (list<Variable>), Len(n_layers), Shape(B * n_head, text_T, text_T), the encoder self attention list.
+            enc_output (Variable): shape(B, T_text, C), the encoder output. 
+            non_pad_mask (Variable): shape(B, T_text, 1), the mask with non pad.
+            enc_slf_attn_list (list[Variable]): len(n_layers), the encoder self attention list.
         """
         enc_slf_attn_list = []
         slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])

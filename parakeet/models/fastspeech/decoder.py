@@ -23,12 +23,26 @@ class Decoder(dg.Layer):
                  n_layers,
                  n_head,
                  d_k,
-                 d_v,
+                 d_q,
                  d_model,
                  d_inner,
                  fft_conv1d_kernel,
                  fft_conv1d_padding,
                  dropout=0.1):
+        """Decoder layer of FastSpeech.
+
+        Args:
+            len_max_seq (int): the max mel len of sequence.
+            n_layers (int): the layers number of FFTBlock.
+            n_head (int): the head number of multihead attention.
+            d_k (int): the dim of key in multihead attention.
+            d_q (int): the dim of query in multihead attention.
+            d_model (int): the dim of hidden layer in multihead attention.
+            d_inner (int): the dim of hidden layer in ffn.
+            fft_conv1d_kernel (int): the conv kernel size in FFTBlock.
+            fft_conv1d_padding (int): the conv padding size in FFTBlock.
+            dropout (float, optional): dropout probability of FFTBlock. Defaults to 0.1.
+        """
         super(Decoder, self).__init__()
 
         n_position = len_max_seq + 1
@@ -48,7 +62,7 @@ class Decoder(dg.Layer):
                 d_inner,
                 n_head,
                 d_k,
-                d_v,
+                d_q,
                 fft_conv1d_kernel,
                 fft_conv1d_padding,
                 dropout=dropout) for _ in range(n_layers)
@@ -58,16 +72,20 @@ class Decoder(dg.Layer):
 
     def forward(self, enc_seq, enc_pos, non_pad_mask, slf_attn_mask=None):
         """
-        Decoder layer of FastSpeech.
+        Compute decoder outputs.
         
         Args:
-            enc_seq (Variable), Shape(B, text_T, C), dtype: float32. 
-                The output of length regulator.
-            enc_pos (Variable, optional): Shape(B, T_mel),
-                dtype: int64. The spectrum position. T_mel means the timesteps of input spectrum.
+            enc_seq (Variable): shape(B, T_text, C), dtype float32,
+                the output of length regulator, where T_text means the timesteps of input text, 
+            enc_pos (Variable): shape(B, T_mel), dtype int64, 
+                the spectrum position, where T_mel means the timesteps of input spectrum, 
+            non_pad_mask (Variable): shape(B, T_mel, 1), dtype int64, the mask with non pad.
+            slf_attn_mask (Variable, optional): shape(B, T_mel, T_mel), dtype int64, 
+                the mask of mel spectrum. Defaults to None.
+
         Returns:
-            dec_output (Variable), Shape(B, mel_T, C), the decoder output.
-            dec_slf_attn_list (Variable), Shape(B, mel_T, mel_T), the decoder self attention list.
+            dec_output (Variable): shape(B, T_mel, C), the decoder output.
+            dec_slf_attn_list (list[Variable]): len(n_layers), the decoder self attention list.
         """
         dec_slf_attn_list = []
         slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])

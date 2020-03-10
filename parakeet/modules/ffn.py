@@ -19,8 +19,6 @@ from parakeet.modules.customized import Conv1D
 
 
 class PositionwiseFeedForward(dg.Layer):
-    ''' A two-feed-forward-layer module '''
-
     def __init__(self,
                  d_in,
                  num_hidden,
@@ -28,6 +26,16 @@ class PositionwiseFeedForward(dg.Layer):
                  padding=0,
                  use_cudnn=True,
                  dropout=0.1):
+        """A two-feed-forward-layer module.
+
+        Args:
+            d_in (int): the size of input channel.
+            num_hidden (int): the size of hidden layer in network.
+            filter_size (int): the filter size of Conv
+            padding (int, optional): the padding size of Conv. Defaults to 0.
+            use_cudnn (bool, optional): use cudnn in Conv or not. Defaults to True.
+            dropout (float, optional): dropout probability. Defaults to 0.1.
+        """
         super(PositionwiseFeedForward, self).__init__()
         self.num_hidden = num_hidden
         self.use_cudnn = use_cudnn
@@ -59,12 +67,13 @@ class PositionwiseFeedForward(dg.Layer):
 
     def forward(self, input):
         """
-        Feed Forward Network.
+        Compute feed forward network result.
         
         Args:
-            input (Variable): Shape(B, T, C), dtype: float32. The input value.
+            input (Variable): shape(B, T, C), dtype float32, the input value. 
+                
         Returns:
-            output (Variable), Shape(B, T, C), the result after FFN.
+            output (Variable): shape(B, T, C), the result after FFN. 
         """
         x = layers.transpose(input, [0, 2, 1])
         #FFN Networt
