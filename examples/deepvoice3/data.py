@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
 import os
 import csv
 from pathlib import Path
@@ -19,6 +20,7 @@ import numpy as np
 import pandas as pd
 import librosa
 from scipy import signal, io
+import six
 
 from parakeet.data import DatasetMixin, TransformDataset, FilterDataset
 from parakeet.g2p.en import text_to_sequence, sequence_to_text
@@ -32,6 +34,7 @@ class LJSpeechMetaData(DatasetMixin):
         self._table = pd.read_csv(
             csv_path,
             sep="|",
+            encoding="utf-8",
             header=None,
             quoting=csv.QUOTE_NONE,
             names=["fname", "raw_text", "normalized_text"])
@@ -122,7 +125,6 @@ class Transform(object):
 
         # num_frames
         n_frames = S_mel_norm.shape[-1]  # CAUTION: original number of frames
-
         return (mix_grapheme_phonemes, text_length, speaker_id, S_norm,
                 S_mel_norm, n_frames)
 
@@ -161,17 +163,21 @@ class DataCollector(object):
              S_mel_norm, num_frames) = example
             text_sequences.append(
                 np.pad(mix_grapheme_phonemes, (0, max_text_length - text_length
-                                               )))
+                                               ),
+                       mode="constant"))
             lin_specs.append(
                 np.pad(S_norm, ((0, 0), (self._pad_begin, max_frames -
-                                         self._pad_begin - num_frames))))
+                                         self._pad_begin - num_frames)),
+                       mode="constant"))
             mel_specs.append(
                 np.pad(S_mel_norm, ((0, 0), (self._pad_begin, max_frames -
-                                             self._pad_begin - num_frames))))
+                                             self._pad_begin - num_frames)),
+                       mode="constant"))
             done_flags.append(
                 np.pad(np.zeros((int(np.ceil(num_frames // self._factor)), )),
                        (0, max_decoder_length - int(
                            np.ceil(num_frames // self._factor))),
+                       mode="constant",
                        constant_values=1))
         text_sequences = np.array(text_sequences).astype(np.int64)
         lin_specs = np.transpose(np.array(lin_specs),

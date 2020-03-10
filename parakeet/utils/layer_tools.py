@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-from torch import nn
 import paddle.fluid.dygraph as dg
 
 
