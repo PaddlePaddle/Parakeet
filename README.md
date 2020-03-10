@@ -78,11 +78,16 @@ Parakeet also releases some well-trained parameters for the example models, whic
 
 - Vocoders
 
+<div align="center">
 <table>
     <thead>
         <tr>
-            <th> WaveFlow</th>
-            <th><a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip">ClariNet</a> </th>
+            <th  style="width: 250px"> 
+            WaveFlow
+            </th>
+            <th  style="width: 250px">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip">ClariNet</a>
+            </th>
         </tr>
     </thead>
     <tbody>
@@ -113,9 +118,10 @@ Parakeet also releases some well-trained parameters for the example models, whic
         </tr>
     </tbody>
 </table>
+</div>
 
 
-**Note:** The input mel spectrogams are from validation dataset, which are not seen during training.
+&nbsp;&nbsp;&nbsp;&nbsp;**Note:** The input mel spectrogams are from validation dataset, which are not seen during training.
 
 - TTS models
 
