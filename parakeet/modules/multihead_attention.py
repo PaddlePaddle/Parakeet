@@ -33,7 +33,7 @@ class Linear(dg.Layer):
         self.bias = is_bias
 
         if is_bias is not False:
-            k = math.sqrt(1 / in_features)
+            k = math.sqrt(1.0 / in_features)
             self.bias = fluid.ParamAttr(initializer=fluid.initializer.Uniform(
                 low=-k, high=k))
 

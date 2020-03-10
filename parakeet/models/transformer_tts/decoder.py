@@ -55,7 +55,7 @@ class Decoder(dg.Layer):
             hidden_size=num_hidden * 2,
             output_size=num_hidden,
             dropout_rate=0.2)
-        k = math.sqrt(1 / num_hidden)
+        k = math.sqrt(1.0 / num_hidden)
         self.linear = dg.Linear(
             num_hidden,
             num_hidden,

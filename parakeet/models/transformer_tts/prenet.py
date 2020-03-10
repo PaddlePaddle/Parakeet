@@ -33,7 +33,7 @@ class PreNet(dg.Layer):
         self.output_size = output_size
         self.dropout_rate = dropout_rate
 
-        k = math.sqrt(1 / input_size)
+        k = math.sqrt(1.0 / input_size)
         self.linear1 = dg.Linear(
             input_size,
             hidden_size,
@@ -41,7 +41,7 @@ class PreNet(dg.Layer):
                 initializer=fluid.initializer.XavierInitializer()),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Uniform(
                 low=-k, high=k)))
-        k = math.sqrt(1 / hidden_size)
+        k = math.sqrt(1.0 / hidden_size)
         self.linear2 = dg.Linear(
             hidden_size,
             output_size,

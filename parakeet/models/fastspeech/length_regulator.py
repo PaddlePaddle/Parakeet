@@ -115,7 +115,7 @@ class DurationPredictor(dg.Layer):
         self.filter_size = filter_size
         self.dropout = dropout
 
-        k = math.sqrt(1 / self.input_size)
+        k = math.sqrt(1.0 / self.input_size)
         self.conv1 = Conv1D(
             num_channels=self.input_size,
             num_filters=self.out_channels,
@@ -126,7 +126,7 @@ class DurationPredictor(dg.Layer):
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Uniform(
                 low=-k, high=k)))
         #data_format='NTC')
-        k = math.sqrt(1 / self.out_channels)
+        k = math.sqrt(1.0 / self.out_channels)
         self.conv2 = Conv1D(
             num_channels=self.out_channels,
             num_filters=self.out_channels,
@@ -142,7 +142,7 @@ class DurationPredictor(dg.Layer):
 
         self.weight = fluid.ParamAttr(
             initializer=fluid.initializer.XavierInitializer())
-        k = math.sqrt(1 / self.out_channels)
+        k = math.sqrt(1.0 / self.out_channels)
         self.bias = fluid.ParamAttr(initializer=fluid.initializer.Uniform(
             low=-k, high=k))
 

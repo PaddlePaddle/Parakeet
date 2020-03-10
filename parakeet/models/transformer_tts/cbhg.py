@@ -46,7 +46,7 @@ class CBHG(dg.Layer):
         self.hidden_size = hidden_size
         self.projection_size = projection_size
         self.conv_list = []
-        k = math.sqrt(1 / projection_size)
+        k = math.sqrt(1.0 / projection_size)
         self.conv_list.append(
             Conv1D(
                 num_channels=projection_size,
@@ -58,7 +58,7 @@ class CBHG(dg.Layer):
                 bias_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Uniform(
                         low=-k, high=k))))
-        k = math.sqrt(1 / hidden_size)
+        k = math.sqrt(1.0 / hidden_size)
         for i in range(2, K + 1):
             self.conv_list.append(
                 Conv1D(
@@ -86,7 +86,7 @@ class CBHG(dg.Layer):
 
         conv_outdim = hidden_size * K
 
-        k = math.sqrt(1 / conv_outdim)
+        k = math.sqrt(1.0 / conv_outdim)
         self.conv_projection_1 = Conv1D(
             num_channels=conv_outdim,
             num_filters=hidden_size,
@@ -97,7 +97,7 @@ class CBHG(dg.Layer):
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Uniform(
                 low=-k, high=k)))
 
-        k = math.sqrt(1 / hidden_size)
+        k = math.sqrt(1.0 / hidden_size)
         self.conv_projection_2 = Conv1D(
             num_channels=hidden_size,
             num_filters=projection_size,
@@ -121,7 +121,7 @@ class CBHG(dg.Layer):
 
         h_0 = np.zeros((batch_size, hidden_size // 2), dtype="float32")
         h_0 = dg.to_variable(h_0)
-        k = math.sqrt(1 / hidden_size)
+        k = math.sqrt(1.0 / hidden_size)
         self.fc_forward1 = dg.Linear(
             hidden_size,
             hidden_size // 2 * 3,
@@ -240,7 +240,7 @@ class Highwaynet(dg.Layer):
 
         self.gates = []
         self.linears = []
-        k = math.sqrt(1 / num_units)
+        k = math.sqrt(1.0 / num_units)
         for i in range(num_layers):
             self.linears.append(
                 dg.Linear(
