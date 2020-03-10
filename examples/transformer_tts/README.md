@@ -10,8 +10,13 @@ wget https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
 tar xjvf LJSpeech-1.1.tar.bz2
 ```
 ## Model Architecture
+<div align="center" name="TransformerTTS model architecture">
+  <img src="./images/model_architecture.jpg" width=400 height=600 /> <br>
+</div>
+<div align="center" >
+TransformerTTS model architecture
+</div>
 
-![TransformerTTS model architecture](./images/model_architecture.jpg)
 The model adopts the multi-head attention mechanism to replace the RNN structures and also the original attention mechanism in [Tacotron2](https://arxiv.org/abs/1712.05884). The model consists of two main parts, encoder and decoder. We also implement the CBHG model of Tacotron as the vocoder part and convert the spectrogram into raw wave using Griffin-Lim algorithm.
 
 ## Project Structure
