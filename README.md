@@ -120,7 +120,7 @@ Parakeet also releases some well-trained parameters for the example models, whic
 </table>
 
 
-**Note:** The input samples are drawn from validation dataset that are not visible in training.
+**Note:** The input mel spectrogams are from validation dataset, which are not seen during training.
 
 - TTS models
 
