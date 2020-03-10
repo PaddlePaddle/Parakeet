@@ -8,14 +8,14 @@ PaddlePaddle dynamic graph implementation of [WaveFlow: A Compact Flow-based Mod
 
 ## Project Structure
 ```text
-├── configs                 # yaml configuration files of preset model hyperparameters
-├── benchmark.py            # benchmark code to test the speed of batched speech synthesis
-├── data.py                 # dataset and dataloader settings for LJSpeech
-├── synthesis.py            # script for speech synthesis
-├── train.py                # script for model training
-├── utils.py                # helper functions for e.g., model checkpointing
-├── waveflow.py             # WaveFlow model high level APIs
-└── waveflow_modules.py     # WaveFlow model implementation
+├── configs                                          # yaml configuration files of preset model hyperparameters
+├── benchmark.py                                     # benchmark code to test the speed of batched speech synthesis
+├── synthesis.py                                     # script for speech synthesis
+├── train.py                                         # script for model training
+├── utils.py                                         # helper functions for e.g., model checkpointing
+├── parakeet/models/waveflow/data.py                 # dataset and dataloader settings for LJSpeech
+├── parakeet/models/waveflow/waveflow.py             # WaveFlow model high level APIs
+└── parakeet/models/waveflow/waveflow_modules.py     # WaveFlow model implementation
 ```
 
 ## Usage
@@ -42,7 +42,6 @@ In this example, assume that the path of unzipped LJSpeech dataset is `./data/LJ
 ### Train on single GPU
 
 ```bash
-export PYTHONPATH="${PYTHONPATH}:${PWD}/../../.."
 export CUDA_VISIBLE_DEVICES=0
 python -u train.py \
     --config=./configs/waveflow_ljspeech.yaml \
@@ -64,7 +63,6 @@ There are three ways to load a checkpoint and resume training (take an example t
 ### Train on multiple GPUs
 
 ```bash
-export PYTHONPATH="${PYTHONPATH}:${PWD}/../../.."
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 python -u -m paddle.distributed.launch train.py \
     --config=./configs/waveflow_ljspeech.yaml \
@@ -88,7 +86,6 @@ Check the [Save and load checkpoint](#save-and-load-checkpoints) section on how 
 The following example will automatically load the latest checkpoint:
 
 ```bash
-export PYTHONPATH="${PYTHONPATH}:${PWD}/../../.."
 export CUDA_VISIBLE_DEVICES=0
 python -u synthesis.py \
     --config=./configs/waveflow_ljspeech.yaml \
@@ -106,7 +103,6 @@ In this example, `--output` specifies where to save the synthesized audios and `
 Use the following example to benchmark the speed of batched speech synthesis, which reports how many times faster than real-time:
 
 ```bash
-export PYTHONPATH="${PYTHONPATH}:${PWD}/../../.."
 export CUDA_VISIBLE_DEVICES=0
 python -u benchmark.py \
     --config=./configs/waveflow_ljspeech.yaml \
