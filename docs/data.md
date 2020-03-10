@@ -6,7 +6,7 @@ The most important concepts of `parakeet.data` are `DatasetMixin`, `DataCargo`, 
 
 ## Dataset
 
-Dataset, as we assume here, is a list of examples. You can get its length by `len(dataset)`(which means it length is known, and we have to implement `__len__()` method for it). And you can access its items randomly by `dataset[i]`(which means we have to implement `__getitem__()` method for it). Furthermore,  you can iterate over it by `iter(dataset)` or `for example in dataset`, which means we have to implement `__iter__()` method for it.
+Dataset, as we assume here, is a list of examples. You can get its length by `len(dataset)`(which means its length is known, and we have to implement `__len__()` method for it). And you can access its items randomly by `dataset[i]`(which means we have to implement `__getitem__()` method for it). Furthermore,  you can iterate over it by `iter(dataset)` or `for example in dataset`, which means we have to implement `__iter__()` method for it.
 
 ### DatasetMixin
 
@@ -16,11 +16,11 @@ We also define several high-order Dataset classes, the obejcts of which can be b
 
 ### TupleDataset
 
-Dataset that is a combination of sevral datasets of the same length. An example of a `Tupledataset` is a tuple of examples of its constituent datasets.
+Dataset that is a combination of several datasets of the same length. An example of a `Tupledataset` is a tuple of examples of its constituent datasets.
 
 ### DictDataset
 
-Dataset that is a combination of sevral datasets of the same length. An example of the `Dictdataset` is a dict of examples of its constituent datasets.
+Dataset that is a combination of several datasets of the same length. An example of the `Dictdataset` is a dict of examples of its constituent datasets.
 
 ### SliceDataset
 
@@ -36,11 +36,11 @@ Dataset that is a combination of sevral datasets of the same length. An example 
 
 ### TransformDataset
 
-A `TransformeDataset` is created by applying a `transform` to the base dataset. The `transform` is a callable object which takes an `example` of the base dataset as parameter and returns an `example` of the `TransformDataset`. The transformation is lazy, which means it is applied to an example only when requested.
+A `TransformeDataset` is created by applying a `transform` to the examples of the base dataset. The `transform` is a callable object which takes an example of the base dataset as parameter and returns an example of the `TransformDataset`. The transformation is lazy, which means it is applied to an example only when requested.
 
 ### FilterDataset
 
-A `FilterDataset` is created by applying a `filter` to the base dataset. A `filter` is a predicate that takes an `example` of the base dataset as parameter and returns a boolean. Only those examples that pass the filter are included in the `FilterDataset`.
+A `FilterDataset` is created by applying a `filter` to the base dataset. A `filter` is a predicate that takes an example of the base dataset as parameter and returns a boolean. Only those examples that pass the filter are included in the `FilterDataset`.
 
 Note that the filter is applied to all the examples in the base dataset when initializing a `FilterDataset`.
 
@@ -52,11 +52,11 @@ Finally, if preprocessing the dataset is slow and the processed dataset is too l
 
 ## DataCargo
 
-`DataCargo`, like `Dataset`, is an iterable object, but it is an iterable oject of batches. We need `Datacargo` because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable object but not an iterator, in that in can be iterated more than once.
+`DataCargo`, like `Dataset`, is an iterable object, but it is an iterable oject of batches. We need `Datacargo` because in deep learning, batching examples into batches exploits the computational resources of modern hardwares. You can iterate over it by `iter(datacargo)` or `for batch in datacargo`. `DataCargo` is an iterable object but not an iterator, in that in can be iterated over more than once.
 
 ### batch function
 
-The concept of `batch` is something transformed from a list of examples. Assume that an example is a structure(tuple in python, or struct in C and C++) consists of several fields, then a list of examples is an array of structures(AOS, e.g. a dataset is an AOS). Then a batch here is a structure of arrays (SOA). Here is an example:
+The concept of a `batch` is something transformed from a list of examples. Assume that an example is a structure(tuple in python, or struct in C and C++) consists of several fields, then a list of examples is an array of structures(AOS, e.g. a dataset is an AOS). Then a batch here is a structure of arrays (SOA). Here is an example:
 
 The table below represents 2 examples, each of which contains 5 fields.
 
@@ -93,7 +93,7 @@ Equipped with a batch function(we have known __how to batch__), here comes the n
 
 A `Sampler` is represented as an iterable object of integers. Assume the dataset has `N` examples, then an iterable object of intergers in the range`[0, N)` is an appropriate sampler for this dataset to build a `DataCargo`.
 
-We provide several samplers that is ready to use. The `SequentialSampler`, `RandomSampler` and so on.
+We provide several samplers that are ready to use, for example, `SequentialSampler` and `RandomSampler`.
 
 ## DataIterator
 
@@ -309,7 +309,7 @@ valid_cargo = DataCargo(
   sampler=SequentialSampler(ljspeech_valid))
 ```
 
-Here comes the next question, how to bring batches into Paddle's computation. Do we need some adaptor to transform numpy.ndarray into Paddle's native Variable type? Yes.
+Here comes the next question, how to bring batches into Paddle's computation. Do we need some adapter to transform numpy.ndarray into Paddle's native Variable type? Yes.
 
 First we can use `var = dg.to_variable(array)` to transform ndarray into Variable.
 
@@ -326,16 +326,16 @@ for batch in train_cargo:
 In the code above, processing of the data and training of the model run in the same process. So the next batch starts to load after the training of the current batch has finished. There is actually better solutions for this. Data processing and model training can be run asynchronously. To accomplish this, we would use `DataLoader` from Paddle. This serves as an adapter to transform an iterable object of batches into another iterable object of batches, which runs asynchronously and transform each ndarray into `Variable`.
 
 ```python
-# connects our data cargos with corresponding DataLoader
+# connect our data cargos with corresponding DataLoader
 # now the data cargo is connected with paddle
 with dg.guard(place):
-  train_loader = fluid.io.DataLoader.from_generator(
-   capacity=10,return_list=True).set_batch_generator(train_cargo, place)
-  valid_loader = fluid.io.DataLoader.from_generator(
-   capacity=10, return_list=True).set_batch_generator(valid_cargo, place)
+    train_loader = fluid.io.DataLoader.from_generator(
+        capacity=10,return_list=True).set_batch_generator(train_cargo, place)
+   valid_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True).set_batch_generator(valid_cargo, place)
 
-  # iterate over the dataloader
-  for batch in train_loader:
-    audios, mels, audio_starts = batch
-    # your trains cript here
+    # iterate over the dataloader
+    for batch in train_loader:
+        audios, mels, audio_starts = batch
+        # your trains cript here
 ```
