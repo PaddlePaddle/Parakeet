@@ -28,7 +28,7 @@ In order to facilitate exploiting the existing TTS models directly and developin
 
 And more will be added in the future.
 
-See the guide for details about how to build your own model and experiment in Parakeet.
+See the [guide](docs/experiment_guide.md) for details about how to build your own model and experiment in Parakeet.
 
 ## Setup
 
