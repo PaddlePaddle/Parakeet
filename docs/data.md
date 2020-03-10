@@ -6,11 +6,11 @@ The most important concepts of `parakeet.data` are `DatasetMixin`, `DataCargo`, 
 
 ## Dataset
 
-Dataset, as we assume here, is a list of examples. You can get its length by `len(dataset)`(which means it length is known, and we have to implement `__len__` method for it). And you can access its items randomly by `dataset[i]`(which means we have to implement `__getitem__` method for it). Furthermore,  you can iterate over it by `iter(dataset)` or `for example in dataset`, which means we have to implement `__iter__` method for it.
+Dataset, as we assume here, is a list of examples. You can get its length by `len(dataset)`(which means it length is known, and we have to implement `__len__()` method for it). And you can access its items randomly by `dataset[i]`(which means we have to implement `__getitem__()` method for it). Furthermore,  you can iterate over it by `iter(dataset)` or `for example in dataset`, which means we have to implement `__iter__()` method for it.
 
 ### DatasetMixin
 
-We provide an `DatasetMixin` object which provides the above methods. You can inherit `DatasetMixin` and implement `get_example` method for it to define your own dataset class. The `get_example` method is called by `__getitem__` method automatically.
+We provide an `DatasetMixin` object which provides the above methods. You can inherit `DatasetMixin` and implement `get_example()` method for it to define your own dataset class. The `get_example()` method is called by `__getitem__()` method automatically.
 
 We also define several high-order Dataset classes, the obejcts of which can be built from some given Dataset objects.
 
@@ -46,7 +46,7 @@ Note that the filter is applied to all the examples in the base dataset when ini
 
 ### CacheDataset
 
-By default, we preprocess dataset lazily in `DatasetMixin.get_example`. An example is preprocessed whenever requested. But `CacheDataset` caches the base dataset lazily, so each example is processed only once when it is first requested. When preprocessing the dataset is slow, you can use `Cachedataset` to speed it up, but caching may consume a lot of RAM if the dataset is large.
+By default, we preprocess dataset lazily in `DatasetMixin.get_example()`. An example is preprocessed whenever requested. But `CacheDataset` caches the base dataset lazily, so each example is processed only once when it is first requested. When preprocessing the dataset is slow, you can use `Cachedataset` to speed it up, but caching may consume a lot of RAM if the dataset is large.
 
 Finally, if preprocessing the dataset is slow and the processed dataset is too large to cache, you can write your own code to save them into files or databases, and then define a Dataset to load them. `Dataset` is flexible, so you can create your own dataset painlessly.
 
@@ -85,7 +85,7 @@ SOA:
 
 For the example above, converting an AOS to an SOA is trivial, just stacking every field for all the examples. But it is not always the case. When a field contains a sequence, you may have to pad all the sequences to the largest length then stack them together. In some other cases, we may want to add a field for the batch, for example, `valid_length` for each example. So in general, a function to transform an AOS to SOA is needed to build a `Datacargo` from a dataset. We call this the batch function (`batch_fn`), but you can use any callable object if you need to.
 
-Usually we need to define the batch function as an callable object which stores all the options and configurations as its members. Its `__call__` method transforms a list of examples into a batch.
+Usually we need to define the batch function as an callable object which stores all the options and configurations as its members. Its `__call__()` method transforms a list of examples into a batch.
 
 ### Sampler
 
@@ -147,7 +147,7 @@ class LJSpeechMetaData(DatasetMixin):
         return len(self._table)
 ```
 
-We make this dataset simple in purpose. It requires only the path of the dataset, nothing more. It only loads the `metadata.csv` in the dataset when it is initialized, which includes file names of the audio files, and the transcriptions. We do not even load the audio files at `get_example`.
+We make this dataset simple in purpose. It requires only the path of the dataset, nothing more. It only loads the `metadata.csv` in the dataset when it is initialized, which includes file names of the audio files, and the transcriptions. We do not even load the audio files at `get_example()`.
 
 Then we define a `Transform` object to transform an example of `LJSpeechMetaData` into an example we want for the model.
 
