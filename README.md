@@ -40,7 +40,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.7.0** or above.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.7.1** or above.
 
 ### Install Parakeet
 
@@ -82,7 +82,7 @@ Parakeet also releases some well-trained parameters for the example models, whic
 <table>
     <thead>
         <tr>
-            <th  style="width: 250px"> 
+            <th  style="width: 250px">
             WaveFlow
             </th>
             <th  style="width: 250px">
@@ -109,7 +109,7 @@ Parakeet also releases some well-trained parameters for the example models, whic
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_3.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
-            <img src="images/audio_icon.png" width=250 /></a>            
+            <img src="images/audio_icon.png" width=250 /></a>  
             </th>
         </tr>
     </tbody>

@@ -96,7 +96,7 @@ class Conditioner(dg.Layer):
                 x = fluid.layers.cast(x, "float16")
             x = fluid.layers.leaky_relu(x, alpha=0.4)
 
-        return fluid.layers.reshape(x, [x.shape[0], x.shape[2], x.shape[3]])
+        return fluid.layers.squeeze(x, [1])
 
     def infer(self, x):
         x = fluid.layers.unsqueeze(x, 1)
@@ -111,7 +111,7 @@ class Conditioner(dg.Layer):
             time_cutoff = layer._filter_size[1] - layer._stride[1]
             x = fluid.layers.leaky_relu(x[:, :, :, :-time_cutoff], alpha=0.4)
 
-        return fluid.layers.reshape(x, [x.shape[0], x.shape[2], x.shape[3]])
+        return fluid.layers.squeeze(x, [1])
 
 
 class Flow(dg.Layer):
@@ -220,10 +220,9 @@ class Flow(dg.Layer):
             # Pad width dim (time): dialated non-causal convolution
             pad_top, pad_bottom = (self.kernel_h - 1) * dilation_h, 0
             pad_left = pad_right = int((self.kernel_w - 1) * dilation_w / 2)
-            self.in_layers[i].layer._padding = [
-                pad_top, pad_bottom, pad_left, pad_right
-            ]
-            hidden = self.in_layers[i](audio)
+            audio_pad = fluid.layers.pad2d(
+                audio, paddings=[pad_top, pad_bottom, pad_left, pad_right])
+            hidden = self.in_layers[i](audio_pad)
             cond_hidden = self.cond_layers[i](mel)
             in_acts = hidden + cond_hidden
             out_acts = fluid.layers.tanh(in_acts[:, :self.n_channels, :]) * \
@@ -268,9 +267,8 @@ class Flow(dg.Layer):
             pad_top, pad_bottom = 0, 0
             pad_left = int((self.kernel_w - 1) * dilation_w / 2)
             pad_right = int((self.kernel_w - 1) * dilation_w / 2)
-            self.in_layers[i].layer._padding = [
-                pad_top, pad_bottom, pad_left, pad_right
-            ]
+            state = fluid.layers.pad2d(
+                state, paddings=[pad_top, pad_bottom, pad_left, pad_right])
             hidden = self.in_layers[i](state)
             cond_hidden = self.cond_layers[i](mel)
             in_acts = hidden + cond_hidden
@@ -301,6 +299,7 @@ class WaveFlowModule(dg.Layer):
     Returns:
         WaveFlowModule
     """
+
     def __init__(self, config):
         super(WaveFlowModule, self).__init__()
         self.n_flows = config.n_flows
@@ -380,8 +379,7 @@ class WaveFlowModule(dg.Layer):
             mel_slices = [mel[:, :, j, :] for j in self.perms[i]]
             mel = fluid.layers.stack(mel_slices, axis=2)
 
-        z = fluid.layers.reshape(
-            audio, [audio.shape[0], audio.shape[2], audio.shape[3]])
+        z = fluid.layers.squeeze(audio, [1])
         return z, log_s_list
 
     def synthesize(self, mel, sigma=1.0):
@@ -442,8 +440,7 @@ class WaveFlowModule(dg.Layer):
             audio = fluid.layers.concat(audio_list, axis=2)
 
         # audio: [bs, n_group, time/n_group]
-        audio = fluid.layers.reshape(
-            audio, [audio.shape[0], audio.shape[2], audio.shape[3]])
+        audio = fluid.layers.squeeze(audio, [1])
         # audio: [bs, time]
         audio = fluid.layers.reshape(
             fluid.layers.transpose(audio, [0, 2, 1]), [audio.shape[0], -1])

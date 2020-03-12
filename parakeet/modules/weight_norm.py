@@ -65,15 +65,6 @@ def compute_weight(v, g, dim, power):
     return weight
 
 
-def assign_by_cast(i, o):
-    fluid.default_main_program().current_block().append_op(
-        type="cast",
-        inputs={"X": i},
-        outputs={"Out": o},
-        attrs={"in_dtype": i.dtype,
-               "out_dtype": o.dtype})
-
-
 class WeightNormWrapper(dg.Layer):
     def __init__(self, layer, param_name="weight", dim=0, power=2):
         super(WeightNormWrapper, self).__init__()
@@ -93,13 +84,13 @@ class WeightNormWrapper(dg.Layer):
             w_v,
             self.create_parameter(
                 shape=original_weight.shape, dtype=original_weight.dtype))
-        assign_by_cast(original_weight, getattr(self, w_v))
+        F.assign(original_weight, getattr(self, w_v))
         delattr(layer, param_name)
         temp = norm_except(getattr(self, w_v), self.dim, self.power)
         self.add_parameter(
             w_g, self.create_parameter(
                 shape=temp.shape, dtype=temp.dtype))
-        assign_by_cast(temp, getattr(self, w_g))
+        F.assign(temp, getattr(self, w_g))
 
         # also set this when setting up
         setattr(self.layer, self.param_name,
