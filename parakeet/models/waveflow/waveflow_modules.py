@@ -220,6 +220,7 @@ class Flow(dg.Layer):
             # Pad width dim (time): dialated non-causal convolution
             pad_top, pad_bottom = (self.kernel_h - 1) * dilation_h, 0
             pad_left = pad_right = int((self.kernel_w - 1) * dilation_w / 2)
+            # Using pad2d is a bit faster than using padding in Conv2D directly 
             audio_pad = fluid.layers.pad2d(
                 audio, paddings=[pad_top, pad_bottom, pad_left, pad_right])
             hidden = self.in_layers[i](audio_pad)
