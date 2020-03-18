@@ -56,15 +56,13 @@ def get_non_pad_mask(seq):
     return mask
 
 
-def get_attn_key_pad_mask(seq_k, seq_q):
+def get_attn_key_pad_mask(seq_k):
     ''' For masking out the padding part of key sequence. '''
-
     # Expand to fit the shape of key query attention matrix.
-    len_q = seq_q.shape[1]
     padding_mask = (seq_k != 0).astype(np.float32)
     padding_mask = np.expand_dims(padding_mask, axis=1)
-    padding_mask = padding_mask.repeat([len_q], axis=1)
-    padding_mask = (padding_mask == 0).astype(np.float32) * (-2**32 + 1)
+    padding_mask = (
+        padding_mask == 0).astype(np.float32) * -1e30  #* (-2**32 + 1)
     return padding_mask
 
 
@@ -72,12 +70,12 @@ def get_dec_attn_key_pad_mask(seq_k, seq_q):
     ''' For masking out the padding part of key sequence. '''
 
     # Expand to fit the shape of key query attention matrix.
-    len_q = seq_q.shape[1]
     padding_mask = (seq_k == 0).astype(np.float32)
     padding_mask = np.expand_dims(padding_mask, axis=1)
     triu_tensor = get_triu_tensor(seq_q, seq_q)
-    padding_mask = padding_mask.repeat([len_q], axis=1) + triu_tensor
-    padding_mask = (padding_mask != 0).astype(np.float32) * (-2**32 + 1)
+    padding_mask = padding_mask + triu_tensor
+    padding_mask = (
+        padding_mask != 0).astype(np.float32) * -1e30  #* (-2**32 + 1)
     return padding_mask
 
 
@@ -85,12 +83,7 @@ def get_triu_tensor(seq_k, seq_q):
     ''' For make a triu tensor '''
     len_k = seq_k.shape[1]
     len_q = seq_q.shape[1]
-    batch_size = seq_k.shape[0]
     triu_tensor = np.triu(np.ones([len_k, len_q]), 1)
-    triu_tensor = np.repeat(
-        np.expand_dims(
-            triu_tensor, axis=0), batch_size, axis=0)
-
     return triu_tensor
 
 
