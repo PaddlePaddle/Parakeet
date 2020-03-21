@@ -18,7 +18,7 @@ def add_config_options_to_parser(parser):
     parser.add_argument(
         '--config_path',
         type=str,
-        default='config/train_transformer.yaml',
+        default='configs/train_transformer.yaml',
         help="the yaml config file path.")
     parser.add_argument(
         '--batch_size', type=int, default=32, help="batch size for training.")

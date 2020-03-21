@@ -89,7 +89,7 @@ class ScaledDotProductAttention(dg.Layer):
         # Mask key to ignore padding
         if mask is not None:
             attention = attention + mask
-        attention = layers.softmax(attention)
+        attention = layers.softmax(attention, use_cudnn=True)
         attention = layers.dropout(
             attention, dropout, dropout_implementation='upscale_in_train')
 

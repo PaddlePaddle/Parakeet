@@ -18,7 +18,7 @@ def add_config_options_to_parser(parser):
     parser.add_argument(
         '--config_path',
         type=str,
-        default='config/fastspeech.yaml',
+        default='configs/fastspeech.yaml',
         help="the yaml config file path.")
     parser.add_argument(
         '--batch_size', type=int, default=32, help="batch size for training.")
@@ -87,7 +87,7 @@ def add_config_options_to_parser(parser):
     parser.add_argument(
         '--transtts_path',
         type=str,
-        default='./log',
+        default='../transformer_tts/checkpoint',
         help="the directory to load pretrain transformerTTS model.")
     parser.add_argument(
         '--transformer_step',

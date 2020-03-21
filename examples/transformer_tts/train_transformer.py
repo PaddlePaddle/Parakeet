@@ -14,7 +14,6 @@
 import os
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
-#from pathlib import Path
 from collections import OrderedDict
 import argparse
 from parse import add_config_options_to_parser
@@ -69,9 +68,6 @@ def main(args):
                 cfg['warm_up_step'] * (args.lr**2)), cfg['warm_up_step']),
             parameter_list=model.parameters())
 
-        reader = LJSpeechLoader(
-            cfg, args, nranks, local_rank, shuffle=True).reader()
-
         if args.checkpoint_path is not None:
             model_dict, opti_dict = load_checkpoint(
                 str(args.transformer_step),
@@ -84,6 +80,9 @@ def main(args):
         if args.use_data_parallel:
             strategy = dg.parallel.prepare_context()
             model = fluid.dygraph.parallel.DataParallel(model, strategy)
+
+        reader = LJSpeechLoader(
+            cfg, args, nranks, local_rank, shuffle=True).reader()
 
         for epoch in range(args.epochs):
             pbar = tqdm(reader)
@@ -148,7 +147,8 @@ def main(args):
                         for i, prob in enumerate(attn_probs):
                             for j in range(4):
                                 x = np.uint8(
-                                    cm.viridis(prob.numpy()[j * 16]) * 255)
+                                    cm.viridis(prob.numpy()[j * args.batch_size
+                                                            // 2]) * 255)
                                 writer.add_image(
                                     'Attention_%d_0' % global_step,
                                     x,
@@ -158,7 +158,8 @@ def main(args):
                         for i, prob in enumerate(attn_enc):
                             for j in range(4):
                                 x = np.uint8(
-                                    cm.viridis(prob.numpy()[j * 16]) * 255)
+                                    cm.viridis(prob.numpy()[j * args.batch_size
+                                                            // 2]) * 255)
                                 writer.add_image(
                                     'Attention_enc_%d_0' % global_step,
                                     x,
@@ -168,7 +169,8 @@ def main(args):
                         for i, prob in enumerate(attn_dec):
                             for j in range(4):
                                 x = np.uint8(
-                                    cm.viridis(prob.numpy()[j * 16]) * 255)
+                                    cm.viridis(prob.numpy()[j * args.batch_size
+                                                            // 2]) * 255)
                                 writer.add_image(
                                     'Attention_dec_%d_0' % global_step,
                                     x,

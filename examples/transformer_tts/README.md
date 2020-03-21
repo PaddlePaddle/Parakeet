@@ -55,6 +55,8 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 
 If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--transformer_step``.
 
+**Note: In order to ensure the training effect, we recommend using multi-GPU training to enlarge the batch size, and at least 16 samples in single batch per GPU.**
+
 For more help on arguments:
 ``python train_transformer.py --help``.
 
