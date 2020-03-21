@@ -115,6 +115,8 @@ if __name__ == "__main__":
         print("Loading from {}.pdparams".format(args.checkpoint))
         model.set_dict(model_dict)
 
+        # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
+        # removing weight norm also speeds up computation
         for layer in model.sublayers():
             if isinstance(layer, WeightNormWrapper):
                 layer.remove_weight_norm()
