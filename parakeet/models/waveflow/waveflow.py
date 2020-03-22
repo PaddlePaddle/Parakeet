@@ -22,6 +22,7 @@ from paddle import fluid
 from scipy.io.wavfile import write
 
 import utils
+from parakeet.utils import io
 from parakeet.modules import weight_norm
 from .data import LJSpeech
 from .waveflow_modules import WaveFlowLoss, WaveFlowModule
@@ -47,6 +48,7 @@ class WaveFlow():
     Returns:
         WaveFlow
     """
+
     def __init__(self,
                  config,
                  checkpoint_dir,
@@ -91,7 +93,7 @@ class WaveFlow():
                 parameter_list=waveflow.parameters())
 
             # Load parameters.
-            utils.load_parameters(
+            io.load_parameters(
                 self.checkpoint_dir,
                 self.rank,
                 waveflow,
@@ -111,7 +113,7 @@ class WaveFlow():
 
         else:
             # Load parameters.
-            utils.load_parameters(
+            io.load_parameters(
                 self.checkpoint_dir,
                 self.rank,
                 waveflow,
@@ -291,6 +293,6 @@ class WaveFlow():
         Returns:
             None
         """
-        utils.save_latest_parameters(self.checkpoint_dir, iteration,
-                                     self.waveflow, self.optimizer)
-        utils.save_latest_checkpoint(self.checkpoint_dir, iteration)
+        io.save_latest_parameters(self.checkpoint_dir, iteration,
+                                  self.waveflow, self.optimizer)
+        io.save_latest_checkpoint(self.checkpoint_dir, iteration)

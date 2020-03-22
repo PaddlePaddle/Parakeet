@@ -23,6 +23,7 @@ from paddle import fluid
 
 import utils
 from parakeet.models.waveflow import WaveFlow
+from parakeet.utils import io
 
 
 def add_options_to_parser(parser):
@@ -96,7 +97,7 @@ def synthesize(config):
         # Obtain the current iteration.
         if config.checkpoint is None:
             if config.iteration is None:
-                iteration = utils.load_latest_checkpoint(checkpoint_dir)
+                iteration = io.load_latest_checkpoint(checkpoint_dir)
             else:
                 iteration = config.iteration
         else:
@@ -117,5 +118,5 @@ if __name__ == "__main__":
     # For conflicting updates to the same field,
     # the preceding update will be overwritten by the following one.
     config = parser.parse_args()
-    config = utils.add_yaml_config(config)
+    config = io.add_yaml_config_to_args(config)
     synthesize(config)

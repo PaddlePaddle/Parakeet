@@ -25,6 +25,7 @@ from paddle import fluid
 from tensorboardX import SummaryWriter
 
 import utils
+from parakeet.utils import io
 from parakeet.models.waveflow import WaveFlow
 
 
@@ -104,7 +105,7 @@ def train(config):
         # Obtain the current iteration.
         if config.checkpoint is None:
             if config.iteration is None:
-                iteration = utils.load_latest_checkpoint(checkpoint_dir, rank)
+                iteration = io.load_latest_checkpoint(checkpoint_dir, rank)
             else:
                 iteration = config.iteration
         else:
@@ -140,7 +141,7 @@ if __name__ == "__main__":
     # For conflicting updates to the same field, 
     # the preceding update will be overwritten by the following one.
     config = parser.parse_args()
-    config = utils.add_yaml_config(config)
+    config = io.add_yaml_config_to_args(config)
     # Force to use fp32 in model training
     vars(config)["use_fp16"] = False
     train(config)
