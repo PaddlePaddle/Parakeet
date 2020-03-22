@@ -86,7 +86,7 @@ class Conv1D(dg.Conv2D):
                  stride=1,
                  padding=0,
                  dilation=1,
-                 groups=None,
+                 groups=1,
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
@@ -128,7 +128,7 @@ class Conv1DTranspose(dg.Conv2DTranspose):
                  padding=0,
                  stride=1,
                  dilation=1,
-                 groups=None,
+                 groups=1,
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
@@ -179,7 +179,7 @@ class Conv1DCell(Conv1D):
                  filter_size,
                  dilation=1,
                  causal=False,
-                 groups=None,
+                 groups=1,
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
@@ -225,6 +225,12 @@ class Conv1DCell(Conv1D):
 
     def start_sequence(self):
         """Prepare the Conv1DCell to generate a new sequence, this method should be called before calling add_input multiple times.
+
+        WARNING: 
+            This method accesses `self.weight` directly. If a `Conv1DCell` object is wrapped in a `WeightNormWrapper`, make sure this method is called only after the `WeightNormWrapper`'s hook is called. 
+            `WeightNormWrapper` removes the wrapped layer's `weight`, add has a `weight_v` and `weight_g` to re-compute the wrapped layer's weight as $weight = weight_g * weight_v / ||weight_v||$. (Recomputing the `weight` is a hook before calling the wrapped layer's `forward` method.)
+            Whenever a `WeightNormWrapper`'s `forward` method is called, the wrapped layer's weight is updated. But when loading from a checkpoint, `weight_v` and `weight_g` are updated but the wrapped layer's weight is not, since it is no longer a `Parameter`. You should manually call `remove_weight_norm` or `hook` to re-compute the wrapped layer's weight before calling this method if you don't call `forward` first.
+            So when loading a model which uses `Conv1DCell` objects wrapped in `WeightNormWrapper`s, remember to call `remove_weight_norm` for all `WeightNormWrapper`s before synthesizing. Also, removing weight norm speeds up computation.
         """
         if not self.causal:
             raise ValueError(

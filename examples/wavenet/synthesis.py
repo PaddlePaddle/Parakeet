@@ -21,6 +21,7 @@ from tensorboardX import SummaryWriter
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 
+from parakeet.modules.weight_norm import WeightNormWrapper
 from parakeet.data import SliceDataset, TransformDataset, DataCargo, SequentialSampler, RandomSampler
 from parakeet.models.wavenet import UpsampleNet, WaveNet, ConditionalWavenet
 from parakeet.utils.layer_tools import summary
@@ -113,6 +114,12 @@ if __name__ == "__main__":
         model_dict, _ = dg.load_dygraph(args.checkpoint)
         print("Loading from {}.pdparams".format(args.checkpoint))
         model.set_dict(model_dict)
+
+        # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
+        # removing weight norm also speeds up computation
+        for layer in model.sublayers():
+            if isinstance(layer, WeightNormWrapper):
+                layer.remove_weight_norm()
 
         train_loader = fluid.io.DataLoader.from_generator(
             capacity=10, return_list=True)

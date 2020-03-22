@@ -101,6 +101,8 @@ if __name__ == "__main__":
         state, _ = dg.load_dygraph(args.checkpoint)
         dv3.set_dict(state)
 
+        # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
+        # removing weight norm also speeds up computation
         for layer in dv3.sublayers():
             if isinstance(layer, WeightNormWrapper):
                 layer.remove_weight_norm()
