@@ -25,8 +25,9 @@ import paddle.fluid.dygraph as dg
 from tensorboardX import SummaryWriter
 
 from parakeet.g2p import en
-from parakeet.utils.layer_tools import summary
 from parakeet.modules.weight_norm import WeightNormWrapper
+from parakeet.utils.layer_tools import summary
+from parakeet.utils.io import load_parameters
 
 from utils import make_model, eval_model, plot_alignment
 
@@ -43,6 +44,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
+
+    print("Command Line Args: ")
+    for k, v in vars(args).items():
+        print("{}: {}".format(k, v))
 
     if args.device == -1:
         place = fluid.CPUPlace()

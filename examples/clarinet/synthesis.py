@@ -31,7 +31,7 @@ from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
 from parakeet.data import TransformDataset, SliceDataset, RandomSampler, SequentialSampler, DataCargo
 from parakeet.utils.layer_tools import summary, freeze
 
-from utils import valid_model, eval_model, save_checkpoint, load_checkpoint, load_model
+from utils import valid_model, eval_model, load_model
 sys.path.append("../wavenet")
 from data import LJSpeechMetaData, Transform, DataCollector
 

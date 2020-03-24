@@ -28,28 +28,30 @@ Train the model using train.py. For help on usage, try `python train.py --help`.
 
 ```text
 usage: train.py [-h] [--data DATA] [--config CONFIG] [--output OUTPUT]
-                [--device DEVICE] [--resume RESUME]
+                [--device DEVICE] [--checkpoint CHECKPOINT]
 
 Train a WaveNet model with LJSpeech.
 
 optional arguments:
-  -h, --help       show this help message and exit
-  --data DATA      path of the LJspeech dataset.
-  --config CONFIG  path of the config file.
-  --output OUTPUT  path to save results.
-  --device DEVICE  device to use.
-  --resume RESUME  checkpoint to resume from.
+  -h, --help                show this help message and exit
+  --data DATA               path of the LJspeech dataset.
+  --config CONFIG           path of the config file.
+  --output OUTPUT           path to save results.
+  --device DEVICE           device to use.
+  --checkpoint CHECKPOINT   checkpoint to resume from.
 ```
 
 - `--config` is the configuration file to use. The provided configurations can be used directly. And you can change some values in the configuration file and train the model with a different config.
 - `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-- `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before training.
+- `--checkpoint` is the path of the checkpoint. If it is provided, the model would load the checkpoint before training.
 - `--output` is the directory to save results, all result are saved in this directory. The structure of the output directory is shown below.
 
 ```text
 ├── checkpoints      # checkpoint
 └── log              # tensorboard log
 ```
+
+If `checkpoints` is not empty and argument `--checkpoint` is not specified, the model will be resumed from the latest checkpoint at the beginning of training.
 
 - `--device` is the device (gpu id) to use for training. `-1` means CPU.
 

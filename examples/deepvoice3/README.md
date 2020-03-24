@@ -35,26 +35,23 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 Train the model using train.py, follow the usage displayed by `python train.py --help`.
 
 ```text
-usage: train.py [-h] [-c CONFIG] [-s DATA] [-r RESUME] [-o OUTPUT] [-g DEVICE]
+usage: train.py [-h] [-c CONFIG] [-s DATA] [--checkpoint CHECKPOINT]
+                [-o OUTPUT] [-g DEVICE]
 
 Train a Deep Voice 3 model with LJSpeech dataset.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -c CONFIG, --config CONFIG
-                        experimrnt config
-  -s DATA, --data DATA  The path of the LJSpeech dataset.
-  -r RESUME, --resume RESUME
-                        checkpoint to load
-  -o OUTPUT, --output OUTPUT
-                        The directory to save result.
-  -g DEVICE, --device DEVICE
-                        device to use
+  -h, --help                      show this help message and exit
+  -c CONFIG, --config CONFIG      experimrnt config
+  -s DATA, --data DATA            The path of the LJSpeech dataset.
+  --checkpoint CHECKPOINT         checkpoint to load
+  -o OUTPUT, --output OUTPUT      The directory to save result.
+  -g DEVICE, --device DEVICE      device to use
 ```
 
 - `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
 - `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-- `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
+- `--checkpoint` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
 - `--output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
 
 ```text
@@ -66,6 +63,8 @@ optional arguments:
     ├── mel_spec     # mel spectrogram
     └── waveform     # waveform (.wav files)
 ```
+
+If `checkpoints` is not empty and argument `--checkpoint` is not specified, the model will be resumed from the latest checkpoint at the beginning of training.
 
 - `--device` is the device (gpu id) to use for training. `-1` means CPU.
 

@@ -30,14 +30,15 @@ from parakeet.models.wavenet import WaveNet, UpsampleNet
 from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
 from parakeet.data import TransformDataset, SliceDataset, RandomSampler, SequentialSampler, DataCargo
 from parakeet.utils.layer_tools import summary, freeze
+from parakeet.utils import io
 
-from utils import make_output_tree, valid_model, save_checkpoint, load_checkpoint, load_wavenet
+from utils import make_output_tree, valid_model, load_wavenet
 sys.path.append("../wavenet")
 from data import LJSpeechMetaData, Transform, DataCollector
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="train a clarinet model with LJspeech and a trained wavenet model."
+        description="train a ClariNet model with LJspeech and a trained WaveNet model."
     )
     parser.add_argument("--config", type=str, help="path of the config file.")
     parser.add_argument(
@@ -48,12 +49,17 @@ if __name__ == "__main__":
         default="experiment",
         help="path to save student.")
     parser.add_argument("--data", type=str, help="path of LJspeech dataset.")
-    parser.add_argument("--resume", type=str, help="checkpoint to load from.")
+    parser.add_argument(
+        "--checkpoint", type=str, help="checkpoint to load from.")
     parser.add_argument(
         "--wavenet", type=str, help="wavenet checkpoint to use.")
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
+
+    print("Command Line args: ")
+    for k, v in vars(args).items():
+        print("{}: {}".format(k, v))
 
     ljspeech_meta = LJSpeechMetaData(args.data)
 
@@ -154,12 +160,38 @@ if __name__ == "__main__":
         clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
             gradiant_max_norm)
 
-        assert args.wavenet or args.resume, "you should load from a trained wavenet or resume training; training without a trained wavenet is not recommended."
-        if args.wavenet:
+        # train
+        max_iterations = train_config["max_iterations"]
+        checkpoint_interval = train_config["checkpoint_interval"]
+        eval_interval = train_config["eval_interval"]
+        checkpoint_dir = os.path.join(args.output, "checkpoints")
+        state_dir = os.path.join(args.output, "states")
+        log_dir = os.path.join(args.output, "log")
+        writer = SummaryWriter(log_dir)
+
+        # load wavenet/checkpoint, determine iterations done
+        if args.checkpoint is not None:
+            iteration = int(os.path.basename(args.checkpoint).split('-')[-1])
+        else:
+            iteration = io.load_latest_checkpoint(checkpoint_dir)
+
+        if iteration == 0 and args.wavenet is None:
+            raise Exception(
+                "you should load from a trained wavenet or resume training; training without a trained wavenet is not recommended."
+            )
+
+        if args.wavenet is not None and iteration > 0:
+            if args.checkpoint is None:
+                print("Resume training, --wavenet ignored")
+            else:
+                print("--checkpoint provided, --wavenet ignored")
+
+        if args.wavenet is not None and iteration == 0:
             load_wavenet(model, args.wavenet)
 
-        if args.resume:
-            load_checkpoint(model, optim, args.resume)
+        # it may overwrite the wavenet loaded
+        io.load_parameters(
+            checkpoint_dir, 0, model, optim, file_path=args.checkpoint)
 
         # loader
         train_loader = fluid.io.DataLoader.from_generator(
@@ -170,52 +202,43 @@ if __name__ == "__main__":
             capacity=10, return_list=True)
         valid_loader.set_batch_generator(valid_cargo, place)
 
-        # train
-        max_iterations = train_config["max_iterations"]
-        checkpoint_interval = train_config["checkpoint_interval"]
-        eval_interval = train_config["eval_interval"]
-        checkpoint_dir = os.path.join(args.output, "checkpoints")
-        state_dir = os.path.join(args.output, "states")
-        log_dir = os.path.join(args.output, "log")
-        writer = SummaryWriter(log_dir)
-
         # training loop
-        global_step = 1
-        global_epoch = 1
+        global_step = iteration + 1
+        iterator = iter(tqdm(train_loader))
         while global_step < max_iterations:
-            epoch_loss = 0.
-            for j, batch in tqdm(enumerate(train_loader), desc="[train]"):
-                audios, mels, audio_starts = batch
-                model.train()
-                loss_dict = model(
-                    audios, mels, audio_starts, clip_kl=global_step > 500)
+            try:
+                batch = next(iterator)
+            except StopIteration as e:
+                iterator = iter(tqdm(train_loader))
+                batch = next(iterator)
 
-                writer.add_scalar("learning_rate",
-                                  optim._learning_rate.step().numpy()[0],
-                                  global_step)
-                for k, v in loss_dict.items():
-                    writer.add_scalar("loss/{}".format(k),
-                                      v.numpy()[0], global_step)
+            audios, mels, audio_starts = batch
+            model.train()
+            loss_dict = model(
+                audios, mels, audio_starts, clip_kl=global_step > 500)
 
-                l = loss_dict["loss"]
-                step_loss = l.numpy()[0]
-                print("[train] loss: {:<8.6f}".format(step_loss))
-                epoch_loss += step_loss
+            writer.add_scalar("learning_rate",
+                              optim._learning_rate.step().numpy()[0],
+                              global_step)
+            for k, v in loss_dict.items():
+                writer.add_scalar("loss/{}".format(k),
+                                  v.numpy()[0], global_step)
 
-                l.backward()
-                optim.minimize(l, grad_clip=clipper)
-                optim.clear_gradients()
+            l = loss_dict["loss"]
+            step_loss = l.numpy()[0]
+            print("[train] loss: {:<8.6f}".format(step_loss))
 
-                if global_step % eval_interval == 0:
-                    # evaluate on valid dataset
-                    valid_model(model, valid_loader, state_dir, global_step,
-                                sample_rate)
-                if global_step % checkpoint_interval == 0:
-                    save_checkpoint(model, optim, checkpoint_dir, global_step)
+            l.backward()
+            optim.minimize(l, grad_clip=clipper)
+            optim.clear_gradients()
 
-                global_step += 1
+            if global_step % eval_interval == 0:
+                # evaluate on valid dataset
+                valid_model(model, valid_loader, state_dir, global_step,
+                            sample_rate)
+            if global_step % checkpoint_interval == 0:
+                io.save_latest_parameters(checkpoint_dir, global_step, model,
+                                          optim)
+                io.save_latest_checkpoint(checkpoint_dir, global_step)
 
-            # epoch loss
-            average_loss = epoch_loss / j
-            writer.add_scalar("average_loss", average_loss, global_epoch)
-            global_epoch += 1
+            global_step += 1

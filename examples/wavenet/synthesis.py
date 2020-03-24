@@ -27,7 +27,7 @@ from parakeet.models.wavenet import UpsampleNet, WaveNet, ConditionalWavenet
 from parakeet.utils.layer_tools import summary
 
 from data import LJSpeechMetaData, Transform, DataCollector
-from utils import make_output_tree, valid_model, eval_model, save_checkpoint
+from utils import make_output_tree, valid_model, eval_model
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -87,7 +87,8 @@ if __name__ == "__main__":
         batch_size=1,
         sampler=SequentialSampler(ljspeech_valid))
 
-    make_output_tree(args.output)
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
 
     if args.device == -1:
         place = fluid.CPUPlace()

@@ -28,30 +28,32 @@ Train the model using train.py, follow the usage displayed by `python train.py -
 
 ```text
 usage: train.py [-h] [--config CONFIG] [--device DEVICE] [--output OUTPUT]
-                [--data DATA] [--resume RESUME] [--wavenet WAVENET]
+                [--data DATA] [--checkpoint CHECKPOINT] [--wavenet WAVENET]
 
 train a ClariNet model with LJspeech and a trained WaveNet model.
 
 optional arguments:
-  -h, --help         show this help message and exit
-  --config CONFIG    path of the config file.
-  --device DEVICE    device to use.
-  --output OUTPUT    path to save student.
-  --data DATA        path of LJspeech dataset.
-  --resume RESUME    checkpoint to load from.
-  --wavenet WAVENET  wavenet checkpoint to use.
+  -h, --help                show this help message and exit
+  --config CONFIG           path of the config file.
+  --device DEVICE           device to use.
+  --output OUTPUT           path to save student.
+  --data DATA               path of LJspeech dataset.
+  --checkpoint CHECKPOINT   checkpoint to load from.
+  --wavenet WAVENET         wavenet checkpoint to use.
 ```
 
 - `--config` is the configuration file to use. The provided configurations can be used directly. And you can change some values in the configuration file and train the model with a different config.
 - `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-- `--resume` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
-- `--output` is the directory to save results, all result are saved in this directory. The structure of the output directory is shown below.
+- `--checkpoint` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
+- `--output` is the directory to save results, all result are saved in this directory. The structure of the output directory is shown below.  
 
 ```text
 ├── checkpoints      # checkpoint
 ├── states           # audio files generated at validation
 └── log              # tensorboard log
 ```
+
+If `checkpoints` is not empty and argument `--checkpoint` is not specified, the model will be resumed from the latest checkpoint at the beginning of training.
 
 - `--device` is the device (gpu id) to use for training. `-1` means CPU.
 - `--wavenet` is the path of the wavenet checkpoint to load. If you do not specify `--resume`, then this must be provided.

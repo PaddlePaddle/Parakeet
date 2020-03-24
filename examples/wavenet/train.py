@@ -16,7 +16,7 @@ from __future__ import division
 import os
 import ruamel.yaml
 import argparse
-from tqdm import tqdm
+import tqdm
 from tensorboardX import SummaryWriter
 from paddle import fluid
 import paddle.fluid.dygraph as dg
@@ -24,13 +24,14 @@ import paddle.fluid.dygraph as dg
 from parakeet.data import SliceDataset, TransformDataset, DataCargo, SequentialSampler, RandomSampler
 from parakeet.models.wavenet import UpsampleNet, WaveNet, ConditionalWavenet
 from parakeet.utils.layer_tools import summary
+from parakeet.utils import io
 
 from data import LJSpeechMetaData, Transform, DataCollector
-from utils import make_output_tree, valid_model, save_checkpoint
+from utils import make_output_tree, valid_model
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train a wavenet model with LJSpeech.")
+        description="Train a WaveNet model with LJSpeech.")
     parser.add_argument(
         "--data", type=str, help="path of the LJspeech dataset.")
     parser.add_argument("--config", type=str, help="path of the config file.")
@@ -42,11 +43,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device", type=int, default=-1, help="device to use.")
     parser.add_argument(
-        "--resume", type=str, help="checkpoint to resume from.")
+        "--checkpoint", type=str, help="checkpoint to resume from.")
 
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
+
+    print("Command Line Args: ")
+    for k, v in vars(args).items():
+        print("{}: {}".format(k, v))
 
     ljspeech_meta = LJSpeechMetaData(args.data)
 
@@ -126,14 +131,6 @@ if __name__ == "__main__":
         clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
             gradiant_max_norm)
 
-        if args.resume:
-            model_dict, optim_dict = dg.load_dygraph(args.resume)
-            print("Loading from {}.pdparams".format(args.resume))
-            model.set_dict(model_dict)
-            if optim_dict:
-                optim.set_dict(optim_dict)
-                print("Loading from {}.pdopt".format(args.resume))
-
         train_loader = fluid.io.DataLoader.from_generator(
             capacity=10, return_list=True)
         train_loader.set_batch_generator(train_cargo, place)
@@ -150,33 +147,48 @@ if __name__ == "__main__":
         log_dir = os.path.join(args.output, "log")
         writer = SummaryWriter(log_dir)
 
-        global_step = 1
+        # load parameters and optimizer, and opdate iterations done sofar
+        io.load_parameters(
+            checkpoint_dir, 0, model, optim, file_path=args.checkpoint)
+        if args.checkpoint is not None:
+            iteration = int(os.path.basename(args.checkpoint).split("-")[-1])
+        else:
+            iteration = io.load_latest_checkpoint(checkpoint_dir)
+
+        global_step = iteration + 1
+        iterator = iter(tqdm.tqdm(train_loader))
         while global_step <= max_iterations:
-            epoch_loss = 0.
-            for i, batch in tqdm(enumerate(train_loader)):
-                audio_clips, mel_specs, audio_starts = batch
+            print(global_step)
+            try:
+                batch = next(iterator)
+            except StopIteration as e:
+                iterator = iter(tqdm.tqdm(train_loader))
+                batch = next(iterator)
 
-                model.train()
-                y_var = model(audio_clips, mel_specs, audio_starts)
-                loss_var = model.loss(y_var, audio_clips)
-                loss_var.backward()
-                loss_np = loss_var.numpy()
+            audio_clips, mel_specs, audio_starts = batch
 
-                epoch_loss += loss_np[0]
+            model.train()
+            y_var = model(audio_clips, mel_specs, audio_starts)
+            loss_var = model.loss(y_var, audio_clips)
+            loss_var.backward()
+            loss_np = loss_var.numpy()
 
-                writer.add_scalar("loss", loss_np[0], global_step)
-                writer.add_scalar("learning_rate",
-                                  optim._learning_rate.step().numpy()[0],
-                                  global_step)
-                optim.minimize(loss_var, grad_clip=clipper)
-                optim.clear_gradients()
-                print("loss: {:<8.6f}".format(loss_np[0]))
+            writer.add_scalar("loss", loss_np[0], global_step)
+            writer.add_scalar("learning_rate",
+                              optim._learning_rate.step().numpy()[0],
+                              global_step)
+            optim.minimize(loss_var, grad_clip=clipper)
+            optim.clear_gradients()
+            print("global_step: {}\tloss: {:<8.6f}".format(global_step,
+                                                           loss_np[0]))
 
-                if global_step % snap_interval == 0:
-                    valid_model(model, valid_loader, writer, global_step,
-                                sample_rate)
+            if global_step % snap_interval == 0:
+                valid_model(model, valid_loader, writer, global_step,
+                            sample_rate)
 
-                if global_step % checkpoint_interval == 0:
-                    save_checkpoint(model, optim, checkpoint_dir, global_step)
+            if global_step % checkpoint_interval == 0:
+                io.save_latest_parameters(checkpoint_dir, global_step, model,
+                                          optim)
+                io.save_latest_checkpoint(checkpoint_dir, global_step)
 
-                global_step += 1
+            global_step += 1

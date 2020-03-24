@@ -59,10 +59,3 @@ def eval_model(model, valid_loader, output_dir, sample_rate):
         wav_np = wav_var.numpy()[0]
         sf.write(path, wav_np, samplerate=sample_rate)
         print("generated {}".format(path))
-
-
-def save_checkpoint(model, optim, checkpoint_dir, global_step):
-    checkpoint_path = os.path.join(checkpoint_dir,
-                                   "step_{:09d}".format(global_step))
-    dg.save_dygraph(model.state_dict(), checkpoint_path)
-    dg.save_dygraph(optim.state_dict(), checkpoint_path)
