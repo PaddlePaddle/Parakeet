@@ -74,7 +74,7 @@ Entries to the introduction, and the launch of training and synthsis for differe
 
 ## Pre-trained models and audio samples
 
-Parakeet also releases some well-trained parameters for the example models, which can be accessed in the following tables. Each column of these tables lists resources for one model, including the url link to the pre-trained model, the dataset that the model is trained on and the total training steps, and several synthesized audio samples based on the pre-trained model.
+Parakeet also releases some well-trained parameters for the example models, which can be accessed in the following tables. Each column of these tables lists resources for one model, including the url link to the pre-trained model, the dataset that the model is trained on, and synthesized audio samples based on the pre-trained model.
 
 #### Vocoders
 
@@ -94,7 +94,7 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
     </thead>
     <tbody>
         <tr>
-            <th>LJSpeech, 3020 K</th>
+            <th>LJSpeech </th>
             <th>LJSpeech </th>
         </tr>
         <tr>
@@ -127,8 +127,8 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
     </thead>
     <tbody>
         <tr>
-            <th>LJSpeech, 500 K</th>
-            <th>LJSpeech, 2450 K</th>
+            <th>LJSpeech </th>
+            <th>LJSpeech </th>
         </tr>
         <tr>
             <th>
