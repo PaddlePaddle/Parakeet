@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.models.waveflow.waveflow import WaveFlow
+from parakeet.models.waveflow.waveflow_modules import WaveFlowLoss, WaveFlowModule

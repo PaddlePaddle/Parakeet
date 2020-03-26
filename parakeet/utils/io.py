@@ -18,6 +18,7 @@ import time
 import ruamel.yaml
 import numpy as np
 import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import convert_np_dtype_to_dtype_ as convert_np_dtype
 
 
 def is_main_process():
@@ -51,8 +52,6 @@ def _load_latest_checkpoint(checkpoint_dir):
 
     Args:
         checkpoint_dir (str): the directory where checkpoint is saved.
-        rank (int, optional): the rank of the process in multi-process setting.
-            Defaults to 0.
 
     Returns:
         int: the latest iteration number.
@@ -90,9 +89,8 @@ def load_parameters(model,
                     optimizer=None,
                     checkpoint_dir=None,
                     iteration=None,
-                    checkpoint_path=None,
-                    dtype="float32"):
-    """Load a specific model checkpoint from disk.
+                    checkpoint_path=None):
+    """Load a specific model checkpoint from disk. 
 
     Args:
         model (obj): model to load parameters.
@@ -102,37 +100,36 @@ def load_parameters(model,
         iteration (int, optional): if specified, load the specific checkpoint,
             if not specified, load the latest one. Defaults to None.
         checkpoint_path (str, optional): if specified, load the checkpoint
-            stored in the checkpoint_path. Defaults to None. 
-        dtype (str, optional): precision of the model parameters.
-            Defaults to float32.
+            stored in the checkpoint_path and the argument 'checkpoint_dir' will 
+            be ignored. Defaults to None. 
 
     Returns:
         iteration (int): number of iterations that the loaded checkpoint has 
             been trained.
     """
-
-    if iteration is not None and checkpoint_dir is None:
-        raise ValueError(
-            "When iteration is specified, checkpoint_dir should not be None")
-
     if checkpoint_path is not None:
-        # checkpoint is not None
         iteration = int(os.path.basename(checkpoint_path).split("-")[-1])
-    else:
+    elif checkpoint_dir is not None:
         if iteration is None:
             iteration = _load_latest_checkpoint(checkpoint_dir)
+        if iteration == 0:
+            return iteration
         checkpoint_path = os.path.join(checkpoint_dir,
                                        "step-{}".format(iteration))
-        if iteration == 0 and not os.path.exists(checkpoint_path):
-            # if step-0 exist, it is also loaded
-            return iteration
+    else:
+        raise ValueError(
+            "At least one of 'checkpoint_dir' and 'checkpoint_path' should be specified!"
+        )
 
     local_rank = dg.parallel.Env().local_rank
     model_dict, optimizer_dict = dg.load_dygraph(checkpoint_path)
 
-    # cast to desired data type
+    state_dict = model.state_dict()
+    # cast to desired data type, for mixed-precision training/inference.
     for k, v in model_dict.items():
-        model_dict[k] = v.astype(dtype)
+        if k in state_dict and convert_np_dtype(v.dtype) != state_dict[
+                k].dtype:
+            model_dict[k] = v.astype(state_dict[k].numpy().dtype)
 
     model.set_dict(model_dict)
     print("[checkpoint] Rank {}: loaded model from {}.pdparams".format(
