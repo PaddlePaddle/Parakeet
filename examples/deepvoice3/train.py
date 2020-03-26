@@ -45,22 +45,24 @@ from utils import make_model, eval_model, save_state, make_output_tree, plot_ali
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Train a Deep Voice 3 model with LJSpeech dataset.")
-    parser.add_argument("-c", "--config", type=str, help="experimrnt config")
+    parser.add_argument("--config", type=str, help="experimrnt config")
     parser.add_argument(
-        "-s",
         "--data",
         type=str,
         default="/workspace/datasets/LJSpeech-1.1/",
         help="The path of the LJSpeech dataset.")
-    parser.add_argument("--checkpoint", type=str, help="checkpoint to load")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from.")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        default="result",
-        help="The directory to save result.")
-    parser.add_argument(
-        "-g", "--device", type=int, default=-1, help="device to use")
+        "output", type=str, default="experiment", help="path to save results")
+
     args, _ = parser.parse_known_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
@@ -216,11 +218,12 @@ if __name__ == "__main__":
         writer = SummaryWriter(logdir=log_dir)
 
         # load parameters and optimizer, and opdate iterations done sofar
-        io.load_parameters(ckpt_dir, 0, dv3, optim, file_path=args.checkpoint)
         if args.checkpoint is not None:
-            iteration = int(os.path.basename(args.checkpoint).split("-")[-1])
+            iteration = io.load_parameters(
+                dv3, optim, checkpoint_path=args.checkpoint)
         else:
-            iteration = io.load_latest_checkpoint(ckpt_dir)
+            iteration = io.load_parameters(
+                dv3, optim, checkpoint_dir=ckpt_dir, iteration=args.iteration)
 
         # =========================train=========================
         max_iter = train_config["max_iteration"]
@@ -325,7 +328,6 @@ if __name__ == "__main__":
 
             # save checkpoint
             if global_step % save_interval == 0:
-                io.save_latest_parameters(ckpt_dir, global_step, dv3, optim)
-                io.save_latest_checkpoint(ckpt_dir, global_step)
+                io.save_parameters(ckpt_dir, global_step, dv3, optim)
 
             global_step += 1

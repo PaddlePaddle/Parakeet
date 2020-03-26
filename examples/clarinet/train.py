@@ -32,27 +32,36 @@ from parakeet.data import TransformDataset, SliceDataset, RandomSampler, Sequent
 from parakeet.utils.layer_tools import summary, freeze
 from parakeet.utils import io
 
-from utils import make_output_tree, valid_model, load_wavenet
+from utils import make_output_tree, eval_model, load_wavenet
+
+# import dataset from wavenet
 sys.path.append("../wavenet")
 from data import LJSpeechMetaData, Transform, DataCollector
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="train a ClariNet model with LJspeech and a trained WaveNet model."
+        description="Train a ClariNet model with LJspeech and a trained WaveNet model."
     )
-    parser.add_argument("--config", type=str, help="path of the config file.")
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
+    parser.add_argument("--data", type=str, help="path of LJspeech dataset")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument(
-        "--device", type=int, default=-1, help="device to use.")
+        "--wavenet", type=str, help="wavenet checkpoint to use")
+
     parser.add_argument(
-        "--output",
+        "output",
         type=str,
         default="experiment",
-        help="path to save student.")
-    parser.add_argument("--data", type=str, help="path of LJspeech dataset.")
-    parser.add_argument(
-        "--checkpoint", type=str, help="checkpoint to load from.")
-    parser.add_argument(
-        "--wavenet", type=str, help="wavenet checkpoint to use.")
+        help="path to save experiment results")
+
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
@@ -169,29 +178,19 @@ if __name__ == "__main__":
         log_dir = os.path.join(args.output, "log")
         writer = SummaryWriter(log_dir)
 
-        # load wavenet/checkpoint, determine iterations done
         if args.checkpoint is not None:
-            iteration = int(os.path.basename(args.checkpoint).split('-')[-1])
+            iteration = io.load_parameters(
+                model, optim, checkpoint_path=args.checkpoint)
         else:
-            iteration = io.load_latest_checkpoint(checkpoint_dir)
+            iteration = io.load_parameters(
+                model,
+                optim,
+                checkpoint_dir=checkpoint_dir,
+                iteration=args.iteration)
 
-        if iteration == 0 and args.wavenet is None:
-            raise Exception(
-                "you should load from a trained wavenet or resume training; training without a trained wavenet is not recommended."
-            )
-
-        if args.wavenet is not None and iteration > 0:
-            if args.checkpoint is None:
-                print("Resume training, --wavenet ignored")
-            else:
-                print("--checkpoint provided, --wavenet ignored")
-
-        if args.wavenet is not None and iteration == 0:
+        if iteration == 0:
+            assert args.wavenet is not None, "When training afresh, a trained wavenet model should be provided."
             load_wavenet(model, args.wavenet)
-
-        # it may overwrite the wavenet loaded
-        io.load_parameters(
-            checkpoint_dir, 0, model, optim, file_path=args.checkpoint)
 
         # loader
         train_loader = fluid.io.DataLoader.from_generator(
@@ -205,7 +204,7 @@ if __name__ == "__main__":
         # training loop
         global_step = iteration + 1
         iterator = iter(tqdm(train_loader))
-        while global_step < max_iterations:
+        while global_step <= max_iterations:
             try:
                 batch = next(iterator)
             except StopIteration as e:
@@ -226,7 +225,8 @@ if __name__ == "__main__":
 
             l = loss_dict["loss"]
             step_loss = l.numpy()[0]
-            print("[train] loss: {:<8.6f}".format(step_loss))
+            print("[train] global_step: {} loss: {:<8.6f}".format(global_step,
+                                                                  step_loss))
 
             l.backward()
             optim.minimize(l, grad_clip=clipper)
@@ -234,11 +234,9 @@ if __name__ == "__main__":
 
             if global_step % eval_interval == 0:
                 # evaluate on valid dataset
-                valid_model(model, valid_loader, state_dir, global_step,
-                            sample_rate)
+                eval_model(model, valid_loader, state_dir, global_step,
+                           sample_rate)
             if global_step % checkpoint_interval == 0:
-                io.save_latest_parameters(checkpoint_dir, global_step, model,
-                                          optim)
-                io.save_latest_checkpoint(checkpoint_dir, global_step)
+                io.save_parameters(checkpoint_dir, global_step, model, optim)
 
             global_step += 1

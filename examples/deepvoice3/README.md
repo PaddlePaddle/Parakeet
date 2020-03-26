@@ -30,29 +30,55 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 └── utils.py         utility functions
 ```
 
+## Saving & Loading
+`train.py` and `synthesis.py` have 3 arguments in common, `--checkpooint`, `iteration` and `output`.
+
+1. `output` is the directory for saving results.
+During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`. Other possible outputs are saved in `states/` in `outuput`.
+During synthesizing, audio files and other possible outputs are save in `synthesis/` in `output`.
+So after training and synthesizing with the same output directory, the file structure of the output directory looks like this.
+
+```text
+├── checkpoints/      # checkpoint directory (including *.pdparams, *.pdopt and a text file `checkpoint` that records the latest checkpoint)
+├── states/           # audio files generated at validation and other possible outputs
+├── log/              # tensorboard log
+└── synthesis/        # synthesized audio files and other possible outputs
+```
+
+2. `--checkpoint` and `--iteration` for loading from existing checkpoint. Loading existing checkpoiont follows the following rule:
+If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
+If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
+
 ## Train
 
 Train the model using train.py, follow the usage displayed by `python train.py --help`.
 
 ```text
-usage: train.py [-h] [-c CONFIG] [-s DATA] [--checkpoint CHECKPOINT]
-                [-o OUTPUT] [-g DEVICE]
+usage: train.py [-h] [--config CONFIG] [--data DATA] [--device DEVICE]
+                [--checkpoint CHECKPOINT | --iteration ITERATION]
+                output
 
 Train a Deep Voice 3 model with LJSpeech dataset.
 
+positional arguments:
+  output                        path to save results
+
 optional arguments:
-  -h, --help                      show this help message and exit
-  -c CONFIG, --config CONFIG      experimrnt config
-  -s DATA, --data DATA            The path of the LJSpeech dataset.
-  --checkpoint CHECKPOINT         checkpoint to load
-  -o OUTPUT, --output OUTPUT      The directory to save result.
-  -g DEVICE, --device DEVICE      device to use
+  -h, --help                    show this help message and exit
+  --config CONFIG               experimrnt config
+  --data DATA                   The path of the LJSpeech dataset.
+  --device DEVICE               device to use
+  --checkpoint CHECKPOINT       checkpoint to resume from.
+  --iteration ITERATION         the iteration of the checkpoint to load from output directory
 ```
 
 - `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
 - `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-- `--checkpoint` is the path of the checkpoint. If it is provided, the model would load the checkpoint before trainig.
-- `--output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
+- `--device` is the device (gpu id) to use for training. `-1` means CPU.
+- `--checkpoint` is the path of the checkpoint.
+- `--iteration` is the iteration of the checkpoint to load from output directory.
+See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
+- `output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
 
 ```text
 ├── checkpoints      # checkpoint
@@ -64,14 +90,14 @@ optional arguments:
     └── waveform     # waveform (.wav files)
 ```
 
-If `checkpoints` is not empty and argument `--checkpoint` is not specified, the model will be resumed from the latest checkpoint at the beginning of training.
-
-- `--device` is the device (gpu id) to use for training. `-1` means CPU.
-
 Example script:
 
 ```bash
-python train.py --config=configs/ljspeech.yaml --data=./LJSpeech-1.1/ --output=experiment --device=0
+python train.py \
+    --config=configs/ljspeech.yaml \
+    --data=./LJSpeech-1.1/ \
+    --device=0 \
+    experiment
 ```
 
 You can monitor training log via tensorboard, using the script below.
@@ -83,31 +109,50 @@ tensorboard --logdir=.
 
 ## Synthesis
 ```text
-usage: synthesis.py [-h] [-c CONFIG] [-g DEVICE] checkpoint text output_path
+usage: synthesis.py [-h] [--config CONFIG] [--device DEVICE]
+                    [--checkpoint CHECKPOINT | --iteration ITERATION]
+                    text output
 
-Synthsize waveform from a checkpoint.
+Synthsize waveform with a checkpoint.
 
 positional arguments:
-  checkpoint            checkpoint to load.
-  text                  text file to synthesize
-  output_path           path to save results
+  text                          text file to synthesize
+  output                        path to save synthesized audio
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -c CONFIG, --config CONFIG
-                        experiment config.
-  -g DEVICE, --device DEVICE
-                        device to use
+  -h, --help                    show this help message and exit
+  --config CONFIG               experiment config
+  --device DEVICE               device to use
+  --checkpoint CHECKPOINT       checkpoint to resume from
+  --iteration ITERATION         the iteration of the checkpoint to load from output directory
 ```
 
 - `--config` is the configuration file to use. You should use the same configuration with which you train you model.
-- `checkpoint` is the checkpoint to load.
-- `text`is the text file to synthesize.
-- `output_path` is the directory to save results. The output path contains the generated audio files (`*.wav`) and attention plots (*.png) for each sentence.
 - `--device` is the device (gpu id) to use for training. `-1` means CPU.
+
+- `--checkpoint` is the path of the checkpoint.
+- `--iteration` is the iteration of the checkpoint to load from output directory.
+See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
+
+- `text`is the text file to synthesize.
+- `output` is the directory to save results. The generated audio files (`*.wav`) and attention plots (*.png) for are save in `synthesis/` in ouput directory.
 
 Example script:
 
 ```bash
-python synthesis.py --config=configs/ljspeech.yaml --device=0 experiment/checkpoints/model_step_005000000 sentences.txt generated
+python synthesis.py \
+    --config=configs/ljspeech.yaml \
+    --device=0 \
+    --checkpoint="experiment/checkpoints/model_step_005000000" \
+    sentences.txt experiment
+```
+
+or
+
+```bash
+python synthesis.py \
+    --config=configs/ljspeech.yaml \
+    --device=0 \
+    --iteration=005000000 \
+    sentences.txt experiment
 ```

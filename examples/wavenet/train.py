@@ -33,17 +33,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Train a WaveNet model with LJSpeech.")
     parser.add_argument(
-        "--data", type=str, help="path of the LJspeech dataset.")
-    parser.add_argument("--config", type=str, help="path of the config file.")
+        "--data", type=str, help="path of the LJspeech dataset")
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument(
-        "--output",
-        type=str,
-        default="experiment",
-        help="path to save results.")
-    parser.add_argument(
-        "--device", type=int, default=-1, help="device to use.")
-    parser.add_argument(
-        "--checkpoint", type=str, help="checkpoint to resume from.")
+        "output", type=str, default="experiment", help="path to save results")
 
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
@@ -148,17 +150,19 @@ if __name__ == "__main__":
         writer = SummaryWriter(log_dir)
 
         # load parameters and optimizer, and opdate iterations done sofar
-        io.load_parameters(
-            checkpoint_dir, 0, model, optim, file_path=args.checkpoint)
         if args.checkpoint is not None:
-            iteration = int(os.path.basename(args.checkpoint).split("-")[-1])
+            iteration = io.load_parameters(
+                model, optim, checkpoint_path=args.checkpoint)
         else:
-            iteration = io.load_latest_checkpoint(checkpoint_dir)
+            iteration = io.load_parameters(
+                model,
+                optim,
+                checkpoint_dir=checkpoint_dir,
+                iteration=args.iteration)
 
         global_step = iteration + 1
         iterator = iter(tqdm.tqdm(train_loader))
         while global_step <= max_iterations:
-            print(global_step)
             try:
                 batch = next(iterator)
             except StopIteration as e:
@@ -187,8 +191,6 @@ if __name__ == "__main__":
                             sample_rate)
 
             if global_step % checkpoint_interval == 0:
-                io.save_latest_parameters(checkpoint_dir, global_step, model,
-                                          optim)
-                io.save_latest_checkpoint(checkpoint_dir, global_step)
+                io.save_parameters(checkpoint_dir, global_step, model, optim)
 
             global_step += 1

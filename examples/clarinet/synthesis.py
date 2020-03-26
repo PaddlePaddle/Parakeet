@@ -26,29 +26,41 @@ from tensorboardX import SummaryWriter
 import paddle.fluid.dygraph as dg
 from paddle import fluid
 
+from parakeet.modules.weight_norm import WeightNormWrapper
 from parakeet.models.wavenet import WaveNet, UpsampleNet
 from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
 from parakeet.data import TransformDataset, SliceDataset, RandomSampler, SequentialSampler, DataCargo
 from parakeet.utils.layer_tools import summary, freeze
+from parakeet.utils import io
 
-from utils import valid_model, eval_model, load_model
+from utils import eval_model
 sys.path.append("../wavenet")
 from data import LJSpeechMetaData, Transform, DataCollector
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="synthesize audio files from mel spectrogram in the validation set."
+        description="Synthesize audio files from mel spectrogram in the validation set."
     )
-    parser.add_argument("--config", type=str, help="path of the config file.")
+    parser.add_argument("--config", type=str, help="path of the config file")
     parser.add_argument(
         "--device", type=int, default=-1, help="device to use.")
-    parser.add_argument("--data", type=str, help="path of LJspeech dataset.")
+    parser.add_argument("--data", type=str, help="path of LJspeech dataset")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument(
-        "checkpoint", type=str, help="checkpoint to load from.")
-    parser.add_argument(
-        "output", type=str, default="experiment", help="path to save student.")
+        "output",
+        type=str,
+        default="experiment",
+        help="path to save the synthesized audio")
 
     args = parser.parse_args()
+
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
 
@@ -136,17 +148,32 @@ if __name__ == "__main__":
         model = Clarinet(upsample_net, teacher, student, stft,
                          student_log_scale_min, lmd)
         summary(model)
-        load_model(model, args.checkpoint)
 
-        # loader
-        train_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        train_loader.set_batch_generator(train_cargo, place)
+        # load parameters
+        if args.checkpoint is not None:
+            # load from args.checkpoint
+            iteration = io.load_parameters(
+                model, checkpoint_path=args.checkpoint)
+        else:
+            # load from "args.output/checkpoints"
+            checkpoint_dir = os.path.join(args.output, "checkpoints")
+            iteration = io.load_parameters(
+                model, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
+        assert iteration > 0, "A trained checkpoint is needed."
 
+        # make generation fast
+        for sublayer in model.sublayers():
+            if isinstance(sublayer, WeightNormWrapper):
+                sublayer.remove_weight_norm()
+
+        # data loader
         valid_loader = fluid.io.DataLoader.from_generator(
             capacity=10, return_list=True)
         valid_loader.set_batch_generator(valid_cargo, place)
 
-        if not os.path.exists(args.output):
-            os.makedirs(args.output)
-        eval_model(model, valid_loader, args.output, sample_rate)
+        # the directory to save audio files
+        synthesis_dir = os.path.join(args.output, "synthesis")
+        if not os.path.exists(synthesis_dir):
+            os.makedirs(synthesis_dir)
+
+        eval_model(model, valid_loader, synthesis_dir, iteration, sample_rate)
