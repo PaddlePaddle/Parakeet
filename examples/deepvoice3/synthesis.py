@@ -25,24 +25,36 @@ import paddle.fluid.dygraph as dg
 from tensorboardX import SummaryWriter
 
 from parakeet.g2p import en
-from parakeet.utils.layer_tools import summary
 from parakeet.modules.weight_norm import WeightNormWrapper
+from parakeet.utils.layer_tools import summary
+from parakeet.utils import io
 
 from utils import make_model, eval_model, plot_alignment
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Synthsize waveform with a checkpoint.")
-    parser.add_argument("-c", "--config", type=str, help="experiment config.")
-    parser.add_argument("checkpoint", type=str, help="checkpoint to load.")
+    parser.add_argument("--config", type=str, help="experiment config")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument("text", type=str, help="text file to synthesize")
-    parser.add_argument("output_path", type=str, help="path to save results")
     parser.add_argument(
-        "-g", "--device", type=int, default=-1, help="device to use")
+        "output", type=str, help="path to save synthesized audio")
 
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
+
+    print("Command Line Args: ")
+    for k, v in vars(args).items():
+        print("{}: {}".format(k, v))
 
     if args.device == -1:
         place = fluid.CPUPlace()
@@ -98,17 +110,20 @@ if __name__ == "__main__":
             linear_dim, use_decoder_states, converter_channels, dropout)
 
         summary(dv3)
-        state, _ = dg.load_dygraph(args.checkpoint)
-        dv3.set_dict(state)
+
+        checkpoint_dir = os.path.join(args.output, "checkpoints")
+        if args.checkpoint is not None:
+            iteration = io.load_parameters(
+                dv3, checkpoint_path=args.checkpoint)
+        else:
+            iteration = io.load_parameters(
+                dv3, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
 
         # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
         # removing weight norm also speeds up computation
         for layer in dv3.sublayers():
             if isinstance(layer, WeightNormWrapper):
                 layer.remove_weight_norm()
-
-        if not os.path.exists(args.output_path):
-            os.makedirs(args.output_path)
 
         transform_config = config["transform"]
         c = transform_config["replace_pronunciation_prob"]
@@ -123,6 +138,10 @@ if __name__ == "__main__":
         power = synthesis_config["power"]
         n_iter = synthesis_config["n_iter"]
 
+        synthesis_dir = os.path.join(args.output, "synthesis")
+        if not os.path.exists(synthesis_dir):
+            os.makedirs(synthesis_dir)
+
         with open(args.text, "rt", encoding="utf-8") as f:
             lines = f.readlines()
             for idx, line in enumerate(lines):
@@ -134,7 +153,9 @@ if __name__ == "__main__":
                                        preemphasis)
                 plot_alignment(
                     attn,
-                    os.path.join(args.output_path, "test_{}.png".format(idx)))
+                    os.path.join(synthesis_dir,
+                                 "test_{}_step_{}.png".format(idx, iteration)))
                 sf.write(
-                    os.path.join(args.output_path, "test_{}.wav".format(idx)),
+                    os.path.join(synthesis_dir,
+                                 "test_{}_step{}.wav".format(idx, iteration)),
                     wav, sample_rate)

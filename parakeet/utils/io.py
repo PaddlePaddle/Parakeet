@@ -52,8 +52,6 @@ def _load_latest_checkpoint(checkpoint_dir):
 
     Args:
         checkpoint_dir (str): the directory where checkpoint is saved.
-        rank (int, optional): the rank of the process in multi-process setting.
-            Defaults to 0.
 
     Returns:
         int: the latest iteration number.
@@ -115,7 +113,6 @@ def load_parameters(model,
         if iteration is None:
             iteration = _load_latest_checkpoint(checkpoint_dir)
         if iteration == 0:
-            # if step-0 exist, it is also loaded
             return iteration
         checkpoint_path = os.path.join(checkpoint_dir,
                                        "step-{}".format(iteration))

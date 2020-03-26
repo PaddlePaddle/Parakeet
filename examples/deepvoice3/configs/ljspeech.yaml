@@ -83,7 +83,7 @@ lr_scheduler:
   
 train:
   batch_size: 16
-  epochs: 2000
+  max_iteration: 2000000
   
   snap_interval: 1000
   eval_interval: 10000
