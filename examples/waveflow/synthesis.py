@@ -21,9 +21,9 @@ import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
 
-import utils
-from parakeet.models.waveflow import WaveFlow
 from parakeet.utils import io
+import utils
+from waveflow import WaveFlow
 
 
 def add_options_to_parser(parser):

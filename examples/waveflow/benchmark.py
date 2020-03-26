@@ -23,7 +23,7 @@ from paddle import fluid
 
 import utils
 from parakeet.utils import io
-from parakeet.models.waveflow import WaveFlow
+from waveflow import WaveFlow
 
 
 def add_options_to_parser(parser):

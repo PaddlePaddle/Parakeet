@@ -13,8 +13,8 @@ PaddlePaddle dynamic graph implementation of [WaveFlow: A Compact Flow-based Mod
 ├── synthesis.py                                     # script for speech synthesis
 ├── train.py                                         # script for model training
 ├── utils.py                                         # helper functions for e.g., model checkpointing
-├── parakeet/models/waveflow/data.py                 # dataset and dataloader settings for LJSpeech
-├── parakeet/models/waveflow/waveflow.py             # WaveFlow model high level APIs
+├── data.py                                          # dataset and dataloader settings for LJSpeech
+├── waveflow.py                                      # WaveFlow model high level APIs
 └── parakeet/models/waveflow/waveflow_modules.py     # WaveFlow model implementation
 ```
 
@@ -48,12 +48,12 @@ python -u train.py \
     --config=./configs/waveflow_ljspeech.yaml \
     --root=./data/LJSpeech-1.1 \
     --name=${ModelName} --batch_size=4 \
-    --parallel=false --use_gpu=true
+    --use_gpu=true
 ```
 
 #### Save and Load checkpoints
 
-Our model will save model parameters as checkpoints in `./runs/waveflow/${ModelName}/checkpoint/` every 10000 iterations by default.
+Our model will save model parameters as checkpoints in `./runs/waveflow/${ModelName}/checkpoint/` every 10000 iterations by default, where `${ModelName}` is the model name for one single experiment and it could be whatever you like.
 The saved checkpoint will have the format of `step-${iteration_number}.pdparams` for model parameters and `step-${iteration_number}.pdopt` for optimizer parameters.
 
 There are three ways to load a checkpoint and resume training (take an example that you want to load a 500000-iteration checkpoint):
@@ -68,7 +68,7 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 python -u -m paddle.distributed.launch train.py \
     --config=./configs/waveflow_ljspeech.yaml \
     --root=./data/LJSpeech-1.1 \
-    --name=${ModelName} --parallel=true --use_gpu=true
+    --name=${ModelName} --use_gpu=true
 ```
 
 Use `export CUDA_VISIBLE_DEVICES=0,1,2,3` to set the GPUs that you want to use to be visible. Then the `paddle.distributed.launch` module will use these visible GPUs to do data parallel training in multiprocessing mode.
