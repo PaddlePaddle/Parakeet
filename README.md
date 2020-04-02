@@ -88,7 +88,7 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 64)</a>
             </th>
             <th  style="width: 250px">
-            WaveFlow (res. channels 128)
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 128)</a>
             </th>
         </tr>
     </thead>
@@ -111,7 +111,16 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
             <img src="images/audio_icon.png" width=250 /></a>
             </th>
             <th>
-            To be added soon
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>
             </th>
         </tr>
     </tbody>
