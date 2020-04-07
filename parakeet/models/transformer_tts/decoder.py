@@ -149,6 +149,7 @@ class Decoder(dg.Layer):
             zero_mask = layers.expand(zero_mask, [self.num_head, 1, 1])
 
         else:
+            mask = layers.expand(mask, [self.num_head, 1, 1])
             m_mask, m_self_mask, zero_mask = None, None, None
 
         # Decoder pre-network

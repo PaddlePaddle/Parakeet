@@ -4,7 +4,7 @@ python -u synthesis.py \
 --use_gpu=1 \
 --alpha=1.0 \
 --checkpoint_path='checkpoint/' \
---fastspeech_step=71000 \
+--fastspeech_step=89000 \
 --log_dir='./log' \
 --config_path='configs/synthesis.yaml' \
 

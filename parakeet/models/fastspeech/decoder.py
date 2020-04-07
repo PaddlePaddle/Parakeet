@@ -88,7 +88,8 @@ class Decoder(dg.Layer):
             dec_slf_attn_list (list[Variable]): len(n_layers), the decoder self attention list.
         """
         dec_slf_attn_list = []
-        slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])
+        if slf_attn_mask:
+            slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])
 
         # -- Forward
         dec_output = enc_seq + self.position_enc(enc_pos)

@@ -142,6 +142,7 @@ class FastSpeech(dg.Layer):
                 encoder_output, alpha=alpha)
             slf_attn_mask = get_triu_tensor(
                 decoder_pos.numpy(), decoder_pos.numpy()).astype(np.float32)
+            slf_attn_mask = np.expand_dims(slf_attn_mask, axis=0)
             slf_attn_mask = fluid.layers.cast(
                 dg.to_variable(slf_attn_mask == 0), np.float32)
             slf_attn_mask = dg.to_variable(slf_attn_mask)
