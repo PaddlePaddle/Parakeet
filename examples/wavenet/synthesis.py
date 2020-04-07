@@ -21,25 +21,35 @@ from tensorboardX import SummaryWriter
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 
+from parakeet.modules.weight_norm import WeightNormWrapper
 from parakeet.data import SliceDataset, TransformDataset, DataCargo, SequentialSampler, RandomSampler
 from parakeet.models.wavenet import UpsampleNet, WaveNet, ConditionalWavenet
 from parakeet.utils.layer_tools import summary
+from parakeet.utils import io
 
 from data import LJSpeechMetaData, Transform, DataCollector
-from utils import make_output_tree, valid_model, eval_model, save_checkpoint
+from utils import make_output_tree, valid_model, eval_model
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Synthesize valid data from LJspeech with a wavenet model.")
     parser.add_argument(
-        "--data", type=str, help="path of the LJspeech dataset.")
-    parser.add_argument("--config", type=str, help="path of the config file.")
-    parser.add_argument(
-        "--device", type=int, default=-1, help="device to use.")
+        "--data", type=str, help="path of the LJspeech dataset")
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
 
-    parser.add_argument("checkpoint", type=str, help="checkpoint to load.")
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument(
-        "output", type=str, default="experiment", help="path to save results.")
+        "output",
+        type=str,
+        default="experiment",
+        help="path to save the synthesized audio")
 
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
@@ -86,7 +96,8 @@ if __name__ == "__main__":
         batch_size=1,
         sampler=SequentialSampler(ljspeech_valid))
 
-    make_output_tree(args.output)
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
 
     if args.device == -1:
         place = fluid.CPUPlace()
@@ -110,9 +121,21 @@ if __name__ == "__main__":
         model = ConditionalWavenet(encoder, decoder)
         summary(model)
 
-        model_dict, _ = dg.load_dygraph(args.checkpoint)
-        print("Loading from {}.pdparams".format(args.checkpoint))
-        model.set_dict(model_dict)
+        # load model parameters
+        checkpoint_dir = os.path.join(args.output, "checkpoints")
+        if args.checkpoint:
+            iteration = io.load_parameters(
+                model, checkpoint_path=args.checkpoint)
+        else:
+            iteration = io.load_parameters(
+                model, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
+        assert iteration > 0, "A trained model is needed."
+
+        # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
+        # removing weight norm also speeds up computation
+        for layer in model.sublayers():
+            if isinstance(layer, WeightNormWrapper):
+                layer.remove_weight_norm()
 
         train_loader = fluid.io.DataLoader.from_generator(
             capacity=10, return_list=True)
@@ -122,4 +145,8 @@ if __name__ == "__main__":
             capacity=10, return_list=True)
         valid_loader.set_batch_generator(valid_cargo, place)
 
-        eval_model(model, valid_loader, args.output, sample_rate)
+        synthesis_dir = os.path.join(args.output, "synthesis")
+        if not os.path.exists(synthesis_dir):
+            os.makedirs(synthesis_dir)
+
+        eval_model(model, valid_loader, synthesis_dir, iteration, sample_rate)

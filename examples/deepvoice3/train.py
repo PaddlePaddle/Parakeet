@@ -17,6 +17,8 @@ import os
 import argparse
 import ruamel.yaml
 import numpy as np
+import matplotlib
+matplotlib.use("agg")
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import tqdm
@@ -35,32 +37,39 @@ from parakeet.data import DataCargo, PartialyRandomizedSimilarTimeLengthSampler,
 from parakeet.models.deepvoice3 import Encoder, Decoder, Converter, DeepVoice3, ConvSpec
 from parakeet.models.deepvoice3.loss import TTSLoss
 from parakeet.utils.layer_tools import summary
+from parakeet.utils import io
 
 from data import LJSpeechMetaData, DataCollector, Transform
 from utils import make_model, eval_model, save_state, make_output_tree, plot_alignment
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train a deepvoice 3 model with LJSpeech dataset.")
-    parser.add_argument("-c", "--config", type=str, help="experimrnt config")
+        description="Train a Deep Voice 3 model with LJSpeech dataset.")
+    parser.add_argument("--config", type=str, help="experimrnt config")
     parser.add_argument(
-        "-s",
         "--data",
         type=str,
         default="/workspace/datasets/LJSpeech-1.1/",
         help="The path of the LJSpeech dataset.")
-    parser.add_argument("-r", "--resume", type=str, help="checkpoint to load")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from.")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
     parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        default="result",
-        help="The directory to save result.")
-    parser.add_argument(
-        "-g", "--device", type=int, default=-1, help="device to use")
+        "output", type=str, default="experiment", help="path to save results")
+
     args, _ = parser.parse_known_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
+
+    print("Command Line Args: ")
+    for k, v in vars(args).items():
+        print("{}: {}".format(k, v))
 
     # =========================dataset=========================
     # construct meta data
@@ -151,6 +160,7 @@ if __name__ == "__main__":
             query_position_rate, key_position_rate, window_backward,
             window_ahead, key_projection, value_projection, downsample_factor,
             linear_dim, use_decoder_states, converter_channels, dropout)
+        summary(dv3)
 
         # =========================loss=========================
         loss_config = config["loss"]
@@ -195,7 +205,6 @@ if __name__ == "__main__":
         n_iter = synthesis_config["n_iter"]
 
         # =========================link(dataloader, paddle)=========================
-        # CAUTION: it does not return a DataLoader
         loader = fluid.io.DataLoader.from_generator(
             capacity=10, return_list=True)
         loader.set_batch_generator(ljspeech_loader, places=place)
@@ -208,122 +217,117 @@ if __name__ == "__main__":
         make_output_tree(output_dir)
         writer = SummaryWriter(logdir=log_dir)
 
-        # load model parameters
-        resume_path = args.resume
-        if resume_path is not None:
-            state, _ = dg.load_dygraph(args.resume)
-            dv3.set_dict(state)
+        # load parameters and optimizer, and opdate iterations done sofar
+        if args.checkpoint is not None:
+            iteration = io.load_parameters(
+                dv3, optim, checkpoint_path=args.checkpoint)
+        else:
+            iteration = io.load_parameters(
+                dv3, optim, checkpoint_dir=ckpt_dir, iteration=args.iteration)
 
         # =========================train=========================
-        epoch = train_config["epochs"]
+        max_iter = train_config["max_iteration"]
         snap_interval = train_config["snap_interval"]
         save_interval = train_config["save_interval"]
         eval_interval = train_config["eval_interval"]
 
-        global_step = 1
+        global_step = iteration + 1
+        iterator = iter(tqdm.tqdm(loader))
+        while global_step <= max_iter:
+            try:
+                batch = next(iterator)
+            except StopIteration as e:
+                iterator = iter(tqdm.tqdm(loader))
+                batch = next(iterator)
 
-        for j in range(1, 1 + epoch):
-            epoch_loss = 0.
-            for i, batch in tqdm.tqdm(enumerate(loader, 1)):
-                dv3.train()  # CAUTION: don't forget to switch to train
-                (text_sequences, text_lengths, text_positions, mel_specs,
-                 lin_specs, frames, decoder_positions, done_flags) = batch
-                downsampled_mel_specs = F.strided_slice(
-                    mel_specs,
-                    axes=[1],
-                    starts=[0],
-                    ends=[mel_specs.shape[1]],
-                    strides=[downsample_factor])
-                mel_outputs, linear_outputs, alignments, done = dv3(
-                    text_sequences, text_positions, text_lengths, None,
-                    downsampled_mel_specs, decoder_positions)
+            dv3.train()
+            (text_sequences, text_lengths, text_positions, mel_specs,
+             lin_specs, frames, decoder_positions, done_flags) = batch
+            downsampled_mel_specs = F.strided_slice(
+                mel_specs,
+                axes=[1],
+                starts=[0],
+                ends=[mel_specs.shape[1]],
+                strides=[downsample_factor])
+            mel_outputs, linear_outputs, alignments, done = dv3(
+                text_sequences, text_positions, text_lengths, None,
+                downsampled_mel_specs, decoder_positions)
 
-                losses = criterion(mel_outputs, linear_outputs, done,
-                                   alignments, downsampled_mel_specs,
-                                   lin_specs, done_flags, text_lengths, frames)
-                l = losses["loss"]
-                l.backward()
-                # record learning rate before updating
-                writer.add_scalar("learning_rate",
-                                  optim._learning_rate.step().numpy(),
-                                  global_step)
-                optim.minimize(l, grad_clip=gradient_clipper)
-                optim.clear_gradients()
+            losses = criterion(mel_outputs, linear_outputs, done, alignments,
+                               downsampled_mel_specs, lin_specs, done_flags,
+                               text_lengths, frames)
+            l = losses["loss"]
+            l.backward()
+            # record learning rate before updating
+            writer.add_scalar("learning_rate",
+                              optim._learning_rate.step().numpy(), global_step)
+            optim.minimize(l, grad_clip=gradient_clipper)
+            optim.clear_gradients()
 
-                # ==================all kinds of tedious things=================
-                # record step loss into tensorboard
-                epoch_loss += l.numpy()[0]
-                step_loss = {k: v.numpy()[0] for k, v in losses.items()}
-                for k, v in step_loss.items():
-                    writer.add_scalar(k, v, global_step)
+            # ==================all kinds of tedious things=================
+            # record step loss into tensorboard
+            step_loss = {k: v.numpy()[0] for k, v in losses.items()}
+            tqdm.tqdm.write("global_step: {}\tloss: {}".format(
+                global_step, step_loss["loss"]))
+            for k, v in step_loss.items():
+                writer.add_scalar(k, v, global_step)
 
-                # TODO: clean code
-                # train state saving, the first sentence in the batch
-                if global_step % snap_interval == 0:
-                    save_state(
-                        state_dir,
-                        writer,
+            # train state saving, the first sentence in the batch
+            if global_step % snap_interval == 0:
+                save_state(
+                    state_dir,
+                    writer,
+                    global_step,
+                    mel_input=downsampled_mel_specs,
+                    mel_output=mel_outputs,
+                    lin_input=lin_specs,
+                    lin_output=linear_outputs,
+                    alignments=alignments,
+                    win_length=win_length,
+                    hop_length=hop_length,
+                    min_level_db=min_level_db,
+                    ref_level_db=ref_level_db,
+                    power=power,
+                    n_iter=n_iter,
+                    preemphasis=preemphasis,
+                    sample_rate=sample_rate)
+
+            # evaluation
+            if global_step % eval_interval == 0:
+                sentences = [
+                    "Scientists at the CERN laboratory say they have discovered a new particle.",
+                    "There's a way to measure the acute emotional intelligence that has never gone out of style.",
+                    "President Trump met with other leaders at the Group of 20 conference.",
+                    "Generative adversarial network or variational auto-encoder.",
+                    "Please call Stella.",
+                    "Some have accepted this as a miracle without any physical explanation.",
+                ]
+                for idx, sent in enumerate(sentences):
+                    wav, attn = eval_model(
+                        dv3, sent, replace_pronounciation_prob, min_level_db,
+                        ref_level_db, power, n_iter, win_length, hop_length,
+                        preemphasis)
+                    wav_path = os.path.join(
+                        state_dir, "waveform",
+                        "eval_sample_{:09d}.wav".format(global_step))
+                    sf.write(wav_path, wav, sample_rate)
+                    writer.add_audio(
+                        "eval_sample_{}".format(idx),
+                        wav,
                         global_step,
-                        mel_input=downsampled_mel_specs,
-                        mel_output=mel_outputs,
-                        lin_input=lin_specs,
-                        lin_output=linear_outputs,
-                        alignments=alignments,
-                        win_length=win_length,
-                        hop_length=hop_length,
-                        min_level_db=min_level_db,
-                        ref_level_db=ref_level_db,
-                        power=power,
-                        n_iter=n_iter,
-                        preemphasis=preemphasis,
                         sample_rate=sample_rate)
+                    attn_path = os.path.join(
+                        state_dir, "alignments",
+                        "eval_sample_attn_{:09d}.png".format(global_step))
+                    plot_alignment(attn, attn_path)
+                    writer.add_image(
+                        "eval_sample_attn{}".format(idx),
+                        cm.viridis(attn),
+                        global_step,
+                        dataformats="HWC")
 
-                # evaluation
-                if global_step % eval_interval == 0:
-                    sentences = [
-                        "Scientists at the CERN laboratory say they have discovered a new particle.",
-                        "There's a way to measure the acute emotional intelligence that has never gone out of style.",
-                        "President Trump met with other leaders at the Group of 20 conference.",
-                        "Generative adversarial network or variational auto-encoder.",
-                        "Please call Stella.",
-                        "Some have accepted this as a miracle without any physical explanation.",
-                    ]
-                    for idx, sent in enumerate(sentences):
-                        wav, attn = eval_model(
-                            dv3, sent, replace_pronounciation_prob,
-                            min_level_db, ref_level_db, power, n_iter,
-                            win_length, hop_length, preemphasis)
-                        wav_path = os.path.join(
-                            state_dir, "waveform",
-                            "eval_sample_{:09d}.wav".format(global_step))
-                        sf.write(wav_path, wav, sample_rate)
-                        writer.add_audio(
-                            "eval_sample_{}".format(idx),
-                            wav,
-                            global_step,
-                            sample_rate=sample_rate)
-                        attn_path = os.path.join(
-                            state_dir, "alignments",
-                            "eval_sample_attn_{:09d}.png".format(global_step))
-                        plot_alignment(attn, attn_path)
-                        writer.add_image(
-                            "eval_sample_attn{}".format(idx),
-                            cm.viridis(attn),
-                            global_step,
-                            dataformats="HWC")
+            # save checkpoint
+            if global_step % save_interval == 0:
+                io.save_parameters(ckpt_dir, global_step, dv3, optim)
 
-                # save checkpoint
-                if global_step % save_interval == 0:
-                    dg.save_dygraph(
-                        dv3.state_dict(),
-                        os.path.join(ckpt_dir,
-                                     "model_step_{}".format(global_step)))
-                    dg.save_dygraph(
-                        optim.state_dict(),
-                        os.path.join(ckpt_dir,
-                                     "model_step_{}".format(global_step)))
-
-                global_step += 1
-            # epoch report
-            writer.add_scalar("epoch_average_loss", epoch_loss / i, j)
-            epoch_loss = 0.
+            global_step += 1

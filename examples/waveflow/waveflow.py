@@ -21,10 +21,11 @@ import paddle.fluid.dygraph as dg
 from paddle import fluid
 from scipy.io.wavfile import write
 
-import utils
+from parakeet.utils import io
 from parakeet.modules import weight_norm
-from .data import LJSpeech
-from .waveflow_modules import WaveFlowLoss, WaveFlowModule
+from parakeet.models.waveflow import WaveFlowLoss, WaveFlowModule
+from data import LJSpeech
+import utils
 
 
 class WaveFlow():
@@ -47,6 +48,7 @@ class WaveFlow():
     Returns:
         WaveFlow
     """
+
     def __init__(self,
                  config,
                  checkpoint_dir,
@@ -91,13 +93,12 @@ class WaveFlow():
                 parameter_list=waveflow.parameters())
 
             # Load parameters.
-            utils.load_parameters(
-                self.checkpoint_dir,
-                self.rank,
-                waveflow,
-                optimizer,
+            iteration = io.load_parameters(
+                model=waveflow,
+                optimizer=optimizer,
+                checkpoint_dir=self.checkpoint_dir,
                 iteration=config.iteration,
-                file_path=config.checkpoint)
+                checkpoint_path=config.checkpoint)
             print("Rank {}: checkpoint loaded.".format(self.rank))
 
             # Data parallelism.
@@ -111,13 +112,11 @@ class WaveFlow():
 
         else:
             # Load parameters.
-            utils.load_parameters(
-                self.checkpoint_dir,
-                self.rank,
-                waveflow,
+            iteration = io.load_parameters(
+                model=waveflow,
+                checkpoint_dir=self.checkpoint_dir,
                 iteration=config.iteration,
-                file_path=config.checkpoint,
-                dtype=self.dtype)
+                checkpoint_path=config.checkpoint)
             print("Rank {}: checkpoint loaded.".format(self.rank))
 
             for layer in waveflow.sublayers():
@@ -125,6 +124,8 @@ class WaveFlow():
                     layer.remove_weight_norm()
 
             self.waveflow = waveflow
+
+        return iteration
 
     def train_step(self, iteration):
         """Train the model for one step.
@@ -291,6 +292,5 @@ class WaveFlow():
         Returns:
             None
         """
-        utils.save_latest_parameters(self.checkpoint_dir, iteration,
-                                     self.waveflow, self.optimizer)
-        utils.save_latest_checkpoint(self.checkpoint_dir, iteration)
+        io.save_parameters(self.checkpoint_dir, iteration, self.waveflow,
+                           self.optimizer)

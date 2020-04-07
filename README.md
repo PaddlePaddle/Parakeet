@@ -74,31 +74,72 @@ Entries to the introduction, and the launch of training and synthsis for differe
 
 ## Pre-trained models and audio samples
 
-Parakeet also releases some well-trained parameters for the example models, which can be accessed in the following tables. Each column of these tables lists resources for one model, including the url link to the pre-trained model, the dataset that the model is trained on and the total training steps, and several synthesized audio samples based on the pre-trained model.
+Parakeet also releases some well-trained parameters for the example models, which can be accessed in the following tables. Each column of these tables lists resources for one model, including the url link to the pre-trained model, the dataset that the model is trained on, and synthesized audio samples based on the pre-trained model.
 
-- Vocoders
+#### Vocoders
+
+We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, ClariNet and WaveNet.
 
 <div align="center">
 <table>
     <thead>
         <tr>
             <th  style="width: 250px">
-            WaveFlow
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 64)</a>
             </th>
             <th  style="width: 250px">
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip">ClariNet</a>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 128)</a>
             </th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <th>LJSpeech, 2M</th>
-            <th>LJSpeech, 500K</th>
+            <th>LJSpeech </th>
+            <th>LJSpeech </th>
         </tr>
         <tr>
             <th>
-            To be added soon
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>
             </th>
+            <th>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>
+            </th>
+        </tr>
+    </tbody>
+    <thead>
+        <tr>
+            <th  style="width: 250px">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip">ClariNet</a>
+            </th>
+            <th  style="width: 250px">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/wavenet_ljspeech_ckpt_1.0.zip">WaveNet</a>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th>LJSpeech </th>
+            <th>LJSpeech </th>
+        </tr>
+        <tr>
             <th>
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_0.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
@@ -111,15 +152,57 @@ Parakeet also releases some well-trained parameters for the example models, whic
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_samples_1.0/step_500000_sentence_4.wav">
             <img src="images/audio_icon.png" width=250 /></a>  
             </th>
+            <th>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/wavenet_ljspeech_samples_1.0/step_2450k_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/wavenet_ljspeech_samples_1.0/step_2450k_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/wavenet_ljspeech_samples_1.0/step_2450k_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/wavenet_ljspeech_samples_1.0/step_2450k_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/wavenet_ljspeech_samples_1.0/step_2450k_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>  
+            </th>
         </tr>
     </tbody>
 </table>
 </div>
 
 
-&nbsp;&nbsp;&nbsp;&nbsp;**Note:** The input mel spectrogams are from validation dataset, which are not seen during training.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Note:** The input mel spectrogams are from validation dataset, which are not seen during training.
 
-- TTS models
+#### TTS models
+
+<div align="center">
+<table>
+    <thead>
+        <tr>
+            <th  style="width: 250px">
+            Deep Voice 3
+            </th>
+            <th  style="width: 250px">
+            Transformer TTS
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th>LJSpeech </th>
+            <th>LJSpeech </th>
+        </tr>
+        <tr>
+            <th style="height: 150px">
+            To be added soon
+            </th>
+            <th >
+            To be added soon
+            </th>
+        </tr>
+    </tbody>
+    <thead>
+</table>
+</div>
 
 Click each link to download, then you can get the compressed package which contains the pre-trained model and the `yaml` config describing how to train the model.
 

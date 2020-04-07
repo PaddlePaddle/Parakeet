@@ -22,7 +22,8 @@ import paddle.fluid.dygraph as dg
 from paddle import fluid
 
 import utils
-from parakeet.models.waveflow import WaveFlow
+from parakeet.utils import io
+from waveflow import WaveFlow
 
 
 def add_options_to_parser(parser):
@@ -98,5 +99,5 @@ if __name__ == "__main__":
     # For conflicting updates to the same field,
     # the preceding update will be overwritten by the following one.
     config = parser.parse_args()
-    config = utils.add_yaml_config(config)
+    config = io.add_yaml_config_to_args(config)
     benchmark(config)

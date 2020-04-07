@@ -25,7 +25,8 @@ from paddle import fluid
 from tensorboardX import SummaryWriter
 
 import utils
-from parakeet.models.waveflow import WaveFlow
+from parakeet.utils import io
+from waveflow import WaveFlow
 
 
 def add_options_to_parser(parser):
@@ -39,11 +40,6 @@ def add_options_to_parser(parser):
     parser.add_argument(
         '--root', type=str, help="root path of the LJSpeech dataset")
 
-    parser.add_argument(
-        '--parallel',
-        type=utils.str2bool,
-        default=True,
-        help="option to use data parallel training")
     parser.add_argument(
         '--use_gpu',
         type=utils.str2bool,
@@ -65,11 +61,11 @@ def add_options_to_parser(parser):
 
 def train(config):
     use_gpu = config.use_gpu
-    parallel = config.parallel if use_gpu else False
 
     # Get the rank of the current training process.
-    rank = dg.parallel.Env().local_rank if parallel else 0
-    nranks = dg.parallel.Env().nranks if parallel else 1
+    rank = dg.parallel.Env().local_rank
+    nranks = dg.parallel.Env().nranks
+    parallel = nranks > 1
 
     if rank == 0:
         # Print the whole config setting.
@@ -99,16 +95,7 @@ def train(config):
 
         # Build model.
         model = WaveFlow(config, checkpoint_dir, parallel, rank, nranks, tb)
-        model.build()
-
-        # Obtain the current iteration.
-        if config.checkpoint is None:
-            if config.iteration is None:
-                iteration = utils.load_latest_checkpoint(checkpoint_dir, rank)
-            else:
-                iteration = config.iteration
-        else:
-            iteration = int(config.checkpoint.split('/')[-1].split('-')[-1])
+        iteration = model.build()
 
         while iteration < config.max_iterations:
             # Run one single training step.
@@ -140,7 +127,7 @@ if __name__ == "__main__":
     # For conflicting updates to the same field, 
     # the preceding update will be overwritten by the following one.
     config = parser.parse_args()
-    config = utils.add_yaml_config(config)
+    config = io.add_yaml_config_to_args(config)
     # Force to use fp32 in model training
     vars(config)["use_fp16"] = False
     train(config)

@@ -313,6 +313,7 @@ class WaveNet(dg.Layer):
         """
         # Causal Conv
         if self.loss_type == "softmax":
+            x = F.clip(x, min=-1., max=0.99999)
             x = quantize(x, self.output_dim)
             x = self.embed(x)  # (B, T, C), T=1
         else:
