@@ -22,14 +22,20 @@ from parakeet.models.transformer_tts.post_convnet import PostConvNet
 
 
 class Decoder(dg.Layer):
-    def __init__(self, num_hidden, config, num_head=4, n_layers=3):
+    def __init__(self,
+                 num_hidden,
+                 num_mels=80,
+                 outputs_per_step=1,
+                 num_head=4,
+                 n_layers=3):
         """Decoder layer of TransformerTTS.
 
         Args:
             num_hidden (int): the number of source vocabulary.
-            config: the yaml configs used in decoder.
-            n_layers (int, optional): the layers number of multihead attention. Defaults to 4.
-            num_head (int, optional): the head number of multihead attention. Defaults to 3.
+            n_mels (int, optional): the number of mel bands when calculating mel spectrograms. Defaults to 80.
+            outputs_per_step (int, optional): the num of output frames per step . Defaults to 1.
+            num_head (int, optional): the head number of multihead attention. Defaults to 4.
+            n_layers (int, optional): the layers number of multihead attention. Defaults to 3.  
         """
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
@@ -51,7 +57,7 @@ class Decoder(dg.Layer):
                     self.pos_inp),
                 trainable=False))
         self.decoder_prenet = PreNet(
-            input_size=config['audio']['num_mels'],
+            input_size=num_mels,
             hidden_size=num_hidden * 2,
             output_size=num_hidden,
             dropout_rate=0.2)
@@ -85,7 +91,7 @@ class Decoder(dg.Layer):
             self.add_sublayer("ffns_{}".format(i), layer)
         self.mel_linear = dg.Linear(
             num_hidden,
-            config['audio']['num_mels'] * config['audio']['outputs_per_step'],
+            num_mels * outputs_per_step,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.XavierInitializer()),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Uniform(
@@ -99,12 +105,12 @@ class Decoder(dg.Layer):
                 low=-k, high=k)))
 
         self.postconvnet = PostConvNet(
-            config['audio']['num_mels'],
-            config['hidden_size'],
+            num_mels,
+            num_hidden,
             filter_size=5,
             padding=4,
             num_conv=5,
-            outputs_per_step=config['audio']['outputs_per_step'],
+            outputs_per_step=outputs_per_step,
             use_cudnn=True)
 
     def forward(self,

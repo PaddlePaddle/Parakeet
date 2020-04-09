@@ -13,64 +13,84 @@
 # limitations under the License.
 import os
 from scipy.io.wavfile import write
-from parakeet.g2p.en import text_to_sequence
 import numpy as np
 from tqdm import tqdm
 from matplotlib import cm
 from tensorboardX import SummaryWriter
 from ruamel import yaml
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dg
 from pathlib import Path
 import argparse
-from parse import add_config_options_to_parser
 from pprint import pprint
-from collections import OrderedDict
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+from parakeet.g2p.en import text_to_sequence
 from parakeet.models.transformer_tts.utils import *
 from parakeet import audio
-from parakeet.models.transformer_tts.vocoder import Vocoder
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
+from parakeet.models.transformer_tts import Vocoder
+from parakeet.models.transformer_tts import TransformerTTS
+from parakeet.utils import io
 
 
-def load_checkpoint(step, model_path):
-    model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
-    new_state_dict = OrderedDict()
-    for param in model_dict:
-        if param.startswith('_layers.'):
-            new_state_dict[param[8:]] = model_dict[param]
-        else:
-            new_state_dict[param] = model_dict[param]
-    return new_state_dict
+def add_config_options_to_parser(parser):
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument("--use_gpu", type=int, default=0, help="device to use")
+    parser.add_argument(
+        "--max_len",
+        type=int,
+        default=200,
+        help="The max length of audio when synthsis.")
+
+    parser.add_argument(
+        "--checkpoint_transformer",
+        type=str,
+        help="transformer_tts checkpoint to synthesis")
+    parser.add_argument(
+        "--checkpoint_vocoder",
+        type=str,
+        help="vocoder checkpoint to synthesis")
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="synthesis",
+        help="path to save experiment results")
 
 
 def synthesis(text_input, args):
-    place = (fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace())
+    local_rank = dg.parallel.Env().local_rank
+    place = (fluid.CUDAPlace(local_rank) if args.use_gpu else fluid.CPUPlace())
 
-    with open(args.config_path) as f:
+    with open(args.config) as f:
         cfg = yaml.load(f, Loader=yaml.Loader)
 
     # tensorboard
-    if not os.path.exists(args.log_dir):
-        os.mkdir(args.log_dir)
-    path = os.path.join(args.log_dir, 'synthesis')
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
-    writer = SummaryWriter(path)
+    writer = SummaryWriter(os.path.join(args.output, 'log'))
 
     with dg.guard(place):
         with fluid.unique_name.guard():
-            model = TransformerTTS(cfg)
-            model.set_dict(
-                load_checkpoint(
-                    str(args.transformer_step),
-                    os.path.join(args.checkpoint_path, "transformer")))
+            network_cfg = cfg['network']
+            model = TransformerTTS(
+                network_cfg['embedding_size'], network_cfg['hidden_size'],
+                network_cfg['encoder_num_head'],
+                network_cfg['encoder_n_layers'], cfg['audio']['num_mels'],
+                network_cfg['outputs_per_step'],
+                network_cfg['decoder_num_head'],
+                network_cfg['decoder_n_layers'])
+            # Load parameters.
+            global_step = io.load_parameters(
+                model=model, checkpoint_path=args.checkpoint_transformer)
             model.eval()
 
         with fluid.unique_name.guard():
-            model_vocoder = Vocoder(cfg, args.batch_size)
-            model_vocoder.set_dict(
-                load_checkpoint(
-                    str(args.vocoder_step),
-                    os.path.join(args.checkpoint_path, "vocoder")))
+            model_vocoder = Vocoder(
+                cfg['train']['batch_size'], cfg['vocoder']['hidden_size'],
+                cfg['audio']['num_mels'], cfg['audio']['n_fft'])
+            # Load parameters.
+            global_step = io.load_parameters(
+                model=model_vocoder, checkpoint_path=args.checkpoint_vocoder)
             model_vocoder.eval()
         # init input
         text = np.asarray(text_to_sequence(text_input))
@@ -83,6 +103,7 @@ def synthesis(text_input, args):
         for i in pbar:
             dec_slf_mask = get_triu_tensor(
                 mel_input.numpy(), mel_input.numpy()).astype(np.float32)
+            dec_slf_mask = np.expand_dims(dec_slf_mask, axis=0)
             dec_slf_mask = fluid.layers.cast(
                 dg.to_variable(dec_slf_mask != 0), np.float32) * (-2**32 + 1)
             pos_mel = np.arange(1, mel_input.shape[1] + 1)
@@ -114,6 +135,7 @@ def synthesis(text_input, args):
             do_trim_silence=False,
             sound_norm=False)
 
+        # synthesis with cbhg
         wav = _ljspeech_processor.inv_spectrogram(
             fluid.layers.transpose(
                 fluid.layers.squeeze(mag_pred, [0]), [1, 0]).numpy())
@@ -127,29 +149,24 @@ def synthesis(text_input, args):
                     i * 4 + j,
                     dataformats="HWC")
 
-        for i, prob in enumerate(attn_enc):
-            for j in range(4):
-                x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
-                writer.add_image(
-                    'Attention_enc_%d_0' % global_step,
-                    x,
-                    i * 4 + j,
-                    dataformats="HWC")
+        writer.add_audio(text_input + '(cbhg)', wav, 0, cfg['audio']['sr'])
 
-        for i, prob in enumerate(attn_dec):
-            for j in range(4):
-                x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
-                writer.add_image(
-                    'Attention_dec_%d_0' % global_step,
-                    x,
-                    i * 4 + j,
-                    dataformats="HWC")
-        writer.add_audio(text_input, wav, 0, cfg['audio']['sr'])
-        if not os.path.exists(args.sample_path):
-            os.mkdir(args.sample_path)
+        if not os.path.exists(os.path.join(args.output, 'samples')):
+            os.mkdir(os.path.join(args.output, 'samples'))
         write(
-            os.path.join(args.sample_path, 'test.wav'), cfg['audio']['sr'],
-            wav)
+            os.path.join(os.path.join(args.output, 'samples'), 'cbhg.wav'),
+            cfg['audio']['sr'], wav)
+
+        # synthesis with griffin-lim
+        wav = _ljspeech_processor.inv_melspectrogram(
+            fluid.layers.transpose(
+                fluid.layers.squeeze(postnet_pred, [0]), [1, 0]).numpy())
+        writer.add_audio(text_input + '(griffin)', wav, 0, cfg['audio']['sr'])
+
+        write(
+            os.path.join(os.path.join(args.output, 'samples'), 'griffin.wav'),
+            cfg['audio']['sr'], wav)
+        print("Synthesis completed !!!")
     writer.close()
 
 
@@ -157,5 +174,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Synthesis model")
     add_config_options_to_parser(parser)
     args = parser.parse_args()
+    # Print the whole config setting.
+    pprint(vars(args))
     synthesis("Parakeet stands for Paddle PARAllel text-to-speech toolkit.",
               args)

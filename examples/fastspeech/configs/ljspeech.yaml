@@ -1,0 +1,33 @@
+audio:
+  num_mels: 80  #the number of mel bands when calculating mel spectrograms.
+  n_fft: 2048 #the number of fft components.
+  sr: 22050 #the sampling rate of audio data file.
+  hop_length: 256 #the number of samples to advance between frames.
+  win_length: 1024 #the length (width) of the window function.
+  power: 1.2 #the power to raise before griffin-lim.
+
+network:
+  encoder_n_layer: 6 #the number of FFT Block in encoder.
+  encoder_head: 2 #the attention head number in encoder.
+  encoder_conv1d_filter_size: 1536 #the filter size of conv1d in encoder.
+  max_seq_len: 2048 #the max length of sequence.
+  decoder_n_layer: 6 #the number of FFT Block in decoder.
+  decoder_head: 2 #the attention head number in decoder.
+  decoder_conv1d_filter_size: 1536 #the filter size of conv1d in decoder.
+  hidden_size: 384 #the hidden size in model of fastspeech.
+  duration_predictor_output_size: 256 #the output size of duration predictior.
+  duration_predictor_filter_size: 3 #the filter size of conv1d in duration prediction.
+  fft_conv1d_filter: 3 #the filter size of conv1d in fft.
+  fft_conv1d_padding: 1 #the padding size of conv1d in fft.
+  dropout: 0.1 #the dropout in network.
+  outputs_per_step: 1
+
+train:
+  batch_size: 32
+  learning_rate: 0.001
+  warm_up_step: 4000 #the warm up step of learning rate.
+  grad_clip_thresh: 0.1 #the threshold of grad clip.
+
+  checkpoint_interval: 1000
+  max_epochs: 10000
+

@@ -27,6 +27,16 @@ The model adopts the multi-head attention mechanism to replace the RNN structure
 ├── train_transformer.py   # script for transformer model training
 ├── train_vocoder.py       # script for vocoder model training
 ```
+## Saving & Loading
+`train_transformer.py` and `train_vocoer.py` have 3 arguments in common, `--checkpooint`, `iteration` and `output`.
+
+1. `output` is the directory for saving results.
+During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`.
+During synthesis, results are saved in `samples/` in `output` and tensorboard log is save in `log/` in `output`.
+
+2. `--checkpoint` and `--iteration` for loading from existing checkpoint. Loading existing checkpoiont follows the following rule:
+If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
+If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
 
 ## Train Transformer
 
@@ -34,26 +44,26 @@ TransformerTTS model can be trained with ``train_transformer.py``.
 ```bash
 python train_trasformer.py \
 --use_gpu=1 \
---use_data_parallel=0 \
---data_path=${DATAPATH} \
---config_path='config/train_transformer.yaml' \
+--data=${DATAPATH} \
+--output='./experiment' \
+--config='configs/ljspeech.yaml' \
 ```
 Or you can run the script file directly.
 ```bash
 sh train_transformer.sh
 ```
-If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follows:
+If you want to train on multiple GPUs, you must start training as follows:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train_transformer.py \
 --use_gpu=1 \
---use_data_parallel=1 \
---data_path=${DATAPATH} \
---config_path='config/train_transformer.yaml' \
+--data=${DATAPATH} \
+--output='./experiment' \
+--config='configs/ljspeech.yaml' \
 ```
 
-If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--transformer_step``.
+If you wish to resume from an existing model, See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
 
 **Note: In order to ensure the training effect, we recommend using multi-GPU training to enlarge the batch size, and at least 16 samples in single batch per GPU.**
 
@@ -65,25 +75,25 @@ Vocoder model can be trained with ``train_vocoder.py``.
 ```bash
 python train_vocoder.py \
 --use_gpu=1 \
---use_data_parallel=0 \
---data_path=${DATAPATH} \
---config_path='config/train_vocoder.yaml' \
+--data=${DATAPATH} \
+--output='./vocoder' \
+--config='configs/ljspeech.yaml' \
 ```
 Or you can run the script file directly.
 ```bash
 sh train_vocoder.sh
 ```
-If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follows:
+If you want to train on multiple GPUs, you must start training as follows:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train_vocoder.py \
 --use_gpu=1 \
---use_data_parallel=1 \
---data_path=${DATAPATH} \
---config_path='config/train_vocoder.yaml' \
+--data=${DATAPATH} \
+--output='./vocoder' \
+--config='configs/ljspeech.yaml' \
 ```
-If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--vocoder_step``.
+If you wish to resume from an existing model, See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
 
 For more help on arguments:
 ``python train_vocoder.py --help``.
@@ -92,21 +102,18 @@ For more help on arguments:
 After training the TransformerTTS and vocoder model, audio can be synthesized with ``synthesis.py``.
 ```bash
 python synthesis.py \
---max_len=50 \
---transformer_step=160000 \
---vocoder_step=70000 \
---use_gpu=1
---checkpoint_path='./checkpoint' \
---sample_path='./sample' \
---config_path='config/synthesis.yaml' \
+--max_len=300 \
+--use_gpu=1 \
+--output='./synthesis' \
+--config='configs/ljspeech.yaml' \
+--checkpoint_transformer='./checkpoint/transformer/step-120000' \
+--checkpoint_vocoder='./checkpoint/vocoder/step-100000' \
 ```
 
 Or you can run the script file directly.
 ```bash
 sh synthesis.sh
 ```
-
-And the audio file will be saved in ``--sample_path``.
 
 For more help on arguments:
 ``python synthesis.py --help``.

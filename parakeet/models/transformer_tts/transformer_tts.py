@@ -18,16 +18,32 @@ from parakeet.models.transformer_tts.decoder import Decoder
 
 
 class TransformerTTS(dg.Layer):
-    def __init__(self, config):
+    def __init__(self,
+                 embedding_size,
+                 num_hidden,
+                 encoder_num_head=4,
+                 encoder_n_layers=3,
+                 n_mels=80,
+                 outputs_per_step=1,
+                 decoder_num_head=4,
+                 decoder_n_layers=3):
         """TransformerTTS model.
 
         Args:
-            config: the yaml configs used in TransformerTTS model.
+            embedding_size (int): the size of position embedding.
+            num_hidden (int): the size of hidden layer in network.
+            encoder_num_head (int, optional): the head number of multihead attention in encoder. Defaults to 4.
+            encoder_n_layers (int, optional): the layers number of multihead attention in encoder. Defaults to 3.
+            n_mels (int, optional): the number of mel bands when calculating mel spectrograms. Defaults to 80.
+            outputs_per_step (int, optional): the num of output frames per step . Defaults to 1.
+            decoder_num_head (int, optional): the head number of multihead attention in decoder. Defaults to 4.
+            decoder_n_layers (int, optional): the layers number of multihead attention in decoder. Defaults to 3.
         """
         super(TransformerTTS, self).__init__()
-        self.encoder = Encoder(config['embedding_size'], config['hidden_size'])
-        self.decoder = Decoder(config['hidden_size'], config)
-        self.config = config
+        self.encoder = Encoder(embedding_size, num_hidden, encoder_num_head,
+                               encoder_n_layers)
+        self.decoder = Decoder(num_hidden, n_mels, outputs_per_step,
+                               decoder_num_head, decoder_n_layers)
 
     def forward(self,
                 characters,

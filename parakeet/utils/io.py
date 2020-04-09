@@ -125,13 +125,20 @@ def load_parameters(model,
     model_dict, optimizer_dict = dg.load_dygraph(checkpoint_path)
 
     state_dict = model.state_dict()
+    dict_new = {}
+
     # cast to desired data type, for mixed-precision training/inference.
     for k, v in model_dict.items():
-        if k in state_dict and convert_np_dtype(v.dtype) != state_dict[
-                k].dtype:
-            model_dict[k] = v.astype(state_dict[k].numpy().dtype)
 
-    model.set_dict(model_dict)
+        if k.startswith('_layers.'):
+            k = k[8:]
+
+        if k in state_dict:
+            if convert_np_dtype(v.dtype) != state_dict[k].dtype:
+                v = v.astype(state_dict[k].numpy().dtype)
+            dict_new[k] = v
+
+    model.set_dict(dict_new)
     print("[checkpoint] Rank {}: loaded model from {}.pdparams".format(
         local_rank, checkpoint_path))
 

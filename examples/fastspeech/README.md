@@ -26,36 +26,69 @@ The model consists of encoder, decoder and length regulator three parts.
 ├── train.py               # script for model training
 ```
 
-## Train Transformer
+## Saving & Loading
+`train.py` have 3 arguments in common, `--checkpooint`, `iteration` and `output`.
+
+1. `output` is the directory for saving results.
+During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`.
+During synthesis, results are saved in `samples/` in `output` and tensorboard log is save in `log/` in `output`.
+
+2. `--checkpoint` and `--iteration` for loading from existing checkpoint. Loading existing checkpoiont follows the following rule:
+If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
+If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
+
+## Compute Alignment
+
+Before train FastSpeech model, you should have diagonal information. We use the diagonal obtained from the TranformerTTS model as the diagonal, you can run alignments/get_alignments.py to get it.
+
+```bash
+cd alignments
+python get_alignments.py \
+--use_gpu=1 \
+--output='./alignments' \
+--data=${DATAPATH} \
+--config=${CONFIG} \
+--checkpoint_transformer=${CHECKPOINT} \
+```
+where `${DATAPATH}` is the path saved LJSpeech data, `${CHECKPOINT}` is the pretrain model path of TransformerTTS, `${CONFIG}` is the config yaml file of TransformerTTS checkpoint. It necessary for you to prepare a pre-trained TranformerTTS checkpoint.
+
+For more help on arguments:
+``python train.py --help``.
+
+Or you can use your own diagonal information, you should process the data into the following format:
+```bash
+{'fname1': alignment1,
+'fname2': alignment2,
+...}
+```
+
+## Train FastSpeech
 
 FastSpeech model can be trained with ``train.py``.
 ```bash
 python train.py \
 --use_gpu=1 \
---use_data_parallel=0 \
---data_path=${DATAPATH} \
---transtts_path='../transformer_tts/checkpoint' \
---transformer_step=160000 \
---config_path='config/fastspeech.yaml' \
+--data=${DATAPATH} \
+--alignments_path=${ALIGNMENTS_PATH} \
+--output='./experiment' \
+--config='configs/ljspeech.yaml' \
 ```
 Or you can run the script file directly.
 ```bash
 sh train.sh
 ```
-If you want to train on multiple GPUs, you must set ``--use_data_parallel=1``, and then start training as follows:
+If you want to train on multiple GPUs, start training as follows:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train.py \
 --use_gpu=1 \
---use_data_parallel=1 \
---data_path=${DATAPATH} \
---transtts_path='../transformer_tts/checkpoint' \
---transformer_step=160000 \
---config_path='config/fastspeech.yaml' \
+--data=${DATAPATH} \
+--alignments_path=${ALIGNMENTS_PATH} \
+--output='./experiment' \
+--config='configs/ljspeech.yaml' \
 ```
-
-If you wish to resume from an existing model, please set ``--checkpoint_path`` and ``--fastspeech_step``.
+If you wish to resume from an existing model, See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
 
 For more help on arguments:
 ``python train.py --help``.
@@ -66,9 +99,13 @@ After training the FastSpeech, audio can be synthesized with ``synthesis.py``.
 python synthesis.py \
 --use_gpu=1 \
 --alpha=1.0 \
---checkpoint_path='checkpoint/' \
---fastspeech_step=112000 \
+--checkpoint='./checkpoint/fastspeech/step-120000' \
+--config='configs/ljspeech.yaml' \
+--config_clarine='../clarinet/configs/config.yaml' \
+--checkpoint_clarinet='../clarinet/checkpoint/step-500000' \
+--output='./synthesis' \
 ```
+We use Clarinet to synthesis wav, so it necessary for you to prepare a pre-trained [Clarinet checkpoint](https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip).
 
 Or you can run the script file directly.
 ```bash

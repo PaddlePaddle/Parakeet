@@ -19,22 +19,22 @@ from parakeet.models.transformer_tts.cbhg import CBHG
 
 
 class Vocoder(dg.Layer):
-    def __init__(self, config, batch_size):
+    def __init__(self, batch_size, hidden_size, num_mels=80, n_fft=2048):
         """CBHG Network (mel -> linear)
 
         Args:
-            config: the yaml configs used in Vocoder model.
             batch_size (int): the batch size of input.
+            hidden_size (int): the size of hidden layer in network.
+            n_mels (int, optional): the number of mel bands when calculating mel spectrograms. Defaults to 80.
+            n_fft (int, optional): length of the windowed signal after padding with zeros. Defaults to 2048.
         """
         super(Vocoder, self).__init__()
         self.pre_proj = Conv1D(
-            num_channels=config['audio']['num_mels'],
-            num_filters=config['hidden_size'],
-            filter_size=1)
-        self.cbhg = CBHG(config['hidden_size'], batch_size)
+            num_channels=num_mels, num_filters=hidden_size, filter_size=1)
+        self.cbhg = CBHG(hidden_size, batch_size)
         self.post_proj = Conv1D(
-            num_channels=config['hidden_size'],
-            num_filters=(config['audio']['n_fft'] // 2) + 1,
+            num_channels=hidden_size,
+            num_filters=(n_fft // 2) + 1,
             filter_size=1)
 
     def forward(self, mel):

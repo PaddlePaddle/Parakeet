@@ -26,8 +26,8 @@ class Encoder(dg.Layer):
         Args:
             embedding_size (int): the size of position embedding.
             num_hidden (int): the size of hidden layer in network.
-            n_layers (int, optional): the layers number of multihead attention. Defaults to 4.
-            num_head (int, optional): the head number of multihead attention. Defaults to 3.
+            num_head (int, optional): the head number of multihead attention. Defaults to 4.
+            n_layers (int, optional): the layers number of multihead attention. Defaults to 3.
         """
         super(Encoder, self).__init__()
         self.num_hidden = num_hidden

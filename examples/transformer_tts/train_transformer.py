@@ -16,7 +16,6 @@ from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from collections import OrderedDict
 import argparse
-from parse import add_config_options_to_parser
 from pprint import pprint
 from ruamel import yaml
 from matplotlib import cm
@@ -26,65 +25,85 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 from parakeet.models.transformer_tts.utils import cross_entropy
 from data import LJSpeechLoader
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
+from parakeet.models.transformer_tts import TransformerTTS
+from parakeet.utils import io
 
 
-def load_checkpoint(step, model_path):
-    model_dict, opti_dict = fluid.dygraph.load_dygraph(
-        os.path.join(model_path, step))
-    new_state_dict = OrderedDict()
-    for param in model_dict:
-        if param.startswith('_layers.'):
-            new_state_dict[param[8:]] = model_dict[param]
-        else:
-            new_state_dict[param] = model_dict[param]
-    return new_state_dict, opti_dict
+def add_config_options_to_parser(parser):
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument("--use_gpu", type=int, default=0, help="device to use")
+    parser.add_argument("--data", type=str, help="path of LJspeech dataset")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="experiment",
+        help="path to save experiment results")
 
 
 def main(args):
-    local_rank = dg.parallel.Env().local_rank if args.use_data_parallel else 0
-    nranks = dg.parallel.Env().nranks if args.use_data_parallel else 1
+    local_rank = dg.parallel.Env().local_rank
+    nranks = dg.parallel.Env().nranks
+    parallel = nranks > 1
 
-    with open(args.config_path) as f:
+    with open(args.config) as f:
         cfg = yaml.load(f, Loader=yaml.Loader)
 
     global_step = 0
-    place = (fluid.CUDAPlace(dg.parallel.Env().dev_id)
-             if args.use_data_parallel else fluid.CUDAPlace(0)
-             if args.use_gpu else fluid.CPUPlace())
+    place = fluid.CUDAPlace(local_rank) if args.use_gpu else fluid.CPUPlace()
 
-    if not os.path.exists(args.log_dir):
-        os.mkdir(args.log_dir)
-    path = os.path.join(args.log_dir, 'transformer')
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
-    writer = SummaryWriter(path) if local_rank == 0 else None
+    writer = SummaryWriter(os.path.join(args.output,
+                                        'log')) if local_rank == 0 else None
 
     with dg.guard(place):
-        model = TransformerTTS(cfg)
+        network_cfg = cfg['network']
+        model = TransformerTTS(
+            network_cfg['embedding_size'], network_cfg['hidden_size'],
+            network_cfg['encoder_num_head'], network_cfg['encoder_n_layers'],
+            cfg['audio']['num_mels'], network_cfg['outputs_per_step'],
+            network_cfg['decoder_num_head'], network_cfg['decoder_n_layers'])
 
         model.train()
         optimizer = fluid.optimizer.AdamOptimizer(
-            learning_rate=dg.NoamDecay(1 / (
-                cfg['warm_up_step'] * (args.lr**2)), cfg['warm_up_step']),
+            learning_rate=dg.NoamDecay(1 /
+                                       (cfg['train']['warm_up_step'] *
+                                        (cfg['train']['learning_rate']**2)),
+                                       cfg['train']['warm_up_step']),
             parameter_list=model.parameters())
 
-        if args.checkpoint_path is not None:
-            model_dict, opti_dict = load_checkpoint(
-                str(args.transformer_step),
-                os.path.join(args.checkpoint_path, "transformer"))
-            model.set_dict(model_dict)
-            optimizer.set_dict(opti_dict)
-            global_step = args.transformer_step
-            print("load checkpoint!!!")
+        # Load parameters.
+        global_step = io.load_parameters(
+            model=model,
+            optimizer=optimizer,
+            checkpoint_dir=os.path.join(args.output, 'checkpoints'),
+            iteration=args.iteration,
+            checkpoint_path=args.checkpoint)
+        print("Rank {}: checkpoint loaded.".format(local_rank))
 
-        if args.use_data_parallel:
+        if parallel:
             strategy = dg.parallel.prepare_context()
             model = fluid.dygraph.parallel.DataParallel(model, strategy)
 
         reader = LJSpeechLoader(
-            cfg, args, nranks, local_rank, shuffle=True).reader()
+            cfg['audio'],
+            place,
+            args.data,
+            cfg['train']['batch_size'],
+            nranks,
+            local_rank,
+            shuffle=True).reader()
 
-        for epoch in range(args.epochs):
+        for epoch in range(cfg['train']['max_epochs']):
             pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d' % epoch)
@@ -111,7 +130,7 @@ def main(args):
                 loss = mel_loss + post_mel_loss
 
                 # Note: When used stop token loss the learning did not work.
-                if args.stop_token:
+                if cfg['network']['stop_token']:
                     label = (pos_mel == 0).astype(np.float32)
                     stop_loss = cross_entropy(stop_preds, label)
                     loss = loss + stop_loss
@@ -122,11 +141,11 @@ def main(args):
                         'post_mel_loss': post_mel_loss.numpy()
                     }, global_step)
 
-                    if args.stop_token:
+                    if cfg['network']['stop_token']:
                         writer.add_scalar('stop_loss',
                                           stop_loss.numpy(), global_step)
 
-                    if args.use_data_parallel:
+                    if parallel:
                         writer.add_scalars('alphas', {
                             'encoder_alpha':
                             model._layers.encoder.alpha.numpy(),
@@ -143,12 +162,12 @@ def main(args):
                                       optimizer._learning_rate.step().numpy(),
                                       global_step)
 
-                    if global_step % args.image_step == 1:
+                    if global_step % cfg['train']['image_interval'] == 1:
                         for i, prob in enumerate(attn_probs):
-                            for j in range(4):
+                            for j in range(cfg['network']['decoder_num_head']):
                                 x = np.uint8(
-                                    cm.viridis(prob.numpy()[j * args.batch_size
-                                                            // 2]) * 255)
+                                    cm.viridis(prob.numpy()[j * cfg['train'][
+                                        'batch_size'] // 2]) * 255)
                                 writer.add_image(
                                     'Attention_%d_0' % global_step,
                                     x,
@@ -156,10 +175,10 @@ def main(args):
                                     dataformats="HWC")
 
                         for i, prob in enumerate(attn_enc):
-                            for j in range(4):
+                            for j in range(cfg['network']['encoder_num_head']):
                                 x = np.uint8(
-                                    cm.viridis(prob.numpy()[j * args.batch_size
-                                                            // 2]) * 255)
+                                    cm.viridis(prob.numpy()[j * cfg['train'][
+                                        'batch_size'] // 2]) * 255)
                                 writer.add_image(
                                     'Attention_enc_%d_0' % global_step,
                                     x,
@@ -167,17 +186,17 @@ def main(args):
                                     dataformats="HWC")
 
                         for i, prob in enumerate(attn_dec):
-                            for j in range(4):
+                            for j in range(cfg['network']['decoder_num_head']):
                                 x = np.uint8(
-                                    cm.viridis(prob.numpy()[j * args.batch_size
-                                                            // 2]) * 255)
+                                    cm.viridis(prob.numpy()[j * cfg['train'][
+                                        'batch_size'] // 2]) * 255)
                                 writer.add_image(
                                     'Attention_dec_%d_0' % global_step,
                                     x,
                                     i * 4 + j,
                                     dataformats="HWC")
 
-                if args.use_data_parallel:
+                if parallel:
                     loss = model.scale_loss(loss)
                     loss.backward()
                     model.apply_collective_grads()
@@ -186,17 +205,16 @@ def main(args):
                 optimizer.minimize(
                     loss,
                     grad_clip=fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg[
-                        'grad_clip_thresh']))
+                        'train']['grad_clip_thresh']))
                 model.clear_gradients()
 
                 # save checkpoint
-                if local_rank == 0 and global_step % args.save_step == 0:
-                    if not os.path.exists(args.save_path):
-                        os.mkdir(args.save_path)
-                    save_path = os.path.join(args.save_path,
-                                             'transformer/%d' % global_step)
-                    dg.save_dygraph(model.state_dict(), save_path)
-                    dg.save_dygraph(optimizer.state_dict(), save_path)
+                if local_rank == 0 and global_step % cfg['train'][
+                        'checkpoint_interval'] == 0:
+                    io.save_parameters(
+                        os.path.join(args.output, 'checkpoints'), global_step,
+                        model, optimizer)
+
         if local_rank == 0:
             writer.close()
 
@@ -204,8 +222,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train TransformerTTS model")
     add_config_options_to_parser(parser)
-
     args = parser.parse_args()
     # Print the whole config setting.
-    pprint(args)
+    pprint(vars(args))
     main(args)

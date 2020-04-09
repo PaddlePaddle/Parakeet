@@ -24,11 +24,13 @@ from parakeet.models.fastspeech.decoder import Decoder
 
 
 class FastSpeech(dg.Layer):
-    def __init__(self, cfg):
+    def __init__(self, cfg, num_mels=80):
         """FastSpeech model.
 
         Args:
             cfg: the yaml configs used in FastSpeech model.
+            num_mels (int, optional): the number of mel bands when calculating mel spectrograms. Defaults to 80.
+
         """
         super(FastSpeech, self).__init__()
 
@@ -37,15 +39,15 @@ class FastSpeech(dg.Layer):
             len_max_seq=cfg['max_seq_len'],
             n_layers=cfg['encoder_n_layer'],
             n_head=cfg['encoder_head'],
-            d_k=cfg['fs_hidden_size'] // cfg['encoder_head'],
-            d_q=cfg['fs_hidden_size'] // cfg['encoder_head'],
-            d_model=cfg['fs_hidden_size'],
+            d_k=cfg['hidden_size'] // cfg['encoder_head'],
+            d_q=cfg['hidden_size'] // cfg['encoder_head'],
+            d_model=cfg['hidden_size'],
             d_inner=cfg['encoder_conv1d_filter_size'],
             fft_conv1d_kernel=cfg['fft_conv1d_filter'],
             fft_conv1d_padding=cfg['fft_conv1d_padding'],
             dropout=0.1)
         self.length_regulator = LengthRegulator(
-            input_size=cfg['fs_hidden_size'],
+            input_size=cfg['hidden_size'],
             out_channels=cfg['duration_predictor_output_size'],
             filter_size=cfg['duration_predictor_filter_size'],
             dropout=cfg['dropout'])
@@ -53,30 +55,30 @@ class FastSpeech(dg.Layer):
             len_max_seq=cfg['max_seq_len'],
             n_layers=cfg['decoder_n_layer'],
             n_head=cfg['decoder_head'],
-            d_k=cfg['fs_hidden_size'] // cfg['decoder_head'],
-            d_q=cfg['fs_hidden_size'] // cfg['decoder_head'],
-            d_model=cfg['fs_hidden_size'],
+            d_k=cfg['hidden_size'] // cfg['decoder_head'],
+            d_q=cfg['hidden_size'] // cfg['decoder_head'],
+            d_model=cfg['hidden_size'],
             d_inner=cfg['decoder_conv1d_filter_size'],
             fft_conv1d_kernel=cfg['fft_conv1d_filter'],
             fft_conv1d_padding=cfg['fft_conv1d_padding'],
             dropout=0.1)
         self.weight = fluid.ParamAttr(
             initializer=fluid.initializer.XavierInitializer())
-        k = math.sqrt(1.0 / cfg['fs_hidden_size'])
+        k = math.sqrt(1.0 / cfg['hidden_size'])
         self.bias = fluid.ParamAttr(initializer=fluid.initializer.Uniform(
             low=-k, high=k))
         self.mel_linear = dg.Linear(
-            cfg['fs_hidden_size'],
-            cfg['audio']['num_mels'] * cfg['audio']['outputs_per_step'],
+            cfg['hidden_size'],
+            num_mels * cfg['outputs_per_step'],
             param_attr=self.weight,
             bias_attr=self.bias, )
         self.postnet = PostConvNet(
-            n_mels=cfg['audio']['num_mels'],
+            n_mels=num_mels,
             num_hidden=512,
             filter_size=5,
             padding=int(5 / 2),
             num_conv=5,
-            outputs_per_step=cfg['audio']['outputs_per_step'],
+            outputs_per_step=cfg['outputs_per_step'],
             use_cudnn=True,
             dropout=0.1,
             batchnorm_last=True)
@@ -144,7 +146,7 @@ class FastSpeech(dg.Layer):
                 decoder_pos.numpy(), decoder_pos.numpy()).astype(np.float32)
             slf_attn_mask = np.expand_dims(slf_attn_mask, axis=0)
             slf_attn_mask = fluid.layers.cast(
-                dg.to_variable(slf_attn_mask == 0), np.float32)
+                dg.to_variable(slf_attn_mask != 0), np.float32) * (-2**32 + 1)
             slf_attn_mask = dg.to_variable(slf_attn_mask)
             dec_non_pad_mask = fluid.layers.unsqueeze(
                 (decoder_pos != 0).astype(np.float32), [-1])

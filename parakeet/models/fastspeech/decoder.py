@@ -75,10 +75,10 @@ class Decoder(dg.Layer):
         Compute decoder outputs.
         
         Args:
-            enc_seq (Variable): shape(B, T_text, C), dtype float32,
-                the output of length regulator, where T_text means the timesteps of input text, 
+            enc_seq (Variable): shape(B, T_mel, C), dtype float32,
+                the output of length regulator, where T_mel means the timesteps of input spectrum.
             enc_pos (Variable): shape(B, T_mel), dtype int64, 
-                the spectrum position, where T_mel means the timesteps of input spectrum, 
+                the spectrum position.
             non_pad_mask (Variable): shape(B, T_mel, 1), dtype int64, the mask with non pad.
             slf_attn_mask (Variable, optional): shape(B, T_mel, T_mel), dtype int64, 
                 the mask of mel spectrum. Defaults to None.
