@@ -197,7 +197,7 @@ if __name__ == "__main__":
             beta2,
             epsilon=epsilon,
             parameter_list=dv3.parameters())
-        gradient_clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.1)
+        gradient_clipper = fluid.clip.GradientClipByGlobalNorm(0.1)
 
         # generation
         synthesis_config = config["synthesis"]

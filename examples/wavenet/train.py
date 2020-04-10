@@ -130,7 +130,7 @@ if __name__ == "__main__":
             lr_scheduler, parameter_list=model.parameters())
 
         gradiant_max_norm = train_config["gradient_max_norm"]
-        clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
+        clipper = fluid.clip.GradientClipByGlobalNorm(
             gradiant_max_norm)
 
         train_loader = fluid.io.DataLoader.from_generator(

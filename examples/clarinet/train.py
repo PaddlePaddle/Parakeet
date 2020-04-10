@@ -166,7 +166,7 @@ if __name__ == "__main__":
         optim = fluid.optimizer.Adam(
             lr_scheduler, parameter_list=model.parameters())
         gradiant_max_norm = train_config["gradient_max_norm"]
-        clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
+        clipper = fluid.clip.GradientClipByGlobalNorm(
             gradiant_max_norm)
 
         # train

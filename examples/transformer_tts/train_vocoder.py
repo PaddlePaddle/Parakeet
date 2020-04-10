@@ -103,7 +103,7 @@ def main(args):
                     loss.backward()
                 optimizer.minimize(
                     loss,
-                    grad_clip=fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg[
+                    grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg[
                         'grad_clip_thresh']))
                 model.clear_gradients()
 
