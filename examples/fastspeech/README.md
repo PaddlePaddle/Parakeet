@@ -37,9 +37,15 @@ During synthesis, results are saved in `samples/` in `output` and tensorboard lo
 If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
 If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
 
-## Compute Alignment
+## Compute Phoneme Duration
 
-Before train FastSpeech model, you should have diagonal information. We use the diagonal obtained from the TranformerTTS model as the diagonal, you can run alignments/get_alignments.py to get it.
+A ground truth duration of each phoneme (number of frames in the spectrogram that correspond to that phoneme) should be provided when training a FastSpeech model.
+
+We compute the ground truth duration of each phomemes in this way:
+We extract the encoder-decoder attention alignment from a trained Transformer TTS model;
+Each frame is considered corresponding to the phoneme that receive the most attention;
+
+You can run alignments/get_alignments.py to get it.
 
 ```bash
 cd alignments
@@ -50,12 +56,12 @@ python get_alignments.py \
 --config=${CONFIG} \
 --checkpoint_transformer=${CHECKPOINT} \
 ```
-where `${DATAPATH}` is the path saved LJSpeech data, `${CHECKPOINT}` is the pretrain model path of TransformerTTS, `${CONFIG}` is the config yaml file of TransformerTTS checkpoint. It necessary for you to prepare a pre-trained TranformerTTS checkpoint.
+where `${DATAPATH}` is the path saved LJSpeech data, `${CHECKPOINT}` is the pretrain model path of TransformerTTS, `${CONFIG}` is the config yaml file of TransformerTTS checkpoint. It is necessary for you to prepare a pre-trained TranformerTTS checkpoint.
 
 For more help on arguments:
-``python train.py --help``.
+``python alignments.py --help``.
 
-Or you can use your own diagonal information, you should process the data into the following format:
+Or you can use your own phoneme duration, you just need to process the data into the following format:
 ```bash
 {'fname1': alignment1,
 'fname2': alignment2,
