@@ -262,7 +262,7 @@ class TTSLoss(object):
         if compute_lin_loss:
             lin_hyp = lin_hyp[:, :-self.time_shift, :]
             lin_ref = lin_ref[:, self.time_shift:, :]
-            lin_mask = lin_mask[:, self.time_shift:, :]
+            lin_mask = lin_mask[:, self.time_shift:]
             lin_l1_loss = self.l1_loss(
                 lin_hyp, lin_ref, lin_mask, priority_bin=self.priority_bin)
             lin_bce_loss = self.binary_divergence(lin_hyp, lin_ref, lin_mask)
@@ -273,7 +273,7 @@ class TTSLoss(object):
         if compute_mel_loss:
             mel_hyp = mel_hyp[:, :-self.time_shift, :]
             mel_ref = mel_ref[:, self.time_shift:, :]
-            mel_mask = mel_mask[:, self.time_shift:, :]
+            mel_mask = mel_mask[:, self.time_shift:]
             mel_l1_loss = self.l1_loss(mel_hyp, mel_ref, mel_mask)
             mel_bce_loss = self.binary_divergence(mel_hyp, mel_ref, mel_mask)
             # print("=====>", mel_l1_loss.numpy()[0], mel_bce_loss.numpy()[0])
