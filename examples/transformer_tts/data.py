@@ -141,7 +141,6 @@ def batch_examples(batch):
     texts = []
     mels = []
     mel_inputs = []
-    mel_lens = []
     text_lens = []
     pos_texts = []
     pos_mels = []
@@ -151,7 +150,6 @@ def batch_examples(batch):
             np.concatenate(
                 [np.zeros([mel.shape[0], 1], np.float32), mel[:, :-1]],
                 axis=-1))
-        mel_lens.append(mel.shape[1])
         text_lens.append(len(text))
         pos_texts.append(np.arange(1, len(text) + 1))
         pos_mels.append(np.arange(1, mel.shape[1] + 1))
@@ -174,11 +172,6 @@ def batch_examples(batch):
         for i, _ in sorted(
             zip(mel_inputs, text_lens), key=lambda x: x[1], reverse=True)
     ]
-    mel_lens = [
-        i
-        for i, _ in sorted(
-            zip(mel_lens, text_lens), key=lambda x: x[1], reverse=True)
-    ]
     pos_texts = [
         i
         for i, _ in sorted(
@@ -200,18 +193,7 @@ def batch_examples(batch):
     mel_inputs = np.transpose(
         SpecBatcher(pad_value=0.)(mel_inputs), axes=(0, 2, 1))  #(B,T,num_mels)
 
-    enc_slf_mask = get_attn_key_pad_mask(pos_texts).astype(np.float32)
-    enc_query_mask = get_non_pad_mask(pos_texts).astype(np.float32)
-    dec_slf_mask = get_dec_attn_key_pad_mask(pos_mels,
-                                             mel_inputs).astype(np.float32)
-    enc_dec_mask = get_attn_key_pad_mask(enc_query_mask[:, :, 0]).astype(
-        np.float32)
-    dec_query_slf_mask = get_non_pad_mask(pos_mels).astype(np.float32)
-    dec_query_mask = get_non_pad_mask(pos_mels).astype(np.float32)
-
-    return (texts, mels, mel_inputs, pos_texts, pos_mels, np.array(text_lens),
-            np.array(mel_lens), enc_slf_mask, enc_query_mask, dec_slf_mask,
-            enc_dec_mask, dec_query_slf_mask, dec_query_mask)
+    return (texts, mels, mel_inputs, pos_texts, pos_mels)
 
 
 def batch_examples_vocoder(batch):

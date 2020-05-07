@@ -79,7 +79,9 @@ def main(args):
                                        (cfg['train']['warm_up_step'] *
                                         (cfg['train']['learning_rate']**2)),
                                        cfg['train']['warm_up_step']),
-            parameter_list=model.parameters())
+            parameter_list=model.parameters(),
+            grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg['train'][
+                'grad_clip_thresh']))
 
         # Load parameters.
         global_step = io.load_parameters(
@@ -107,21 +109,12 @@ def main(args):
             pbar = tqdm(reader)
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d' % epoch)
-                character, mel, mel_input, pos_text, pos_mel, text_length, _, enc_slf_mask, enc_query_mask, dec_slf_mask, enc_dec_mask, dec_query_slf_mask, dec_query_mask = data
+                character, mel, mel_input, pos_text, pos_mel = data
 
                 global_step += 1
 
                 mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
-                    character,
-                    mel_input,
-                    pos_text,
-                    pos_mel,
-                    dec_slf_mask=dec_slf_mask,
-                    enc_slf_mask=enc_slf_mask,
-                    enc_query_mask=enc_query_mask,
-                    enc_dec_mask=enc_dec_mask,
-                    dec_query_slf_mask=dec_query_slf_mask,
-                    dec_query_mask=dec_query_mask)
+                    character, mel_input, pos_text, pos_mel)
 
                 mel_loss = layers.mean(
                     layers.abs(layers.elementwise_sub(mel_pred, mel)))
@@ -202,10 +195,7 @@ def main(args):
                     model.apply_collective_grads()
                 else:
                     loss.backward()
-                optimizer.minimize(
-                    loss,
-                    grad_clip=fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg[
-                        'train']['grad_clip_thresh']))
+                optimizer.minimize(loss)
                 model.clear_gradients()
 
                 # save checkpoint

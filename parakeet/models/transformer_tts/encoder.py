@@ -64,7 +64,7 @@ class Encoder(dg.Layer):
         for i, layer in enumerate(self.ffns):
             self.add_sublayer("ffns_{}".format(i), layer)
 
-    def forward(self, x, positional, mask=None, query_mask=None):
+    def forward(self, x, positional):
         """
         Encode text sequence.
         
@@ -72,23 +72,21 @@ class Encoder(dg.Layer):
             x (Variable): shape(B, T_text), dtype float32, the input character,
                 where T_text means the timesteps of input text,
             positional (Variable): shape(B, T_text), dtype int64, the characters position. 
-            mask (Variable, optional): shape(B, T_text, T_text), dtype int64, the mask of encoder self attention. Defaults to None.
-            query_mask (Variable, optional): shape(B, T_text, 1), dtype int64, the query mask of encoder self attention. Defaults to None.
                 
         Returns:
             x (Variable): shape(B, T_text, C), the encoder output.
             attentions (list[Variable]): len(n_layers), the encoder self attention list.
         """
 
-        if fluid.framework._dygraph_tracer()._train_mode:
-            seq_len_key = x.shape[1]
-            query_mask = layers.expand(query_mask,
-                                       [self.num_head, 1, seq_len_key])
-            mask = layers.expand(mask, [self.num_head, 1, 1])
-        else:
-            query_mask, mask = None, None
         # Encoder pre_network
         x = self.encoder_prenet(x)
+
+        if fluid.framework._dygraph_tracer()._train_mode:
+            mask = get_attn_key_pad_mask(positional, self.num_head, x.dtype)
+            query_mask = get_non_pad_mask(positional, self.num_head, x.dtype)
+
+        else:
+            query_mask, mask = None, None
 
         # Get positional encoding
         positional = self.pos_emb(positional)
@@ -105,4 +103,4 @@ class Encoder(dg.Layer):
             x = ffn(x)
             attentions.append(attention)
 
-        return x, attentions
+        return x, attentions, query_mask

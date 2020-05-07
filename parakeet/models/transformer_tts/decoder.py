@@ -113,15 +113,7 @@ class Decoder(dg.Layer):
             outputs_per_step=outputs_per_step,
             use_cudnn=True)
 
-    def forward(self,
-                key,
-                value,
-                query,
-                positional,
-                mask,
-                m_mask=None,
-                m_self_mask=None,
-                zero_mask=None):
+    def forward(self, key, value, query, positional, c_mask):
         """
         Compute decoder outputs.
         
@@ -132,11 +124,7 @@ class Decoder(dg.Layer):
             query (Variable): shape(B, T_mel, C), dtype float32, the input query of decoder,
                 where T_mel means the timesteps of input spectrum,
             positional (Variable): shape(B, T_mel), dtype int64, the spectrum position. 
-            mask (Variable): shape(B, T_mel, T_mel), dtype int64, the mask of decoder self attention.
-            m_mask (Variable, optional): shape(B, T_mel, 1), dtype int64, the query mask of encoder-decoder attention. Defaults to None.
-            m_self_mask (Variable, optional): shape(B, T_mel, 1), dtype int64, the query mask of decoder self attention. Defaults to None.
-            zero_mask (Variable, optional): shape(B, T_mel, T_text), dtype int64, query mask of encoder-decoder attention. Defaults to None.
-                
+            c_mask (Variable): shape(B, T_text, 1), dtype float32, query mask returned from encoder.
         Returns:
             mel_out (Variable): shape(B, T_mel, C), the decoder output after mel linear projection.
             out (Variable): shape(B, T_mel, C), the decoder output after post mel network.
@@ -148,15 +136,20 @@ class Decoder(dg.Layer):
         # get decoder mask with triangular matrix
 
         if fluid.framework._dygraph_tracer()._train_mode:
-            m_mask = layers.expand(m_mask, [self.num_head, 1, key.shape[1]])
-            m_self_mask = layers.expand(m_self_mask,
-                                        [self.num_head, 1, query.shape[1]])
-            mask = layers.expand(mask, [self.num_head, 1, 1])
-            zero_mask = layers.expand(zero_mask, [self.num_head, 1, 1])
+            mask = get_dec_attn_key_pad_mask(positional, self.num_head,
+                                             query.dtype)
+            m_mask = get_non_pad_mask(positional, self.num_head, query.dtype)
+            zero_mask = layers.cast(c_mask == 0, dtype=query.dtype) * -1e30
+            zero_mask = layers.transpose(zero_mask, perm=[0, 2, 1])
 
         else:
-            mask = layers.expand(mask, [self.num_head, 1, 1])
-            m_mask, m_self_mask, zero_mask = None, None, None
+            len_q = query.shape[1]
+            mask = layers.triu(
+                layers.ones(
+                    shape=[len_q, len_q], dtype=query.dtype),
+                diagonal=1)
+            mask = layers.cast(mask != 0, dtype=query.dtype) * -1e30
+            m_mask, zero_mask = None, None
 
         # Decoder pre-network
         query = self.decoder_prenet(query)
@@ -179,7 +172,7 @@ class Decoder(dg.Layer):
         for selfattn, attn, ffn in zip(self.selfattn_layers, self.attn_layers,
                                        self.ffns):
             query, attn_dec = selfattn(
-                query, query, query, mask=mask, query_mask=m_self_mask)
+                query, query, query, mask=mask, query_mask=m_mask)
             query, attn_dot = attn(
                 key, value, query, mask=zero_mask, query_mask=m_mask)
             query = ffn(query)

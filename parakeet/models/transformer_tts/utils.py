@@ -50,41 +50,37 @@ def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
     return sinusoid_table
 
 
-def get_non_pad_mask(seq):
-    mask = (seq != 0).astype(np.float32)
-    mask = np.expand_dims(mask, axis=-1)
+def get_non_pad_mask(seq, num_head, dtype):
+    mask = layers.cast(seq != 0, dtype=dtype)
+    mask = layers.unsqueeze(mask, axes=[-1])
+    mask = layers.expand(mask, [num_head, 1, 1])
     return mask
 
 
-def get_attn_key_pad_mask(seq_k):
+def get_attn_key_pad_mask(seq_k, num_head, dtype):
     ''' For masking out the padding part of key sequence. '''
     # Expand to fit the shape of key query attention matrix.
-    padding_mask = (seq_k != 0).astype(np.float32)
-    padding_mask = np.expand_dims(padding_mask, axis=1)
-    padding_mask = (
-        padding_mask == 0).astype(np.float32) * -1e30  #* (-2**32 + 1)
+    padding_mask = layers.cast(seq_k == 0, dtype=dtype) * -1e30
+    padding_mask = layers.unsqueeze(padding_mask, axes=[1])
+    padding_mask = layers.expand(padding_mask, [num_head, 1, 1])
     return padding_mask
 
 
-def get_dec_attn_key_pad_mask(seq_k, seq_q):
+def get_dec_attn_key_pad_mask(seq_k, num_head, dtype):
     ''' For masking out the padding part of key sequence. '''
 
     # Expand to fit the shape of key query attention matrix.
-    padding_mask = (seq_k == 0).astype(np.float32)
-    padding_mask = np.expand_dims(padding_mask, axis=1)
-    triu_tensor = get_triu_tensor(seq_q, seq_q)
-    padding_mask = padding_mask + triu_tensor
-    padding_mask = (
-        padding_mask != 0).astype(np.float32) * -1e30  #* (-2**32 + 1)
-    return padding_mask
-
-
-def get_triu_tensor(seq_k, seq_q):
-    ''' For make a triu tensor '''
+    padding_mask = layers.cast(seq_k == 0, dtype=dtype)
+    padding_mask = layers.unsqueeze(padding_mask, axes=[1])
     len_k = seq_k.shape[1]
-    len_q = seq_q.shape[1]
-    triu_tensor = np.triu(np.ones([len_k, len_q]), 1)
-    return triu_tensor
+    triu = layers.triu(
+        layers.ones(
+            shape=[len_k, len_k], dtype=dtype), diagonal=1)
+    padding_mask = padding_mask + triu
+    padding_mask = layers.cast(
+        padding_mask != 0, dtype=dtype) * -1e30  #* (-2**32 + 1)
+    padding_mask = layers.expand(padding_mask, [num_head, 1, 1])
+    return padding_mask
 
 
 def guided_attention(N, T, g=0.2):

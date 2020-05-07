@@ -74,7 +74,9 @@ def main(args):
                                        (cfg['train']['warm_up_step'] *
                                         (cfg['train']['learning_rate']**2)),
                                        cfg['train']['warm_up_step']),
-            parameter_list=model.parameters())
+            parameter_list=model.parameters(),
+            grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg['train'][
+                'grad_clip_thresh']))
 
         # Load parameters.
         global_step = io.load_parameters(
@@ -117,10 +119,7 @@ def main(args):
                     model.apply_collective_grads()
                 else:
                     loss.backward()
-                optimizer.minimize(
-                    loss,
-                    grad_clip=fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg[
-                        'train']['grad_clip_thresh']))
+                optimizer.minimize(loss)
                 model.clear_gradients()
 
                 if local_rank == 0:
