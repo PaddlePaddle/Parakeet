@@ -76,7 +76,7 @@ class Encoder(dg.Layer):
         for i, layer in enumerate(self.layer_stack):
             self.add_sublayer('fft_{}'.format(i), layer)
 
-    def forward(self, character, text_pos, non_pad_mask, slf_attn_mask=None):
+    def forward(self, character, text_pos):
         """
         Encode text sequence.
 
@@ -84,21 +84,20 @@ class Encoder(dg.Layer):
             character (Variable): shape(B, T_text), dtype float32, the input text characters, 
                 where T_text means the timesteps of input characters,
             text_pos (Variable): shape(B, T_text), dtype int64, the input text position. 
-            non_pad_mask (Variable): shape(B, T_text, 1), dtype int64, the mask with non pad.
-            slf_attn_mask (Variable, optional): shape(B, T_text, T_text), dtype int64, 
-                the mask of input characters. Defaults to None.
         
         Returns:
             enc_output (Variable): shape(B, T_text, C), the encoder output. 
-            non_pad_mask (Variable): shape(B, T_text, 1), the mask with non pad.
             enc_slf_attn_list (list[Variable]): len(n_layers), the encoder self attention list.
         """
         enc_slf_attn_list = []
-        slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])
 
         # -- Forward
         enc_output = self.src_word_emb(character) + self.position_enc(
             text_pos)  #(N, T, C)
+
+        slf_attn_mask = get_attn_key_pad_mask(text_pos, self.n_head,
+                                              enc_output.dtype)
+        non_pad_mask = get_non_pad_mask(text_pos, 1, enc_output.dtype)
 
         for enc_layer in self.layer_stack:
             enc_output, enc_slf_attn = enc_layer(

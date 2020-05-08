@@ -86,11 +86,7 @@ class FastSpeech(dg.Layer):
     def forward(self,
                 character,
                 text_pos,
-                enc_non_pad_mask,
-                dec_non_pad_mask,
                 mel_pos=None,
-                enc_slf_attn_mask=None,
-                dec_slf_attn_mask=None,
                 length_target=None,
                 alpha=1.0):
         """
@@ -102,12 +98,6 @@ class FastSpeech(dg.Layer):
             text_pos (Variable): shape(B, T_text), dtype int64, the input text position. 
             mel_pos (Variable, optional): shape(B, T_mel), dtype int64, the spectrum position, 
                 where T_mel means the timesteps of input spectrum,  
-            enc_non_pad_mask (Variable): shape(B, T_text, 1), dtype int64, the mask with non pad.
-            dec_non_pad_mask (Variable): shape(B, T_mel, 1), dtype int64, the mask with non pad.
-            enc_slf_attn_mask (Variable, optional): shape(B, T_text, T_text), dtype int64, 
-                the mask of input characters. Defaults to None.
-            slf_attn_mask (Variable, optional): shape(B, T_mel, T_mel), dtype int64,
-                the mask of mel spectrum. Defaults to None.
             length_target (Variable, optional): shape(B, T_text), dtype int64, 
                 the duration of phoneme compute from pretrained transformerTTS. Defaults to None. 
             alpha (float32, optional): The hyperparameter to determine the length of the expanded sequence 
@@ -121,19 +111,12 @@ class FastSpeech(dg.Layer):
             dec_slf_attn_list (List[Variable]): len(dec_n_layers), the decoder self attention list.
         """
 
-        encoder_output, enc_slf_attn_list = self.encoder(
-            character,
-            text_pos,
-            enc_non_pad_mask,
-            slf_attn_mask=enc_slf_attn_mask)
+        encoder_output, enc_slf_attn_list = self.encoder(character, text_pos)
         if fluid.framework._dygraph_tracer()._train_mode:
             length_regulator_output, duration_predictor_output = self.length_regulator(
                 encoder_output, target=length_target, alpha=alpha)
             decoder_output, dec_slf_attn_list = self.decoder(
-                length_regulator_output,
-                mel_pos,
-                dec_non_pad_mask,
-                slf_attn_mask=dec_slf_attn_mask)
+                length_regulator_output, mel_pos)
 
             mel_output = self.mel_linear(decoder_output)
             mel_output_postnet = self.postnet(mel_output) + mel_output
@@ -142,19 +125,8 @@ class FastSpeech(dg.Layer):
         else:
             length_regulator_output, decoder_pos = self.length_regulator(
                 encoder_output, alpha=alpha)
-            slf_attn_mask = get_triu_tensor(
-                decoder_pos.numpy(), decoder_pos.numpy()).astype(np.float32)
-            slf_attn_mask = np.expand_dims(slf_attn_mask, axis=0)
-            slf_attn_mask = fluid.layers.cast(
-                dg.to_variable(slf_attn_mask != 0), np.float32) * (-2**32 + 1)
-            slf_attn_mask = dg.to_variable(slf_attn_mask)
-            dec_non_pad_mask = fluid.layers.unsqueeze(
-                (decoder_pos != 0).astype(np.float32), [-1])
-            decoder_output, _ = self.decoder(
-                length_regulator_output,
-                decoder_pos,
-                dec_non_pad_mask,
-                slf_attn_mask=slf_attn_mask)
+            decoder_output, _ = self.decoder(length_regulator_output,
+                                             decoder_pos)
             mel_output = self.mel_linear(decoder_output)
             mel_output_postnet = self.postnet(mel_output) + mel_output
 

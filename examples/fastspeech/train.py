@@ -79,7 +79,9 @@ def main(args):
                                        (cfg['train']['warm_up_step'] *
                                         (cfg['train']['learning_rate']**2)),
                                        cfg['train']['warm_up_step']),
-            parameter_list=model.parameters())
+            parameter_list=model.parameters(),
+            grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg['train'][
+                'grad_clip_thresh']))
         reader = LJSpeechLoader(
             cfg['audio'],
             place,
@@ -108,9 +110,7 @@ def main(args):
 
             for i, data in enumerate(pbar):
                 pbar.set_description('Processing at epoch %d' % epoch)
-                (character, mel, pos_text, pos_mel, enc_slf_mask,
-                 enc_query_mask, dec_slf_mask, dec_query_slf_mask,
-                 alignment) = data
+                (character, mel, pos_text, pos_mel, alignment) = data
 
                 global_step += 1
 
@@ -119,11 +119,7 @@ def main(args):
                     character,
                     pos_text,
                     mel_pos=pos_mel,
-                    length_target=alignment,
-                    enc_non_pad_mask=enc_query_mask,
-                    enc_slf_attn_mask=enc_slf_mask,
-                    dec_non_pad_mask=dec_query_slf_mask,
-                    dec_slf_attn_mask=dec_slf_mask)
+                    length_target=alignment)
                 mel_output, mel_output_postnet, duration_predictor_output, _, _ = result
                 mel_loss = layers.mse_loss(mel_output, mel)
                 mel_postnet_loss = layers.mse_loss(mel_output_postnet, mel)
@@ -150,10 +146,7 @@ def main(args):
                     model.apply_collective_grads()
                 else:
                     total_loss.backward()
-                optimizer.minimize(
-                    total_loss,
-                    grad_clip=fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg[
-                        'train']['grad_clip_thresh']))
+                optimizer.minimize(total_loss)
                 model.clear_gradients()
 
                 # save checkpoint

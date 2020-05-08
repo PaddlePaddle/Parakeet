@@ -70,7 +70,7 @@ class Decoder(dg.Layer):
         for i, layer in enumerate(self.layer_stack):
             self.add_sublayer('fft_{}'.format(i), layer)
 
-    def forward(self, enc_seq, enc_pos, non_pad_mask, slf_attn_mask=None):
+    def forward(self, enc_seq, enc_pos):
         """
         Compute decoder outputs.
         
@@ -79,17 +79,26 @@ class Decoder(dg.Layer):
                 the output of length regulator, where T_mel means the timesteps of input spectrum.
             enc_pos (Variable): shape(B, T_mel), dtype int64, 
                 the spectrum position.
-            non_pad_mask (Variable): shape(B, T_mel, 1), dtype int64, the mask with non pad.
-            slf_attn_mask (Variable, optional): shape(B, T_mel, T_mel), dtype int64, 
-                the mask of mel spectrum. Defaults to None.
 
         Returns:
             dec_output (Variable): shape(B, T_mel, C), the decoder output.
             dec_slf_attn_list (list[Variable]): len(n_layers), the decoder self attention list.
         """
         dec_slf_attn_list = []
-        if slf_attn_mask:
-            slf_attn_mask = layers.expand(slf_attn_mask, [self.n_head, 1, 1])
+        if fluid.framework._dygraph_tracer()._train_mode:
+            slf_attn_mask = get_dec_attn_key_pad_mask(enc_pos, self.n_head,
+                                                      enc_seq.dtype)
+
+        else:
+            len_q = enc_seq.shape[1]
+            slf_attn_mask = layers.triu(
+                layers.ones(
+                    shape=[len_q, len_q], dtype=enc_seq.dtype),
+                diagonal=1)
+            slf_attn_mask = layers.cast(
+                slf_attn_mask != 0, dtype=enc_seq.dtype) * -1e30
+
+        non_pad_mask = get_non_pad_mask(enc_pos, 1, enc_seq.dtype)
 
         # -- Forward
         dec_output = enc_seq + self.position_enc(enc_pos)

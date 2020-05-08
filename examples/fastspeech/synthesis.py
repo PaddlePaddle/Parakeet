@@ -28,7 +28,7 @@ from parakeet.models.fastspeech.fastspeech import FastSpeech
 from parakeet.models.transformer_tts.utils import *
 from parakeet.models.wavenet import WaveNet, UpsampleNet
 from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
-from parakeet.utils.layer_tools import summary, freeze
+from parakeet.utils.layer_tools import freeze
 from parakeet.utils import io
 
 
@@ -82,22 +82,11 @@ def synthesis(text_input, args):
         text = np.expand_dims(text, axis=0)
         pos_text = np.arange(1, text.shape[1] + 1)
         pos_text = np.expand_dims(pos_text, axis=0)
-        enc_non_pad_mask = get_non_pad_mask(pos_text).astype(np.float32)
-        enc_slf_attn_mask = get_attn_key_pad_mask(pos_text).astype(np.float32)
 
         text = dg.to_variable(text)
         pos_text = dg.to_variable(pos_text)
-        enc_non_pad_mask = dg.to_variable(enc_non_pad_mask)
-        enc_slf_attn_mask = dg.to_variable(enc_slf_attn_mask)
 
-        _, mel_output_postnet = model(
-            text,
-            pos_text,
-            alpha=args.alpha,
-            enc_non_pad_mask=enc_non_pad_mask,
-            enc_slf_attn_mask=enc_slf_attn_mask,
-            dec_non_pad_mask=None,
-            dec_slf_attn_mask=None)
+        _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
 
         result = np.exp(mel_output_postnet.numpy())
         mel_output_postnet = fluid.layers.transpose(
@@ -186,7 +175,6 @@ def synthesis_with_clarinet(config_path, checkpoint, mel_spectrogram, place):
         lmd = config["loss"]["lmd"]
         model = Clarinet(upsample_net, teacher, student, stft,
                          student_log_scale_min, lmd)
-        summary(model)
         io.load_parameters(model=model, checkpoint_path=checkpoint)
 
         if not os.path.exists(args.output):

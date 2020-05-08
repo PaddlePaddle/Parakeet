@@ -186,10 +186,4 @@ def batch_examples(batch):
     mels = np.transpose(
         SpecBatcher(pad_value=0.)(mels), axes=(0, 2, 1))  #(B,T,num_mels)
 
-    enc_slf_mask = get_attn_key_pad_mask(pos_texts).astype(np.float32)
-    enc_query_mask = get_non_pad_mask(pos_texts).astype(np.float32)
-    dec_slf_mask = get_dec_attn_key_pad_mask(pos_mels, mels).astype(np.float32)
-    dec_query_slf_mask = get_non_pad_mask(pos_mels).astype(np.float32)
-
-    return (texts, mels, pos_texts, pos_mels, enc_slf_mask, enc_query_mask,
-            dec_slf_mask, dec_query_slf_mask, alignments)
+    return (texts, mels, pos_texts, pos_mels, alignments)
