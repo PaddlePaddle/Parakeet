@@ -29,22 +29,10 @@ def conv2d(input,
            data_format="NCHW"):
     padding = tuple(pad for pad_dim in padding for pad in pad_dim)
 
-    inputs = {
-        'Input': [input],
-        'Filter': [weight],
-    }
-    attrs = {
-        'strides': stride,
-        'paddings': padding,
-        'dilations': dilation,
-        'groups': groups,
-        'use_cudnn': use_cudnn,
-        'use_mkldnn': False,
-        'fuse_relu_before_depthwise_conv': False,
-        "padding_algorithm": "EXPLICIT",
-        "data_format": data_format,
-    }
+    attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
+             'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
+             'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
+             "EXPLICIT", "data_format", data_format)
 
-    outputs = ops.conv2d(inputs, attrs)
-    out = outputs["Output"][0]
+    out = ops.conv2d(input, weight, *attrs)
     return out

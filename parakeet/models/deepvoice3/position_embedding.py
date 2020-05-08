@@ -31,8 +31,10 @@ def compute_position_embedding(radians, speaker_position_rate):
     """
     _, embed_dim = radians.shape
     batch_size = speaker_position_rate.shape[0]
-    speaker_position_rate = F.unsqueeze(speaker_position_rate, [1, 2])
-    scaled_radians = speaker_position_rate * radians
+    scaled_radians = F.elementwise_mul(
+        F.expand(F.unsqueeze(radians, [0]), [batch_size, 1, 1]),
+        speaker_position_rate,
+        axis=0)
 
     odd_mask = (np.arange(embed_dim) % 2).astype(np.float32)
     odd_mask = dg.to_variable(odd_mask)

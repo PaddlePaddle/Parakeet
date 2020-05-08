@@ -196,8 +196,8 @@ if __name__ == "__main__":
             beta1,
             beta2,
             epsilon=epsilon,
-            parameter_list=dv3.parameters())
-        gradient_clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.1)
+            parameter_list=dv3.parameters(),
+            grad_clip=fluid.clip.GradientClipByGlobalNorm(0.1))
 
         # generation
         synthesis_config = config["synthesis"]
@@ -258,15 +258,19 @@ if __name__ == "__main__":
                                text_lengths, frames)
             l = losses["loss"]
             l.backward()
+
             # record learning rate before updating
             writer.add_scalar("learning_rate",
                               optim._learning_rate.step().numpy(), global_step)
-            optim.minimize(l, grad_clip=gradient_clipper)
+            optim.minimize(l)
             optim.clear_gradients()
 
             # ==================all kinds of tedious things=================
             # record step loss into tensorboard
-            step_loss = {k: v.numpy()[0] for k, v in losses.items()}
+            step_loss = {
+                k: v.numpy()[0]
+                for k, v in losses.items() if v is not None
+            }
             tqdm.tqdm.write("global_step: {}\tloss: {}".format(
                 global_step, step_loss["loss"]))
             for k, v in step_loss.items():
