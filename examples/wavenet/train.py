@@ -126,12 +126,11 @@ if __name__ == "__main__":
         anneal_interval = train_config["anneal_interval"]
         lr_scheduler = dg.ExponentialDecay(
             learning_rate, anneal_interval, anneal_rate, staircase=True)
-        optim = fluid.optimizer.Adam(
-            lr_scheduler, parameter_list=model.parameters())
-
         gradiant_max_norm = train_config["gradient_max_norm"]
-        clipper = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
-            gradiant_max_norm)
+        optim = fluid.optimizer.Adam(
+            lr_scheduler,
+            parameter_list=model.parameters(),
+            grad_clip=fluid.clip.ClipByGlobalNorm(gradiant_max_norm))
 
         train_loader = fluid.io.DataLoader.from_generator(
             capacity=10, return_list=True)
@@ -149,7 +148,7 @@ if __name__ == "__main__":
         log_dir = os.path.join(args.output, "log")
         writer = SummaryWriter(log_dir)
 
-        # load parameters and optimizer, and opdate iterations done sofar
+        # load parameters and optimizer, and update iterations done so far
         if args.checkpoint is not None:
             iteration = io.load_parameters(
                 model, optim, checkpoint_path=args.checkpoint)
@@ -181,7 +180,7 @@ if __name__ == "__main__":
             writer.add_scalar("learning_rate",
                               optim._learning_rate.step().numpy()[0],
                               global_step)
-            optim.minimize(loss_var, grad_clip=clipper)
+            optim.minimize(loss_var)
             optim.clear_gradients()
             print("global_step: {}\tloss: {:<8.6f}".format(global_step,
                                                            loss_np[0]))

@@ -111,7 +111,7 @@ class ResidualBlock(dg.Layer):
             h = h[:, :, :time_steps]
 
         # condition
-        if condition:
+        if condition is not None:
             h += self.condition_proj(condition)
 
         # gated tanh
@@ -398,7 +398,8 @@ class WaveNet(dg.Layer):
 
         x_std = inv_std * (t - mu)
         exponent = F.exp(-0.5 * x_std * x_std)
-        pdf_x = 1.0 / np.sqrt(2.0 * np.pi) * inv_std * exponent
+        pdf_x = 1.0 / math.sqrt(2.0 * math.pi) * inv_std * exponent
+
         pdf_x = p_mixture * pdf_x
         # pdf_x: [bs, len]
         pdf_x = F.reduce_sum(pdf_x, dim=-1)

@@ -40,7 +40,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.7.1** or above.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.8.0** or above.
 
 ### Install Parakeet
 
