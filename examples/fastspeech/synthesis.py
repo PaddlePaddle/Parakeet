@@ -61,6 +61,7 @@ def add_config_options_to_parser(parser):
 def synthesis(text_input, args):
     local_rank = dg.parallel.Env().local_rank
     place = (fluid.CUDAPlace(local_rank) if args.use_gpu else fluid.CPUPlace())
+    fluid.enable_dygraph(place)
 
     with open(args.config) as f:
         cfg = yaml.load(f, Loader=yaml.Loader)
@@ -71,56 +72,53 @@ def synthesis(text_input, args):
 
     writer = SummaryWriter(os.path.join(args.output, 'log'))
 
-    with dg.guard(place):
-        model = FastSpeech(cfg['network'], num_mels=cfg['audio']['num_mels'])
-        # Load parameters.
-        global_step = io.load_parameters(
-            model=model, checkpoint_path=args.checkpoint)
-        model.eval()
+    model = FastSpeech(cfg['network'], num_mels=cfg['audio']['num_mels'])
+    # Load parameters.
+    global_step = io.load_parameters(
+        model=model, checkpoint_path=args.checkpoint)
+    model.eval()
 
-        text = np.asarray(text_to_sequence(text_input))
-        text = np.expand_dims(text, axis=0)
-        pos_text = np.arange(1, text.shape[1] + 1)
-        pos_text = np.expand_dims(pos_text, axis=0)
+    text = np.asarray(text_to_sequence(text_input))
+    text = np.expand_dims(text, axis=0)
+    pos_text = np.arange(1, text.shape[1] + 1)
+    pos_text = np.expand_dims(pos_text, axis=0)
 
-        text = dg.to_variable(text)
-        pos_text = dg.to_variable(pos_text)
+    text = dg.to_variable(text)
+    pos_text = dg.to_variable(pos_text)
 
-        _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
+    _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
 
-        result = np.exp(mel_output_postnet.numpy())
-        mel_output_postnet = fluid.layers.transpose(
-            fluid.layers.squeeze(mel_output_postnet, [0]), [1, 0])
-        mel_output_postnet = np.exp(mel_output_postnet.numpy())
-        basis = librosa.filters.mel(cfg['audio']['sr'], cfg['audio']['n_fft'],
-                                    cfg['audio']['num_mels'])
-        inv_basis = np.linalg.pinv(basis)
-        spec = np.maximum(1e-10, np.dot(inv_basis, mel_output_postnet))
+    result = np.exp(mel_output_postnet.numpy())
+    mel_output_postnet = fluid.layers.transpose(
+        fluid.layers.squeeze(mel_output_postnet, [0]), [1, 0])
+    mel_output_postnet = np.exp(mel_output_postnet.numpy())
+    basis = librosa.filters.mel(cfg['audio']['sr'], cfg['audio']['n_fft'],
+                                cfg['audio']['num_mels'])
+    inv_basis = np.linalg.pinv(basis)
+    spec = np.maximum(1e-10, np.dot(inv_basis, mel_output_postnet))
 
-        # synthesis use clarinet
-        wav_clarinet = synthesis_with_clarinet(
-            args.config_clarinet, args.checkpoint_clarinet, result, place)
-        writer.add_audio(text_input + '(clarinet)', wav_clarinet, 0,
-                         cfg['audio']['sr'])
-        if not os.path.exists(os.path.join(args.output, 'samples')):
-            os.mkdir(os.path.join(args.output, 'samples'))
-        write(
-            os.path.join(
-                os.path.join(args.output, 'samples'), 'clarinet.wav'),
-            cfg['audio']['sr'], wav_clarinet)
+    # synthesis use clarinet
+    wav_clarinet = synthesis_with_clarinet(
+        args.config_clarinet, args.checkpoint_clarinet, result, place)
+    writer.add_audio(text_input + '(clarinet)', wav_clarinet, 0,
+                     cfg['audio']['sr'])
+    if not os.path.exists(os.path.join(args.output, 'samples')):
+        os.mkdir(os.path.join(args.output, 'samples'))
+    write(
+        os.path.join(os.path.join(args.output, 'samples'), 'clarinet.wav'),
+        cfg['audio']['sr'], wav_clarinet)
 
-        #synthesis use griffin-lim
-        wav = librosa.core.griffinlim(
-            spec**cfg['audio']['power'],
-            hop_length=cfg['audio']['hop_length'],
-            win_length=cfg['audio']['win_length'])
-        writer.add_audio(text_input + '(griffin-lim)', wav, 0,
-                         cfg['audio']['sr'])
-        write(
-            os.path.join(
-                os.path.join(args.output, 'samples'), 'grinffin-lim.wav'),
-            cfg['audio']['sr'], wav)
-        print("Synthesis completed !!!")
+    #synthesis use griffin-lim
+    wav = librosa.core.griffinlim(
+        spec**cfg['audio']['power'],
+        hop_length=cfg['audio']['hop_length'],
+        win_length=cfg['audio']['win_length'])
+    writer.add_audio(text_input + '(griffin-lim)', wav, 0, cfg['audio']['sr'])
+    write(
+        os.path.join(
+            os.path.join(args.output, 'samples'), 'grinffin-lim.wav'),
+        cfg['audio']['sr'], wav)
+    print("Synthesis completed !!!")
     writer.close()
 
 

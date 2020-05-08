@@ -1,4 +1,5 @@
 # Fastspeech
+
 PaddlePaddle dynamic graph implementation of Fastspeech, a feed-forward network based on Transformer. The implementation is based on [FastSpeech: Fast, Robust and Controllable Text to Speech](https://arxiv.org/abs/1905.09263).
 
 ## Dataset
@@ -20,6 +21,7 @@ mel-spectrogram sequence for parallel mel-spectrogram generation. We use the Tra
 The model consists of encoder, decoder and length regulator three parts.
 
 ## Project Structure
+
 ```text
 ├── config                 # yaml configuration files
 ├── synthesis.py           # script to synthesize waveform from text
@@ -27,21 +29,26 @@ The model consists of encoder, decoder and length regulator three parts.
 ```
 
 ## Saving & Loading
-`train.py` have 3 arguments in common, `--checkpooint`, `iteration` and `output`.
 
-1. `output` is the directory for saving results.
-During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`.
-During synthesis, results are saved in `samples/` in `output` and tensorboard log is save in `log/` in `output`.
+`train_transformer.py` and `train_vocoer.py` have 3 arguments in common, `--checkpoint`, `--iteration` and `--output`.
 
-2. `--checkpoint` and `--iteration` for loading from existing checkpoint. Loading existing checkpoiont follows the following rule:
-If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
-If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
+1. `--output` is the directory for saving results.
+During training, checkpoints are saved in `${output}/checkpoints` and tensorboard logs are saved in `${output}/log`.
+During synthesis, results are saved in `${output}/samples` and tensorboard log is save in `${output}/log`.
+
+2.  `--checkpoint` is the path of a checkpoint and `--iteration` is the target step. They are used to load checkpoints in the following way.
+
+    - If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
+
+    - If `--checkpoint` is not provided, we try to load the checkpoint of the target step specified by `--iteration` from the `${output}/checkpoints/` directory, e.g. if given `--iteration 120000`, the checkpoint `${output}/checkpoints/step-120000.*` will be load.
+
+    - If both `--checkpoint` and `--iteration` are not provided, we try to load the latest checkpoint from `${output}/checkpoints/` directory.
 
 ## Compute Phoneme Duration
 
 A ground truth duration of each phoneme (number of frames in the spectrogram that correspond to that phoneme) should be provided when training a FastSpeech model.
 
-We compute the ground truth duration of each phomemes in this way:
+We compute the ground truth duration of each phomemes in the following  way.
 We extract the encoder-decoder attention alignment from a trained Transformer TTS model;
 Each frame is considered corresponding to the phoneme that receive the most attention;
 
@@ -56,12 +63,15 @@ python get_alignments.py \
 --config=${CONFIG} \
 --checkpoint_transformer=${CHECKPOINT} \
 ```
+
 where `${DATAPATH}` is the path saved LJSpeech data, `${CHECKPOINT}` is the pretrain model path of TransformerTTS, `${CONFIG}` is the config yaml file of TransformerTTS checkpoint. It is necessary for you to prepare a pre-trained TranformerTTS checkpoint.
 
-For more help on arguments:
+For more help on arguments
+
 ``python alignments.py --help``.
 
-Or you can use your own phoneme duration, you just need to process the data into the following format:
+Or you can use your own phoneme duration, you just need to process the data into the following format.
+
 ```bash
 {'fname1': alignment1,
 'fname2': alignment2,
@@ -70,7 +80,8 @@ Or you can use your own phoneme duration, you just need to process the data into
 
 ## Train FastSpeech
 
-FastSpeech model can be trained with ``train.py``.
+FastSpeech model can be trained by running ``train.py``.
+
 ```bash
 python train.py \
 --use_gpu=1 \
@@ -79,11 +90,14 @@ python train.py \
 --output='./experiment' \
 --config='configs/ljspeech.yaml' \
 ```
+
 Or you can run the script file directly.
+
 ```bash
 sh train.sh
 ```
-If you want to train on multiple GPUs, start training as follows:
+
+If you want to train on multiple GPUs, start training in the following way.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -94,13 +108,17 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --output='./experiment' \
 --config='configs/ljspeech.yaml' \
 ```
+
 If you wish to resume from an existing model, See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
 
-For more help on arguments:
+For more help on arguments
+
 ``python train.py --help``.
 
 ## Synthesis
-After training the FastSpeech, audio can be synthesized with ``synthesis.py``.
+
+After training the FastSpeech, audio can be synthesized by running ``synthesis.py``.
+
 ```bash
 python synthesis.py \
 --use_gpu=1 \
@@ -111,12 +129,15 @@ python synthesis.py \
 --checkpoint_clarinet='../clarinet/checkpoint/step-500000' \
 --output='./synthesis' \
 ```
+
 We use Clarinet to synthesis wav, so it necessary for you to prepare a pre-trained [Clarinet checkpoint](https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip).
 
 Or you can run the script file directly.
+
 ```bash
 sh synthesis.sh
 ```
 
-For more help on arguments:
+For more help on arguments
+
 ``python synthesis.py --help``.
