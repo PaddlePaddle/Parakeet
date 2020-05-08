@@ -81,12 +81,6 @@ class WaveFlow():
 
         waveflow = WaveFlowModule(config)
 
-        # Dry run once to create and initalize all necessary parameters.
-        audio = dg.to_variable(np.random.randn(1, 16000).astype(self.dtype))
-        mel = dg.to_variable(
-            np.random.randn(1, config.mel_bands, 63).astype(self.dtype))
-        waveflow(audio, mel)
-
         if training:
             optimizer = fluid.optimizer.AdamOptimizer(
                 learning_rate=config.learning_rate,

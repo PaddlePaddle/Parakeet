@@ -93,16 +93,7 @@ def synthesize(config):
 
         # Build model.
         model = WaveFlow(config, checkpoint_dir)
-        model.build(training=False)
-        # Obtain the current iteration.
-        if config.checkpoint is None:
-            if config.iteration is None:
-                iteration = io.load_latest_checkpoint(checkpoint_dir)
-            else:
-                iteration = config.iteration
-        else:
-            iteration = int(config.checkpoint.split('/')[-1].split('-')[-1])
-
+        iteration = model.build(training=False)
         # Run model inference.
         model.infer(iteration)
 

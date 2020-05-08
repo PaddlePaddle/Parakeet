@@ -84,13 +84,15 @@ class WeightNormWrapper(dg.Layer):
             w_v,
             self.create_parameter(
                 shape=original_weight.shape, dtype=original_weight.dtype))
-        F.assign(original_weight, getattr(self, w_v))
+        with dg.no_grad():
+            F.assign(original_weight, getattr(self, w_v))
         delattr(layer, param_name)
         temp = norm_except(getattr(self, w_v), self.dim, self.power)
         self.add_parameter(
             w_g, self.create_parameter(
                 shape=temp.shape, dtype=temp.dtype))
-        F.assign(temp, getattr(self, w_g))
+        with dg.no_grad():
+            F.assign(temp, getattr(self, w_g))
 
         # also set this when setting up
         setattr(self.layer, self.param_name,
