@@ -37,11 +37,10 @@ def score_F(attn):
 
 
 def compute_duration(attn, mel_lens):
-    alignment = np.zeros([attn.shape[0], attn.shape[2]])
-    mel_lens = mel_lens.numpy()
-    for i in range(attn.shape[0]):
-        for j in range(mel_lens[i]):
-            max_index = np.argmax(attn[i, j])
-            alignment[i, max_index] += 1
+    alignment = np.zeros([attn.shape[2]])
+    #for i in range(attn.shape[0]):
+    for j in range(mel_lens):
+        max_index = np.argmax(attn[0, j])
+        alignment[max_index] += 1
 
     return alignment

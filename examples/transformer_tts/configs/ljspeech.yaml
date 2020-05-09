@@ -1,0 +1,38 @@
+audio:
+  num_mels: 80
+  n_fft: 2048
+  sr: 22050
+  preemphasis: 0.97
+  hop_length: 256 #275
+  win_length: 1024 #1102
+  power: 1.2
+  min_level_db: -100
+  ref_level_db: 20
+
+network:
+  hidden_size: 256
+  embedding_size: 512
+  encoder_num_head: 4
+  encoder_n_layers: 3
+  decoder_num_head: 4
+  decoder_n_layers: 3
+  outputs_per_step: 1
+  stop_token: False
+
+vocoder:
+  hidden_size: 256
+  
+train:
+  batch_size: 32
+  learning_rate: 0.001
+  warm_up_step: 4000
+  grad_clip_thresh: 1.0
+
+  checkpoint_interval: 1000
+  image_interval: 2000
+
+  max_epochs: 10000
+
+
+
+   

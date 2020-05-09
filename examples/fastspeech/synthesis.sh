@@ -3,10 +3,11 @@
 python -u synthesis.py \
 --use_gpu=1 \
 --alpha=1.0 \
---checkpoint_path='checkpoint/' \
---fastspeech_step=71000 \
---log_dir='./log' \
---config_path='configs/synthesis.yaml' \
+--checkpoint='./checkpoint/fastspeech/step-120000' \
+--config='configs/ljspeech.yaml' \
+--config_clarine='../clarinet/configs/config.yaml' \
+--checkpoint_clarinet='../clarinet/checkpoint/step-500000' \
+--output='./synthesis' \
 
 if [ $? -ne 0 ]; then
     echo "Failed in synthesis!"

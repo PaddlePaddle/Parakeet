@@ -17,7 +17,6 @@ import os
 import time
 import math
 from pathlib import Path
-from parse import add_config_options_to_parser
 from pprint import pprint
 from ruamel import yaml
 from tqdm import tqdm
@@ -27,162 +26,132 @@ from tensorboardX import SummaryWriter
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
 from parakeet.models.fastspeech.fastspeech import FastSpeech
 from parakeet.models.fastspeech.utils import get_alignment
-import sys
-sys.path.append("../transformer_tts")
 from data import LJSpeechLoader
+from parakeet.utils import io
 
 
-def load_checkpoint(step, model_path):
-    model_dict, opti_dict = fluid.dygraph.load_dygraph(
-        os.path.join(model_path, step))
-    new_state_dict = OrderedDict()
-    for param in model_dict:
-        if param.startswith('_layers.'):
-            new_state_dict[param[8:]] = model_dict[param]
-        else:
-            new_state_dict[param] = model_dict[param]
-    return new_state_dict, opti_dict
+def add_config_options_to_parser(parser):
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument("--use_gpu", type=int, default=0, help="device to use")
+    parser.add_argument("--data", type=str, help="path of LJspeech dataset")
+    parser.add_argument(
+        "--alignments_path", type=str, help="path of alignments")
+
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="experiment",
+        help="path to save experiment results")
 
 
 def main(args):
-    local_rank = dg.parallel.Env().local_rank if args.use_data_parallel else 0
-    nranks = dg.parallel.Env().nranks if args.use_data_parallel else 1
+    local_rank = dg.parallel.Env().local_rank
+    nranks = dg.parallel.Env().nranks
+    parallel = nranks > 1
 
-    with open(args.config_path) as f:
+    with open(args.config) as f:
         cfg = yaml.load(f, Loader=yaml.Loader)
 
     global_step = 0
-    place = (fluid.CUDAPlace(dg.parallel.Env().dev_id)
-             if args.use_data_parallel else fluid.CUDAPlace(0)
-             if args.use_gpu else fluid.CPUPlace())
+    place = fluid.CUDAPlace(local_rank) if args.use_gpu else fluid.CPUPlace()
+    fluid.enable_dygraph(place)
 
-    if not os.path.exists(args.log_dir):
-        os.mkdir(args.log_dir)
-    path = os.path.join(args.log_dir, 'fastspeech')
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
-    writer = SummaryWriter(path) if local_rank == 0 else None
+    writer = SummaryWriter(os.path.join(args.output,
+                                        'log')) if local_rank == 0 else None
 
-    with dg.guard(place):
-        with fluid.unique_name.guard():
-            transformer_tts = TransformerTTS(cfg)
-            model_dict, _ = load_checkpoint(
-                str(args.transformer_step),
-                os.path.join(args.transtts_path, "transformer"))
-            transformer_tts.set_dict(model_dict)
-            transformer_tts.eval()
+    model = FastSpeech(cfg['network'], num_mels=cfg['audio']['num_mels'])
+    model.train()
+    optimizer = fluid.optimizer.AdamOptimizer(
+        learning_rate=dg.NoamDecay(1 / (cfg['train']['warm_up_step'] *
+                                        (cfg['train']['learning_rate']**2)),
+                                   cfg['train']['warm_up_step']),
+        parameter_list=model.parameters(),
+        grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg['train'][
+            'grad_clip_thresh']))
+    reader = LJSpeechLoader(
+        cfg['audio'],
+        place,
+        args.data,
+        args.alignments_path,
+        cfg['train']['batch_size'],
+        nranks,
+        local_rank,
+        shuffle=True).reader()
 
-        model = FastSpeech(cfg)
-        model.train()
-        optimizer = fluid.optimizer.AdamOptimizer(
-            learning_rate=dg.NoamDecay(1 / (
-                cfg['warm_up_step'] * (args.lr**2)), cfg['warm_up_step']),
-            parameter_list=model.parameters())
-        reader = LJSpeechLoader(
-            cfg, args, nranks, local_rank, shuffle=True).reader()
+    # Load parameters.
+    global_step = io.load_parameters(
+        model=model,
+        optimizer=optimizer,
+        checkpoint_dir=os.path.join(args.output, 'checkpoints'),
+        iteration=args.iteration,
+        checkpoint_path=args.checkpoint)
+    print("Rank {}: checkpoint loaded.".format(local_rank))
 
-        if args.checkpoint_path is not None:
-            model_dict, opti_dict = load_checkpoint(
-                str(args.fastspeech_step),
-                os.path.join(args.checkpoint_path, "fastspeech"))
-            model.set_dict(model_dict)
-            optimizer.set_dict(opti_dict)
-            global_step = args.fastspeech_step
-            print("load checkpoint!!!")
+    if parallel:
+        strategy = dg.parallel.prepare_context()
+        model = fluid.dygraph.parallel.DataParallel(model, strategy)
 
-        if args.use_data_parallel:
-            strategy = dg.parallel.prepare_context()
-            model = fluid.dygraph.parallel.DataParallel(model, strategy)
+    for epoch in range(cfg['train']['max_epochs']):
+        pbar = tqdm(reader)
 
-        for epoch in range(args.epochs):
-            pbar = tqdm(reader)
+        for i, data in enumerate(pbar):
+            pbar.set_description('Processing at epoch %d' % epoch)
+            (character, mel, pos_text, pos_mel, alignment) = data
 
-            for i, data in enumerate(pbar):
-                pbar.set_description('Processing at epoch %d' % epoch)
-                (character, mel, mel_input, pos_text, pos_mel, text_length,
-                 mel_lens, enc_slf_mask, enc_query_mask, dec_slf_mask,
-                 enc_dec_mask, dec_query_slf_mask, dec_query_mask) = data
+            global_step += 1
 
-                _, _, attn_probs, _, _, _ = transformer_tts(
-                    character,
-                    mel_input,
-                    pos_text,
-                    pos_mel,
-                    dec_slf_mask=dec_slf_mask,
-                    enc_slf_mask=enc_slf_mask,
-                    enc_query_mask=enc_query_mask,
-                    enc_dec_mask=enc_dec_mask,
-                    dec_query_slf_mask=dec_query_slf_mask,
-                    dec_query_mask=dec_query_mask)
-                alignment, max_attn = get_alignment(attn_probs, mel_lens,
-                                                    cfg['transformer_head'])
-                alignment = dg.to_variable(alignment).astype(np.float32)
+            #Forward
+            result = model(
+                character, pos_text, mel_pos=pos_mel, length_target=alignment)
+            mel_output, mel_output_postnet, duration_predictor_output, _, _ = result
+            mel_loss = layers.mse_loss(mel_output, mel)
+            mel_postnet_loss = layers.mse_loss(mel_output_postnet, mel)
+            duration_loss = layers.mean(
+                layers.abs(
+                    layers.elementwise_sub(duration_predictor_output,
+                                           alignment)))
+            total_loss = mel_loss + mel_postnet_loss + duration_loss
 
-                if local_rank == 0 and global_step % 5 == 1:
-                    x = np.uint8(
-                        cm.viridis(max_attn[8, :mel_lens.numpy()[8]]) * 255)
-                    writer.add_image(
-                        'Attention_%d_0' % global_step,
-                        x,
-                        0,
-                        dataformats="HWC")
+            if local_rank == 0:
+                writer.add_scalar('mel_loss', mel_loss.numpy(), global_step)
+                writer.add_scalar('post_mel_loss',
+                                  mel_postnet_loss.numpy(), global_step)
+                writer.add_scalar('duration_loss',
+                                  duration_loss.numpy(), global_step)
+                writer.add_scalar('learning_rate',
+                                  optimizer._learning_rate.step().numpy(),
+                                  global_step)
 
-                global_step += 1
+            if parallel:
+                total_loss = model.scale_loss(total_loss)
+                total_loss.backward()
+                model.apply_collective_grads()
+            else:
+                total_loss.backward()
+            optimizer.minimize(total_loss)
+            model.clear_gradients()
 
-                #Forward
-                result = model(
-                    character,
-                    pos_text,
-                    mel_pos=pos_mel,
-                    length_target=alignment,
-                    enc_non_pad_mask=enc_query_mask,
-                    enc_slf_attn_mask=enc_slf_mask,
-                    dec_non_pad_mask=dec_query_slf_mask,
-                    dec_slf_attn_mask=dec_slf_mask)
-                mel_output, mel_output_postnet, duration_predictor_output, _, _ = result
-                mel_loss = layers.mse_loss(mel_output, mel)
-                mel_postnet_loss = layers.mse_loss(mel_output_postnet, mel)
-                duration_loss = layers.mean(
-                    layers.abs(
-                        layers.elementwise_sub(duration_predictor_output,
-                                               alignment)))
-                total_loss = mel_loss + mel_postnet_loss + duration_loss
+            # save checkpoint
+            if local_rank == 0 and global_step % cfg['train'][
+                    'checkpoint_interval'] == 0:
+                io.save_parameters(
+                    os.path.join(args.output, 'checkpoints'), global_step,
+                    model, optimizer)
 
-                if local_rank == 0:
-                    writer.add_scalar('mel_loss',
-                                      mel_loss.numpy(), global_step)
-                    writer.add_scalar('post_mel_loss',
-                                      mel_postnet_loss.numpy(), global_step)
-                    writer.add_scalar('duration_loss',
-                                      duration_loss.numpy(), global_step)
-                    writer.add_scalar('learning_rate',
-                                      optimizer._learning_rate.step().numpy(),
-                                      global_step)
-
-                if args.use_data_parallel:
-                    total_loss = model.scale_loss(total_loss)
-                    total_loss.backward()
-                    model.apply_collective_grads()
-                else:
-                    total_loss.backward()
-                optimizer.minimize(
-                    total_loss,
-                    grad_clip=fluid.dygraph_grad_clip.GradClipByGlobalNorm(cfg[
-                        'grad_clip_thresh']))
-                model.clear_gradients()
-
-                # save checkpoint
-                if local_rank == 0 and global_step % args.save_step == 0:
-                    if not os.path.exists(args.save_path):
-                        os.mkdir(args.save_path)
-                    save_path = os.path.join(args.save_path,
-                                             'fastspeech/%d' % global_step)
-                    dg.save_dygraph(model.state_dict(), save_path)
-                    dg.save_dygraph(optimizer.state_dict(), save_path)
-        if local_rank == 0:
-            writer.close()
+    if local_rank == 0:
+        writer.close()
 
 
 if __name__ == '__main__':
@@ -190,5 +159,5 @@ if __name__ == '__main__':
     add_config_options_to_parser(parser)
     args = parser.parse_args()
     # Print the whole config setting.
-    pprint(args)
+    pprint(vars(args))
     main(args)

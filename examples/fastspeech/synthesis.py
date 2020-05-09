@@ -13,11 +13,12 @@
 # limitations under the License.
 import os
 from tensorboardX import SummaryWriter
+from scipy.io.wavfile import write
 from collections import OrderedDict
 import argparse
-from parse import add_config_options_to_parser
 from pprint import pprint
 from ruamel import yaml
+from matplotlib import cm
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
@@ -25,93 +26,178 @@ from parakeet.g2p.en import text_to_sequence
 from parakeet import audio
 from parakeet.models.fastspeech.fastspeech import FastSpeech
 from parakeet.models.transformer_tts.utils import *
+from parakeet.models.wavenet import WaveNet, UpsampleNet
+from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
+from parakeet.utils.layer_tools import freeze
+from parakeet.utils import io
 
 
-def load_checkpoint(step, model_path):
-    model_dict, _ = fluid.dygraph.load_dygraph(os.path.join(model_path, step))
-    new_state_dict = OrderedDict()
-    for param in model_dict:
-        if param.startswith('_layers.'):
-            new_state_dict[param[8:]] = model_dict[param]
-        else:
-            new_state_dict[param] = model_dict[param]
-    return new_state_dict
+def add_config_options_to_parser(parser):
+    parser.add_argument("--config", type=str, help="path of the config file")
+    parser.add_argument(
+        "--config_clarinet", type=str, help="path of the clarinet config file")
+    parser.add_argument("--use_gpu", type=int, default=0, help="device to use")
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=1,
+        help="determine the length of the expanded sequence mel, controlling the voice speed."
+    )
+
+    parser.add_argument(
+        "--checkpoint", type=str, help="fastspeech checkpoint to synthesis")
+    parser.add_argument(
+        "--checkpoint_clarinet",
+        type=str,
+        help="clarinet checkpoint to synthesis")
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="synthesis",
+        help="path to save experiment results")
 
 
 def synthesis(text_input, args):
-    place = (fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace())
+    local_rank = dg.parallel.Env().local_rank
+    place = (fluid.CUDAPlace(local_rank) if args.use_gpu else fluid.CPUPlace())
+    fluid.enable_dygraph(place)
 
-    # tensorboard
-    if not os.path.exists(args.log_dir):
-        os.mkdir(args.log_dir)
-    path = os.path.join(args.log_dir, 'synthesis')
-
-    with open(args.config_path) as f:
+    with open(args.config) as f:
         cfg = yaml.load(f, Loader=yaml.Loader)
 
-    writer = SummaryWriter(path)
+    # tensorboard
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
-    with dg.guard(place):
-        model = FastSpeech(cfg)
-        model.set_dict(
-            load_checkpoint(
-                str(args.fastspeech_step),
-                os.path.join(args.checkpoint_path, "fastspeech")))
-        model.eval()
+    writer = SummaryWriter(os.path.join(args.output, 'log'))
 
-        text = np.asarray(text_to_sequence(text_input))
-        text = np.expand_dims(text, axis=0)
-        pos_text = np.arange(1, text.shape[1] + 1)
-        pos_text = np.expand_dims(pos_text, axis=0)
-        enc_non_pad_mask = get_non_pad_mask(pos_text).astype(np.float32)
-        enc_slf_attn_mask = get_attn_key_pad_mask(pos_text,
-                                                  text).astype(np.float32)
+    model = FastSpeech(cfg['network'], num_mels=cfg['audio']['num_mels'])
+    # Load parameters.
+    global_step = io.load_parameters(
+        model=model, checkpoint_path=args.checkpoint)
+    model.eval()
 
-        text = dg.to_variable(text)
-        pos_text = dg.to_variable(pos_text)
-        enc_non_pad_mask = dg.to_variable(enc_non_pad_mask)
-        enc_slf_attn_mask = dg.to_variable(enc_slf_attn_mask)
+    text = np.asarray(text_to_sequence(text_input))
+    text = np.expand_dims(text, axis=0)
+    pos_text = np.arange(1, text.shape[1] + 1)
+    pos_text = np.expand_dims(pos_text, axis=0)
 
-        mel_output, mel_output_postnet = model(
-            text,
-            pos_text,
-            alpha=args.alpha,
-            enc_non_pad_mask=enc_non_pad_mask,
-            enc_slf_attn_mask=enc_slf_attn_mask,
-            dec_non_pad_mask=None,
-            dec_slf_attn_mask=None)
+    text = dg.to_variable(text)
+    pos_text = dg.to_variable(pos_text)
 
-        _ljspeech_processor = audio.AudioProcessor(
-            sample_rate=cfg['audio']['sr'],
-            num_mels=cfg['audio']['num_mels'],
-            min_level_db=cfg['audio']['min_level_db'],
-            ref_level_db=cfg['audio']['ref_level_db'],
-            n_fft=cfg['audio']['n_fft'],
-            win_length=cfg['audio']['win_length'],
-            hop_length=cfg['audio']['hop_length'],
-            power=cfg['audio']['power'],
-            preemphasis=cfg['audio']['preemphasis'],
-            signal_norm=True,
-            symmetric_norm=False,
-            max_norm=1.,
-            mel_fmin=0,
-            mel_fmax=None,
-            clip_norm=True,
-            griffin_lim_iters=60,
-            do_trim_silence=False,
-            sound_norm=False)
+    _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
 
-        mel_output_postnet = fluid.layers.transpose(
-            fluid.layers.squeeze(mel_output_postnet, [0]), [1, 0])
-        wav = _ljspeech_processor.inv_melspectrogram(mel_output_postnet.numpy(
-        ))
-        writer.add_audio(text_input, wav, 0, cfg['audio']['sr'])
-        print("Synthesis completed !!!")
+    result = np.exp(mel_output_postnet.numpy())
+    mel_output_postnet = fluid.layers.transpose(
+        fluid.layers.squeeze(mel_output_postnet, [0]), [1, 0])
+    mel_output_postnet = np.exp(mel_output_postnet.numpy())
+    basis = librosa.filters.mel(cfg['audio']['sr'], cfg['audio']['n_fft'],
+                                cfg['audio']['num_mels'])
+    inv_basis = np.linalg.pinv(basis)
+    spec = np.maximum(1e-10, np.dot(inv_basis, mel_output_postnet))
+
+    # synthesis use clarinet
+    wav_clarinet = synthesis_with_clarinet(
+        args.config_clarinet, args.checkpoint_clarinet, result, place)
+    writer.add_audio(text_input + '(clarinet)', wav_clarinet, 0,
+                     cfg['audio']['sr'])
+    if not os.path.exists(os.path.join(args.output, 'samples')):
+        os.mkdir(os.path.join(args.output, 'samples'))
+    write(
+        os.path.join(os.path.join(args.output, 'samples'), 'clarinet.wav'),
+        cfg['audio']['sr'], wav_clarinet)
+
+    #synthesis use griffin-lim
+    wav = librosa.core.griffinlim(
+        spec**cfg['audio']['power'],
+        hop_length=cfg['audio']['hop_length'],
+        win_length=cfg['audio']['win_length'])
+    writer.add_audio(text_input + '(griffin-lim)', wav, 0, cfg['audio']['sr'])
+    write(
+        os.path.join(
+            os.path.join(args.output, 'samples'), 'grinffin-lim.wav'),
+        cfg['audio']['sr'], wav)
+    print("Synthesis completed !!!")
     writer.close()
 
 
+def synthesis_with_clarinet(config_path, checkpoint, mel_spectrogram, place):
+    with open(config_path, 'rt') as f:
+        config = yaml.safe_load(f)
+
+    data_config = config["data"]
+    n_mels = data_config["n_mels"]
+
+    teacher_config = config["teacher"]
+    n_loop = teacher_config["n_loop"]
+    n_layer = teacher_config["n_layer"]
+    filter_size = teacher_config["filter_size"]
+
+    # only batch=1 for validation is enabled
+
+    with dg.guard(place):
+        # conditioner(upsampling net)
+        conditioner_config = config["conditioner"]
+        upsampling_factors = conditioner_config["upsampling_factors"]
+        upsample_net = UpsampleNet(upscale_factors=upsampling_factors)
+        freeze(upsample_net)
+
+        residual_channels = teacher_config["residual_channels"]
+        loss_type = teacher_config["loss_type"]
+        output_dim = teacher_config["output_dim"]
+        log_scale_min = teacher_config["log_scale_min"]
+        assert loss_type == "mog" and output_dim == 3, \
+            "the teacher wavenet should be a wavenet with single gaussian output"
+
+        teacher = WaveNet(n_loop, n_layer, residual_channels, output_dim,
+                          n_mels, filter_size, loss_type, log_scale_min)
+        # load & freeze upsample_net & teacher
+        freeze(teacher)
+
+        student_config = config["student"]
+        n_loops = student_config["n_loops"]
+        n_layers = student_config["n_layers"]
+        student_residual_channels = student_config["residual_channels"]
+        student_filter_size = student_config["filter_size"]
+        student_log_scale_min = student_config["log_scale_min"]
+        student = ParallelWaveNet(n_loops, n_layers, student_residual_channels,
+                                  n_mels, student_filter_size)
+
+        stft_config = config["stft"]
+        stft = STFT(
+            n_fft=stft_config["n_fft"],
+            hop_length=stft_config["hop_length"],
+            win_length=stft_config["win_length"])
+
+        lmd = config["loss"]["lmd"]
+        model = Clarinet(upsample_net, teacher, student, stft,
+                         student_log_scale_min, lmd)
+        io.load_parameters(model=model, checkpoint_path=checkpoint)
+
+        if not os.path.exists(args.output):
+            os.makedirs(args.output)
+        model.eval()
+
+        # Rescale mel_spectrogram.
+        min_level, ref_level = 1e-5, 20  # hard code it
+        mel_spectrogram = 20 * np.log10(np.maximum(min_level, mel_spectrogram))
+        mel_spectrogram = mel_spectrogram - ref_level
+        mel_spectrogram = np.clip((mel_spectrogram + 100) / 100, 0, 1)
+
+        mel_spectrogram = dg.to_variable(mel_spectrogram)
+        mel_spectrogram = fluid.layers.transpose(mel_spectrogram, [0, 2, 1])
+
+        wav_var = model.synthesis(mel_spectrogram)
+        wav_np = wav_var.numpy()[0]
+
+        return wav_np
+
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Train Fastspeech model")
+    parser = argparse.ArgumentParser(description="Synthesis model")
     add_config_options_to_parser(parser)
     args = parser.parse_args()
-    synthesis("Transformer model is so fast!", args)
+    pprint(vars(args))
+    synthesis("Simple as this proposition is, it is necessary to be stated,",
+              args)

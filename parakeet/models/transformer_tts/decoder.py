@@ -22,14 +22,20 @@ from parakeet.models.transformer_tts.post_convnet import PostConvNet
 
 
 class Decoder(dg.Layer):
-    def __init__(self, num_hidden, config, num_head=4, n_layers=3):
+    def __init__(self,
+                 num_hidden,
+                 num_mels=80,
+                 outputs_per_step=1,
+                 num_head=4,
+                 n_layers=3):
         """Decoder layer of TransformerTTS.
 
         Args:
             num_hidden (int): the number of source vocabulary.
-            config: the yaml configs used in decoder.
-            n_layers (int, optional): the layers number of multihead attention. Defaults to 4.
-            num_head (int, optional): the head number of multihead attention. Defaults to 3.
+            n_mels (int, optional): the number of mel bands when calculating mel spectrograms. Defaults to 80.
+            outputs_per_step (int, optional): the num of output frames per step . Defaults to 1.
+            num_head (int, optional): the head number of multihead attention. Defaults to 4.
+            n_layers (int, optional): the layers number of multihead attention. Defaults to 3.  
         """
         super(Decoder, self).__init__()
         self.num_hidden = num_hidden
@@ -51,7 +57,7 @@ class Decoder(dg.Layer):
                     self.pos_inp),
                 trainable=False))
         self.decoder_prenet = PreNet(
-            input_size=config['audio']['num_mels'],
+            input_size=num_mels,
             hidden_size=num_hidden * 2,
             output_size=num_hidden,
             dropout_rate=0.2)
@@ -85,7 +91,7 @@ class Decoder(dg.Layer):
             self.add_sublayer("ffns_{}".format(i), layer)
         self.mel_linear = dg.Linear(
             num_hidden,
-            config['audio']['num_mels'] * config['audio']['outputs_per_step'],
+            num_mels * outputs_per_step,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.XavierInitializer()),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Uniform(
@@ -99,23 +105,15 @@ class Decoder(dg.Layer):
                 low=-k, high=k)))
 
         self.postconvnet = PostConvNet(
-            config['audio']['num_mels'],
-            config['hidden_size'],
+            num_mels,
+            num_hidden,
             filter_size=5,
             padding=4,
             num_conv=5,
-            outputs_per_step=config['audio']['outputs_per_step'],
+            outputs_per_step=outputs_per_step,
             use_cudnn=True)
 
-    def forward(self,
-                key,
-                value,
-                query,
-                positional,
-                mask,
-                m_mask=None,
-                m_self_mask=None,
-                zero_mask=None):
+    def forward(self, key, value, query, positional, c_mask):
         """
         Compute decoder outputs.
         
@@ -126,11 +124,7 @@ class Decoder(dg.Layer):
             query (Variable): shape(B, T_mel, C), dtype float32, the input query of decoder,
                 where T_mel means the timesteps of input spectrum,
             positional (Variable): shape(B, T_mel), dtype int64, the spectrum position. 
-            mask (Variable): shape(B, T_mel, T_mel), dtype int64, the mask of decoder self attention.
-            m_mask (Variable, optional): shape(B, T_mel, 1), dtype int64, the query mask of encoder-decoder attention. Defaults to None.
-            m_self_mask (Variable, optional): shape(B, T_mel, 1), dtype int64, the query mask of decoder self attention. Defaults to None.
-            zero_mask (Variable, optional): shape(B, T_mel, T_text), dtype int64, query mask of encoder-decoder attention. Defaults to None.
-                
+            c_mask (Variable): shape(B, T_text, 1), dtype float32, query mask returned from encoder.
         Returns:
             mel_out (Variable): shape(B, T_mel, C), the decoder output after mel linear projection.
             out (Variable): shape(B, T_mel, C), the decoder output after post mel network.
@@ -142,14 +136,20 @@ class Decoder(dg.Layer):
         # get decoder mask with triangular matrix
 
         if fluid.framework._dygraph_tracer()._train_mode:
-            m_mask = layers.expand(m_mask, [self.num_head, 1, key.shape[1]])
-            m_self_mask = layers.expand(m_self_mask,
-                                        [self.num_head, 1, query.shape[1]])
-            mask = layers.expand(mask, [self.num_head, 1, 1])
-            zero_mask = layers.expand(zero_mask, [self.num_head, 1, 1])
+            mask = get_dec_attn_key_pad_mask(positional, self.num_head,
+                                             query.dtype)
+            m_mask = get_non_pad_mask(positional, self.num_head, query.dtype)
+            zero_mask = layers.cast(c_mask == 0, dtype=query.dtype) * -1e30
+            zero_mask = layers.transpose(zero_mask, perm=[0, 2, 1])
 
         else:
-            m_mask, m_self_mask, zero_mask = None, None, None
+            len_q = query.shape[1]
+            mask = layers.triu(
+                layers.ones(
+                    shape=[len_q, len_q], dtype=query.dtype),
+                diagonal=1)
+            mask = layers.cast(mask != 0, dtype=query.dtype) * -1e30
+            m_mask, zero_mask = None, None
 
         # Decoder pre-network
         query = self.decoder_prenet(query)
@@ -172,7 +172,7 @@ class Decoder(dg.Layer):
         for selfattn, attn, ffn in zip(self.selfattn_layers, self.attn_layers,
                                        self.ffns):
             query, attn_dec = selfattn(
-                query, query, query, mask=mask, query_mask=m_self_mask)
+                query, query, query, mask=mask, query_mask=m_mask)
             query, attn_dot = attn(
                 key, value, query, mask=zero_mask, query_mask=m_mask)
             query = ffn(query)
