@@ -191,13 +191,14 @@ if __name__ == "__main__":
         beta1 = optim_config["beta1"]
         beta2 = optim_config["beta2"]
         epsilon = optim_config["epsilon"]
+        gradient_clipper = fluid.clip.GradientClipByGlobalNorm(0.1)
         optim = fluid.optimizer.Adam(
             lr_scheduler,
             beta1,
             beta2,
             epsilon=epsilon,
-            parameter_list=dv3.parameters())
-        gradient_clipper = fluid.clip.GradientClipByGlobalNorm(0.1)
+            parameter_list=dv3.parameters(),
+            grad_clip=gradient_clipper)
 
         # generation
         synthesis_config = config["synthesis"]
@@ -261,7 +262,7 @@ if __name__ == "__main__":
             # record learning rate before updating
             writer.add_scalar("learning_rate",
                               optim._learning_rate.step().numpy(), global_step)
-            optim.minimize(l, grad_clip=gradient_clipper)
+            optim.minimize(l)
             optim.clear_gradients()
 
             # ==================all kinds of tedious things=================

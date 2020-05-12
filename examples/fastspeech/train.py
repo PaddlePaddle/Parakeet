@@ -79,7 +79,9 @@ def main(args):
         optimizer = fluid.optimizer.AdamOptimizer(
             learning_rate=dg.NoamDecay(1 / (
                 cfg['warm_up_step'] * (args.lr**2)), cfg['warm_up_step']),
-            parameter_list=model.parameters())
+            parameter_list=model.parameters(),
+            grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg[
+                        'grad_clip_thresh']))
         reader = LJSpeechLoader(
             cfg, args, nranks, local_rank, shuffle=True).reader()
 
@@ -167,10 +169,7 @@ def main(args):
                     model.apply_collective_grads()
                 else:
                     total_loss.backward()
-                optimizer.minimize(
-                    total_loss,
-                    grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg[
-                        'grad_clip_thresh']))
+                optimizer.minimize(total_loss)
                 model.clear_gradients()
 
                 # save checkpoint

@@ -64,7 +64,9 @@ def main(args):
         optimizer = fluid.optimizer.AdamOptimizer(
             learning_rate=dg.NoamDecay(1 / (
                 cfg['warm_up_step'] * (args.lr**2)), cfg['warm_up_step']),
-            parameter_list=model.parameters())
+            parameter_list=model.parameters(),
+            grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg[
+                        'grad_clip_thresh']))
 
         if args.checkpoint_path is not None:
             model_dict, opti_dict = load_checkpoint(
@@ -101,10 +103,7 @@ def main(args):
                     model.apply_collective_grads()
                 else:
                     loss.backward()
-                optimizer.minimize(
-                    loss,
-                    grad_clip=fluid.clip.GradientClipByGlobalNorm(cfg[
-                        'grad_clip_thresh']))
+                optimizer.minimize(loss)
                 model.clear_gradients()
 
                 if local_rank == 0:

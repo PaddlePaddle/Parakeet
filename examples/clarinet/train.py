@@ -163,11 +163,10 @@ if __name__ == "__main__":
         anneal_interval = train_config["anneal_interval"]
         lr_scheduler = dg.ExponentialDecay(
             learning_rate, anneal_interval, anneal_rate, staircase=True)
-        optim = fluid.optimizer.Adam(
-            lr_scheduler, parameter_list=model.parameters())
         gradiant_max_norm = train_config["gradient_max_norm"]
-        clipper = fluid.clip.GradientClipByGlobalNorm(
-            gradiant_max_norm)
+        clipper = fluid.clip.GradientClipByGlobalNorm(gradiant_max_norm)
+        optim = fluid.optimizer.Adam(
+            lr_scheduler, parameter_list=model.parameters(), grad_clip=clipper)
 
         # train
         max_iterations = train_config["max_iterations"]
@@ -229,7 +228,7 @@ if __name__ == "__main__":
                                                                   step_loss))
 
             l.backward()
-            optim.minimize(l, grad_clip=clipper)
+            optim.minimize(l)
             optim.clear_gradients()
 
             if global_step % eval_interval == 0:
