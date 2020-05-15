@@ -210,98 +210,82 @@ class TTSLoss(object):
         loss = fluid.layers.reduce_mean(predicted_attention * soft_mask_)
         return loss
 
-    def __call__(self,
-                 mel_hyp,
-                 lin_hyp,
-                 done_hyp,
-                 attn_hyp,
-                 mel_ref,
-                 lin_ref,
-                 done_ref,
-                 input_lengths,
-                 n_frames,
-                 compute_lin_loss=True,
-                 compute_mel_loss=True,
-                 compute_done_loss=True,
-                 compute_attn_loss=True):
+    def __call__(self, outputs, inputs):
         """Total loss
 
         Args:
+            outpus is a tuple of (mel_hyp, lin_hyp, attn_hyp, done_hyp).
             mel_hyp (Variable): shape(B, T, C_mel), dtype float32, predicted mel spectrogram.
             lin_hyp (Variable): shape(B, T, C_lin), dtype float32, predicted linear spectrogram.
             done_hyp (Variable): shape(B, T), dtype float32, predicted done probability.
             attn_hyp (Variable): shape(N, B, T_dec, T_enc), dtype float32, predicted attention.
+
+            inputs is a tuple of (mel_ref, lin_ref, done_ref, input_lengths, n_frames)
             mel_ref (Variable): shape(B, T, C_mel), dtype float32, ground truth mel spectrogram.
             lin_ref (Variable): shape(B, T, C_lin), dtype float32, ground truth linear spectrogram.
             done_ref (Variable): shape(B, T), dtype float32, ground truth done flag.
             input_lengths (Variable): shape(B, ), dtype: int, encoder valid lengths.
             n_frames (Variable): shape(B, ), dtype: int, decoder valid lengths.
-            compute_lin_loss (bool, optional): whether to compute linear loss. Defaults to True.
-            compute_mel_loss (bool, optional): whether to compute mel loss. Defaults to True.
-            compute_done_loss (bool, optional): whether to compute done loss. Defaults to True.
-            compute_attn_loss (bool, optional): whether to compute atention loss. Defaults to True.
 
         Returns:
             Dict(str, Variable): details of loss.
         """
         total_loss = 0.
 
+        mel_hyp, lin_hyp, attn_hyp, done_hyp = outputs
+        mel_ref, lin_ref, done_ref, input_lengths, n_frames = inputs
+
         # n_frames # mel_lengths # decoder_lengths
         max_frames = lin_hyp.shape[1]
         max_mel_steps = max_frames // self.downsample_factor
-        max_decoder_steps = max_mel_steps // self.r
-
-        decoder_mask = F.sequence_mask(
-            n_frames // self.downsample_factor // self.r,
-            max_decoder_steps,
-            dtype="float32")
+        # max_decoder_steps = max_mel_steps // self.r
+        # decoder_mask = F.sequence_mask(n_frames // self.downsample_factor //
+        #                                self.r,
+        #                                max_decoder_steps,
+        #                                dtype="float32")
         mel_mask = F.sequence_mask(
             n_frames // self.downsample_factor, max_mel_steps, dtype="float32")
         lin_mask = F.sequence_mask(n_frames, max_frames, dtype="float32")
 
-        if compute_lin_loss:
-            lin_hyp = lin_hyp[:, :-self.time_shift, :]
-            lin_ref = lin_ref[:, self.time_shift:, :]
-            lin_mask = lin_mask[:, self.time_shift:]
-            lin_l1_loss = self.l1_loss(
-                lin_hyp, lin_ref, lin_mask, priority_bin=self.priority_bin)
-            lin_bce_loss = self.binary_divergence(lin_hyp, lin_ref, lin_mask)
-            lin_loss = self.binary_divergence_weight * lin_bce_loss \
-                     + (1 - self.binary_divergence_weight) * lin_l1_loss
-            total_loss += lin_loss
+        lin_hyp = lin_hyp[:, :-self.time_shift, :]
+        lin_ref = lin_ref[:, self.time_shift:, :]
+        lin_mask = lin_mask[:, self.time_shift:]
+        lin_l1_loss = self.l1_loss(
+            lin_hyp, lin_ref, lin_mask, priority_bin=self.priority_bin)
+        lin_bce_loss = self.binary_divergence(lin_hyp, lin_ref, lin_mask)
+        lin_loss = self.binary_divergence_weight * lin_bce_loss \
+                    + (1 - self.binary_divergence_weight) * lin_l1_loss
+        total_loss += lin_loss
 
-        if compute_mel_loss:
-            mel_hyp = mel_hyp[:, :-self.time_shift, :]
-            mel_ref = mel_ref[:, self.time_shift:, :]
-            mel_mask = mel_mask[:, self.time_shift:]
-            mel_l1_loss = self.l1_loss(mel_hyp, mel_ref, mel_mask)
-            mel_bce_loss = self.binary_divergence(mel_hyp, mel_ref, mel_mask)
-            # print("=====>", mel_l1_loss.numpy()[0], mel_bce_loss.numpy()[0])
-            mel_loss = self.binary_divergence_weight * mel_bce_loss \
-                     + (1 - self.binary_divergence_weight) * mel_l1_loss
-            total_loss += mel_loss
+        mel_hyp = mel_hyp[:, :-self.time_shift, :]
+        mel_ref = mel_ref[:, self.time_shift:, :]
+        mel_mask = mel_mask[:, self.time_shift:]
+        mel_l1_loss = self.l1_loss(mel_hyp, mel_ref, mel_mask)
+        mel_bce_loss = self.binary_divergence(mel_hyp, mel_ref, mel_mask)
+        # print("=====>", mel_l1_loss.numpy()[0], mel_bce_loss.numpy()[0])
+        mel_loss = self.binary_divergence_weight * mel_bce_loss \
+                    + (1 - self.binary_divergence_weight) * mel_l1_loss
+        total_loss += mel_loss
 
-        if compute_attn_loss:
-            attn_loss = self.attention_loss(attn_hyp,
-                                            input_lengths.numpy(),
-                                            n_frames.numpy() //
-                                            (self.downsample_factor * self.r))
-            total_loss += attn_loss
+        attn_loss = self.attention_loss(attn_hyp,
+                                        input_lengths.numpy(),
+                                        n_frames.numpy() //
+                                        (self.downsample_factor * self.r))
+        total_loss += attn_loss
 
-        if compute_done_loss:
-            done_loss = self.done_loss(done_hyp, done_ref)
-            total_loss += done_loss
+        done_loss = self.done_loss(done_hyp, done_ref)
+        total_loss += done_loss
 
-        result = {
+        losses = {
             "loss": total_loss,
-            "mel/mel_loss": mel_loss if compute_mel_loss else None,
-            "mel/l1_loss": mel_l1_loss if compute_mel_loss else None,
-            "mel/bce_loss": mel_bce_loss if compute_mel_loss else None,
-            "lin/lin_loss": lin_loss if compute_lin_loss else None,
-            "lin/l1_loss": lin_l1_loss if compute_lin_loss else None,
-            "lin/bce_loss": lin_bce_loss if compute_lin_loss else None,
-            "done": done_loss if compute_done_loss else None,
-            "attn": attn_loss if compute_attn_loss else None,
+            "mel/mel_loss": mel_loss,
+            "mel/l1_loss": mel_l1_loss,
+            "mel/bce_loss": mel_bce_loss,
+            "lin/lin_loss": lin_loss,
+            "lin/l1_loss": lin_l1_loss,
+            "lin/bce_loss": lin_bce_loss,
+            "done": done_loss,
+            "attn": attn_loss,
         }
 
-        return result
+        return losses

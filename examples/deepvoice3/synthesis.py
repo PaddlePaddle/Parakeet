@@ -20,6 +20,7 @@ import numpy as np
 import soundfile as sf
 
 from paddle import fluid
+fluid.require_version('1.8.0')
 import paddle.fluid.layers as F
 import paddle.fluid.dygraph as dg
 from tensorboardX import SummaryWriter
@@ -29,7 +30,8 @@ from parakeet.modules.weight_norm import WeightNormWrapper
 from parakeet.utils.layer_tools import summary
 from parakeet.utils import io
 
-from utils import make_model, eval_model, plot_alignment
+from model import make_model
+from utils import make_evaluator
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -61,101 +63,29 @@ if __name__ == "__main__":
     else:
         place = fluid.CUDAPlace(args.device)
 
-    with dg.guard(place):
-        # =========================model=========================
-        transform_config = config["transform"]
-        replace_pronounciation_prob = transform_config[
-            "replace_pronunciation_prob"]
-        sample_rate = transform_config["sample_rate"]
-        preemphasis = transform_config["preemphasis"]
-        n_fft = transform_config["n_fft"]
-        n_mels = transform_config["n_mels"]
+    dg.enable_dygraph(place)
 
-        model_config = config["model"]
-        downsample_factor = model_config["downsample_factor"]
-        r = model_config["outputs_per_step"]
-        n_speakers = model_config["n_speakers"]
-        speaker_dim = model_config["speaker_embed_dim"]
-        speaker_embed_std = model_config["speaker_embedding_weight_std"]
-        n_vocab = en.n_vocab
-        embed_dim = model_config["text_embed_dim"]
-        linear_dim = 1 + n_fft // 2
-        use_decoder_states = model_config[
-            "use_decoder_state_for_postnet_input"]
-        filter_size = model_config["kernel_size"]
-        encoder_channels = model_config["encoder_channels"]
-        decoder_channels = model_config["decoder_channels"]
-        converter_channels = model_config["converter_channels"]
-        dropout = model_config["dropout"]
-        padding_idx = model_config["padding_idx"]
-        embedding_std = model_config["embedding_weight_std"]
-        max_positions = model_config["max_positions"]
-        freeze_embedding = model_config["freeze_embedding"]
-        trainable_positional_encodings = model_config[
-            "trainable_positional_encodings"]
-        use_memory_mask = model_config["use_memory_mask"]
-        query_position_rate = model_config["query_position_rate"]
-        key_position_rate = model_config["key_position_rate"]
-        window_backward = model_config["window_backward"]
-        window_ahead = model_config["window_ahead"]
-        key_projection = model_config["key_projection"]
-        value_projection = model_config["value_projection"]
-        dv3 = make_model(
-            n_speakers, speaker_dim, speaker_embed_std, embed_dim, padding_idx,
-            embedding_std, max_positions, n_vocab, freeze_embedding,
-            filter_size, encoder_channels, n_mels, decoder_channels, r,
-            trainable_positional_encodings, use_memory_mask,
-            query_position_rate, key_position_rate, window_backward,
-            window_ahead, key_projection, value_projection, downsample_factor,
-            linear_dim, use_decoder_states, converter_channels, dropout)
+    model = make_model(config)
+    checkpoint_dir = os.path.join(args.output, "checkpoints")
+    if args.checkpoint is not None:
+        iteration = io.load_parameters(model, checkpoint_path=args.checkpoint)
+    else:
+        iteration = io.load_parameters(
+            model, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
 
-        summary(dv3)
+    # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
+    # removing weight norm also speeds up computation
+    for layer in model.sublayers():
+        if isinstance(layer, WeightNormWrapper):
+            layer.remove_weight_norm()
 
-        checkpoint_dir = os.path.join(args.output, "checkpoints")
-        if args.checkpoint is not None:
-            iteration = io.load_parameters(
-                dv3, checkpoint_path=args.checkpoint)
-        else:
-            iteration = io.load_parameters(
-                dv3, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
+    synthesis_dir = os.path.join(args.output, "synthesis")
+    if not os.path.exists(synthesis_dir):
+        os.makedirs(synthesis_dir)
 
-        # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
-        # removing weight norm also speeds up computation
-        for layer in dv3.sublayers():
-            if isinstance(layer, WeightNormWrapper):
-                layer.remove_weight_norm()
+    with open(args.text, "rt", encoding="utf-8") as f:
+        lines = f.readlines()
+        sentences = [line[:-1] for line in lines]
 
-        transform_config = config["transform"]
-        c = transform_config["replace_pronunciation_prob"]
-        sample_rate = transform_config["sample_rate"]
-        min_level_db = transform_config["min_level_db"]
-        ref_level_db = transform_config["ref_level_db"]
-        preemphasis = transform_config["preemphasis"]
-        win_length = transform_config["win_length"]
-        hop_length = transform_config["hop_length"]
-
-        synthesis_config = config["synthesis"]
-        power = synthesis_config["power"]
-        n_iter = synthesis_config["n_iter"]
-
-        synthesis_dir = os.path.join(args.output, "synthesis")
-        if not os.path.exists(synthesis_dir):
-            os.makedirs(synthesis_dir)
-
-        with open(args.text, "rt", encoding="utf-8") as f:
-            lines = f.readlines()
-            for idx, line in enumerate(lines):
-                text = line[:-1]
-                dv3.eval()
-                wav, attn = eval_model(dv3, text, replace_pronounciation_prob,
-                                       min_level_db, ref_level_db, power,
-                                       n_iter, win_length, hop_length,
-                                       preemphasis)
-                plot_alignment(
-                    attn,
-                    os.path.join(synthesis_dir,
-                                 "test_{}_step_{}.png".format(idx, iteration)))
-                sf.write(
-                    os.path.join(synthesis_dir,
-                                 "test_{}_step{}.wav".format(idx, iteration)),
-                    wav, sample_rate)
+    evaluator = make_evaluator(config, sentences, synthesis_dir)
+    evaluator(model, iteration)

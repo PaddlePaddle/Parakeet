@@ -176,6 +176,79 @@ class PartialyRandomizedSimilarTimeLengthSampler(Sampler):
         return len(self.sorted_indices)
 
 
+class BucketSampler(Sampler):
+    def __init__(self,
+                 lengths,
+                 batch_size=4,
+                 batch_group_size=None,
+                 permutate=True,
+                 num_trainers=1,
+                 rank=0):
+        # maybe better implement length as a sort key
+        _lengths = np.array(lengths, dtype=np.int64)
+        self.lengths = np.sort(_lengths)
+        self.sorted_indices = np.argsort(_lengths)
+        self.num_trainers = num_trainers
+        self.rank = rank
+
+        self.dataset_size = len(_lengths)
+        self.num_samples = int(np.ceil(self.dataset_size / num_trainers))
+        self.total_size = self.num_samples * num_trainers
+        assert self.total_size >= self.dataset_size
+
+        self.batch_size = batch_size
+        total_batch_size = num_trainers * batch_size
+        self.total_batch_size = total_batch_size
+
+        if batch_group_size is None:
+            batch_group_size = min(total_batch_size * 32, len(self.lengths))
+            if batch_group_size % total_batch_size != 0:
+                batch_group_size -= batch_group_size % total_batch_size
+
+        self.batch_group_size = batch_group_size
+        assert batch_group_size % total_batch_size == 0
+        self.permutate = permutate
+
+    def __iter__(self):
+        indices = self.sorted_indices
+
+        # Append extra samples to make it evenly distributed on all trainers.
+        num_extras = self.total_size - self.dataset_size
+        extra_indices = np.random.choice(
+            indices, size=(num_extras, ), replace=False)
+        indices = np.concatenate((indices, extra_indices))
+        assert len(indices) == self.total_size
+
+        batch_group_size = self.batch_group_size
+        s, e = 0, 0
+        for i in range(len(indices) // batch_group_size):
+            s = i * batch_group_size
+            e = s + batch_group_size
+            random.shuffle(indices[s:e])  # inplace
+
+        # Permutate batches
+        total_batch_size = self.total_batch_size
+        if self.permutate:
+            perm = np.arange(len(indices[:e]) // total_batch_size)
+            random.shuffle(perm)
+            indices[:e] = indices[:e].reshape(
+                -1, total_batch_size)[perm, :].reshape(-1)
+
+        # Handle last elements
+        s += batch_group_size
+        #print(indices)
+        if s < len(indices):
+            random.shuffle(indices[s:])
+
+        # Subset samples for each trainer.
+        indices = indices[self.rank:self.total_size:self.num_trainers]
+        assert len(indices) == self.num_samples
+        return iter(indices)
+
+    def __len__(self):
+        return len(self.sorted_indices)
+
+
 class WeightedRandomSampler(Sampler):
     """Samples elements from ``[0,..,len(weights)-1]`` with given probabilities (weights).
     Args:

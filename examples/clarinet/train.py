@@ -25,10 +25,11 @@ from tensorboardX import SummaryWriter
 
 import paddle.fluid.dygraph as dg
 from paddle import fluid
+fluid.require_version('1.8.0')
 
 from parakeet.models.wavenet import WaveNet, UpsampleNet
 from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
-from parakeet.data import TransformDataset, SliceDataset, RandomSampler, SequentialSampler, DataCargo
+from parakeet.data import TransformDataset, SliceDataset, CacheDataset, RandomSampler, SequentialSampler, DataCargo
 from parakeet.utils.layer_tools import summary, freeze
 from parakeet.utils import io
 
@@ -66,6 +67,13 @@ if __name__ == "__main__":
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
 
+    if args.device == -1:
+        place = fluid.CPUPlace()
+    else:
+        place = fluid.CUDAPlace(args.device)
+
+    dg.enable_dygraph(place)
+
     print("Command Line args: ")
     for k, v in vars(args).items():
         print("{}: {}".format(k, v))
@@ -83,8 +91,9 @@ if __name__ == "__main__":
     ljspeech = TransformDataset(ljspeech_meta, transform)
 
     valid_size = data_config["valid_size"]
-    ljspeech_valid = SliceDataset(ljspeech, 0, valid_size)
-    ljspeech_train = SliceDataset(ljspeech, valid_size, len(ljspeech))
+    ljspeech_valid = CacheDataset(SliceDataset(ljspeech, 0, valid_size))
+    ljspeech_train = CacheDataset(
+        SliceDataset(ljspeech, valid_size, len(ljspeech)))
 
     teacher_config = config["teacher"]
     n_loop = teacher_config["n_loop"]
@@ -113,130 +122,122 @@ if __name__ == "__main__":
 
     make_output_tree(args.output)
 
-    if args.device == -1:
-        place = fluid.CPUPlace()
+    # conditioner(upsampling net)
+    conditioner_config = config["conditioner"]
+    upsampling_factors = conditioner_config["upsampling_factors"]
+    upsample_net = UpsampleNet(upscale_factors=upsampling_factors)
+    freeze(upsample_net)
+
+    residual_channels = teacher_config["residual_channels"]
+    loss_type = teacher_config["loss_type"]
+    output_dim = teacher_config["output_dim"]
+    log_scale_min = teacher_config["log_scale_min"]
+    assert loss_type == "mog" and output_dim == 3, \
+        "the teacher wavenet should be a wavenet with single gaussian output"
+
+    teacher = WaveNet(n_loop, n_layer, residual_channels, output_dim, n_mels,
+                      filter_size, loss_type, log_scale_min)
+    freeze(teacher)
+
+    student_config = config["student"]
+    n_loops = student_config["n_loops"]
+    n_layers = student_config["n_layers"]
+    student_residual_channels = student_config["residual_channels"]
+    student_filter_size = student_config["filter_size"]
+    student_log_scale_min = student_config["log_scale_min"]
+    student = ParallelWaveNet(n_loops, n_layers, student_residual_channels,
+                              n_mels, student_filter_size)
+
+    stft_config = config["stft"]
+    stft = STFT(
+        n_fft=stft_config["n_fft"],
+        hop_length=stft_config["hop_length"],
+        win_length=stft_config["win_length"])
+
+    lmd = config["loss"]["lmd"]
+    model = Clarinet(upsample_net, teacher, student, stft,
+                     student_log_scale_min, lmd)
+    summary(model)
+
+    # optim
+    train_config = config["train"]
+    learning_rate = train_config["learning_rate"]
+    anneal_rate = train_config["anneal_rate"]
+    anneal_interval = train_config["anneal_interval"]
+    lr_scheduler = dg.ExponentialDecay(
+        learning_rate, anneal_interval, anneal_rate, staircase=True)
+    gradiant_max_norm = train_config["gradient_max_norm"]
+    optim = fluid.optimizer.Adam(
+        lr_scheduler,
+        parameter_list=model.parameters(),
+        grad_clip=fluid.clip.ClipByGlobalNorm(gradiant_max_norm))
+
+    # train
+    max_iterations = train_config["max_iterations"]
+    checkpoint_interval = train_config["checkpoint_interval"]
+    eval_interval = train_config["eval_interval"]
+    checkpoint_dir = os.path.join(args.output, "checkpoints")
+    state_dir = os.path.join(args.output, "states")
+    log_dir = os.path.join(args.output, "log")
+    writer = SummaryWriter(log_dir)
+
+    if args.checkpoint is not None:
+        iteration = io.load_parameters(
+            model, optim, checkpoint_path=args.checkpoint)
     else:
-        place = fluid.CUDAPlace(args.device)
+        iteration = io.load_parameters(
+            model,
+            optim,
+            checkpoint_dir=checkpoint_dir,
+            iteration=args.iteration)
 
-    with dg.guard(place):
-        # conditioner(upsampling net)
-        conditioner_config = config["conditioner"]
-        upsampling_factors = conditioner_config["upsampling_factors"]
-        upsample_net = UpsampleNet(upscale_factors=upsampling_factors)
-        freeze(upsample_net)
+    if iteration == 0:
+        assert args.wavenet is not None, "When training afresh, a trained wavenet model should be provided."
+        load_wavenet(model, args.wavenet)
 
-        residual_channels = teacher_config["residual_channels"]
-        loss_type = teacher_config["loss_type"]
-        output_dim = teacher_config["output_dim"]
-        log_scale_min = teacher_config["log_scale_min"]
-        assert loss_type == "mog" and output_dim == 3, \
-            "the teacher wavenet should be a wavenet with single gaussian output"
+    # loader
+    train_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True)
+    train_loader.set_batch_generator(train_cargo, place)
 
-        teacher = WaveNet(n_loop, n_layer, residual_channels, output_dim,
-                          n_mels, filter_size, loss_type, log_scale_min)
-        freeze(teacher)
+    valid_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True)
+    valid_loader.set_batch_generator(valid_cargo, place)
 
-        student_config = config["student"]
-        n_loops = student_config["n_loops"]
-        n_layers = student_config["n_layers"]
-        student_residual_channels = student_config["residual_channels"]
-        student_filter_size = student_config["filter_size"]
-        student_log_scale_min = student_config["log_scale_min"]
-        student = ParallelWaveNet(n_loops, n_layers, student_residual_channels,
-                                  n_mels, student_filter_size)
+    # training loop
+    global_step = iteration + 1
+    iterator = iter(tqdm(train_loader))
+    while global_step <= max_iterations:
+        try:
+            batch = next(iterator)
+        except StopIteration as e:
+            iterator = iter(tqdm(train_loader))
+            batch = next(iterator)
 
-        stft_config = config["stft"]
-        stft = STFT(
-            n_fft=stft_config["n_fft"],
-            hop_length=stft_config["hop_length"],
-            win_length=stft_config["win_length"])
+        audios, mels, audio_starts = batch
+        model.train()
+        loss_dict = model(
+            audios, mels, audio_starts, clip_kl=global_step > 500)
 
-        lmd = config["loss"]["lmd"]
-        model = Clarinet(upsample_net, teacher, student, stft,
-                         student_log_scale_min, lmd)
-        summary(model)
+        writer.add_scalar("learning_rate",
+                          optim._learning_rate.step().numpy()[0], global_step)
+        for k, v in loss_dict.items():
+            writer.add_scalar("loss/{}".format(k), v.numpy()[0], global_step)
 
-        # optim
-        train_config = config["train"]
-        learning_rate = train_config["learning_rate"]
-        anneal_rate = train_config["anneal_rate"]
-        anneal_interval = train_config["anneal_interval"]
-        lr_scheduler = dg.ExponentialDecay(
-            learning_rate, anneal_interval, anneal_rate, staircase=True)
-        gradiant_max_norm = train_config["gradient_max_norm"]
-        optim = fluid.optimizer.Adam(
-            lr_scheduler,
-            parameter_list=model.parameters(),
-            grad_clip=fluid.clip.ClipByGlobalNorm(gradiant_max_norm))
+        l = loss_dict["loss"]
+        step_loss = l.numpy()[0]
+        print("[train] global_step: {} loss: {:<8.6f}".format(global_step,
+                                                              step_loss))
 
-        # train
-        max_iterations = train_config["max_iterations"]
-        checkpoint_interval = train_config["checkpoint_interval"]
-        eval_interval = train_config["eval_interval"]
-        checkpoint_dir = os.path.join(args.output, "checkpoints")
-        state_dir = os.path.join(args.output, "states")
-        log_dir = os.path.join(args.output, "log")
-        writer = SummaryWriter(log_dir)
+        l.backward()
+        optim.minimize(l)
+        optim.clear_gradients()
 
-        if args.checkpoint is not None:
-            iteration = io.load_parameters(
-                model, optim, checkpoint_path=args.checkpoint)
-        else:
-            iteration = io.load_parameters(
-                model,
-                optim,
-                checkpoint_dir=checkpoint_dir,
-                iteration=args.iteration)
+        if global_step % eval_interval == 0:
+            # evaluate on valid dataset
+            eval_model(model, valid_loader, state_dir, global_step,
+                       sample_rate)
+        if global_step % checkpoint_interval == 0:
+            io.save_parameters(checkpoint_dir, global_step, model, optim)
 
-        if iteration == 0:
-            assert args.wavenet is not None, "When training afresh, a trained wavenet model should be provided."
-            load_wavenet(model, args.wavenet)
-
-        # loader
-        train_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        train_loader.set_batch_generator(train_cargo, place)
-
-        valid_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        valid_loader.set_batch_generator(valid_cargo, place)
-
-        # training loop
-        global_step = iteration + 1
-        iterator = iter(tqdm(train_loader))
-        while global_step <= max_iterations:
-            try:
-                batch = next(iterator)
-            except StopIteration as e:
-                iterator = iter(tqdm(train_loader))
-                batch = next(iterator)
-
-            audios, mels, audio_starts = batch
-            model.train()
-            loss_dict = model(
-                audios, mels, audio_starts, clip_kl=global_step > 500)
-
-            writer.add_scalar("learning_rate",
-                              optim._learning_rate.step().numpy()[0],
-                              global_step)
-            for k, v in loss_dict.items():
-                writer.add_scalar("loss/{}".format(k),
-                                  v.numpy()[0], global_step)
-
-            l = loss_dict["loss"]
-            step_loss = l.numpy()[0]
-            print("[train] global_step: {} loss: {:<8.6f}".format(global_step,
-                                                                  step_loss))
-
-            l.backward()
-            optim.minimize(l)
-            optim.clear_gradients()
-
-            if global_step % eval_interval == 0:
-                # evaluate on valid dataset
-                eval_model(model, valid_loader, state_dir, global_step,
-                           sample_rate)
-            if global_step % checkpoint_interval == 0:
-                io.save_parameters(checkpoint_dir, global_step, model, optim)
-
-            global_step += 1
+        global_step += 1

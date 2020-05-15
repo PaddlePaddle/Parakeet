@@ -23,6 +23,7 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 
 ```text
 ├── data.py          data_processing
+├── model.py         function to create model, criterion and optimizer
 ├── configs/         (example) configuration files
 ├── sentences.txt    sample sentences
 ├── synthesis.py     script to synthesize waveform from text
@@ -34,19 +35,20 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 `train.py` and `synthesis.py` have 3 arguments in common, `--checkpooint`, `iteration` and `output`.
 
 1. `output` is the directory for saving results.
-During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`. Other possible outputs are saved in `states/` in `outuput`.
-During synthesizing, audio files and other possible outputs are save in `synthesis/` in `output`.
+During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`. States for training including alignment plots, spectrogram plots and generated audio files are saved in `states/` in `outuput`. In addition, we periodically evaluate the model with several given sentences, the alignment plots and generated audio files are save in `eval/` in `output`.
+During synthesizing, audio files and the alignment plots are save in `synthesis/` in `output`.
 So after training and synthesizing with the same output directory, the file structure of the output directory looks like this.
 
 ```text
 ├── checkpoints/      # checkpoint directory (including *.pdparams, *.pdopt and a text file `checkpoint` that records the latest checkpoint)
-├── states/           # audio files generated at validation and other possible outputs
+├── states/           # alignment plots, spectrogram plots and generated wavs at training
 ├── log/              # tensorboard log
-└── synthesis/        # synthesized audio files and other possible outputs
+├── eval/             # audio files an alignment plots generated at evaluation during training
+└── synthesis/        # synthesized audio files and alignment plots
 ```
 
 2. `--checkpoint` and `--iteration` for loading from existing checkpoint. Loading existing checkpoiont follows the following rule:
-If `--checkpoint` is provided, the checkpoint specified by `--checkpoint` is loaded.
+If `--checkpoint` is provided, the path of the checkpoint specified by `--checkpoint` is loaded.
 If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
 
 ## Train
@@ -97,6 +99,18 @@ python train.py \
     --config=configs/ljspeech.yaml \
     --data=./LJSpeech-1.1/ \
     --device=0 \
+    experiment
+```
+
+To train the model in a paralle in multiple gpus, you can launch the training script with `paddle.distributed.launch`. For example, to train with gpu `0,1,2,3`, you can use the example script below. Note that for parallel training, devices are specified with `--selected_gpus` passed to `paddle.distributed.launch`. In this case, `--device` passed to `train.py`, if specified, is ignored.
+
+Example script:
+
+```bash
+python -m paddle.distributed.launch --selected_gpus=0,1,2,3 \
+    train.py \
+    --config=configs/ljspeech.yaml \
+    --data=./LJSpeech-1.1/ \
     experiment
 ```
 

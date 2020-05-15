@@ -57,12 +57,42 @@ def norm_except(param, dim, power):
         return norm_except(transposed_param, dim=0, power=power)
 
 
-def compute_weight(v, g, dim, power):
-    assert len(g.shape) == 1, "magnitude should be a vector"
-    v_normalized = F.elementwise_div(
-        v, (norm_except(v, dim, power) + 1e-12), axis=dim)
+def compute_l2_normalized_weight(v, g, dim):
+    shape = v.shape
+    ndim = len(shape)
+
+    if dim is None:
+        v_normalized = v / (F.reduce_sum(F.square(v)) + 1e-12)
+    elif dim == 0:
+        param_matrix = F.reshape(v, (shape[0], np.prod(shape[1:])))
+        v_normalized = F.l2_normalize(param_matrix, axis=1)
+    elif dim == -1 or dim == ndim - 1:
+        param_matrix = F.reshape(v, (np.prod(shape[:-1]), shape[-1]))
+        v_normalized = F.l2_normalize(param_matrix, axis=0)
+    else:
+        perm = list(range(ndim))
+        perm[0] = dim
+        perm[dim] = 0
+        transposed_param = F.transpose(v, perm)
+        param_matrix = F.reshape(
+            transposed_param,
+            (transposed_param.shape[0], np.prod(transposed_param.shape[1:])))
+        v_normalized = F.l2_normalize(param_matrix, axis=1)
+        v_normalized = F.transpose(v_normalized, perm)
+    v_normalized = F.reshape(v_normalized, shape)
     weight = F.elementwise_mul(v_normalized, g, axis=dim)
     return weight
+
+
+def compute_weight(v, g, dim, power):
+    assert len(g.shape) == 1, "magnitude should be a vector"
+    if power == 2:
+        return compute_l2_normalized_weight(v, g, dim)
+    else:
+        v_normalized = F.elementwise_div(
+            v, (norm_except(v, dim, power) + 1e-12), axis=dim)
+        weight = F.elementwise_mul(v_normalized, g, axis=dim)
+        return weight
 
 
 class WeightNormWrapper(dg.Layer):
