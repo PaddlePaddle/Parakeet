@@ -15,6 +15,8 @@
 from __future__ import division
 import os
 import numpy as np
+import matplotlib
+matplotlib.use("agg")
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import librosa
@@ -24,132 +26,302 @@ import soundfile as sf
 
 from paddle import fluid
 import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
-
 from parakeet.g2p import en
-from parakeet.models.deepvoice3.encoder import ConvSpec
-from parakeet.models.deepvoice3 import Encoder, Decoder, Converter, DeepVoice3, WindowRange
-from parakeet.utils.layer_tools import freeze
 
 
-@fluid.framework.dygraph_only
-def make_model(n_speakers, speaker_dim, speaker_embed_std, embed_dim,
-               padding_idx, embedding_std, max_positions, n_vocab,
-               freeze_embedding, filter_size, encoder_channels, mel_dim,
-               decoder_channels, r, trainable_positional_encodings,
-               use_memory_mask, query_position_rate, key_position_rate,
-               window_behind, window_ahead, key_projection, value_projection,
-               downsample_factor, linear_dim, use_decoder_states,
-               converter_channels, dropout):
-    """just a simple function to create a deepvoice 3 model"""
-    if n_speakers > 1:
-        spe = dg.Embedding(
-            (n_speakers, speaker_dim),
-            param_attr=I.Normal(scale=speaker_embed_std))
+def get_place(device_id):
+    """get place from device_id, -1 stands for CPU"""
+    if device_id == -1:
+        place = fluid.CPUPlace()
     else:
-        spe = None
-
-    h = encoder_channels
-    k = filter_size
-    encoder_convolutions = (
-        ConvSpec(h, k, 1),
-        ConvSpec(h, k, 3),
-        ConvSpec(h, k, 9),
-        ConvSpec(h, k, 27),
-        ConvSpec(h, k, 1),
-        ConvSpec(h, k, 3),
-        ConvSpec(h, k, 9),
-        ConvSpec(h, k, 27),
-        ConvSpec(h, k, 1),
-        ConvSpec(h, k, 3), )
-    enc = Encoder(
-        n_vocab,
-        embed_dim,
-        n_speakers,
-        speaker_dim,
-        padding_idx=None,
-        embedding_weight_std=embedding_std,
-        convolutions=encoder_convolutions,
-        dropout=dropout)
-    if freeze_embedding:
-        freeze(enc.embed)
-
-    h = decoder_channels
-    prenet_convolutions = (ConvSpec(h, k, 1), ConvSpec(h, k, 3))
-    attentive_convolutions = (
-        ConvSpec(h, k, 1),
-        ConvSpec(h, k, 3),
-        ConvSpec(h, k, 9),
-        ConvSpec(h, k, 27),
-        ConvSpec(h, k, 1), )
-    attention = [True, False, False, False, True]
-    force_monotonic_attention = [True, False, False, False, True]
-    dec = Decoder(
-        n_speakers,
-        speaker_dim,
-        embed_dim,
-        mel_dim,
-        r=r,
-        max_positions=max_positions,
-        preattention=prenet_convolutions,
-        convolutions=attentive_convolutions,
-        attention=attention,
-        dropout=dropout,
-        use_memory_mask=use_memory_mask,
-        force_monotonic_attention=force_monotonic_attention,
-        query_position_rate=query_position_rate,
-        key_position_rate=key_position_rate,
-        window_range=WindowRange(window_behind, window_ahead),
-        key_projection=key_projection,
-        value_projection=value_projection)
-    if not trainable_positional_encodings:
-        freeze(dec.embed_keys_positions)
-        freeze(dec.embed_query_positions)
-
-    h = converter_channels
-    postnet_convolutions = (
-        ConvSpec(h, k, 1),
-        ConvSpec(h, k, 3),
-        ConvSpec(2 * h, k, 1),
-        ConvSpec(2 * h, k, 3), )
-    cvt = Converter(
-        n_speakers,
-        speaker_dim,
-        dec.state_dim if use_decoder_states else mel_dim,
-        linear_dim,
-        time_upsampling=downsample_factor,
-        convolutions=postnet_convolutions,
-        dropout=dropout)
-    dv3 = DeepVoice3(enc, dec, cvt, spe, use_decoder_states)
-    return dv3
+        place = fluid.CUDAPlace(device_id)
+    return place
 
 
-@fluid.framework.dygraph_only
-def eval_model(model, text, replace_pronounciation_prob, min_level_db,
-               ref_level_db, power, n_iter, win_length, hop_length,
-               preemphasis):
-    """generate waveform from text using a deepvoice 3 model"""
-    text = np.array(
-        en.text_to_sequence(
-            text, p=replace_pronounciation_prob),
-        dtype=np.int64)
-    length = len(text)
-    print("text sequence's length: {}".format(length))
-    text_positions = np.arange(1, 1 + length)
+def add_options(parser):
+    parser.add_argument("--config", type=str, help="experimrnt config")
+    parser.add_argument(
+        "--data",
+        type=str,
+        default="/workspace/datasets/LJSpeech-1.1/",
+        help="The path of the LJSpeech dataset.")
+    parser.add_argument("--device", type=int, default=-1, help="device to use")
 
-    text = np.expand_dims(text, 0)
-    text_positions = np.expand_dims(text_positions, 0)
-    model.eval()
-    mel_outputs, linear_outputs, alignments, done = model.transduce(
-        dg.to_variable(text), dg.to_variable(text_positions))
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--checkpoint", type=str, help="checkpoint to resume from.")
+    g.add_argument(
+        "--iteration",
+        type=int,
+        help="the iteration of the checkpoint to load from output directory")
 
-    linear_outputs_np = linear_outputs.numpy()[0].T  # (C, T)
-    wav = spec_to_waveform(linear_outputs_np, min_level_db, ref_level_db,
-                           power, n_iter, win_length, hop_length, preemphasis)
-    alignments_np = alignments.numpy()[0]  # batch_size = 1
-    print("linear_outputs's shape: ", linear_outputs_np.shape)
-    print("alignmnets' shape:", alignments.shape)
-    return wav, alignments_np
+    parser.add_argument(
+        "output", type=str, default="experiment", help="path to save results")
+
+
+def make_evaluator(config, text_sequences, output_dir, writer=None):
+    c = config["transform"]
+    p_replace = c["replace_pronunciation_prob"]
+    sample_rate = c["sample_rate"]
+    preemphasis = c["preemphasis"]
+    win_length = c["win_length"]
+    hop_length = c["hop_length"]
+    min_level_db = c["min_level_db"]
+    ref_level_db = c["ref_level_db"]
+
+    synthesis_config = config["synthesis"]
+    power = synthesis_config["power"]
+    n_iter = synthesis_config["n_iter"]
+
+    return Evaluator(
+        text_sequences,
+        p_replace,
+        sample_rate,
+        preemphasis,
+        win_length,
+        hop_length,
+        min_level_db,
+        ref_level_db,
+        power,
+        n_iter,
+        output_dir=output_dir,
+        writer=writer)
+
+
+class Evaluator(object):
+    def __init__(self,
+                 text_sequences,
+                 p_replace,
+                 sample_rate,
+                 preemphasis,
+                 win_length,
+                 hop_length,
+                 min_level_db,
+                 ref_level_db,
+                 power,
+                 n_iter,
+                 output_dir,
+                 writer=None):
+        self.text_sequences = text_sequences
+        self.output_dir = output_dir
+        self.writer = writer
+
+        self.p_replace = p_replace
+        self.sample_rate = sample_rate
+        self.preemphasis = preemphasis
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.min_level_db = min_level_db
+        self.ref_level_db = ref_level_db
+
+        self.power = power
+        self.n_iter = n_iter
+
+    def process_a_sentence(self, model, text):
+        text = np.array(
+            en.text_to_sequence(
+                text, p=self.p_replace), dtype=np.int64)
+        length = len(text)
+        text_positions = np.arange(1, 1 + length)
+        text = np.expand_dims(text, 0)
+        text_positions = np.expand_dims(text_positions, 0)
+
+        model.eval()
+        if isinstance(model, dg.DataParallel):
+            _model = model._layers
+        else:
+            _model = model
+        mel_outputs, linear_outputs, alignments, done = _model.transduce(
+            dg.to_variable(text), dg.to_variable(text_positions))
+
+        linear_outputs_np = linear_outputs.numpy()[0].T  # (C, T)
+
+        wav = spec_to_waveform(linear_outputs_np, self.min_level_db,
+                               self.ref_level_db, self.power, self.n_iter,
+                               self.win_length, self.hop_length,
+                               self.preemphasis)
+        alignments_np = alignments.numpy()[0]  # batch_size = 1
+        return wav, alignments_np
+
+    def __call__(self, model, iteration):
+        writer = self.writer
+        for i, seq in enumerate(self.text_sequences):
+            print("[Eval] synthesizing sentence {}".format(i))
+            wav, alignments_np = self.process_a_sentence(model, seq)
+
+            wav_path = os.path.join(
+                self.output_dir,
+                "eval_sample_{}_step_{:09d}.wav".format(i, iteration))
+            sf.write(wav_path, wav, self.sample_rate)
+            if writer is not None:
+                writer.add_audio(
+                    "eval_sample_{}".format(i),
+                    wav,
+                    iteration,
+                    sample_rate=self.sample_rate)
+            attn_path = os.path.join(
+                self.output_dir,
+                "eval_sample_{}_step_{:09d}.png".format(i, iteration))
+            plot_alignment(alignments_np, attn_path)
+            if writer is not None:
+                writer.add_image(
+                    "eval_sample_attn_{}".format(i),
+                    cm.viridis(alignments_np),
+                    iteration,
+                    dataformats="HWC")
+
+
+def make_state_saver(config, output_dir, writer=None):
+    c = config["transform"]
+    p_replace = c["replace_pronunciation_prob"]
+    sample_rate = c["sample_rate"]
+    preemphasis = c["preemphasis"]
+    win_length = c["win_length"]
+    hop_length = c["hop_length"]
+    min_level_db = c["min_level_db"]
+    ref_level_db = c["ref_level_db"]
+
+    synthesis_config = config["synthesis"]
+    power = synthesis_config["power"]
+    n_iter = synthesis_config["n_iter"]
+
+    return StateSaver(p_replace, sample_rate, preemphasis, win_length,
+                      hop_length, min_level_db, ref_level_db, power, n_iter,
+                      output_dir, writer)
+
+
+class StateSaver(object):
+    def __init__(self,
+                 p_replace,
+                 sample_rate,
+                 preemphasis,
+                 win_length,
+                 hop_length,
+                 min_level_db,
+                 ref_level_db,
+                 power,
+                 n_iter,
+                 output_dir,
+                 writer=None):
+        self.output_dir = output_dir
+        self.writer = writer
+
+        self.p_replace = p_replace
+        self.sample_rate = sample_rate
+        self.preemphasis = preemphasis
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.min_level_db = min_level_db
+        self.ref_level_db = ref_level_db
+
+        self.power = power
+        self.n_iter = n_iter
+
+    def __call__(self, outputs, inputs, iteration):
+        mel_output, lin_output, alignments, done_output = outputs
+        mel_input, lin_input = inputs
+        writer = self.writer
+
+        # mel spectrogram
+        mel_input = mel_input[0].numpy().T
+        mel_output = mel_output[0].numpy().T
+
+        path = os.path.join(self.output_dir, "mel_spec")
+        plt.figure(figsize=(10, 3))
+        display.specshow(mel_input)
+        plt.colorbar()
+        plt.title("mel_input")
+        plt.savefig(
+            os.path.join(path, "target_mel_spec_step_{:09d}.png".format(
+                iteration)))
+        plt.close()
+
+        if writer is not None:
+            writer.add_image(
+                "target/mel_spec",
+                cm.viridis(mel_input),
+                iteration,
+                dataformats="HWC")
+
+        plt.figure(figsize=(10, 3))
+        display.specshow(mel_output)
+        plt.colorbar()
+        plt.title("mel_output")
+        plt.savefig(
+            os.path.join(path, "predicted_mel_spec_step_{:09d}.png".format(
+                iteration)))
+        plt.close()
+
+        if writer is not None:
+            writer.add_image(
+                "predicted/mel_spec",
+                cm.viridis(mel_output),
+                iteration,
+                dataformats="HWC")
+
+        # linear spectrogram
+        lin_input = lin_input[0].numpy().T
+        lin_output = lin_output[0].numpy().T
+        path = os.path.join(self.output_dir, "lin_spec")
+
+        plt.figure(figsize=(10, 3))
+        display.specshow(lin_input)
+        plt.colorbar()
+        plt.title("mel_input")
+        plt.savefig(
+            os.path.join(path, "target_lin_spec_step_{:09d}.png".format(
+                iteration)))
+        plt.close()
+
+        if writer is not None:
+            writer.add_image(
+                "target/lin_spec",
+                cm.viridis(lin_input),
+                iteration,
+                dataformats="HWC")
+
+        plt.figure(figsize=(10, 3))
+        display.specshow(lin_output)
+        plt.colorbar()
+        plt.title("mel_input")
+        plt.savefig(
+            os.path.join(path, "predicted_lin_spec_step_{:09d}.png".format(
+                iteration)))
+        plt.close()
+
+        if writer is not None:
+            writer.add_image(
+                "predicted/lin_spec",
+                cm.viridis(lin_output),
+                iteration,
+                dataformats="HWC")
+
+        # alignment
+        path = os.path.join(self.output_dir, "alignments")
+        alignments = alignments[:, 0, :, :].numpy()
+        for idx, attn_layer in enumerate(alignments):
+            save_path = os.path.join(
+                path, "train_attn_layer_{}_step_{}.png".format(idx, iteration))
+            plot_alignment(attn_layer, save_path)
+
+            if writer is not None:
+                writer.add_image(
+                    "train_attn/layer_{}".format(idx),
+                    cm.viridis(attn_layer),
+                    iteration,
+                    dataformats="HWC")
+
+        # synthesize waveform
+        wav = spec_to_waveform(
+            lin_output, self.min_level_db, self.ref_level_db, self.power,
+            self.n_iter, self.win_length, self.hop_length, self.preemphasis)
+        path = os.path.join(self.output_dir, "waveform")
+        save_path = os.path.join(
+            path, "train_sample_step_{:09d}.wav".format(iteration))
+        sf.write(save_path, wav, self.sample_rate)
+
+        if writer is not None:
+            writer.add_audio(
+                "train_sample", wav, iteration, sample_rate=self.sample_rate)
 
 
 def spec_to_waveform(spec, min_level_db, ref_level_db, power, n_iter,
@@ -168,6 +340,7 @@ def spec_to_waveform(spec, min_level_db, ref_level_db, power, n_iter,
         win_length=win_length)
     if preemphasis > 0:
         wav = signal.lfilter([1.], [1., -preemphasis], wav)
+    wav = np.clip(wav, -1.0, 1.0)
     return wav
 
 
@@ -175,9 +348,9 @@ def make_output_tree(output_dir):
     print("creating output tree: {}".format(output_dir))
     ckpt_dir = os.path.join(output_dir, "checkpoints")
     state_dir = os.path.join(output_dir, "states")
-    log_dir = os.path.join(output_dir, "log")
+    eval_dir = os.path.join(output_dir, "eval")
 
-    for x in [ckpt_dir, state_dir]:
+    for x in [ckpt_dir, state_dir, eval_dir]:
         if not os.path.exists(x):
             os.makedirs(x)
     for x in ["alignments", "waveform", "lin_spec", "mel_spec"]:
@@ -199,130 +372,3 @@ def plot_alignment(alignment, path):
     plt.ylabel('Decoder timestep')
     plt.savefig(path)
     plt.close()
-
-
-def save_state(save_dir,
-               writer,
-               global_step,
-               mel_input=None,
-               mel_output=None,
-               lin_input=None,
-               lin_output=None,
-               alignments=None,
-               win_length=1024,
-               hop_length=256,
-               min_level_db=-100,
-               ref_level_db=20,
-               power=1.4,
-               n_iter=32,
-               preemphasis=0.97,
-               sample_rate=22050):
-    """Save training intermediate results. Save states for the first sentence in the batch, including
-    mel_spec(predicted, target), lin_spec(predicted, target), attn, waveform.
-    
-    Args:
-        save_dir (str): directory to save results.
-        writer (SummaryWriter): tensorboardX summary writer
-        global_step (int): global step.
-        mel_input (Variable, optional): Defaults to None. Shape(B, T_mel, C_mel)
-        mel_output (Variable, optional): Defaults to None. Shape(B, T_mel, C_mel)
-        lin_input (Variable, optional): Defaults to None. Shape(B, T_lin, C_lin)
-        lin_output (Variable, optional): Defaults to None. Shape(B, T_lin, C_lin)
-        alignments (Variable, optional): Defaults to None. Shape(N, B, T_dec, C_enc)
-        wav ([type], optional): Defaults to None. [description]
-    """
-
-    if mel_input is not None and mel_output is not None:
-        mel_input = mel_input[0].numpy().T
-        mel_output = mel_output[0].numpy().T
-
-        path = os.path.join(save_dir, "mel_spec")
-        plt.figure(figsize=(10, 3))
-        display.specshow(mel_input)
-        plt.colorbar()
-        plt.title("mel_input")
-        plt.savefig(
-            os.path.join(path, "target_mel_spec_step{:09d}.png".format(
-                global_step)))
-        plt.close()
-
-        writer.add_image(
-            "target/mel_spec",
-            cm.viridis(mel_input),
-            global_step,
-            dataformats="HWC")
-
-        plt.figure(figsize=(10, 3))
-        display.specshow(mel_output)
-        plt.colorbar()
-        plt.title("mel_output")
-        plt.savefig(
-            os.path.join(path, "predicted_mel_spec_step{:09d}.png".format(
-                global_step)))
-        plt.close()
-
-        writer.add_image(
-            "predicted/mel_spec",
-            cm.viridis(mel_output),
-            global_step,
-            dataformats="HWC")
-
-    if lin_input is not None and lin_output is not None:
-        lin_input = lin_input[0].numpy().T
-        lin_output = lin_output[0].numpy().T
-        path = os.path.join(save_dir, "lin_spec")
-
-        plt.figure(figsize=(10, 3))
-        display.specshow(lin_input)
-        plt.colorbar()
-        plt.title("mel_input")
-        plt.savefig(
-            os.path.join(path, "target_lin_spec_step{:09d}.png".format(
-                global_step)))
-        plt.close()
-
-        writer.add_image(
-            "target/lin_spec",
-            cm.viridis(lin_input),
-            global_step,
-            dataformats="HWC")
-
-        plt.figure(figsize=(10, 3))
-        display.specshow(lin_output)
-        plt.colorbar()
-        plt.title("mel_input")
-        plt.savefig(
-            os.path.join(path, "predicted_lin_spec_step{:09d}.png".format(
-                global_step)))
-        plt.close()
-
-        writer.add_image(
-            "predicted/lin_spec",
-            cm.viridis(lin_output),
-            global_step,
-            dataformats="HWC")
-
-    if alignments is not None and len(alignments.shape) == 4:
-        path = os.path.join(save_dir, "alignments")
-        alignments = alignments[:, 0, :, :].numpy()
-        for idx, attn_layer in enumerate(alignments):
-            save_path = os.path.join(
-                path,
-                "train_attn_layer_{}_step_{}.png".format(idx, global_step))
-            plot_alignment(attn_layer, save_path)
-
-            writer.add_image(
-                "train_attn/layer_{}".format(idx),
-                cm.viridis(attn_layer),
-                global_step,
-                dataformats="HWC")
-
-    if lin_output is not None:
-        wav = spec_to_waveform(lin_output, min_level_db, ref_level_db, power,
-                               n_iter, win_length, hop_length, preemphasis)
-        path = os.path.join(save_dir, "waveform")
-        save_path = os.path.join(
-            path, "train_sample_step_{:09d}.wav".format(global_step))
-        sf.write(save_path, wav, sample_rate)
-        writer.add_audio(
-            "train_sample", wav, global_step, sample_rate=sample_rate)

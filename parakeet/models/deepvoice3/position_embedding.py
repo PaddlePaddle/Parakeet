@@ -19,6 +19,34 @@ import paddle.fluid.layers as F
 import paddle.fluid.dygraph as dg
 
 
+def lookup(weight, indices, padding_idx):
+    out = fluid.core.ops.lookup_table_v2(
+        weight, indices, 'is_sparse', False, 'is_distributed', False,
+        'remote_prefetch', False, 'padding_idx', padding_idx)
+    return out
+
+
+def compute_position_embedding_single_speaker(radians, speaker_position_rate):
+    """Compute sin/cos interleaved matrix from the radians.
+    
+    Arg:
+        radians (Variable): shape(n_vocab, embed_dim), dtype float32, the radians matrix.
+        speaker_position_rate (float or Variable): float or Variable of shape(1, ), speaker positioning rate.
+    
+    Returns:
+        Variable: shape(n_vocab, embed_dim), the sin, cos interleaved matrix.
+    """
+    _, embed_dim = radians.shape
+    scaled_radians = radians * speaker_position_rate
+
+    odd_mask = (np.arange(embed_dim) % 2).astype(np.float32)
+    odd_mask = dg.to_variable(odd_mask)
+
+    out = odd_mask * F.cos(scaled_radians) \
+        + (1 - odd_mask) * F.sin(scaled_radians)
+    return out
+
+
 def compute_position_embedding(radians, speaker_position_rate):
     """Compute sin/cos interleaved matrix from the radians.
     
@@ -106,16 +134,14 @@ class PositionEmbedding(dg.Layer):
         """
         batch_size, time_steps = indices.shape
 
-        # convert speaker_position_rate to a Variable with shape(B, )
-        if isinstance(speaker_position_rate, float):
-            speaker_position_rate = dg.to_variable(
-                np.array([speaker_position_rate]).astype("float32"))
-            speaker_position_rate = F.expand(speaker_position_rate,
-                                             [batch_size])
-        elif isinstance(speaker_position_rate, fluid.framework.Variable) \
-            and list(speaker_position_rate.shape) == [1]:
-            speaker_position_rate = F.expand(speaker_position_rate,
-                                             [batch_size])
+        if isinstance(speaker_position_rate, float) or \
+            (isinstance(speaker_position_rate, fluid.framework.Variable)
+            and list(speaker_position_rate.shape) == [1]):
+            temp_weight = compute_position_embedding_single_speaker(
+                self.weight, speaker_position_rate)
+            out = lookup(temp_weight, indices, 0)
+            return out
+
         assert len(speaker_position_rate.shape) == 1 and \
             list(speaker_position_rate.shape) == [batch_size]
 
@@ -128,6 +154,5 @@ class PositionEmbedding(dg.Layer):
                     0, batch_size, 1, dtype="int64"), [1]), [1, time_steps])
         # (B, T, 2)
         gather_nd_id = F.stack([batch_id, indices], -1)
-
         out = F.gather_nd(weight, gather_nd_id)
         return out

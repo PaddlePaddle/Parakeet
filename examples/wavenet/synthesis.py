@@ -19,6 +19,7 @@ import argparse
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from paddle import fluid
+fluid.require_version('1.8.0')
 import paddle.fluid.dygraph as dg
 
 from parakeet.modules.weight_norm import WeightNormWrapper
@@ -54,6 +55,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
+
+    if args.device == -1:
+        place = fluid.CPUPlace()
+    else:
+        place = fluid.CUDAPlace(args.device)
+
+    dg.enable_dygraph(place)
 
     ljspeech_meta = LJSpeechMetaData(args.data)
 
@@ -99,54 +107,47 @@ if __name__ == "__main__":
     if not os.path.exists(args.output):
         os.makedirs(args.output)
 
-    if args.device == -1:
-        place = fluid.CPUPlace()
+    model_config = config["model"]
+    upsampling_factors = model_config["upsampling_factors"]
+    encoder = UpsampleNet(upsampling_factors)
+
+    n_loop = model_config["n_loop"]
+    n_layer = model_config["n_layer"]
+    residual_channels = model_config["residual_channels"]
+    output_dim = model_config["output_dim"]
+    loss_type = model_config["loss_type"]
+    log_scale_min = model_config["log_scale_min"]
+    decoder = WaveNet(n_loop, n_layer, residual_channels, output_dim, n_mels,
+                      filter_size, loss_type, log_scale_min)
+
+    model = ConditionalWavenet(encoder, decoder)
+    summary(model)
+
+    # load model parameters
+    checkpoint_dir = os.path.join(args.output, "checkpoints")
+    if args.checkpoint:
+        iteration = io.load_parameters(model, checkpoint_path=args.checkpoint)
     else:
-        place = fluid.CUDAPlace(args.device)
+        iteration = io.load_parameters(
+            model, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
+    assert iteration > 0, "A trained model is needed."
 
-    with dg.guard(place):
-        model_config = config["model"]
-        upsampling_factors = model_config["upsampling_factors"]
-        encoder = UpsampleNet(upsampling_factors)
+    # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
+    # removing weight norm also speeds up computation
+    for layer in model.sublayers():
+        if isinstance(layer, WeightNormWrapper):
+            layer.remove_weight_norm()
 
-        n_loop = model_config["n_loop"]
-        n_layer = model_config["n_layer"]
-        residual_channels = model_config["residual_channels"]
-        output_dim = model_config["output_dim"]
-        loss_type = model_config["loss_type"]
-        log_scale_min = model_config["log_scale_min"]
-        decoder = WaveNet(n_loop, n_layer, residual_channels, output_dim,
-                          n_mels, filter_size, loss_type, log_scale_min)
+    train_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True)
+    train_loader.set_batch_generator(train_cargo, place)
 
-        model = ConditionalWavenet(encoder, decoder)
-        summary(model)
+    valid_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True)
+    valid_loader.set_batch_generator(valid_cargo, place)
 
-        # load model parameters
-        checkpoint_dir = os.path.join(args.output, "checkpoints")
-        if args.checkpoint:
-            iteration = io.load_parameters(
-                model, checkpoint_path=args.checkpoint)
-        else:
-            iteration = io.load_parameters(
-                model, checkpoint_dir=checkpoint_dir, iteration=args.iteration)
-        assert iteration > 0, "A trained model is needed."
+    synthesis_dir = os.path.join(args.output, "synthesis")
+    if not os.path.exists(synthesis_dir):
+        os.makedirs(synthesis_dir)
 
-        # WARNING: don't forget to remove weight norm to re-compute each wrapped layer's weight
-        # removing weight norm also speeds up computation
-        for layer in model.sublayers():
-            if isinstance(layer, WeightNormWrapper):
-                layer.remove_weight_norm()
-
-        train_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        train_loader.set_batch_generator(train_cargo, place)
-
-        valid_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        valid_loader.set_batch_generator(valid_cargo, place)
-
-        synthesis_dir = os.path.join(args.output, "synthesis")
-        if not os.path.exists(synthesis_dir):
-            os.makedirs(synthesis_dir)
-
-        eval_model(model, valid_loader, synthesis_dir, iteration, sample_rate)
+    eval_model(model, valid_loader, synthesis_dir, iteration, sample_rate)

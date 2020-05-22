@@ -15,6 +15,8 @@
 import os
 import io
 import re
+import six
+import sys
 from setuptools import setup, find_packages
 
 
@@ -63,6 +65,7 @@ setup_info = dict(
         'pandas',
         'sox',
         'soundfile',
+        'llvmlite==0.31.0' if sys.version_info < (3, 6) else "llvmlite",
     ],
 
     # Package info

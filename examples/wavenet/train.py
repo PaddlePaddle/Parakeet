@@ -19,9 +19,10 @@ import argparse
 import tqdm
 from tensorboardX import SummaryWriter
 from paddle import fluid
+fluid.require_version('1.8.0')
 import paddle.fluid.dygraph as dg
 
-from parakeet.data import SliceDataset, TransformDataset, DataCargo, SequentialSampler, RandomSampler
+from parakeet.data import SliceDataset, TransformDataset, CacheDataset, DataCargo, SequentialSampler, RandomSampler
 from parakeet.models.wavenet import UpsampleNet, WaveNet, ConditionalWavenet
 from parakeet.utils.layer_tools import summary
 from parakeet.utils import io
@@ -51,6 +52,13 @@ if __name__ == "__main__":
     with open(args.config, 'rt') as f:
         config = ruamel.yaml.safe_load(f)
 
+    if args.device == -1:
+        place = fluid.CPUPlace()
+    else:
+        place = fluid.CUDAPlace(args.device)
+
+    dg.enable_dygraph(place)
+
     print("Command Line Args: ")
     for k, v in vars(args).items():
         print("{}: {}".format(k, v))
@@ -68,8 +76,9 @@ if __name__ == "__main__":
     ljspeech = TransformDataset(ljspeech_meta, transform)
 
     valid_size = data_config["valid_size"]
-    ljspeech_valid = SliceDataset(ljspeech, 0, valid_size)
-    ljspeech_train = SliceDataset(ljspeech, valid_size, len(ljspeech))
+    ljspeech_valid = CacheDataset(SliceDataset(ljspeech, 0, valid_size))
+    ljspeech_train = CacheDataset(
+        SliceDataset(ljspeech, valid_size, len(ljspeech)))
 
     model_config = config["model"]
     n_loop = model_config["n_loop"]
@@ -103,93 +112,90 @@ if __name__ == "__main__":
     else:
         place = fluid.CUDAPlace(args.device)
 
-    with dg.guard(place):
-        model_config = config["model"]
-        upsampling_factors = model_config["upsampling_factors"]
-        encoder = UpsampleNet(upsampling_factors)
+    model_config = config["model"]
+    upsampling_factors = model_config["upsampling_factors"]
+    encoder = UpsampleNet(upsampling_factors)
 
-        n_loop = model_config["n_loop"]
-        n_layer = model_config["n_layer"]
-        residual_channels = model_config["residual_channels"]
-        output_dim = model_config["output_dim"]
-        loss_type = model_config["loss_type"]
-        log_scale_min = model_config["log_scale_min"]
-        decoder = WaveNet(n_loop, n_layer, residual_channels, output_dim,
-                          n_mels, filter_size, loss_type, log_scale_min)
+    n_loop = model_config["n_loop"]
+    n_layer = model_config["n_layer"]
+    residual_channels = model_config["residual_channels"]
+    output_dim = model_config["output_dim"]
+    loss_type = model_config["loss_type"]
+    log_scale_min = model_config["log_scale_min"]
+    decoder = WaveNet(n_loop, n_layer, residual_channels, output_dim, n_mels,
+                      filter_size, loss_type, log_scale_min)
 
-        model = ConditionalWavenet(encoder, decoder)
-        summary(model)
+    model = ConditionalWavenet(encoder, decoder)
+    summary(model)
 
-        train_config = config["train"]
-        learning_rate = train_config["learning_rate"]
-        anneal_rate = train_config["anneal_rate"]
-        anneal_interval = train_config["anneal_interval"]
-        lr_scheduler = dg.ExponentialDecay(
-            learning_rate, anneal_interval, anneal_rate, staircase=True)
-        gradiant_max_norm = train_config["gradient_max_norm"]
-        optim = fluid.optimizer.Adam(
-            lr_scheduler,
-            parameter_list=model.parameters(),
-            grad_clip=fluid.clip.ClipByGlobalNorm(gradiant_max_norm))
+    train_config = config["train"]
+    learning_rate = train_config["learning_rate"]
+    anneal_rate = train_config["anneal_rate"]
+    anneal_interval = train_config["anneal_interval"]
+    lr_scheduler = dg.ExponentialDecay(
+        learning_rate, anneal_interval, anneal_rate, staircase=True)
+    gradiant_max_norm = train_config["gradient_max_norm"]
+    optim = fluid.optimizer.Adam(
+        lr_scheduler,
+        parameter_list=model.parameters(),
+        grad_clip=fluid.clip.ClipByGlobalNorm(gradiant_max_norm))
 
-        train_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        train_loader.set_batch_generator(train_cargo, place)
+    train_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True)
+    train_loader.set_batch_generator(train_cargo, place)
 
-        valid_loader = fluid.io.DataLoader.from_generator(
-            capacity=10, return_list=True)
-        valid_loader.set_batch_generator(valid_cargo, place)
+    valid_loader = fluid.io.DataLoader.from_generator(
+        capacity=10, return_list=True)
+    valid_loader.set_batch_generator(valid_cargo, place)
 
-        max_iterations = train_config["max_iterations"]
-        checkpoint_interval = train_config["checkpoint_interval"]
-        snap_interval = train_config["snap_interval"]
-        eval_interval = train_config["eval_interval"]
-        checkpoint_dir = os.path.join(args.output, "checkpoints")
-        log_dir = os.path.join(args.output, "log")
-        writer = SummaryWriter(log_dir)
+    max_iterations = train_config["max_iterations"]
+    checkpoint_interval = train_config["checkpoint_interval"]
+    snap_interval = train_config["snap_interval"]
+    eval_interval = train_config["eval_interval"]
+    checkpoint_dir = os.path.join(args.output, "checkpoints")
+    log_dir = os.path.join(args.output, "log")
+    writer = SummaryWriter(log_dir)
 
-        # load parameters and optimizer, and update iterations done so far
-        if args.checkpoint is not None:
-            iteration = io.load_parameters(
-                model, optim, checkpoint_path=args.checkpoint)
-        else:
-            iteration = io.load_parameters(
-                model,
-                optim,
-                checkpoint_dir=checkpoint_dir,
-                iteration=args.iteration)
+    # load parameters and optimizer, and update iterations done so far
+    if args.checkpoint is not None:
+        iteration = io.load_parameters(
+            model, optim, checkpoint_path=args.checkpoint)
+    else:
+        iteration = io.load_parameters(
+            model,
+            optim,
+            checkpoint_dir=checkpoint_dir,
+            iteration=args.iteration)
 
-        global_step = iteration + 1
-        iterator = iter(tqdm.tqdm(train_loader))
-        while global_step <= max_iterations:
-            try:
-                batch = next(iterator)
-            except StopIteration as e:
-                iterator = iter(tqdm.tqdm(train_loader))
-                batch = next(iterator)
+    global_step = iteration + 1
+    iterator = iter(tqdm.tqdm(train_loader))
+    while global_step <= max_iterations:
+        try:
+            batch = next(iterator)
+        except StopIteration as e:
+            iterator = iter(tqdm.tqdm(train_loader))
+            batch = next(iterator)
 
-            audio_clips, mel_specs, audio_starts = batch
+        audio_clips, mel_specs, audio_starts = batch
 
-            model.train()
-            y_var = model(audio_clips, mel_specs, audio_starts)
-            loss_var = model.loss(y_var, audio_clips)
-            loss_var.backward()
-            loss_np = loss_var.numpy()
+        model.train()
+        y_var = model(audio_clips, mel_specs, audio_starts)
+        loss_var = model.loss(y_var, audio_clips)
+        loss_var.backward()
+        loss_np = loss_var.numpy()
 
-            writer.add_scalar("loss", loss_np[0], global_step)
-            writer.add_scalar("learning_rate",
-                              optim._learning_rate.step().numpy()[0],
-                              global_step)
-            optim.minimize(loss_var)
-            optim.clear_gradients()
-            print("global_step: {}\tloss: {:<8.6f}".format(global_step,
-                                                           loss_np[0]))
+        writer.add_scalar("loss", loss_np[0], global_step)
+        writer.add_scalar("learning_rate",
+                          optim._learning_rate.step().numpy()[0], global_step)
+        optim.minimize(loss_var)
+        optim.clear_gradients()
+        print("global_step: {}\tloss: {:<8.6f}".format(global_step, loss_np[
+            0]))
 
-            if global_step % snap_interval == 0:
-                valid_model(model, valid_loader, writer, global_step,
-                            sample_rate)
+        if global_step % snap_interval == 0:
+            valid_model(model, valid_loader, writer, global_step, sample_rate)
 
-            if global_step % checkpoint_interval == 0:
-                io.save_parameters(checkpoint_dir, global_step, model, optim)
+        if global_step % checkpoint_interval == 0:
+            io.save_parameters(checkpoint_dir, global_step, model, optim)
 
-            global_step += 1
+        global_step += 1

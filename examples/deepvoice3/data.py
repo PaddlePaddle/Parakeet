@@ -17,13 +17,16 @@ import os
 import csv
 from pathlib import Path
 import numpy as np
+from paddle import fluid
 import pandas as pd
 import librosa
-from scipy import signal, io
-import six
+from scipy import signal
 
-from parakeet.data import DatasetMixin, TransformDataset, FilterDataset
+import paddle.fluid.dygraph as dg
+
 from parakeet.g2p.en import text_to_sequence, sequence_to_text
+from parakeet.data import DatasetMixin, TransformDataset, FilterDataset, CacheDataset
+from parakeet.data import DataCargo, PartialyRandomizedSimilarTimeLengthSampler, SequentialSampler, BucketSampler
 
 
 class LJSpeechMetaData(DatasetMixin):
@@ -50,7 +53,7 @@ class LJSpeechMetaData(DatasetMixin):
 
 class Transform(object):
     def __init__(self,
-                 replace_pronounciation_prob=0.,
+                 replace_pronunciation_prob=0.,
                  sample_rate=22050,
                  preemphasis=.97,
                  n_fft=1024,
@@ -63,7 +66,7 @@ class Transform(object):
                  ref_level_db=20,
                  max_norm=0.999,
                  clip_norm=True):
-        self.replace_pronounciation_prob = replace_pronounciation_prob
+        self.replace_pronunciation_prob = replace_pronunciation_prob
 
         self.sample_rate = sample_rate
         self.preemphasis = preemphasis
@@ -85,7 +88,7 @@ class Transform(object):
 
         # text processing
         mix_grapheme_phonemes = text_to_sequence(
-            normalized_text, self.replace_pronounciation_prob)
+            normalized_text, self.replace_pronunciation_prob)
         text_length = len(mix_grapheme_phonemes)
         # CAUTION: positions start from 1
         speaker_id = None
@@ -125,8 +128,8 @@ class Transform(object):
 
         # num_frames
         n_frames = S_mel_norm.shape[-1]  # CAUTION: original number of frames
-        return (mix_grapheme_phonemes, text_length, speaker_id, S_norm,
-                S_mel_norm, n_frames)
+        return (mix_grapheme_phonemes, text_length, speaker_id, S_norm.T,
+                S_mel_norm.T, n_frames)
 
 
 class DataCollector(object):
@@ -166,12 +169,12 @@ class DataCollector(object):
                                                ),
                        mode="constant"))
             lin_specs.append(
-                np.pad(S_norm, ((0, 0), (self._pad_begin, max_frames -
-                                         self._pad_begin - num_frames)),
+                np.pad(S_norm, ((self._pad_begin, max_frames - self._pad_begin
+                                 - num_frames), (0, 0)),
                        mode="constant"))
             mel_specs.append(
-                np.pad(S_mel_norm, ((0, 0), (self._pad_begin, max_frames -
-                                             self._pad_begin - num_frames)),
+                np.pad(S_mel_norm, ((self._pad_begin, max_frames -
+                                     self._pad_begin - num_frames), (0, 0)),
                        mode="constant"))
             done_flags.append(
                 np.pad(np.zeros((int(np.ceil(num_frames // self._factor)), )),
@@ -180,10 +183,10 @@ class DataCollector(object):
                        mode="constant",
                        constant_values=1))
         text_sequences = np.array(text_sequences).astype(np.int64)
-        lin_specs = np.transpose(np.array(lin_specs),
-                                 (0, 2, 1)).astype(np.float32)
-        mel_specs = np.transpose(np.array(mel_specs),
-                                 (0, 2, 1)).astype(np.float32)
+        lin_specs = np.array(lin_specs).astype(np.float32)
+        mel_specs = np.array(mel_specs).astype(np.float32)
+
+        # downsample here
         done_flags = np.array(done_flags).astype(np.float32)
 
         # text positions
@@ -201,3 +204,54 @@ class DataCollector(object):
 
         return (text_sequences, text_lengths, text_positions, mel_specs,
                 lin_specs, frames, decoder_positions, done_flags)
+
+
+def make_data_loader(data_root, config):
+    # construct meta data
+    meta = LJSpeechMetaData(data_root)
+
+    # filter it!
+    min_text_length = config["meta_data"]["min_text_length"]
+    meta = FilterDataset(meta, lambda x: len(x[2]) >= min_text_length)
+
+    # transform meta data into meta data
+    c = config["transform"]
+    transform = Transform(
+        replace_pronunciation_prob=c["replace_pronunciation_prob"],
+        sample_rate=c["sample_rate"],
+        preemphasis=c["preemphasis"],
+        n_fft=c["n_fft"],
+        win_length=c["win_length"],
+        hop_length=c["hop_length"],
+        fmin=c["fmin"],
+        fmax=c["fmax"],
+        n_mels=c["n_mels"],
+        min_level_db=c["min_level_db"],
+        ref_level_db=c["ref_level_db"],
+        max_norm=c["max_norm"],
+        clip_norm=c["clip_norm"])
+    ljspeech = CacheDataset(TransformDataset(meta, transform))
+
+    # use meta data's text length as a sort key for the sampler
+    batch_size = config["train"]["batch_size"]
+    text_lengths = [len(example[2]) for example in meta]
+    sampler = PartialyRandomizedSimilarTimeLengthSampler(text_lengths,
+                                                         batch_size)
+
+    env = dg.parallel.ParallelEnv()
+    num_trainers = env.nranks
+    local_rank = env.local_rank
+    sampler = BucketSampler(
+        text_lengths, batch_size, num_trainers=num_trainers, rank=local_rank)
+
+    # some model hyperparameters affect how we process data
+    model_config = config["model"]
+    collector = DataCollector(
+        downsample_factor=model_config["downsample_factor"],
+        r=model_config["outputs_per_step"])
+    ljspeech_loader = DataCargo(
+        ljspeech, batch_fn=collector, batch_size=batch_size, sampler=sampler)
+    loader = fluid.io.DataLoader.from_generator(capacity=10, return_list=True)
+    loader.set_batch_generator(
+        ljspeech_loader, places=fluid.framework._current_expected_place())
+    return loader
