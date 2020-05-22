@@ -348,7 +348,7 @@ class WaveFlowModule(dg.Layer):
         mel = self.conditioner(mel)
         assert mel.shape[2] >= audio.shape[1]
         # Prune out the tail of audio/mel so that time/n_group == 0.
-        pruned_len = audio.shape[1] // self.n_group * self.n_group
+        pruned_len = int(audio.shape[1] // self.n_group * self.n_group)
 
         if audio.shape[1] > pruned_len:
             audio = audio[:, :pruned_len]

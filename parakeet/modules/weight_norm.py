@@ -87,7 +87,14 @@ def compute_l2_normalized_weight(v, g, dim):
 def compute_weight(v, g, dim, power):
     assert len(g.shape) == 1, "magnitude should be a vector"
     if power == 2:
-        return compute_l2_normalized_weight(v, g, dim)
+        in_dtype = v.dtype
+        if in_dtype == fluid.core.VarDesc.VarType.FP16:
+            v = F.cast(v, "float32")
+            g = F.cast(g, "float32")
+        weight = compute_l2_normalized_weight(v, g, dim)
+        if in_dtype == fluid.core.VarDesc.VarType.FP16:
+            weight = F.cast(weight, "float16")
+        return weight
     else:
         v_normalized = F.elementwise_div(
             v, (norm_except(v, dim, power) + 1e-12), axis=dim)
