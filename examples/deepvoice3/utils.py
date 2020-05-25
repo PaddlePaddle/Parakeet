@@ -60,7 +60,7 @@ def add_options(parser):
 
 def make_evaluator(config, text_sequences, output_dir, writer=None):
     c = config["transform"]
-    p_replace = c["replace_pronunciation_prob"]
+    p_replace = 0.0
     sample_rate = c["sample_rate"]
     preemphasis = c["preemphasis"]
     win_length = c["win_length"]
