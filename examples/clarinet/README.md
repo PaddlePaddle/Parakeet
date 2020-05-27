@@ -129,7 +129,7 @@ Example script:
 
 ```bash
 python synthesis.py \
-    --config=./configs/wavenet_single_gaussian.yaml \
+    --config=./configs/clarinet_ljspeech.yaml \
     --data=./LJSpeech-1.1/ \
     --device=0 \
     --iteration=500000 \
@@ -140,7 +140,7 @@ or
 
 ```bash
 python synthesis.py \
-    --config=./configs/wavenet_single_gaussian.yaml \
+    --config=./configs/clarinet_ljspeech.yaml \
     --data=./LJSpeech-1.1/ \
     --device=0 \
     --checkpoint="experiment/checkpoints/step-500000" \
