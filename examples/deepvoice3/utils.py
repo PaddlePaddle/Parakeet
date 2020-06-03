@@ -121,7 +121,7 @@ class Evaluator(object):
             en.text_to_sequence(
                 text, p=self.p_replace), dtype=np.int64)
         length = len(text)
-        text_positions = np.arange(1, 1 + length)
+        text_positions = np.arange(1, 1 + length, dtype=np.int64)
         text = np.expand_dims(text, 0)
         text_positions = np.expand_dims(text_positions, 0)
 
