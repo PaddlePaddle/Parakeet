@@ -74,7 +74,7 @@ Entries to the introduction, and the launch of training and synthsis for differe
 
 ## Pre-trained models and audio samples
 
-Parakeet also releases some well-trained parameters for the example models, which can be accessed in the following tables. Each column of these tables lists resources for one model, including the url link to the pre-trained model, the dataset that the model is trained on, and synthesized audio samples based on the pre-trained model.
+Parakeet also releases some well-trained parameters for the example models, which can be accessed in the following tables. Each column of these tables lists resources for one model, including the url link to the pre-trained model, the dataset that the model is trained on, and synthesized audio samples based on the pre-trained model. Click each model name to download, then you can get the compressed package which contains the pre-trained model and the `yaml` config describing how the model is trained.
 
 #### Vocoders
 
@@ -174,29 +174,77 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
 
 #### TTS models
 
+We also provide checkpoints for the different end-to-end TTS models, and present the synthesized audio examples for some randomly chosen famous quotes. The corresponding texts are displayed as follows.
+
+||Text | From |
+|:-:|:-- | :--: | 
+0|*Life was like a box of chocolates, you never know what you're gonna get.* | *Forrest Gump* |  
+1|*With great power there must come great responsibility.* | *Spider-Man*|
+2|*To be or not to be, that’s a question.*|*Hamlet*|
+3|*Death is just a part of life, something we're all destined to do.*| *Forrest Gump*|
+4|*Don’t argue with the people of strong determination, because they may change the fact!*| *William Shakespeare* |
+
+Users have the option to use different vocoders to convert mel spectrogams to raw audios in TTS models. Taking this into account, we are going to release the checkpoints for TTS models adapted to different vocoders, including the [Griffin-Lim](https://ieeexplore.ieee.org/document/1164317) algorithm and some neural vocoders.
+
+##### 1) Griffin-Lim
+
 <div align="center">
 <table>
     <thead>
         <tr>
-            <th  style="width: 250px">
-            Deep Voice 3
+             <th  style="width: 250px">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_ckpt_1.0.zip">Deep Voice 3</a>
             </th>
             <th  style="width: 250px">
-            Transformer TTS
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_ckpt_1.0.zip">Transformer TTS</a>
             </th>
-        </tr>
+            <th  style="width: 250px">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_ckpt_1.0.zip">FastSpeech</a>
+            </th>
+                    </tr>
     </thead>
     <tbody>
         <tr>
             <th>LJSpeech </th>
             <th>LJSpeech </th>
+            <th>LJSpeech </th>
         </tr>
         <tr>
             <th style="height: 150px">
-            To be added soon
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>  
             </th>
             <th >
-            To be added soon
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a> 
+            </th>
+            <th >
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a> 
             </th>
         </tr>
     </tbody>
@@ -204,8 +252,9 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
 </table>
 </div>
 
-Click each link to download, then you can get the compressed package which contains the pre-trained model and the `yaml` config describing how to train the model.
+##### 2) Neural vocoders
 
+under preparation
 
 ## Copyright and License
 
