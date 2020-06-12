@@ -40,7 +40,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.8.0** or above.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **1.8.2** or above.
 
 ### Install Parakeet
 
@@ -177,7 +177,7 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
 We also provide checkpoints for different end-to-end TTS models, and present the synthesized audio examples for some randomly chosen famous quotes. The corresponding texts are displayed as follows.
 
 ||Text | From |
-|:-:|:-- | :--: | 
+|:-:|:-- | :--: |
 0|*Life was like a box of chocolates, you never know what you're gonna get.* | *Forrest Gump* |  
 1|*With great power there must come great responsibility.* | *Spider-Man*|
 2|*To be or not to be, that’s a question.*|*Hamlet*|
@@ -232,7 +232,7 @@ Users have the option to use different vocoders to convert the linear/mel spectr
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_3.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_4.wav">
-            <img src="images/audio_icon.png" width=250 /></a> 
+            <img src="images/audio_icon.png" width=250 /></a>
             </th>
             <th >
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_0.wav">
@@ -244,7 +244,7 @@ Users have the option to use different vocoders to convert the linear/mel spectr
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_3.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_4.wav">
-            <img src="images/audio_icon.png" width=250 /></a> 
+            <img src="images/audio_icon.png" width=250 /></a>
             </th>
         </tr>
     </tbody>
