@@ -83,8 +83,8 @@ def synthesis(text_input, args):
     pos_text = np.arange(1, text.shape[1] + 1)
     pos_text = np.expand_dims(pos_text, axis=0)
 
-    text = dg.to_variable(text)
-    pos_text = dg.to_variable(pos_text)
+    text = dg.to_variable(text).astype(np.int64)
+    pos_text = dg.to_variable(pos_text).astype(np.int64)
 
     _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
 
