@@ -94,7 +94,8 @@ class LengthRegulator(dg.Layer):
         else:
             duration_predictor_output = layers.round(duration_predictor_output)
             output = self.LR(x, duration_predictor_output, alpha)
-            mel_pos = dg.to_variable(np.arange(1, output.shape[1] + 1))
+            mel_pos = dg.to_variable(np.arange(1, output.shape[1] + 1)).astype(
+                np.int64)
             mel_pos = layers.unsqueeze(mel_pos, [0])
             return output, mel_pos
 

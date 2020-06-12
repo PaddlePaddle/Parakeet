@@ -102,105 +102,110 @@ def main(args):
         cfg['train']['batch_size'],
         nranks,
         local_rank,
-        shuffle=True).reader()
+        shuffle=True).reader
 
-    for epoch in range(cfg['train']['max_epochs']):
-        pbar = tqdm(reader)
-        for i, data in enumerate(pbar):
-            pbar.set_description('Processing at epoch %d' % epoch)
-            character, mel, mel_input, pos_text, pos_mel = data
+    iterator = iter(tqdm(reader))
 
-            global_step += 1
+    global_step += 1
 
-            mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
-                character, mel_input, pos_text, pos_mel)
+    while global_step <= cfg['train']['max_iteration']:
+        try:
+            batch = next(iterator)
+        except StopIteration as e:
+            iterator = iter(tqdm(reader))
+            batch = next(iterator)
 
-            mel_loss = layers.mean(
-                layers.abs(layers.elementwise_sub(mel_pred, mel)))
-            post_mel_loss = layers.mean(
-                layers.abs(layers.elementwise_sub(postnet_pred, mel)))
-            loss = mel_loss + post_mel_loss
+        character, mel, mel_input, pos_text, pos_mel = batch
 
-            # Note: When used stop token loss the learning did not work.
+        mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
+            character, mel_input, pos_text, pos_mel)
+
+        mel_loss = layers.mean(
+            layers.abs(layers.elementwise_sub(mel_pred, mel)))
+        post_mel_loss = layers.mean(
+            layers.abs(layers.elementwise_sub(postnet_pred, mel)))
+        loss = mel_loss + post_mel_loss
+
+        # Note: When used stop token loss the learning did not work.
+        if cfg['network']['stop_token']:
+            label = (pos_mel == 0).astype(np.float32)
+            stop_loss = cross_entropy(stop_preds, label)
+            loss = loss + stop_loss
+
+        if local_rank == 0:
+            writer.add_scalars('training_loss', {
+                'mel_loss': mel_loss.numpy(),
+                'post_mel_loss': post_mel_loss.numpy()
+            }, global_step)
+
             if cfg['network']['stop_token']:
-                label = (pos_mel == 0).astype(np.float32)
-                stop_loss = cross_entropy(stop_preds, label)
-                loss = loss + stop_loss
-
-            if local_rank == 0:
-                writer.add_scalars('training_loss', {
-                    'mel_loss': mel_loss.numpy(),
-                    'post_mel_loss': post_mel_loss.numpy()
-                }, global_step)
-
-                if cfg['network']['stop_token']:
-                    writer.add_scalar('stop_loss',
-                                      stop_loss.numpy(), global_step)
-
-                if parallel:
-                    writer.add_scalars('alphas', {
-                        'encoder_alpha': model._layers.encoder.alpha.numpy(),
-                        'decoder_alpha': model._layers.decoder.alpha.numpy(),
-                    }, global_step)
-                else:
-                    writer.add_scalars('alphas', {
-                        'encoder_alpha': model.encoder.alpha.numpy(),
-                        'decoder_alpha': model.decoder.alpha.numpy(),
-                    }, global_step)
-
-                writer.add_scalar('learning_rate',
-                                  optimizer._learning_rate.step().numpy(),
-                                  global_step)
-
-                if global_step % cfg['train']['image_interval'] == 1:
-                    for i, prob in enumerate(attn_probs):
-                        for j in range(cfg['network']['decoder_num_head']):
-                            x = np.uint8(
-                                cm.viridis(prob.numpy()[j * cfg['train'][
-                                    'batch_size'] // 2]) * 255)
-                            writer.add_image(
-                                'Attention_%d_0' % global_step,
-                                x,
-                                i * 4 + j,
-                                dataformats="HWC")
-
-                    for i, prob in enumerate(attn_enc):
-                        for j in range(cfg['network']['encoder_num_head']):
-                            x = np.uint8(
-                                cm.viridis(prob.numpy()[j * cfg['train'][
-                                    'batch_size'] // 2]) * 255)
-                            writer.add_image(
-                                'Attention_enc_%d_0' % global_step,
-                                x,
-                                i * 4 + j,
-                                dataformats="HWC")
-
-                    for i, prob in enumerate(attn_dec):
-                        for j in range(cfg['network']['decoder_num_head']):
-                            x = np.uint8(
-                                cm.viridis(prob.numpy()[j * cfg['train'][
-                                    'batch_size'] // 2]) * 255)
-                            writer.add_image(
-                                'Attention_dec_%d_0' % global_step,
-                                x,
-                                i * 4 + j,
-                                dataformats="HWC")
+                writer.add_scalar('stop_loss', stop_loss.numpy(), global_step)
 
             if parallel:
-                loss = model.scale_loss(loss)
-                loss.backward()
-                model.apply_collective_grads()
+                writer.add_scalars('alphas', {
+                    'encoder_alpha': model._layers.encoder.alpha.numpy(),
+                    'decoder_alpha': model._layers.decoder.alpha.numpy(),
+                }, global_step)
             else:
-                loss.backward()
-            optimizer.minimize(loss)
-            model.clear_gradients()
+                writer.add_scalars('alphas', {
+                    'encoder_alpha': model.encoder.alpha.numpy(),
+                    'decoder_alpha': model.decoder.alpha.numpy(),
+                }, global_step)
 
-            # save checkpoint
-            if local_rank == 0 and global_step % cfg['train'][
-                    'checkpoint_interval'] == 0:
-                io.save_parameters(
-                    os.path.join(args.output, 'checkpoints'), global_step,
-                    model, optimizer)
+            writer.add_scalar('learning_rate',
+                              optimizer._learning_rate.step().numpy(),
+                              global_step)
+
+            if global_step % cfg['train']['image_interval'] == 1:
+                for i, prob in enumerate(attn_probs):
+                    for j in range(cfg['network']['decoder_num_head']):
+                        x = np.uint8(
+                            cm.viridis(prob.numpy()[j * cfg['train'][
+                                'batch_size'] // nranks]) * 255)
+                        writer.add_image(
+                            'Attention_%d_0' % global_step,
+                            x,
+                            i * 4 + j,
+                            dataformats="HWC")
+
+                for i, prob in enumerate(attn_enc):
+                    for j in range(cfg['network']['encoder_num_head']):
+                        x = np.uint8(
+                            cm.viridis(prob.numpy()[j * cfg['train'][
+                                'batch_size'] // nranks]) * 255)
+                        writer.add_image(
+                            'Attention_enc_%d_0' % global_step,
+                            x,
+                            i * 4 + j,
+                            dataformats="HWC")
+
+                for i, prob in enumerate(attn_dec):
+                    for j in range(cfg['network']['decoder_num_head']):
+                        x = np.uint8(
+                            cm.viridis(prob.numpy()[j * cfg['train'][
+                                'batch_size'] // nranks]) * 255)
+                        writer.add_image(
+                            'Attention_dec_%d_0' % global_step,
+                            x,
+                            i * 4 + j,
+                            dataformats="HWC")
+
+        if parallel:
+            loss = model.scale_loss(loss)
+            loss.backward()
+            model.apply_collective_grads()
+        else:
+            loss.backward()
+        optimizer.minimize(loss)
+        model.clear_gradients()
+
+        # save checkpoint
+        if local_rank == 0 and global_step % cfg['train'][
+                'checkpoint_interval'] == 0:
+            io.save_parameters(
+                os.path.join(args.output, 'checkpoints'), global_step, model,
+                optimizer)
+        global_step += 1
 
     if local_rank == 0:
         writer.close()

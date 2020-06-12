@@ -62,7 +62,8 @@ def main(args):
         cfg = yaml.load(f, Loader=yaml.Loader)
 
     global_step = 0
-    place = fluid.CUDAPlace(local_rank) if args.use_gpu else fluid.CPUPlace()
+    place = fluid.CUDAPlace(dg.parallel.Env()
+                            .dev_id) if args.use_gpu else fluid.CPUPlace()
     fluid.enable_dygraph(place)
 
     if not os.path.exists(args.output):
@@ -88,7 +89,8 @@ def main(args):
         cfg['train']['batch_size'],
         nranks,
         local_rank,
-        shuffle=True).reader()
+        shuffle=True).reader
+    iterator = iter(tqdm(reader))
 
     # Load parameters.
     global_step = io.load_parameters(
@@ -103,52 +105,53 @@ def main(args):
         strategy = dg.parallel.prepare_context()
         model = fluid.dygraph.parallel.DataParallel(model, strategy)
 
-    for epoch in range(cfg['train']['max_epochs']):
-        pbar = tqdm(reader)
+    while global_step <= cfg['train']['max_iteration']:
+        try:
+            batch = next(iterator)
+        except StopIteration as e:
+            iterator = iter(tqdm(reader))
+            batch = next(iterator)
 
-        for i, data in enumerate(pbar):
-            pbar.set_description('Processing at epoch %d' % epoch)
-            (character, mel, pos_text, pos_mel, alignment) = data
+        (character, mel, pos_text, pos_mel, alignment) = batch
 
-            global_step += 1
+        global_step += 1
 
-            #Forward
-            result = model(
-                character, pos_text, mel_pos=pos_mel, length_target=alignment)
-            mel_output, mel_output_postnet, duration_predictor_output, _, _ = result
-            mel_loss = layers.mse_loss(mel_output, mel)
-            mel_postnet_loss = layers.mse_loss(mel_output_postnet, mel)
-            duration_loss = layers.mean(
-                layers.abs(
-                    layers.elementwise_sub(duration_predictor_output,
-                                           alignment)))
-            total_loss = mel_loss + mel_postnet_loss + duration_loss
+        #Forward
+        result = model(
+            character, pos_text, mel_pos=pos_mel, length_target=alignment)
+        mel_output, mel_output_postnet, duration_predictor_output, _, _ = result
+        mel_loss = layers.mse_loss(mel_output, mel)
+        mel_postnet_loss = layers.mse_loss(mel_output_postnet, mel)
+        duration_loss = layers.mean(
+            layers.abs(
+                layers.elementwise_sub(duration_predictor_output, alignment)))
+        total_loss = mel_loss + mel_postnet_loss + duration_loss
 
-            if local_rank == 0:
-                writer.add_scalar('mel_loss', mel_loss.numpy(), global_step)
-                writer.add_scalar('post_mel_loss',
-                                  mel_postnet_loss.numpy(), global_step)
-                writer.add_scalar('duration_loss',
-                                  duration_loss.numpy(), global_step)
-                writer.add_scalar('learning_rate',
-                                  optimizer._learning_rate.step().numpy(),
-                                  global_step)
+        if local_rank == 0:
+            writer.add_scalar('mel_loss', mel_loss.numpy(), global_step)
+            writer.add_scalar('post_mel_loss',
+                              mel_postnet_loss.numpy(), global_step)
+            writer.add_scalar('duration_loss',
+                              duration_loss.numpy(), global_step)
+            writer.add_scalar('learning_rate',
+                              optimizer._learning_rate.step().numpy(),
+                              global_step)
 
-            if parallel:
-                total_loss = model.scale_loss(total_loss)
-                total_loss.backward()
-                model.apply_collective_grads()
-            else:
-                total_loss.backward()
-            optimizer.minimize(total_loss)
-            model.clear_gradients()
+        if parallel:
+            total_loss = model.scale_loss(total_loss)
+            total_loss.backward()
+            model.apply_collective_grads()
+        else:
+            total_loss.backward()
+        optimizer.minimize(total_loss)
+        model.clear_gradients()
 
-            # save checkpoint
-            if local_rank == 0 and global_step % cfg['train'][
-                    'checkpoint_interval'] == 0:
-                io.save_parameters(
-                    os.path.join(args.output, 'checkpoints'), global_step,
-                    model, optimizer)
+        # save checkpoint
+        if local_rank == 0 and global_step % cfg['train'][
+                'checkpoint_interval'] == 0:
+            io.save_parameters(
+                os.path.join(args.output, 'checkpoints'), global_step, model,
+                optimizer)
 
     if local_rank == 0:
         writer.close()

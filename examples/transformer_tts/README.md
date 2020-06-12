@@ -53,7 +53,7 @@ During synthesis, results are saved in `${output}/samples` and tensorboard log i
 TransformerTTS model can be trained by running ``train_transformer.py``.
 
 ```bash
-python train_trasformer.py \
+python train_transformer.py \
 --use_gpu=1 \
 --data=${DATAPATH} \
 --output='./experiment' \

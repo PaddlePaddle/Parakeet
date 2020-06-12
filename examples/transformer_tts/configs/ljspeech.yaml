@@ -31,7 +31,7 @@ train:
   checkpoint_interval: 1000
   image_interval: 2000
 
-  max_epochs: 10000
+  max_iteration: 500000
 
 
 

@@ -115,15 +115,10 @@ def alignments(args):
             mel_input = fluid.layers.unsqueeze(dg.to_variable(mel_input), [0])
             mel_lens = mel_input.shape[1]
 
-            dec_slf_mask = get_triu_tensor(mel_input,
-                                           mel_input).astype(np.float32)
-            dec_slf_mask = np.expand_dims(dec_slf_mask, axis=0)
-            dec_slf_mask = fluid.layers.cast(
-                dg.to_variable(dec_slf_mask != 0), np.float32) * (-2**32 + 1)
             pos_mel = np.arange(1, mel_input.shape[1] + 1)
             pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel), [0])
             mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
-                text, mel_input, pos_text, pos_mel, dec_slf_mask)
+                text, mel_input, pos_text, pos_mel)
             mel_input = fluid.layers.concat(
                 [mel_input, postnet_pred[:, -1:, :]], axis=1)
 

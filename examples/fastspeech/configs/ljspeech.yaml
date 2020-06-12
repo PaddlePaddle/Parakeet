@@ -29,5 +29,5 @@ train:
   grad_clip_thresh: 0.1 #the threshold of grad clip.
 
   checkpoint_interval: 1000
-  max_epochs: 10000
+  max_iteration: 500000
 
