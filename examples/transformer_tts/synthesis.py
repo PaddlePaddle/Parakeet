@@ -92,15 +92,17 @@ def synthesis(text_input, args):
         model_vocoder.eval()
     # init input
     text = np.asarray(text_to_sequence(text_input))
-    text = fluid.layers.unsqueeze(dg.to_variable(text), [0])
+    text = fluid.layers.unsqueeze(dg.to_variable(text).astype(np.int64), [0])
     mel_input = dg.to_variable(np.zeros([1, 1, 80])).astype(np.float32)
     pos_text = np.arange(1, text.shape[1] + 1)
-    pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text), [0])
+    pos_text = fluid.layers.unsqueeze(
+        dg.to_variable(pos_text).astype(np.int64), [0])
 
     pbar = tqdm(range(args.max_len))
     for i in pbar:
         pos_mel = np.arange(1, mel_input.shape[1] + 1)
-        pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel), [0])
+        pos_mel = fluid.layers.unsqueeze(
+            dg.to_variable(pos_mel).astype(np.int64), [0])
         mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
             text, mel_input, pos_text, pos_mel)
         mel_input = fluid.layers.concat(
