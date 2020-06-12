@@ -55,7 +55,7 @@ setup_info = dict(
         'inflect',
         'librosa',
         'unidecode',
-        'numba==0.48.0',
+        'numba==0.47.0',
         'tqdm==4.19.8',
         'matplotlib',
         'tensorboardX',

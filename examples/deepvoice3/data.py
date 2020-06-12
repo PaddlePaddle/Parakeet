@@ -230,7 +230,7 @@ def make_data_loader(data_root, config):
         ref_level_db=c["ref_level_db"],
         max_norm=c["max_norm"],
         clip_norm=c["clip_norm"])
-    ljspeech = CacheDataset(TransformDataset(meta, transform))
+    ljspeech = TransformDataset(meta, transform)
 
     # use meta data's text length as a sort key for the sampler
     batch_size = config["train"]["batch_size"]

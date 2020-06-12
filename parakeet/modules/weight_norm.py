@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as F
@@ -44,10 +43,10 @@ def norm_except(param, dim, power):
     if dim is None:
         return norm(param, dim, power)
     elif dim == 0:
-        param_matrix = F.reshape(param, (shape[0], np.prod(shape[1:])))
+        param_matrix = F.reshape(param, (shape[0], -1))
         return norm(param_matrix, dim=1, power=power)
     elif dim == -1 or dim == ndim - 1:
-        param_matrix = F.reshape(param, (np.prod(shape[:-1]), shape[-1]))
+        param_matrix = F.reshape(param, (-1, shape[-1]))
         return norm(param_matrix, dim=0, power=power)
     else:
         perm = list(range(ndim))
@@ -62,24 +61,26 @@ def compute_l2_normalized_weight(v, g, dim):
     ndim = len(shape)
 
     if dim is None:
-        v_normalized = v / (F.reduce_sum(F.square(v)) + 1e-12)
+        v_normalized = v / (F.sqrt(F.reduce_sum(F.square(v))) + 1e-12)
     elif dim == 0:
-        param_matrix = F.reshape(v, (shape[0], np.prod(shape[1:])))
+        param_matrix = F.reshape(v, (shape[0], -1))
         v_normalized = F.l2_normalize(param_matrix, axis=1)
+        v_normalized = F.reshape(v_normalized, shape)
     elif dim == -1 or dim == ndim - 1:
-        param_matrix = F.reshape(v, (np.prod(shape[:-1]), shape[-1]))
+        param_matrix = F.reshape(v, (-1, shape[-1]))
         v_normalized = F.l2_normalize(param_matrix, axis=0)
+        v_normalized = F.reshape(v_normalized, shape)
     else:
         perm = list(range(ndim))
         perm[0] = dim
         perm[dim] = 0
         transposed_param = F.transpose(v, perm)
-        param_matrix = F.reshape(
-            transposed_param,
-            (transposed_param.shape[0], np.prod(transposed_param.shape[1:])))
+        transposed_shape = transposed_param.shape
+        param_matrix = F.reshape(transposed_param,
+                                 (transposed_param.shape[0], -1))
         v_normalized = F.l2_normalize(param_matrix, axis=1)
+        v_normalized = F.reshape(v_normalized, transposed_shape)
         v_normalized = F.transpose(v_normalized, perm)
-    v_normalized = F.reshape(v_normalized, shape)
     weight = F.elementwise_mul(v_normalized, g, axis=dim)
     return weight
 
