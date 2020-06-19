@@ -28,6 +28,10 @@ from parakeet.models.transformer_tts.utils import *
 from parakeet import audio
 from parakeet.models.transformer_tts import Vocoder
 from parakeet.models.transformer_tts import TransformerTTS
+from parakeet.modules import weight_norm
+from parakeet.models.waveflow import WaveFlowModule
+from parakeet.modules.weight_norm import WeightNormWrapper
+from parakeet.models.wavenet import UpsampleNet, WaveNet, ConditionalWavenet
 from parakeet.utils import io
 
 
@@ -44,6 +48,14 @@ def add_config_options_to_parser(parser):
         "--checkpoint_transformer",
         type=str,
         help="transformer_tts checkpoint to synthesis")
+    parser.add_argument(
+        "--vocoder",
+        type=str,
+        default="griffinlim",
+        choices=['griffinlim', 'wavenet', 'waveflow'],
+        help="vocoder method")
+    parser.add_argument(
+        "--config_vocoder", type=str, help="path of the vocoder config file")
     parser.add_argument(
         "--checkpoint_vocoder",
         type=str,
@@ -82,31 +94,32 @@ def synthesis(text_input, args):
             model=model, checkpoint_path=args.checkpoint_transformer)
         model.eval()
 
-    with fluid.unique_name.guard():
-        model_vocoder = Vocoder(
-            cfg['train']['batch_size'], cfg['vocoder']['hidden_size'],
-            cfg['audio']['num_mels'], cfg['audio']['n_fft'])
-        # Load parameters.
-        global_step = io.load_parameters(
-            model=model_vocoder, checkpoint_path=args.checkpoint_vocoder)
-        model_vocoder.eval()
     # init input
     text = np.asarray(text_to_sequence(text_input))
-    text = fluid.layers.unsqueeze(dg.to_variable(text), [0])
+    text = fluid.layers.unsqueeze(dg.to_variable(text).astype(np.int64), [0])
     mel_input = dg.to_variable(np.zeros([1, 1, 80])).astype(np.float32)
     pos_text = np.arange(1, text.shape[1] + 1)
-    pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text), [0])
+    pos_text = fluid.layers.unsqueeze(
+        dg.to_variable(pos_text).astype(np.int64), [0])
 
     pbar = tqdm(range(args.max_len))
     for i in pbar:
         pos_mel = np.arange(1, mel_input.shape[1] + 1)
-        pos_mel = fluid.layers.unsqueeze(dg.to_variable(pos_mel), [0])
+        pos_mel = fluid.layers.unsqueeze(
+            dg.to_variable(pos_mel).astype(np.int64), [0])
         mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
             text, mel_input, pos_text, pos_mel)
         mel_input = fluid.layers.concat(
             [mel_input, postnet_pred[:, -1:, :]], axis=1)
-
-    mag_pred = model_vocoder(postnet_pred)
+    global_step = 0
+    for i, prob in enumerate(attn_probs):
+        for j in range(4):
+            x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
+            writer.add_image(
+                'Attention_%d_0' % global_step,
+                x,
+                i * 4 + j,
+                dataformats="HWC")
 
     _ljspeech_processor = audio.AudioProcessor(
         sample_rate=cfg['audio']['sr'],
@@ -122,45 +135,130 @@ def synthesis(text_input, args):
         symmetric_norm=False,
         max_norm=1.,
         mel_fmin=0,
-        mel_fmax=None,
+        mel_fmax=8000,
         clip_norm=True,
         griffin_lim_iters=60,
         do_trim_silence=False,
         sound_norm=False)
 
+    if args.vocoder == 'griffinlim':
+        #synthesis use griffin-lim
+        wav = synthesis_with_griffinlim(postnet_pred, _ljspeech_processor)
+    elif args.vocoder == 'wavenet':
+        # synthesis use wavenet
+        wav = synthesis_with_wavenet(postnet_pred, args)
+    elif args.vocoder == 'waveflow':
+        # synthesis use waveflow
+        wav = synthesis_with_waveflow(postnet_pred, args,
+                                      args.checkpoint_vocoder,
+                                      _ljspeech_processor, place)
+    else:
+        print(
+            'vocoder error, we only support griffinlim, cbhg and waveflow, but recevied %s.'
+            % args.vocoder)
+
+    writer.add_audio(text_input + '(' + args.vocoder + ')', wav, 0,
+                     cfg['audio']['sr'])
+    if not os.path.exists(os.path.join(args.output, 'samples')):
+        os.mkdir(os.path.join(args.output, 'samples'))
+    write(
+        os.path.join(
+            os.path.join(args.output, 'samples'), args.vocoder + '.wav'),
+        cfg['audio']['sr'], wav)
+    print("Synthesis completed !!!")
+    writer.close()
+
+
+def synthesis_with_griffinlim(mel_output, _ljspeech_processor):
+    # synthesis with griffin-lim
+    mel_output = fluid.layers.transpose(
+        fluid.layers.squeeze(mel_output, [0]), [1, 0])
+    mel_output = np.exp(mel_output.numpy())
+    basis = librosa.filters.mel(22050, 1024, 80, fmin=0, fmax=8000)
+    inv_basis = np.linalg.pinv(basis)
+    spec = np.maximum(1e-10, np.dot(inv_basis, mel_output))
+
+    wav = librosa.core.griffinlim(spec**1.2, hop_length=256, win_length=1024)
+
+    return wav
+
+
+def synthesis_with_wavenet(mel_output, args):
+    with open(args.config_vocoder, 'rt') as f:
+        config = yaml.safe_load(f)
+    n_mels = config["data"]["n_mels"]
+    model_config = config["model"]
+    filter_size = model_config["filter_size"]
+    upsampling_factors = model_config["upsampling_factors"]
+    encoder = UpsampleNet(upsampling_factors)
+
+    n_loop = model_config["n_loop"]
+    n_layer = model_config["n_layer"]
+    residual_channels = model_config["residual_channels"]
+    output_dim = model_config["output_dim"]
+    loss_type = model_config["loss_type"]
+    log_scale_min = model_config["log_scale_min"]
+    decoder = WaveNet(n_loop, n_layer, residual_channels, output_dim, n_mels,
+                      filter_size, loss_type, log_scale_min)
+
+    model = ConditionalWavenet(encoder, decoder)
+
+    # load model parameters
+    iteration = io.load_parameters(
+        model, checkpoint_path=args.checkpoint_vocoder)
+
+    for layer in model.sublayers():
+        if isinstance(layer, WeightNormWrapper):
+            layer.remove_weight_norm()
+    mel_output = fluid.layers.transpose(mel_output, [0, 2, 1])
+    wav = model.synthesis(mel_output)
+    return wav.numpy()[0]
+
+
+def synthesis_with_cbhg(mel_output, _ljspeech_processor, cfg):
+    with fluid.unique_name.guard():
+        model_vocoder = Vocoder(
+            cfg['train']['batch_size'], cfg['vocoder']['hidden_size'],
+            cfg['audio']['num_mels'], cfg['audio']['n_fft'])
+        # Load parameters.
+        global_step = io.load_parameters(
+            model=model_vocoder, checkpoint_path=args.checkpoint_vocoder)
+        model_vocoder.eval()
+    mag_pred = model_vocoder(mel_output)
     # synthesis with cbhg
     wav = _ljspeech_processor.inv_spectrogram(
         fluid.layers.transpose(fluid.layers.squeeze(mag_pred, [0]), [1, 0])
         .numpy())
-    global_step = 0
-    for i, prob in enumerate(attn_probs):
-        for j in range(4):
-            x = np.uint8(cm.viridis(prob.numpy()[j]) * 255)
-            writer.add_image(
-                'Attention_%d_0' % global_step,
-                x,
-                i * 4 + j,
-                dataformats="HWC")
+    return wav
 
-    writer.add_audio(text_input + '(cbhg)', wav, 0, cfg['audio']['sr'])
 
-    if not os.path.exists(os.path.join(args.output, 'samples')):
-        os.mkdir(os.path.join(args.output, 'samples'))
-    write(
-        os.path.join(os.path.join(args.output, 'samples'), 'cbhg.wav'),
-        cfg['audio']['sr'], wav)
+def synthesis_with_waveflow(mel_output, args, checkpoint, _ljspeech_processor,
+                            place):
+    mel_output = fluid.layers.transpose(
+        fluid.layers.squeeze(mel_output, [0]), [1, 0])
+    mel_output = mel_output.numpy()
+    #mel_output = (mel_output - mel_output.min())/(mel_output.max() - mel_output.min())
+    #mel_output = 5 * mel_output - 4
+    #mel_output = np.log(10) * mel_output
 
-    # synthesis with griffin-lim
-    wav = _ljspeech_processor.inv_melspectrogram(
-        fluid.layers.transpose(
-            fluid.layers.squeeze(postnet_pred, [0]), [1, 0]).numpy())
-    writer.add_audio(text_input + '(griffin)', wav, 0, cfg['audio']['sr'])
+    fluid.enable_dygraph(place)
+    args.config = args.config_vocoder
+    args.use_fp16 = False
+    config = io.add_yaml_config_to_args(args)
 
-    write(
-        os.path.join(os.path.join(args.output, 'samples'), 'griffin.wav'),
-        cfg['audio']['sr'], wav)
-    print("Synthesis completed !!!")
-    writer.close()
+    mel_spectrogram = dg.to_variable(mel_output)
+    mel_spectrogram = fluid.layers.unsqueeze(mel_spectrogram, [0])
+
+    # Build model.
+    waveflow = WaveFlowModule(config)
+    io.load_parameters(model=waveflow, checkpoint_path=checkpoint)
+    for layer in waveflow.sublayers():
+        if isinstance(layer, weight_norm.WeightNormWrapper):
+            layer.remove_weight_norm()
+
+    # Run model inference.
+    wav = waveflow.synthesize(mel_spectrogram, sigma=config.sigma)
+    return wav.numpy()[0]
 
 
 if __name__ == '__main__':
@@ -169,5 +267,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # Print the whole config setting.
     pprint(vars(args))
-    synthesis("Parakeet stands for Paddle PARAllel text-to-speech toolkit.",
-              args)
+    synthesis(
+        "Life was like a box of chocolates, you never know what you're gonna get.",
+        args)

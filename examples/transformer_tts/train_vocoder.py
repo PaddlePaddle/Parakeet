@@ -98,7 +98,7 @@ def main(args):
         local_rank,
         is_vocoder=True).reader()
 
-    for epoch in range(cfg['train']['max_epochs']):
+    for epoch in range(cfg['train']['max_iteration']):
         pbar = tqdm(reader)
         for i, data in enumerate(pbar):
             pbar.set_description('Processing at epoch %d' % epoch)
