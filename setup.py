@@ -15,7 +15,6 @@
 import os
 import io
 import re
-import six
 import sys
 from setuptools import setup, find_packages
 
@@ -55,8 +54,8 @@ setup_info = dict(
         'inflect',
         'librosa',
         'unidecode',
-        'numba',
-        'tqdm',
+        'numba==0.47.0',
+        'tqdm==4.19.8',
         'matplotlib',
         'tensorboardX',
         'tensorboard',
@@ -65,7 +64,7 @@ setup_info = dict(
         'pandas',
         'sox',
         'soundfile',
-        'llvmlite==0.31.0' if sys.version_info < (3, 6) else "llvmlite",
+        'llvmlite==0.31.0',
     ],
 
     # Package info

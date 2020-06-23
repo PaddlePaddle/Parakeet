@@ -60,7 +60,7 @@ def add_options(parser):
 
 def make_evaluator(config, text_sequences, output_dir, writer=None):
     c = config["transform"]
-    p_replace = c["replace_pronunciation_prob"]
+    p_replace = 0.0
     sample_rate = c["sample_rate"]
     preemphasis = c["preemphasis"]
     win_length = c["win_length"]
@@ -121,7 +121,7 @@ class Evaluator(object):
             en.text_to_sequence(
                 text, p=self.p_replace), dtype=np.int64)
         length = len(text)
-        text_positions = np.arange(1, 1 + length)
+        text_positions = np.arange(1, 1 + length, dtype=np.int64)
         text = np.expand_dims(text, 0)
         text_positions = np.expand_dims(text_positions, 0)
 

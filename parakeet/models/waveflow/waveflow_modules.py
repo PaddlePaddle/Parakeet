@@ -79,7 +79,7 @@ class Conditioner(dg.Layer):
                 stride=(1, s),
                 param_attr=param_attr,
                 bias_attr=bias_attr,
-                dtype="float32")
+                dtype=dtype)
             self.upsample_conv2d.append(conv_trans2d)
 
         for i, layer in enumerate(self.upsample_conv2d):
@@ -88,12 +88,7 @@ class Conditioner(dg.Layer):
     def forward(self, x):
         x = fluid.layers.unsqueeze(x, 1)
         for layer in self.upsample_conv2d:
-            in_dtype = x.dtype
-            if in_dtype == fluid.core.VarDesc.VarType.FP16:
-                x = fluid.layers.cast(x, "float32")
             x = layer(x)
-            if in_dtype == fluid.core.VarDesc.VarType.FP16:
-                x = fluid.layers.cast(x, "float16")
             x = fluid.layers.leaky_relu(x, alpha=0.4)
 
         return fluid.layers.squeeze(x, [1])
@@ -101,12 +96,7 @@ class Conditioner(dg.Layer):
     def infer(self, x):
         x = fluid.layers.unsqueeze(x, 1)
         for layer in self.upsample_conv2d:
-            in_dtype = x.dtype
-            if in_dtype == fluid.core.VarDesc.VarType.FP16:
-                x = fluid.layers.cast(x, "float32")
             x = layer(x)
-            if in_dtype == fluid.core.VarDesc.VarType.FP16:
-                x = fluid.layers.cast(x, "float16")
             # Trim conv artifacts.
             time_cutoff = layer._filter_size[1] - layer._stride[1]
             x = fluid.layers.leaky_relu(x[:, :, :, :-time_cutoff], alpha=0.4)
@@ -348,7 +338,7 @@ class WaveFlowModule(dg.Layer):
         mel = self.conditioner(mel)
         assert mel.shape[2] >= audio.shape[1]
         # Prune out the tail of audio/mel so that time/n_group == 0.
-        pruned_len = audio.shape[1] // self.n_group * self.n_group
+        pruned_len = int(audio.shape[1] // self.n_group * self.n_group)
 
         if audio.shape[1] > pruned_len:
             audio = audio[:, :pruned_len]
