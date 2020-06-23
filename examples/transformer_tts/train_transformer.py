@@ -115,7 +115,7 @@ def main(args):
             iterator = iter(tqdm(reader))
             batch = next(iterator)
 
-        character, mel, mel_input, pos_text, pos_mel = batch
+        character, mel, mel_input, pos_text, pos_mel, stop_tokens = batch
 
         mel_pred, postnet_pred, attn_probs, stop_preds, attn_enc, attn_dec = model(
             character, mel_input, pos_text, pos_mel)
@@ -126,11 +126,9 @@ def main(args):
             layers.abs(layers.elementwise_sub(postnet_pred, mel)))
         loss = mel_loss + post_mel_loss
 
-        # Note: When used stop token loss the learning did not work.
-        if cfg['network']['stop_token']:
-            label = (pos_mel == 0).astype(np.float32)
-            stop_loss = cross_entropy(stop_preds, label)
-            loss = loss + stop_loss
+        stop_loss = cross_entropy(
+            stop_preds, stop_tokens, weight=cfg['network']['stop_loss_weight'])
+        loss = loss + stop_loss
 
         if local_rank == 0:
             writer.add_scalars('training_loss', {
@@ -138,8 +136,7 @@ def main(args):
                 'post_mel_loss': post_mel_loss.numpy()
             }, global_step)
 
-            if cfg['network']['stop_token']:
-                writer.add_scalar('stop_loss', stop_loss.numpy(), global_step)
+            writer.add_scalar('stop_loss', stop_loss.numpy(), global_step)
 
             if parallel:
                 writer.add_scalars('alphas', {

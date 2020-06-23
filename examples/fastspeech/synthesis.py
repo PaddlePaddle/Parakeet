@@ -40,7 +40,7 @@ def add_config_options_to_parser(parser):
         "--vocoder",
         type=str,
         default="griffinlim",
-        choices=['griffinlim', 'clarinet', 'waveflow'],
+        choices=['griffinlim', 'waveflow'],
         help="vocoder method")
     parser.add_argument(
         "--config_vocoder", type=str, help="path of the vocoder config file")
@@ -98,24 +98,13 @@ def synthesis(text_input, args):
 
     if args.vocoder == 'griffinlim':
         #synthesis use griffin-lim
-        wav = synthesis_with_griffinlim(
-            mel_output_postnet,
-            sr=cfg['audio']['sr'],
-            n_fft=cfg['audio']['n_fft'],
-            num_mels=cfg['audio']['num_mels'],
-            power=cfg['audio']['power'],
-            hop_length=cfg['audio']['hop_length'],
-            win_length=cfg['audio']['win_length'])
-    elif args.vocoder == 'clarinet':
-        # synthesis use clarinet
-        wav = synthesis_with_clarinet(mel_output_postnet, args.config_vocoder,
-                                      args.checkpoint_vocoder, place)
+        wav = synthesis_with_griffinlim(mel_output_postnet, cfg['audio'])
     elif args.vocoder == 'waveflow':
         wav = synthesis_with_waveflow(mel_output_postnet, args,
                                       args.checkpoint_vocoder, place)
     else:
         print(
-            'vocoder error, we only support griffinlim, clarinet and waveflow, but recevied %s.'
+            'vocoder error, we only support griffinlim and waveflow, but recevied %s.'
             % args.vocoder)
 
     writer.add_audio(text_input + '(' + args.vocoder + ')', wav, 0,
@@ -130,105 +119,34 @@ def synthesis(text_input, args):
     writer.close()
 
 
-def synthesis_with_griffinlim(mel_output, sr, n_fft, num_mels, power,
-                              hop_length, win_length):
+def synthesis_with_griffinlim(mel_output, cfg):
     mel_output = fluid.layers.transpose(
         fluid.layers.squeeze(mel_output, [0]), [1, 0])
     mel_output = np.exp(mel_output.numpy())
-    basis = librosa.filters.mel(sr, n_fft, num_mels)
+    basis = librosa.filters.mel(cfg['sr'],
+                                cfg['n_fft'],
+                                cfg['num_mels'],
+                                fmin=cfg['fmin'],
+                                fmax=cfg['fmax'])
     inv_basis = np.linalg.pinv(basis)
     spec = np.maximum(1e-10, np.dot(inv_basis, mel_output))
 
     wav = librosa.core.griffinlim(
-        spec**power, hop_length=hop_length, win_length=win_length)
+        spec**cfg['power'],
+        hop_length=cfg['hop_length'],
+        win_length=cfg['win_length'])
 
     return wav
 
 
-def synthesis_with_clarinet(mel_output, config_path, checkpoint, place):
-    mel_spectrogram = np.exp(mel_output.numpy())
-    with open(config_path, 'rt') as f:
-        config = yaml.safe_load(f)
-
-    data_config = config["data"]
-    n_mels = data_config["n_mels"]
-
-    teacher_config = config["teacher"]
-    n_loop = teacher_config["n_loop"]
-    n_layer = teacher_config["n_layer"]
-    filter_size = teacher_config["filter_size"]
-
-    # only batch=1 for validation is enabled
-
-    fluid.enable_dygraph(place)
-    # conditioner(upsampling net)
-    conditioner_config = config["conditioner"]
-    upsampling_factors = conditioner_config["upsampling_factors"]
-    upsample_net = UpsampleNet(upscale_factors=upsampling_factors)
-    freeze(upsample_net)
-
-    residual_channels = teacher_config["residual_channels"]
-    loss_type = teacher_config["loss_type"]
-    output_dim = teacher_config["output_dim"]
-    log_scale_min = teacher_config["log_scale_min"]
-    assert loss_type == "mog" and output_dim == 3, \
-        "the teacher wavenet should be a wavenet with single gaussian output"
-
-    teacher = WaveNet(n_loop, n_layer, residual_channels, output_dim, n_mels,
-                      filter_size, loss_type, log_scale_min)
-    # load & freeze upsample_net & teacher
-    freeze(teacher)
-
-    student_config = config["student"]
-    n_loops = student_config["n_loops"]
-    n_layers = student_config["n_layers"]
-    student_residual_channels = student_config["residual_channels"]
-    student_filter_size = student_config["filter_size"]
-    student_log_scale_min = student_config["log_scale_min"]
-    student = ParallelWaveNet(n_loops, n_layers, student_residual_channels,
-                              n_mels, student_filter_size)
-
-    stft_config = config["stft"]
-    stft = STFT(
-        n_fft=stft_config["n_fft"],
-        hop_length=stft_config["hop_length"],
-        win_length=stft_config["win_length"])
-
-    lmd = config["loss"]["lmd"]
-    model = Clarinet(upsample_net, teacher, student, stft,
-                     student_log_scale_min, lmd)
-    io.load_parameters(model=model, checkpoint_path=checkpoint)
-
-    if not os.path.exists(args.output):
-        os.makedirs(args.output)
-    model.eval()
-
-    # Rescale mel_spectrogram.
-    min_level, ref_level = 1e-5, 20  # hard code it
-    mel_spectrogram = 20 * np.log10(np.maximum(min_level, mel_spectrogram))
-    mel_spectrogram = mel_spectrogram - ref_level
-    mel_spectrogram = np.clip((mel_spectrogram + 100) / 100, 0, 1)
-
-    mel_spectrogram = dg.to_variable(mel_spectrogram)
-    mel_spectrogram = fluid.layers.transpose(mel_spectrogram, [0, 2, 1])
-
-    wav_var = model.synthesis(mel_spectrogram)
-    wav_np = wav_var.numpy()[0]
-
-    return wav_np
-
-
 def synthesis_with_waveflow(mel_output, args, checkpoint, place):
-    #mel_output = np.exp(mel_output.numpy())
-    mel_output = mel_output.numpy()
 
     fluid.enable_dygraph(place)
     args.config = args.config_vocoder
     args.use_fp16 = False
     config = io.add_yaml_config_to_args(args)
 
-    mel_spectrogram = dg.to_variable(mel_output)
-    mel_spectrogram = fluid.layers.transpose(mel_spectrogram, [0, 2, 1])
+    mel_spectrogram = fluid.layers.transpose(mel_output, [0, 2, 1])
 
     # Build model.
     waveflow = WaveFlowModule(config)
@@ -247,5 +165,6 @@ if __name__ == '__main__':
     add_config_options_to_parser(parser)
     args = parser.parse_args()
     pprint(vars(args))
-    synthesis("Simple as this proposition is, it is necessary to be stated,",
-              args)
+    synthesis(
+        "Don't argue with the people of strong determination, because they may change the fact!",
+        args)

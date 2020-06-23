@@ -19,7 +19,6 @@ import csv
 
 from paddle import fluid
 from parakeet import g2p
-from parakeet import audio
 from parakeet.data.sampler import *
 from parakeet.data.datacargo import DataCargo
 from parakeet.data.batch import TextIDBatcher, SpecBatcher
@@ -98,25 +97,14 @@ class LJSpeech(object):
     def __init__(self, config):
         super(LJSpeech, self).__init__()
         self.config = config
-        self._ljspeech_processor = audio.AudioProcessor(
-            sample_rate=config['sr'],
-            num_mels=config['num_mels'],
-            min_level_db=config['min_level_db'],
-            ref_level_db=config['ref_level_db'],
-            n_fft=config['n_fft'],
-            win_length=config['win_length'],
-            hop_length=config['hop_length'],
-            power=config['power'],
-            preemphasis=config['preemphasis'],
-            signal_norm=True,
-            symmetric_norm=False,
-            max_norm=1.,
-            mel_fmin=0,
-            mel_fmax=None,
-            clip_norm=True,
-            griffin_lim_iters=60,
-            do_trim_silence=False,
-            sound_norm=False)
+        self.sr = config['sr']
+        self.n_mels = config['num_mels']
+        self.preemphasis = config['preemphasis']
+        self.n_fft = config['n_fft']
+        self.win_length = config['win_length']
+        self.hop_length = config['hop_length']
+        self.fmin = config['fmin']
+        self.fmax = config['fmax']
 
     def __call__(self, metadatum):
         """All the code for generating an Example from a metadatum. If you want a 
@@ -127,14 +115,26 @@ class LJSpeech(object):
         """
         fname, raw_text, normalized_text = metadatum
 
-        # load -> trim -> preemphasis -> stft -> magnitude -> mel_scale -> logscale -> normalize
-        wav = self._ljspeech_processor.load_wav(str(fname))
-        mag = self._ljspeech_processor.spectrogram(wav).astype(np.float32)
-        mel = self._ljspeech_processor.melspectrogram(wav).astype(np.float32)
-        phonemes = np.array(
+        # load
+        wav, _ = librosa.load(str(fname))
+
+        spec = librosa.stft(
+            y=wav,
+            n_fft=self.n_fft,
+            win_length=self.win_length,
+            hop_length=self.hop_length)
+        mag = np.abs(spec)
+        mel = librosa.filters.mel(sr=self.sr,
+                                  n_fft=self.n_fft,
+                                  n_mels=self.n_mels,
+                                  fmin=self.fmin,
+                                  fmax=self.fmax)
+        mel = np.matmul(mel, mag)
+        mel = np.log(np.maximum(mel, 1e-5))
+
+        characters = np.array(
             g2p.en.text_to_sequence(normalized_text), dtype=np.int64)
-        return (mag, mel, phonemes
-                )  # maybe we need to implement it as a map in the future
+        return (mag, mel, characters)
 
 
 def batch_examples(batch):
@@ -144,6 +144,7 @@ def batch_examples(batch):
     text_lens = []
     pos_texts = []
     pos_mels = []
+    stop_tokens = []
     for data in batch:
         _, mel, text = data
         mel_inputs.append(
@@ -155,6 +156,8 @@ def batch_examples(batch):
         pos_mels.append(np.arange(1, mel.shape[1] + 1))
         mels.append(mel)
         texts.append(text)
+        stop_token = np.append(np.zeros([mel.shape[1] - 1], np.float32), 1.0)
+        stop_tokens.append(stop_token)
 
     # Sort by text_len in descending order
     texts = [
@@ -182,18 +185,24 @@ def batch_examples(batch):
         for i, _ in sorted(
             zip(pos_mels, text_lens), key=lambda x: x[1], reverse=True)
     ]
+    stop_tokens = [
+        i
+        for i, _ in sorted(
+            zip(stop_tokens, text_lens), key=lambda x: x[1], reverse=True)
+    ]
     text_lens = sorted(text_lens, reverse=True)
 
     # Pad sequence with largest len of the batch
     texts = TextIDBatcher(pad_id=0)(texts)  #(B, T)
     pos_texts = TextIDBatcher(pad_id=0)(pos_texts)  #(B,T)
     pos_mels = TextIDBatcher(pad_id=0)(pos_mels)  #(B,T)
+    stop_tokens = TextIDBatcher(pad_id=1, dtype=np.float32)(pos_mels)
     mels = np.transpose(
         SpecBatcher(pad_value=0.)(mels), axes=(0, 2, 1))  #(B,T,num_mels)
     mel_inputs = np.transpose(
         SpecBatcher(pad_value=0.)(mel_inputs), axes=(0, 2, 1))  #(B,T,num_mels)
 
-    return (texts, mels, mel_inputs, pos_texts, pos_mels)
+    return (texts, mels, mel_inputs, pos_texts, pos_mels, stop_tokens)
 
 
 def batch_examples_vocoder(batch):

@@ -37,13 +37,12 @@ class LengthRegulator(dg.Layer):
             filter_size=filter_size,
             dropout=dropout)
 
-    def LR(self, x, duration_predictor_output, alpha=1.0):
+    def LR(self, x, duration_predictor_output):
         output = []
         batch_size = x.shape[0]
         for i in range(batch_size):
             output.append(
-                self.expand(x[i:i + 1], duration_predictor_output[i:i + 1],
-                            alpha))
+                self.expand(x[i:i + 1], duration_predictor_output[i:i + 1]))
         output = self.pad(output)
         return output
 
@@ -58,7 +57,7 @@ class LengthRegulator(dg.Layer):
         out_padded = layers.stack(out_list)
         return out_padded
 
-    def expand(self, batch, predicted, alpha):
+    def expand(self, batch, predicted):
         out = []
         time_steps = batch.shape[1]
         fertilities = predicted.numpy()
@@ -92,8 +91,9 @@ class LengthRegulator(dg.Layer):
             output = self.LR(x, target)
             return output, duration_predictor_output
         else:
-            duration_predictor_output = layers.round(duration_predictor_output)
-            output = self.LR(x, duration_predictor_output, alpha)
+            duration_predictor_output = duration_predictor_output * alpha
+            duration_predictor_output = layers.ceil(duration_predictor_output)
+            output = self.LR(x, duration_predictor_output)
             mel_pos = dg.to_variable(np.arange(1, output.shape[1] + 1)).astype(
                 np.int64)
             mel_pos = layers.unsqueeze(mel_pos, [0])

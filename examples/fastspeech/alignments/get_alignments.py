@@ -27,7 +27,6 @@ from collections import OrderedDict
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 from parakeet.models.transformer_tts.utils import *
-from parakeet import audio
 from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.models.fastspeech.utils import get_alignment
 from parakeet.utils import io
@@ -78,25 +77,6 @@ def alignments(args):
             header=None,
             quoting=csv.QUOTE_NONE,
             names=["fname", "raw_text", "normalized_text"])
-        ljspeech_processor = audio.AudioProcessor(
-            sample_rate=cfg['audio']['sr'],
-            num_mels=cfg['audio']['num_mels'],
-            min_level_db=cfg['audio']['min_level_db'],
-            ref_level_db=cfg['audio']['ref_level_db'],
-            n_fft=cfg['audio']['n_fft'],
-            win_length=cfg['audio']['win_length'],
-            hop_length=cfg['audio']['hop_length'],
-            power=cfg['audio']['power'],
-            preemphasis=cfg['audio']['preemphasis'],
-            signal_norm=True,
-            symmetric_norm=False,
-            max_norm=1.,
-            mel_fmin=0,
-            mel_fmax=None,
-            clip_norm=True,
-            griffin_lim_iters=60,
-            do_trim_silence=False,
-            sound_norm=False)
 
         pbar = tqdm(range(len(table)))
         alignments = OrderedDict()
@@ -107,11 +87,26 @@ def alignments(args):
             text = fluid.layers.unsqueeze(dg.to_variable(text), [0])
             pos_text = np.arange(1, text.shape[1] + 1)
             pos_text = fluid.layers.unsqueeze(dg.to_variable(pos_text), [0])
-            wav = ljspeech_processor.load_wav(
-                os.path.join(args.data, 'wavs', fname + ".wav"))
-            mel_input = ljspeech_processor.melspectrogram(wav).astype(
-                np.float32)
-            mel_input = np.transpose(mel_input, axes=(1, 0))
+
+            # load
+            wav, _ = librosa.load(
+                str(os.path.join(args.data, 'wavs', fname + ".wav")))
+
+            spec = librosa.stft(
+                y=wav,
+                n_fft=cfg['audio']['n_fft'],
+                win_length=cfg['audio']['win_length'],
+                hop_length=cfg['audio']['hop_length'])
+            mag = np.abs(spec)
+            mel = librosa.filters.mel(sr=cfg['audio']['sr'],
+                                      n_fft=cfg['audio']['n_fft'],
+                                      n_mels=cfg['audio']['num_mels'],
+                                      fmin=cfg['audio']['fmin'],
+                                      fmax=cfg['audio']['fmax'])
+            mel = np.matmul(mel, mag)
+            mel = np.log(np.maximum(mel, 1e-5))
+
+            mel_input = np.transpose(mel, axes=(1, 0))
             mel_input = fluid.layers.unsqueeze(dg.to_variable(mel_input), [0])
             mel_lens = mel_input.shape[1]
 
@@ -125,7 +120,7 @@ def alignments(args):
             alignment, _ = get_alignment(attn_probs, mel_lens,
                                          network_cfg['decoder_num_head'])
             alignments[fname] = alignment
-        with open(args.output + '.txt', "wb") as f:
+        with open(args.output + '.pkl', "wb") as f:
             pickle.dump(alignments, f)
 
 
