@@ -235,15 +235,15 @@ Users have the option to use different vocoders to convert the linear/mel spectr
             <img src="images/audio_icon.png" width=250 /></a>
             </th>
             <th >
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_0.wav">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_162000_sentence_0.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_1.wav">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_162000_sentence_1.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_2.wav">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_162000_sentence_2.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_3.wav">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_162000_sentence_3.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_130000_sentence_4.wav">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_samples_1.0/step_162000_sentence_4.wav">
             <img src="images/audio_icon.png" width=250 /></a>
             </th>
         </tr>
