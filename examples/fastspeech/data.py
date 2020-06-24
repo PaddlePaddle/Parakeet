@@ -42,12 +42,7 @@ class LJSpeechLoader:
 
         LJSPEECH_ROOT = Path(data_path)
         metadata = LJSpeechMetaData(LJSPEECH_ROOT, alignments_path)
-        transformer = LJSpeech(
-            sr=config['sr'],
-            n_fft=config['n_fft'],
-            num_mels=config['num_mels'],
-            win_length=config['win_length'],
-            hop_length=config['hop_length'])
+        transformer = LJSpeech(config)
         dataset = TransformDataset(metadata, transformer)
         dataset = CacheDataset(dataset)
 
@@ -96,18 +91,16 @@ class LJSpeechMetaData(DatasetMixin):
 
 
 class LJSpeech(object):
-    def __init__(self,
-                 sr=22050,
-                 n_fft=2048,
-                 num_mels=80,
-                 win_length=1024,
-                 hop_length=256):
+    def __init__(self, cfg):
         super(LJSpeech, self).__init__()
-        self.sr = sr
-        self.n_fft = n_fft
-        self.num_mels = num_mels
-        self.win_length = win_length
-        self.hop_length = hop_length
+        self.sr = cfg['sr']
+        self.n_fft = cfg['n_fft']
+        self.num_mels = cfg['num_mels']
+        self.win_length = cfg['win_length']
+        self.hop_length = cfg['hop_length']
+        self.preemphasis = cfg['preemphasis']
+        self.fmin = cfg['fmin']
+        self.fmax = cfg['fmax']
 
     def __call__(self, metadatum):
         """All the code for generating an Example from a metadatum. If you want a 
@@ -125,7 +118,11 @@ class LJSpeech(object):
             win_length=self.win_length,
             hop_length=self.hop_length)
         mag = np.abs(spec)
-        mel = librosa.filters.mel(self.sr, self.n_fft, n_mels=self.num_mels)
+        mel = librosa.filters.mel(self.sr,
+                                  self.n_fft,
+                                  n_mels=self.num_mels,
+                                  fmin=self.fmin,
+                                  fmax=self.fmax)
         mel = np.matmul(mel, mag)
         mel = np.log(np.maximum(mel, 1e-5))
         phonemes = np.array(

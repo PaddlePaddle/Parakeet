@@ -1,10 +1,13 @@
 audio:
   num_mels: 80  #the number of mel bands when calculating mel spectrograms.
-  n_fft: 2048 #the number of fft components.
+  n_fft: 1024 #the number of fft components.
   sr: 22050 #the sampling rate of audio data file.
   hop_length: 256 #the number of samples to advance between frames.
   win_length: 1024 #the length (width) of the window function.
+  preemphasis: 0.97
   power: 1.2 #the power to raise before griffin-lim.
+  fmin: 0
+  fmax: 8000
 
 network:
   encoder_n_layer: 6 #the number of FFT Block in encoder.

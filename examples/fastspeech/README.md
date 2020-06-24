@@ -87,7 +87,7 @@ python train.py \
 --use_gpu=1 \
 --data=${DATAPATH} \
 --alignments_path=${ALIGNMENTS_PATH} \
---output='./experiment' \
+--output=${OUTPUTPATH} \
 --config='configs/ljspeech.yaml' \
 ```
 
@@ -105,7 +105,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog tr
 --use_gpu=1 \
 --data=${DATAPATH} \
 --alignments_path=${ALIGNMENTS_PATH} \
---output='./experiment' \
+--output=${OUTPUTPATH} \
 --config='configs/ljspeech.yaml' \
 ```
 
@@ -123,14 +123,13 @@ After training the FastSpeech, audio can be synthesized by running ``synthesis.p
 python synthesis.py \
 --use_gpu=1 \
 --alpha=1.0 \
---checkpoint='./checkpoint/fastspeech/step-120000' \
+--checkpoint=${CHECKPOINTPATH} \
 --config='configs/ljspeech.yaml' \
---config_clarine='../clarinet/configs/config.yaml' \
---checkpoint_clarinet='../clarinet/checkpoint/step-500000' \
---output='./synthesis' \
+--output=${OUTPUTPATH} \
+--vocoder='griffin-lim' \
 ```
 
-We use Clarinet to synthesis wav, so it necessary for you to prepare a pre-trained [Clarinet checkpoint](https://paddlespeech.bj.bcebos.com/Parakeet/clarinet_ljspeech_ckpt_1.0.zip).
+We currently support two vocoders, Griffin-Lim algorithm and WaveFlow. You can set ``--vocoder`` to use one of them. If you want to use WaveFlow as your vocoder, you need to set ``--config_vocoder`` and ``--checkpoint_vocoder`` which are the path of the config and checkpoint of vocoder. You can download the pre-trained model of WaveFlow from [here](https://github.com/PaddlePaddle/Parakeet#vocoders).
 
 Or you can run the script file directly.
 
@@ -141,3 +140,5 @@ sh synthesis.sh
 For more help on arguments
 
 ``python synthesis.py --help``.
+
+Then you can find the synthesized audio files in ``${OUTPUTPATH}/samples``.

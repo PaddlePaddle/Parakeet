@@ -56,7 +56,7 @@ TransformerTTS model can be trained by running ``train_transformer.py``.
 python train_transformer.py \
 --use_gpu=1 \
 --data=${DATAPATH} \
---output='./experiment' \
+--output=${OUTPUTPATH} \
 --config='configs/ljspeech.yaml' \
 ```
 
@@ -73,7 +73,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train_transformer.py \
 --use_gpu=1 \
 --data=${DATAPATH} \
---output='./experiment' \
+--output=${OUTPUTPATH} \
 --config='configs/ljspeech.yaml' \
 ```
 
@@ -85,61 +85,28 @@ For more help on arguments
 
 ``python train_transformer.py --help``.
 
-## Train Vocoder
-
-Vocoder model can be trained by running ``train_vocoder.py``.
-
-```bash
-python train_vocoder.py \
---use_gpu=1 \
---data=${DATAPATH} \
---output='./vocoder' \
---config='configs/ljspeech.yaml' \
-```
-
-Or you can run the script file directly.
-
-```bash
-sh train_vocoder.sh
-```
-
-If you want to train on multiple GPUs, you must start training in the following way.
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3
-python -m paddle.distributed.launch --selected_gpus=0,1,2,3 --log_dir ./mylog train_vocoder.py \
---use_gpu=1 \
---data=${DATAPATH} \
---output='./vocoder' \
---config='configs/ljspeech.yaml' \
-```
-
-If you wish to resume from an existing model, See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
-
-For more help on arguments
-
-``python train_vocoder.py --help``.
-
 ## Synthesis
 
-After training the TransformerTTS and vocoder model, audio can be synthesized by running ``synthesis.py``.
+After training the TransformerTTS, audio can be synthesized by running ``synthesis.py``.
 
 ```bash
 python synthesis.py \
---max_len=300 \
---use_gpu=1 \
---output='./synthesis' \
+--use_gpu=0 \
+--output=${OUTPUTPATH} \
 --config='configs/ljspeech.yaml' \
---checkpoint_transformer='./checkpoint/transformer/step-120000' \
---checkpoint_vocoder='./checkpoint/vocoder/step-100000' \
+--checkpoint_transformer=${CHECKPOINTPATH} \
+--vocoder='griffin-lim' \
 ```
+
+We currently support two vocoders,  Griffin-Lim algorithm and WaveFlow. You can set ``--vocoder`` to use one of them. If you want to use WaveFlow as your vocoder, you need to set ``--config_vocoder`` and ``--checkpoint_vocoder`` which are the path of the config and checkpoint of vocoder. You can download the pre-trained model of WaveFlow from [here](https://github.com/PaddlePaddle/Parakeet#vocoders).
 
 Or you can run the script file directly.
 
 ```bash
 sh synthesis.sh
 ```
-
 For more help on arguments
 
 ``python synthesis.py --help``.
+
+Then you can find the synthesized audio files in ``${OUTPUTPATH}/samples``.

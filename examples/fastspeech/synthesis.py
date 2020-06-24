@@ -28,6 +28,8 @@ from parakeet.models.fastspeech.fastspeech import FastSpeech
 from parakeet.models.transformer_tts.utils import *
 from parakeet.models.wavenet import WaveNet, UpsampleNet
 from parakeet.models.clarinet import STFT, Clarinet, ParallelWaveNet
+from parakeet.modules import weight_norm
+from parakeet.models.waveflow import WaveFlowModule
 from parakeet.utils.layer_tools import freeze
 from parakeet.utils import io
 
@@ -35,7 +37,13 @@ from parakeet.utils import io
 def add_config_options_to_parser(parser):
     parser.add_argument("--config", type=str, help="path of the config file")
     parser.add_argument(
-        "--config_clarinet", type=str, help="path of the clarinet config file")
+        "--vocoder",
+        type=str,
+        default="griffin-lim",
+        choices=['griffin-lim', 'waveflow'],
+        help="vocoder method")
+    parser.add_argument(
+        "--config_vocoder", type=str, help="path of the vocoder config file")
     parser.add_argument("--use_gpu", type=int, default=0, help="device to use")
     parser.add_argument(
         "--alpha",
@@ -45,11 +53,11 @@ def add_config_options_to_parser(parser):
     )
 
     parser.add_argument(
-        "--checkpoint", type=str, help="fastspeech checkpoint to synthesis")
+        "--checkpoint", type=str, help="fastspeech checkpoint for synthesis")
     parser.add_argument(
-        "--checkpoint_clarinet",
+        "--checkpoint_vocoder",
         type=str,
-        help="clarinet checkpoint to synthesis")
+        help="vocoder checkpoint for synthesis")
 
     parser.add_argument(
         "--output",
@@ -88,110 +96,68 @@ def synthesis(text_input, args):
 
     _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
 
-    result = np.exp(mel_output_postnet.numpy())
-    mel_output_postnet = fluid.layers.transpose(
-        fluid.layers.squeeze(mel_output_postnet, [0]), [1, 0])
-    mel_output_postnet = np.exp(mel_output_postnet.numpy())
-    basis = librosa.filters.mel(cfg['audio']['sr'], cfg['audio']['n_fft'],
-                                cfg['audio']['num_mels'])
-    inv_basis = np.linalg.pinv(basis)
-    spec = np.maximum(1e-10, np.dot(inv_basis, mel_output_postnet))
+    if args.vocoder == 'griffin-lim':
+        #synthesis use griffin-lim
+        wav = synthesis_with_griffinlim(mel_output_postnet, cfg['audio'])
+    elif args.vocoder == 'waveflow':
+        wav = synthesis_with_waveflow(mel_output_postnet, args,
+                                      args.checkpoint_vocoder, place)
+    else:
+        print(
+            'vocoder error, we only support griffinlim and waveflow, but recevied %s.'
+            % args.vocoder)
 
-    # synthesis use clarinet
-    wav_clarinet = synthesis_with_clarinet(
-        args.config_clarinet, args.checkpoint_clarinet, result, place)
-    writer.add_audio(text_input + '(clarinet)', wav_clarinet, 0,
+    writer.add_audio(text_input + '(' + args.vocoder + ')', wav, 0,
                      cfg['audio']['sr'])
     if not os.path.exists(os.path.join(args.output, 'samples')):
         os.mkdir(os.path.join(args.output, 'samples'))
     write(
-        os.path.join(os.path.join(args.output, 'samples'), 'clarinet.wav'),
-        cfg['audio']['sr'], wav_clarinet)
-
-    #synthesis use griffin-lim
-    wav = librosa.core.griffinlim(
-        spec**cfg['audio']['power'],
-        hop_length=cfg['audio']['hop_length'],
-        win_length=cfg['audio']['win_length'])
-    writer.add_audio(text_input + '(griffin-lim)', wav, 0, cfg['audio']['sr'])
-    write(
         os.path.join(
-            os.path.join(args.output, 'samples'), 'grinffin-lim.wav'),
+            os.path.join(args.output, 'samples'), args.vocoder + '.wav'),
         cfg['audio']['sr'], wav)
     print("Synthesis completed !!!")
     writer.close()
 
 
-def synthesis_with_clarinet(config_path, checkpoint, mel_spectrogram, place):
-    with open(config_path, 'rt') as f:
-        config = yaml.safe_load(f)
+def synthesis_with_griffinlim(mel_output, cfg):
+    mel_output = fluid.layers.transpose(
+        fluid.layers.squeeze(mel_output, [0]), [1, 0])
+    mel_output = np.exp(mel_output.numpy())
+    basis = librosa.filters.mel(cfg['sr'],
+                                cfg['n_fft'],
+                                cfg['num_mels'],
+                                fmin=cfg['fmin'],
+                                fmax=cfg['fmax'])
+    inv_basis = np.linalg.pinv(basis)
+    spec = np.maximum(1e-10, np.dot(inv_basis, mel_output))
 
-    data_config = config["data"]
-    n_mels = data_config["n_mels"]
+    wav = librosa.core.griffinlim(
+        spec**cfg['power'],
+        hop_length=cfg['hop_length'],
+        win_length=cfg['win_length'])
 
-    teacher_config = config["teacher"]
-    n_loop = teacher_config["n_loop"]
-    n_layer = teacher_config["n_layer"]
-    filter_size = teacher_config["filter_size"]
+    return wav
 
-    # only batch=1 for validation is enabled
 
-    with dg.guard(place):
-        # conditioner(upsampling net)
-        conditioner_config = config["conditioner"]
-        upsampling_factors = conditioner_config["upsampling_factors"]
-        upsample_net = UpsampleNet(upscale_factors=upsampling_factors)
-        freeze(upsample_net)
+def synthesis_with_waveflow(mel_output, args, checkpoint, place):
 
-        residual_channels = teacher_config["residual_channels"]
-        loss_type = teacher_config["loss_type"]
-        output_dim = teacher_config["output_dim"]
-        log_scale_min = teacher_config["log_scale_min"]
-        assert loss_type == "mog" and output_dim == 3, \
-            "the teacher wavenet should be a wavenet with single gaussian output"
+    fluid.enable_dygraph(place)
+    args.config = args.config_vocoder
+    args.use_fp16 = False
+    config = io.add_yaml_config_to_args(args)
 
-        teacher = WaveNet(n_loop, n_layer, residual_channels, output_dim,
-                          n_mels, filter_size, loss_type, log_scale_min)
-        # load & freeze upsample_net & teacher
-        freeze(teacher)
+    mel_spectrogram = fluid.layers.transpose(mel_output, [0, 2, 1])
 
-        student_config = config["student"]
-        n_loops = student_config["n_loops"]
-        n_layers = student_config["n_layers"]
-        student_residual_channels = student_config["residual_channels"]
-        student_filter_size = student_config["filter_size"]
-        student_log_scale_min = student_config["log_scale_min"]
-        student = ParallelWaveNet(n_loops, n_layers, student_residual_channels,
-                                  n_mels, student_filter_size)
+    # Build model.
+    waveflow = WaveFlowModule(config)
+    io.load_parameters(model=waveflow, checkpoint_path=checkpoint)
+    for layer in waveflow.sublayers():
+        if isinstance(layer, weight_norm.WeightNormWrapper):
+            layer.remove_weight_norm()
 
-        stft_config = config["stft"]
-        stft = STFT(
-            n_fft=stft_config["n_fft"],
-            hop_length=stft_config["hop_length"],
-            win_length=stft_config["win_length"])
-
-        lmd = config["loss"]["lmd"]
-        model = Clarinet(upsample_net, teacher, student, stft,
-                         student_log_scale_min, lmd)
-        io.load_parameters(model=model, checkpoint_path=checkpoint)
-
-        if not os.path.exists(args.output):
-            os.makedirs(args.output)
-        model.eval()
-
-        # Rescale mel_spectrogram.
-        min_level, ref_level = 1e-5, 20  # hard code it
-        mel_spectrogram = 20 * np.log10(np.maximum(min_level, mel_spectrogram))
-        mel_spectrogram = mel_spectrogram - ref_level
-        mel_spectrogram = np.clip((mel_spectrogram + 100) / 100, 0, 1)
-
-        mel_spectrogram = dg.to_variable(mel_spectrogram)
-        mel_spectrogram = fluid.layers.transpose(mel_spectrogram, [0, 2, 1])
-
-        wav_var = model.synthesis(mel_spectrogram)
-        wav_np = wav_var.numpy()[0]
-
-        return wav_np
+    # Run model inference.
+    wav = waveflow.synthesize(mel_spectrogram, sigma=config.sigma)
+    return wav.numpy()[0]
 
 
 if __name__ == '__main__':
@@ -199,5 +165,6 @@ if __name__ == '__main__':
     add_config_options_to_parser(parser)
     args = parser.parse_args()
     pprint(vars(args))
-    synthesis("Simple as this proposition is, it is necessary to be stated,",
-              args)
+    synthesis(
+        "Don't argue with the people of strong determination, because they may change the fact!",
+        args)
