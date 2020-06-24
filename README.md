@@ -196,10 +196,10 @@ Users have the option to use different vocoders to convert the linear/mel spectr
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_ckpt_1.0.zip">Deep Voice 3</a>
             </th>
             <th  style="width: 250px">
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_ckpt_1.0.zip">Transformer TTS</a>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_1.0.zip">Transformer TTS</a>
             </th>
             <th  style="width: 250px">
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_griffin-lim_ckpt_1.0.zip">FastSpeech</a>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech_ljspeech_ckpt_1.0.zip">FastSpeech</a>
             </th>
                     </tr>
     </thead>
