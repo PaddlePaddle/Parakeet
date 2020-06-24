@@ -126,10 +126,10 @@ python synthesis.py \
 --checkpoint=${CHECKPOINTPATH} \
 --config='configs/ljspeech.yaml' \
 --output=${OUTPUTPATH} \
---vocoder='griffinlim' \
+--vocoder='griffin-lim' \
 ```
 
-We currently support two vocoders, ``griffinlim`` and ``waveflow``. You can set ``--vocoder`` to use one of them. If you want to use ``waveflow`` as your vocoder, you need to set ``--config_vocoder`` and ``--checkpoint_vocoder`` which are the path of the config and checkpoint of vocoder. You can download the pretrain model of ``waveflow`` from [here](https://github.com/PaddlePaddle/Parakeet#vocoders).
+We currently support two vocoders, ``Griffin-Lim`` algorithm and ``WaveFlow``. You can set ``--vocoder`` to use one of them. If you want to use ``waveflow`` as your vocoder, you need to set ``--config_vocoder`` and ``--checkpoint_vocoder`` which are the path of the config and checkpoint of vocoder. You can download the pre-trained model of ``waveflow`` from [here](https://github.com/PaddlePaddle/Parakeet#vocoders).
 
 Or you can run the script file directly.
 

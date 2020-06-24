@@ -39,8 +39,8 @@ def add_config_options_to_parser(parser):
     parser.add_argument(
         "--vocoder",
         type=str,
-        default="griffinlim",
-        choices=['griffinlim', 'waveflow'],
+        default="griffin-lim",
+        choices=['griffin-lim', 'waveflow'],
         help="vocoder method")
     parser.add_argument(
         "--config_vocoder", type=str, help="path of the vocoder config file")
@@ -53,11 +53,11 @@ def add_config_options_to_parser(parser):
     )
 
     parser.add_argument(
-        "--checkpoint", type=str, help="fastspeech checkpoint to synthesis")
+        "--checkpoint", type=str, help="fastspeech checkpoint for synthesis")
     parser.add_argument(
         "--checkpoint_vocoder",
         type=str,
-        help="vocoder checkpoint to synthesis")
+        help="vocoder checkpoint for synthesis")
 
     parser.add_argument(
         "--output",
@@ -96,7 +96,7 @@ def synthesis(text_input, args):
 
     _, mel_output_postnet = model(text, pos_text, alpha=args.alpha)
 
-    if args.vocoder == 'griffinlim':
+    if args.vocoder == 'griffin-lim':
         #synthesis use griffin-lim
         wav = synthesis_with_griffinlim(mel_output_postnet, cfg['audio'])
     elif args.vocoder == 'waveflow':
