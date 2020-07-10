@@ -22,151 +22,118 @@ The model consists of an encoder, a decoder and a converter (and a speaker embed
 ## Project Structure
 
 ```text
-├── data.py          data_processing
-├── model.py         function to create model, criterion and optimizer
-├── configs/         (example) configuration files
-├── sentences.txt    sample sentences
-├── synthesis.py     script to synthesize waveform from text
-├── train.py         script to train a model
-└── utils.py         utility functions
+├── config/
+├── synthesize.py
+├── data.py
+├── preprocess.py
+├── clip.py
+├── train.py
+└── vocoder.py
 ```
 
-## Saving & Loading
-`train.py` and `synthesis.py` have 3 arguments in common, `--checkpooint`, `iteration` and `output`.
+# Preprocess
 
-1. `output` is the directory for saving results.
-During training, checkpoints are saved in `checkpoints/` in `output` and tensorboard log is save in `log/` in `output`. States for training including alignment plots, spectrogram plots and generated audio files are saved in `states/` in `outuput`. In addition, we periodically evaluate the model with several given sentences, the alignment plots and generated audio files are save in `eval/` in `output`.
-During synthesizing, audio files and the alignment plots are save in `synthesis/` in `output`.
-So after training and synthesizing with the same output directory, the file structure of the output directory looks like this.
+Preprocess to dataset with `preprocess.py`. 
 
 ```text
-├── checkpoints/      # checkpoint directory (including *.pdparams, *.pdopt and a text file `checkpoint` that records the latest checkpoint)
-├── states/           # alignment plots, spectrogram plots and generated wavs at training
-├── log/              # tensorboard log
-├── eval/             # audio files an alignment plots generated at evaluation during training
-└── synthesis/        # synthesized audio files and alignment plots
+usage: preprocess.py [-h] --config CONFIG --input INPUT --output OUTPUT
+
+preprocess ljspeech dataset and save it.
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --config CONFIG  config file
+  --input INPUT    data path of the original data
+  --output OUTPUT  path to save the preprocessed dataset
 ```
 
-2. `--checkpoint` and `--iteration` for loading from existing checkpoint. Loading existing checkpoiont follows the following rule:
-If `--checkpoint` is provided, the path of the checkpoint specified by `--checkpoint` is loaded.
-If `--checkpoint` is not provided, we try to load the model specified by `--iteration` from the checkpoint directory. If `--iteration` is not provided, we try to load the latested checkpoint from checkpoint directory.
+example code:
+
+```bash
+python preprocess.py --config=configs/ljspeech.yaml --input=LJSpeech-1.1/ --output=data/ljspeech
+```
 
 ## Train
 
 Train the model using train.py, follow the usage displayed by `python train.py --help`.
 
 ```text
-usage: train.py [-h] [--config CONFIG] [--data DATA] [--device DEVICE]
-                [--checkpoint CHECKPOINT | --iteration ITERATION]
-                output
+usage: train.py [-h] --config CONFIG --input INPUT
 
-Train a Deep Voice 3 model with LJSpeech dataset.
-
-positional arguments:
-  output                        path to save results
+train a Deep Voice 3 model with LJSpeech
 
 optional arguments:
-  -h, --help                    show this help message and exit
-  --config CONFIG               experimrnt config
-  --data DATA                   The path of the LJSpeech dataset.
-  --device DEVICE               device to use
-  --checkpoint CHECKPOINT       checkpoint to resume from.
-  --iteration ITERATION         the iteration of the checkpoint to load from output directory
+  -h, --help       show this help message and exit
+  --config CONFIG  config file
+  --input INPUT    data path of the original data
 ```
 
-- `--config` is the configuration file to use. The provided `ljspeech.yaml` can be used directly. And you can change some values in the configuration file and train the model with a different config.
-- `--data` is the path of the LJSpeech dataset, the extracted folder from the downloaded archive (the folder which contains metadata.txt).
-- `--device` is the device (gpu id) to use for training. `-1` means CPU.
-- `--checkpoint` is the path of the checkpoint.
-- `--iteration` is the iteration of the checkpoint to load from output directory.
-See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
-- `output` is the directory to save results, all results are saved in this directory. The structure of the output directory is shown below.
+example code:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python train.py --config=configs/ljspeech.yaml --input=data/ljspeech
+```
+
+It would create a `runs` folder, outputs for each run is saved in a seperate folder in `runs`, whose name is the time joined with hostname. Inside this filder, tensorboard log, parameters and optimizer states are saved. Parameters(`*.pdparams`) and optimizer states(`*.pdopt`) are named by the step when they are saved.
 
 ```text
-├── checkpoints      # checkpoint
-├── log              # tensorboard log
-└── states           # train and evaluation results
-    ├── alignments   # attention
-    ├── lin_spec     # linear spectrogram
-    ├── mel_spec     # mel spectrogram
-    └── waveform     # waveform (.wav files)
+runs/Jul07_09-39-34_instance-mqcyj27y-4/
+├── checkpoint
+├── events.out.tfevents.1594085974.instance-mqcyj27y-4
+├── step-1000000.pdopt
+├── step-1000000.pdparams
+├── step-100000.pdopt
+├── step-100000.pdparams
+...
 ```
 
-Example script:
+Since e use waveflow to synthesize audio while training, so download the trained waveflow model and extract it in current directory before training.
 
 ```bash
-python train.py \
-    --config=configs/ljspeech.yaml \
-    --data=./LJSpeech-1.1/ \
-    --device=0 \
-    experiment
+wget https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_ckpt_1.0.zip
+unzip waveflow_res128_ljspeech_ckpt_1.0.zip
 ```
 
-To train the model in a paralle in multiple gpus, you can launch the training script with `paddle.distributed.launch`. For example, to train with gpu `0,1,2,3`, you can use the example script below. Note that for parallel training, devices are specified with `--selected_gpus` passed to `paddle.distributed.launch`. In this case, `--device` passed to `train.py`, if specified, is ignored.
 
-Example script:
 
-```bash
-python -m paddle.distributed.launch --selected_gpus=0,1,2,3 \
-    train.py \
-    --config=configs/ljspeech.yaml \
-    --data=./LJSpeech-1.1/ \
-    experiment
-```
+## Visualization
 
-You can monitor training log via tensorboard, using the script below.
+You can visualize training losses, check the attention and listen to the synthesized audio when training with teacher forcing.
+
+example code:
 
 ```bash
-cd experiment/log
-tensorboard --logdir=.
+tensorboard --logdir=runs/ --host=$HOSTNAME --port=8000
 ```
 
 ## Synthesis
+
 ```text
-usage: synthesis.py [-h] [--config CONFIG] [--device DEVICE]
-                    [--checkpoint CHECKPOINT | --iteration ITERATION]
-                    text output
-
-Synthsize waveform with a checkpoint.
-
-positional arguments:
-  text                          text file to synthesize
-  output                        path to save synthesized audio
+usage: synthesize from a checkpoint [-h] --config CONFIG --input INPUT
+                                    --output OUTPUT --checkpoint CHECKPOINT
+                                    --monotonic_layers MONOTONIC_LAYERS
 
 optional arguments:
-  -h, --help                    show this help message and exit
-  --config CONFIG               experiment config
-  --device DEVICE               device to use
-  --checkpoint CHECKPOINT       checkpoint to resume from
-  --iteration ITERATION         the iteration of the checkpoint to load from output directory
+  -h, --help            show this help message and exit
+  --config CONFIG       config file
+  --input INPUT         text file to synthesize
+  --output OUTPUT       path to save audio
+  --checkpoint CHECKPOINT
+                        data path of the checkpoint
+  --monotonic_layers MONOTONIC_LAYERS
+                        monotonic decoder layer, index starts friom 1
 ```
 
-- `--config` is the configuration file to use. You should use the same configuration with which you train you model.
-- `--device` is the device (gpu id) to use for training. `-1` means CPU.
+`synthesize.py` is used to synthesize several sentences in a text file.
+`--monotonic_layers` is the index of the decoders layer that manifest monotonic diagonal attention. You can get monotonic layers by inspecting tensorboard logs. Mind that the index starts from 1. The layers that manifest monotonic diagonal attention are stable for a model during training and synthesizing, but differ among different runs. So once you get the indices of monotonic layers by inspecting tensorboard log, you can use them at synthesizing. Note that only decoder layers that show strong diagonal attention should be considerd.
 
-- `--checkpoint` is the path of the checkpoint.
-- `--iteration` is the iteration of the checkpoint to load from output directory.
-See [Saving-&-Loading](#Saving-&-Loading) for details of checkpoint loading.
-
-- `text`is the text file to synthesize.
-- `output` is the directory to save results. The generated audio files (`*.wav`) and attention plots (*.png) for are save in `synthesis/` in ouput directory.
-
-Example script:
+example code:
 
 ```bash
-python synthesis.py \
-    --config=configs/ljspeech.yaml \
-    --device=0 \
-    --checkpoint="experiment/checkpoints/model_step_005000000" \
-    sentences.txt experiment
-```
-
-or
-
-```bash
-python synthesis.py \
-    --config=configs/ljspeech.yaml \
-    --device=0 \
-    --iteration=005000000 \
-    sentences.txt experiment
+CUDA_VISIBLE_DEVICES=2 python synthesize.py \
+    --config configs/ljspeech.yaml \
+    --input sentences.txt \
+    --output outputs/ \
+    --checkpoint runs/Jul07_09-39-34_instance-mqcyj27y-4/step-1320000 \
+    --monotonic_layers "5,6"
 ```
