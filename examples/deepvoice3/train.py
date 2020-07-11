@@ -1,172 +1,187 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-from __future__ import division
-import time
+import numpy as np 
+from matplotlib import cm
+import librosa
 import os
-import argparse
-import ruamel.yaml
+import time
 import tqdm
-from tensorboardX import SummaryWriter
+import paddle
 from paddle import fluid
-fluid.require_version('1.8.0')
-import paddle.fluid.layers as F
-import paddle.fluid.dygraph as dg
-from parakeet.utils.io import load_parameters, save_parameters
+from paddle.fluid import layers as F
+from paddle.fluid import dygraph as dg
+from paddle.fluid.io import DataLoader
+from tensorboardX import SummaryWriter
 
-from data import make_data_loader
-from model import make_model, make_criterion, make_optimizer
-from utils import make_output_tree, add_options, get_place, Evaluator, StateSaver, make_evaluator, make_state_saver
+from parakeet.models.deepvoice3 import Encoder, Decoder, PostNet, SpectraNet
+from parakeet.data import SliceDataset, DataCargo, PartialyRandomizedSimilarTimeLengthSampler, SequentialSampler
+from parakeet.utils.io import save_parameters, load_parameters
+from parakeet.g2p import en
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Train a Deep Voice 3 model with LJSpeech dataset.")
-    add_options(parser)
-    args, _ = parser.parse_known_args()
+from data import LJSpeech, DataCollector
+from vocoder import WaveflowVocoder, GriffinLimVocoder
+from clip import DoubleClip
 
-    # only use args.device when training in single process
-    # when training with distributed.launch, devices are provided by
-    # `--selected_gpus` for distributed.launch
-    env = dg.parallel.ParallelEnv()
-    device_id = env.dev_id if env.nranks > 1 else args.device
-    place = get_place(device_id)
-    # start dygraph
-    dg.enable_dygraph(place)
 
-    with open(args.config, 'rt') as f:
-        config = ruamel.yaml.safe_load(f)
+def create_model(config):
+    char_embedding = dg.Embedding((en.n_vocab, config["char_dim"]))
+    multi_speaker = config["n_speakers"] > 1
+    speaker_embedding = dg.Embedding((config["n_speakers"], config["speaker_dim"])) \
+        if multi_speaker else None
+    encoder = Encoder(config["encoder_layers"], config["char_dim"], 
+                      config["encoder_dim"], config["kernel_size"], 
+                      has_bias=multi_speaker, bias_dim=config["speaker_dim"], 
+                      keep_prob=1.0 - config["dropout"])
+    decoder = Decoder(config["n_mels"], config["reduction_factor"], 
+                      list(config["prenet_sizes"]) + [config["char_dim"]], 
+                      config["decoder_layers"], config["kernel_size"], 
+                      config["attention_dim"],
+                      position_encoding_weight=config["position_weight"], 
+                      omega=config["position_rate"], 
+                      has_bias=multi_speaker, bias_dim=config["speaker_dim"], 
+                      keep_prob=1.0 - config["dropout"])
+    postnet = PostNet(config["postnet_layers"], config["char_dim"], 
+                      config["postnet_dim"], config["kernel_size"], 
+                      config["n_mels"], config["reduction_factor"], 
+                      has_bias=multi_speaker, bias_dim=config["speaker_dim"], 
+                      keep_prob=1.0 - config["dropout"])
+    spectranet = SpectraNet(char_embedding, speaker_embedding, encoder, decoder, postnet)
+    return spectranet
 
-    print("Command Line Args: ")
-    for k, v in vars(args).items():
-        print("{}: {}".format(k, v))
+def create_data(config, data_path):
+    dataset = LJSpeech(data_path)
 
-    data_loader = make_data_loader(args.data, config)
-    model = make_model(config)
-    if env.nranks > 1:
-        strategy = dg.parallel.prepare_context()
-        model = dg.DataParallel(model, strategy)
-    criterion = make_criterion(config)
-    optim = make_optimizer(model, config)
+    train_dataset = SliceDataset(dataset, config["valid_size"], len(dataset))
+    train_collator = DataCollector(config["p_pronunciation"])
+    train_sampler = PartialyRandomizedSimilarTimeLengthSampler(
+        dataset.num_frames()[config["valid_size"]:])
+    train_cargo = DataCargo(train_dataset, train_collator, 
+        batch_size=config["batch_size"], sampler=train_sampler)
+    train_loader = DataLoader\
+                 .from_generator(capacity=10, return_list=True)\
+                 .set_batch_generator(train_cargo)
 
-    # generation
-    synthesis_config = config["synthesis"]
-    power = synthesis_config["power"]
-    n_iter = synthesis_config["n_iter"]
+    valid_dataset = SliceDataset(dataset, 0, config["valid_size"])
+    valid_collector = DataCollector(1.)
+    valid_sampler = SequentialSampler(valid_dataset)
+    valid_cargo = DataCargo(valid_dataset, valid_collector, 
+        batch_size=1, sampler=valid_sampler)
+    valid_loader = DataLoader\
+                 .from_generator(capacity=2, return_list=True)\
+                 .set_batch_generator(valid_cargo)
+    return train_loader, valid_loader
 
-    # tensorboard & checkpoint preparation
-    output_dir = args.output
-    ckpt_dir = os.path.join(output_dir, "checkpoints")
-    log_dir = os.path.join(output_dir, "log")
-    state_dir = os.path.join(output_dir, "states")
-    eval_dir = os.path.join(output_dir, "eval")
-    if env.local_rank == 0:
-        make_output_tree(output_dir)
-        writer = SummaryWriter(logdir=log_dir)
-    else:
-        writer = None
-    sentences = [
-        "Scientists at the CERN laboratory say they have discovered a new particle.",
-        "There's a way to measure the acute emotional intelligence that has never gone out of style.",
-        "President Trump met with other leaders at the Group of 20 conference.",
-        "Generative adversarial network or variational auto-encoder.",
-        "Please call Stella.",
-        "Some have accepted this as a miracle without any physical explanation.",
-    ]
-    evaluator = make_evaluator(config, sentences, eval_dir, writer)
-    state_saver = make_state_saver(config, state_dir, writer)
+def create_optimizer(model, config):
+    optim = fluid.optimizer.Adam(config["learning_rate"], 
+        parameter_list=model.parameters(), 
+        grad_clip=DoubleClip(config["clip_value"], config["clip_norm"]))
+    return optim
 
-    # load parameters and optimizer, and opdate iterations done sofar
-    if args.checkpoint is not None:
-        iteration = load_parameters(
-            model, optim, checkpoint_path=args.checkpoint)
-    else:
-        iteration = load_parameters(
-            model, optim, checkpoint_dir=ckpt_dir, iteration=args.iteration)
+def train(args, config):
+    model = create_model(config)
+    train_loader, valid_loader = create_data(config, args.input)
+    optim = create_optimizer(model, config)
 
-    # =========================train=========================
-    train_config = config["train"]
-    max_iter = train_config["max_iteration"]
-    snap_interval = train_config["snap_interval"]
-    save_interval = train_config["save_interval"]
-    eval_interval = train_config["eval_interval"]
-
-    global_step = iteration + 1
-    iterator = iter(tqdm.tqdm(data_loader))
-    downsample_factor = config["model"]["downsample_factor"]
-    while global_step <= max_iter:
+    global global_step
+    max_iteration = 2000000
+    
+    iterator = iter(tqdm.tqdm(train_loader))
+    while global_step <= max_iteration:
+        # get inputs
         try:
             batch = next(iterator)
-        except StopIteration as e:
-            iterator = iter(tqdm.tqdm(data_loader))
+        except StopIteration:
+            iterator = iter(tqdm.tqdm(train_loader))
             batch = next(iterator)
+        
+        # unzip it
+        text_seqs, text_lengths, specs, mels, num_frames = batch
 
+        # forward & backward
         model.train()
-        (text_sequences, text_lengths, text_positions, mel_specs, lin_specs,
-         frames, decoder_positions, done_flags) = batch
-        downsampled_mel_specs = F.strided_slice(
-            mel_specs,
-            axes=[1],
-            starts=[0],
-            ends=[mel_specs.shape[1]],
-            strides=[downsample_factor])
-        outputs = model(
-            text_sequences,
-            text_positions,
-            text_lengths,
-            None,
-            downsampled_mel_specs,
-            decoder_positions, )
-        # mel_outputs, linear_outputs, alignments, done
-        inputs = (downsampled_mel_specs, lin_specs, done_flags, text_lengths,
-                  frames)
-        losses = criterion(outputs, inputs)
+        outputs = model(text_seqs, text_lengths, speakers=None, mel=mels)
+        decoded, refined, attentions, final_state = outputs
 
-        l = losses["loss"]
-        if env.nranks > 1:
-            l = model.scale_loss(l)
-            l.backward()
-            model.apply_collective_grads()
-        else:
-            l.backward()
+        causal_mel_loss = model.spec_loss(decoded, mels, num_frames)
+        non_causal_mel_loss = model.spec_loss(refined, mels, num_frames)
+        loss = causal_mel_loss + non_causal_mel_loss
+        loss.backward()
 
-        # record learning rate before updating
-        if env.local_rank == 0:
-            writer.add_scalar("learning_rate",
-                              optim._learning_rate.step().numpy(), global_step)
-        optim.minimize(l)
-        optim.clear_gradients()
+        # update
+        optim.minimize(loss)
 
-        # record step losses
-        step_loss = {k: v.numpy()[0] for k, v in losses.items()}
+        # logging
+        tqdm.tqdm.write("[train] step: {}\tloss: {:.6f}\tcausal:{:.6f}\tnon_causal:{:.6f}".format(
+            global_step, 
+            loss.numpy()[0], 
+            causal_mel_loss.numpy()[0], 
+            non_causal_mel_loss.numpy()[0]))
+        writer.add_scalar("loss/causal_mel_loss", causal_mel_loss.numpy()[0], global_step=global_step)
+        writer.add_scalar("loss/non_causal_mel_loss", non_causal_mel_loss.numpy()[0], global_step=global_step)
+        writer.add_scalar("loss/loss", loss.numpy()[0], global_step=global_step)
+        
+        if global_step % config["report_interval"] == 0:
+            text_length = int(text_lengths.numpy()[0])
+            num_frame = int(num_frames.numpy()[0])
 
-        if env.local_rank == 0:
-            tqdm.tqdm.write("[Train] global_step: {}\tloss: {}".format(
-                global_step, step_loss["loss"]))
-            for k, v in step_loss.items():
-                writer.add_scalar(k, v, global_step)
+            tag = "train_mel/ground-truth"
+            img = cm.viridis(normalize(mels.numpy()[0, :num_frame].T))
+            writer.add_image(tag, img, global_step=global_step, dataformats="HWC")
 
-        # train state saving, the first sentence in the batch
-        if env.local_rank == 0 and global_step % snap_interval == 0:
-            input_specs = (mel_specs, lin_specs)
-            state_saver(outputs, input_specs, global_step)
+            tag = "train_mel/decoded"
+            img = cm.viridis(normalize(decoded.numpy()[0, :num_frame].T))
+            writer.add_image(tag, img, global_step=global_step, dataformats="HWC")
 
-        # evaluation
-        if env.local_rank == 0 and global_step % eval_interval == 0:
-            evaluator(model, global_step)
+            tag = "train_mel/refined"
+            img = cm.viridis(normalize(refined.numpy()[0, :num_frame].T))
+            writer.add_image(tag, img, global_step=global_step, dataformats="HWC")
 
-        # save checkpoint
-        if env.local_rank == 0 and global_step % save_interval == 0:
-            save_parameters(ckpt_dir, global_step, model, optim)
+            vocoder = WaveflowVocoder()
+            vocoder.model.eval()
 
+            tag = "train_audio/ground-truth-waveflow"
+            wav = vocoder(F.transpose(mels[0:1, :num_frame, :], (0, 2, 1)))
+            writer.add_audio(tag, wav.numpy()[0], global_step=global_step, sample_rate=22050)
+
+            tag = "train_audio/decoded-waveflow"
+            wav = vocoder(F.transpose(decoded[0:1, :num_frame, :], (0, 2, 1)))
+            writer.add_audio(tag, wav.numpy()[0], global_step=global_step, sample_rate=22050)
+
+            tag = "train_audio/refined-waveflow"
+            wav = vocoder(F.transpose(refined[0:1, :num_frame, :], (0, 2, 1)))
+            writer.add_audio(tag, wav.numpy()[0], global_step=global_step, sample_rate=22050)
+            
+            attentions_np = attentions.numpy()
+            attentions_np = attentions_np[:, 0, :num_frame // 4 , :text_length]
+            for i, attention_layer in enumerate(np.rot90(attentions_np, axes=(1,2))):
+                tag = "train_attention/layer_{}".format(i)
+                img = cm.viridis(normalize(attention_layer))
+                writer.add_image(tag, img, global_step=global_step, dataformats="HWC")
+
+        if global_step % config["save_interval"] == 0:
+            save_parameters(writer.logdir, global_step, model, optim)
+
+        # global step +1
         global_step += 1
+
+def normalize(arr):
+    return (arr - arr.min()) / (arr.max() - arr.min())
+
+if __name__ == "__main__":
+    import argparse
+    from ruamel import yaml
+
+    parser = argparse.ArgumentParser(description="train a Deep Voice 3 model with LJSpeech")
+    parser.add_argument("--config", type=str, required=True, help="config file")
+    parser.add_argument("--input", type=str, required=True, help="data path of the original data")
+
+    args = parser.parse_args()
+    with open(args.config, 'rt') as f:
+        config = yaml.safe_load(f)
+    
+    dg.enable_dygraph(fluid.CUDAPlace(0))
+    global global_step
+    global_step = 1
+    global writer
+    writer = SummaryWriter()
+    print("[Training] tensorboard log and checkpoints are save in {}".format(
+        writer.logdir))
+    train(args, config)
