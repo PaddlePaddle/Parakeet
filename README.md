@@ -192,9 +192,7 @@ Users have the option to use different vocoders to convert the linear/mel spectr
 <table>
     <thead>
         <tr>
-             <th  style="width: 250px">
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_ckpt_1.0.zip">Deep Voice 3</a>
-            </th>
+             
             <th  style="width: 250px">
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_1.0.zip">Transformer TTS</a>
             </th>
@@ -205,23 +203,12 @@ Users have the option to use different vocoders to convert the linear/mel spectr
     </thead>
     <tbody>
         <tr>
-            <th>LJSpeech </th>
+          
             <th>LJSpeech </th>
             <th>LJSpeech </th>
         </tr>
         <tr>
-            <th style="height: 150px">
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_0.wav">
-            <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_1.wav">
-            <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_2.wav">
-            <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_3.wav">
-            <img src="images/audio_icon.png" width=250 /></a><br>
-            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/deepvoice3_ljspeech_griffin-lim_samples_1.0/step_1560000_sentence_4.wav">
-            <img src="images/audio_icon.png" width=250 /></a>  
-            </th>
+            
             <th >
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_0.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
