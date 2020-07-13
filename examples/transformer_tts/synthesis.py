@@ -44,7 +44,8 @@ def add_config_options_to_parser(parser):
         "--max_len",
         type=int,
         default=1000,
-        help="The max length of audio when synthsis.")
+        help="The max length of spectrum when synthesize. If the length of synthetical spectrum is lager than max_len, spectrum will be cut off."
+    )
 
     parser.add_argument(
         "--checkpoint_transformer",
