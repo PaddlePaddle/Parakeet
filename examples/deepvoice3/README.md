@@ -112,6 +112,7 @@ tensorboard --logdir=runs/ --host=$HOSTNAME --port=8000
 usage: synthesize from a checkpoint [-h] --config CONFIG --input INPUT
                                     --output OUTPUT --checkpoint CHECKPOINT
                                     --monotonic_layers MONOTONIC_LAYERS
+                                    [--vocoder {griffin-lim,waveflow}]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -121,11 +122,14 @@ optional arguments:
   --checkpoint CHECKPOINT
                         data path of the checkpoint
   --monotonic_layers MONOTONIC_LAYERS
-                        monotonic decoder layer, index starts friom 1
+                        monotonic decoder layers' indices(start from 1)
+  --vocoder {griffin-lim,waveflow}
+                        vocoder to use
 ```
 
 `synthesize.py` is used to synthesize several sentences in a text file.
 `--monotonic_layers` is the index of the decoders layer that manifest monotonic diagonal attention. You can get monotonic layers by inspecting tensorboard logs. Mind that the index starts from 1. The layers that manifest monotonic diagonal attention are stable for a model during training and synthesizing, but differ among different runs. So once you get the indices of monotonic layers by inspecting tensorboard log, you can use them at synthesizing. Note that only decoder layers that show strong diagonal attention should be considerd.
+`--vocoder` is the vocoder to use. Current supported values are "waveflow" and "griffin-lim". Default value is "waveflow".
 
 example code:
 
@@ -135,5 +139,6 @@ CUDA_VISIBLE_DEVICES=2 python synthesize.py \
     --input sentences.txt \
     --output outputs/ \
     --checkpoint runs/Jul07_09-39-34_instance-mqcyj27y-4/step-1320000 \
-    --monotonic_layers "5,6"
+    --monotonic_layers "5,6" \
+    --vocoder waveflow
 ```

@@ -31,13 +31,21 @@ class WaveflowVocoder(object):
         return audio
 
 class GriffinLimVocoder(object):
-    def __init__(self, sharpening_factor=1.4, win_length=1024, hop_length=256):
+    def __init__(self, sharpening_factor=1.4, sample_rate=22050, n_fft=1024, 
+                 win_length=1024, hop_length=256):
+        self.sample_rate = sample_rate
+        self.n_fft = n_fft
         self.sharpening_factor = sharpening_factor
         self.win_length = win_length
         self.hop_length = hop_length
 
-    def __call__(self, spec):
-        audio = librosa.core.griffinlim(np.exp(spec * self.sharpening_factor), 
+    def __call__(self, mel):
+        spec = librosa.feature.inverse.mel_to_stft(
+            np.exp(mel),
+            sr=self.sample_rate,
+            n_fft=self.n_fft,
+            fmin=0, fmax=8000.0, power=1.0)
+        audio = librosa.core.griffinlim(spec ** self.sharpening_factor, 
             win_length=self.win_length, hop_length=self.hop_length)
         return audio
 
