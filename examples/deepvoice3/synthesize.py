@@ -86,7 +86,7 @@ if __name__ == "__main__":
     parser.add_argument("--input", type=str, required=True, help="text file to synthesize")
     parser.add_argument("--output", type=str, required=True, help="path to save audio")
     parser.add_argument("--checkpoint", type=str, required=True, help="data path of the checkpoint")
-    parser.add_argument("--monotonic_layers", type=str, required=True, help="monotonic decoder layer, index starts friom 1")
+    parser.add_argument("--monotonic_layers", type=str, required=True, help="monotonic decoder layers' indices(start from 1)")
     parser.add_argument("--vocoder", type=str, default="waveflow", choices=['griffin-lim', 'waveflow'], help="vocoder to use")
     args = parser.parse_args()
     with open(args.config, 'rt') as f:
