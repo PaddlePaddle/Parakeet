@@ -192,7 +192,6 @@ Users have the option to use different vocoders to convert the linear/mel spectr
 <table>
     <thead>
         <tr>
-             
             <th  style="width: 250px">
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_1.0.zip">Transformer TTS</a>
             </th>
@@ -203,12 +202,10 @@ Users have the option to use different vocoders to convert the linear/mel spectr
     </thead>
     <tbody>
         <tr>
-          
             <th>LJSpeech </th>
             <th>LJSpeech </th>
         </tr>
         <tr>
-            
             <th >
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_0.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
