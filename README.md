@@ -78,7 +78,7 @@ Parakeet also releases some well-trained parameters for the example models, whic
 
 #### Vocoders
 
-We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, ClariNet and WaveNet.
+We provide the model checkpoints of WaveFlow with 64, 96 and 128 residual channels, ClariNet and WaveNet.
 
 <div align="center">
 <table>
@@ -88,12 +88,16 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 64)</a>
             </th>
             <th  style="width: 250px">
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res96_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 96)</a>
+            </th>
+            <th  style="width: 250px">
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_ckpt_1.0.zip">WaveFlow (res. channels 128)</a>
             </th>
         </tr>
     </thead>
     <tbody>
         <tr>
+            <th>LJSpeech </th>
             <th>LJSpeech </th>
             <th>LJSpeech </th>
         </tr>
@@ -108,6 +112,18 @@ We provide the model checkpoints of WaveFlow with 64 and 128 residual channels, 
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_3.wav">
             <img src="images/audio_icon.png" width=250 /></a><br>
             <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res64_ljspeech_samples_1.0/step_3020k_sentence_4.wav">
+            <img src="images/audio_icon.png" width=250 /></a>
+            </th>
+            <th>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res96_ljspeech_samples_1.0/step_2000k_sentence_0.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res96_ljspeech_samples_1.0/step_2000k_sentence_1.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res96_ljspeech_samples_1.0/step_2000k_sentence_2.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res96_ljspeech_samples_1.0/step_2000k_sentence_3.wav">
+            <img src="images/audio_icon.png" width=250 /></a><br>
+            <a href="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res96_ljspeech_samples_1.0/step_2000k_sentence_4.wav">
             <img src="images/audio_icon.png" width=250 /></a>
             </th>
             <th>
