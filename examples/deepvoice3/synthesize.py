@@ -17,7 +17,7 @@ import soundfile as sf
 from parakeet.data import SliceDataset, DataCargo, PartialyRandomizedSimilarTimeLengthSampler, SequentialSampler
 from parakeet.utils.io import save_parameters, load_parameters, add_yaml_config_to_args
 from parakeet.g2p import en
-
+from parakeet.models.deepvoice3.weight_norm_hook import remove_weight_norm
 from vocoder import WaveflowVocoder, GriffinLimVocoder
 from train import create_model
 
@@ -25,6 +25,12 @@ from train import create_model
 def main(args, config):
     model = create_model(config)
     loaded_step = load_parameters(model, checkpoint_path=args.checkpoint)
+    for name, layer in model.named_sublayers():
+        try:
+            remove_weight_norm(layer)
+        except ValueError:
+            # this layer has not weight norm hook
+            pass
     model.eval()
     if args.vocoder == "waveflow":
         vocoder = WaveflowVocoder()
