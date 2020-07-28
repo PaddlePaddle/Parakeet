@@ -62,9 +62,8 @@ class WaveFlowLoss:
 
 
 class Conditioner(dg.Layer):
-    def __init__(self, dtype):
+    def __init__(self, dtype, upsample_factors):
         super(Conditioner, self).__init__()
-        upsample_factors = [16, 16]
 
         self.upsample_conv2d = []
         for s in upsample_factors:
@@ -296,11 +295,13 @@ class WaveFlowModule(dg.Layer):
         self.n_flows = config.n_flows
         self.n_group = config.n_group
         self.n_layers = config.n_layers
+        self.upsample_factors = config.upsample_factors if hasattr(
+            config, "upsample_factors") else [16, 16]
         assert self.n_group % 2 == 0
         assert self.n_flows % 2 == 0
 
         self.dtype = "float16" if config.use_fp16 else "float32"
-        self.conditioner = Conditioner(self.dtype)
+        self.conditioner = Conditioner(self.dtype, self.upsample_factors)
         self.flows = []
         for i in range(self.n_flows):
             flow = Flow(config)
@@ -397,6 +398,10 @@ class WaveFlowModule(dg.Layer):
         if self.dtype == "float16":
             mel = fluid.layers.cast(mel, self.dtype)
         mel = self.conditioner.infer(mel)
+        # Prune out the tail of mel so that time/n_group == 0.
+        pruned_len = int(mel.shape[2] // self.n_group * self.n_group)
+        if mel.shape[2] > pruned_len:
+            mel = mel[:, :, :pruned_len]
         # From [bs, mel_bands, time] to [bs, mel_bands, n_group, time/n_group]
         mel = fluid.layers.transpose(unfold(mel, self.n_group), [0, 1, 3, 2])
 

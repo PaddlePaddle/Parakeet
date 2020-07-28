@@ -35,8 +35,7 @@ class Dataset(ljspeech.LJSpeech):
         fname, _, _ = metadatum
         wav_path = os.path.join(self.root, "wavs", fname + ".wav")
 
-        loaded_sr, audio = read(wav_path)
-        assert loaded_sr == self.config.sample_rate
+        audio, loaded_sr = librosa.load(wav_path, sr=self.config.sample_rate)
 
         return audio
 
@@ -91,8 +90,6 @@ class Subset(DatasetMixin):
                                mode='constant',
                                constant_values=0)
 
-        # Normalize audio to the [-1, 1] range.
-        audio = audio.astype(np.float32) / 32768.0
         mel = self.get_mel(audio)
 
         return audio, mel
