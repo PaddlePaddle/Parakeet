@@ -7,12 +7,13 @@ import tqdm
 import paddle
 from paddle import fluid
 from paddle.fluid import layers as F
+from paddle.fluid import initializer as I
 from paddle.fluid import dygraph as dg
 from paddle.fluid.io import DataLoader
 from tensorboardX import SummaryWriter
 
 from parakeet.models.deepvoice3 import Encoder, Decoder, PostNet, SpectraNet
-from parakeet.data import SliceDataset, DataCargo, PartialyRandomizedSimilarTimeLengthSampler, SequentialSampler
+from parakeet.data import SliceDataset, DataCargo, SequentialSampler, RandomSampler
 from parakeet.utils.io import save_parameters, load_parameters
 from parakeet.g2p import en
 
@@ -22,9 +23,9 @@ from clip import DoubleClip
 
 
 def create_model(config):
-    char_embedding = dg.Embedding((en.n_vocab, config["char_dim"]))
+    char_embedding = dg.Embedding((en.n_vocab, config["char_dim"]), param_attr=I.Normal(scale=0.1))
     multi_speaker = config["n_speakers"] > 1
-    speaker_embedding = dg.Embedding((config["n_speakers"], config["speaker_dim"])) \
+    speaker_embedding = dg.Embedding((config["n_speakers"], config["speaker_dim"]), param_attr=I.Normal(scale=0.1)) \
         if multi_speaker else None
     encoder = Encoder(config["encoder_layers"], config["char_dim"], 
                       config["encoder_dim"], config["kernel_size"], 
@@ -51,8 +52,7 @@ def create_data(config, data_path):
 
     train_dataset = SliceDataset(dataset, config["valid_size"], len(dataset))
     train_collator = DataCollector(config["p_pronunciation"])
-    train_sampler = PartialyRandomizedSimilarTimeLengthSampler(
-        dataset.num_frames()[config["valid_size"]:])
+    train_sampler = RandomSampler(train_dataset)
     train_cargo = DataCargo(train_dataset, train_collator, 
         batch_size=config["batch_size"], sampler=train_sampler)
     train_loader = DataLoader\
@@ -81,7 +81,7 @@ def train(args, config):
     optim = create_optimizer(model, config)
 
     global global_step
-    max_iteration = 2000000
+    max_iteration = 1000000
     
     iterator = iter(tqdm.tqdm(train_loader))
     while global_step <= max_iteration:
