@@ -39,15 +39,15 @@ class ConvBlock(dg.Layer):
         self.has_bias = has_bias
 
         std = np.sqrt(4 * keep_prob / (kernel_size * in_channel))
-        initializer = I.NormalInitializer(loc=0., scale=std)
         padding = "valid" if causal else "same"
         conv =  Conv1D(in_channel, 2 * in_channel, (kernel_size, ),
                        padding=padding, 
                        data_format="NTC",
-                       param_attr=initializer)
+                       param_attr=I.Normal(scale=std))
         self.conv = weight_norm(conv)
         if has_bias:
-            self.bias_affine = dg.Linear(bias_dim, 2 * in_channel)
+            std = np.sqrt(1 / bias_dim)
+            self.bias_affine = dg.Linear(bias_dim, 2 * in_channel, param_attr=I.Normal(scale=std))
 
     def forward(self, input, bias=None, padding=None):
         """
@@ -82,11 +82,11 @@ class AffineBlock1(dg.Layer):
     def __init__(self, in_channel, out_channel, has_bias=False, bias_dim=0):
         super(AffineBlock1, self).__init__()
         std = np.sqrt(1.0 / in_channel)
-        initializer = I.NormalInitializer(loc=0., scale=std)
-        affine = dg.Linear(in_channel, out_channel, param_attr=initializer)
+        affine = dg.Linear(in_channel, out_channel, param_attr=I.Normal(scale=std))
         self.affine = weight_norm(affine, dim=-1)
         if has_bias:
-            self.bias_affine = dg.Linear(bias_dim, out_channel)
+            std = np.sqrt(1 / bias_dim)
+            self.bias_affine = dg.Linear(bias_dim, out_channel, param_attr=I.Normal(scale=std))
 
         self.has_bias = has_bias
         self.bias_dim = bias_dim
@@ -110,10 +110,10 @@ class AffineBlock2(dg.Layer):
                  has_bias=False, bias_dim=0, dropout=False, keep_prob=1.):
         super(AffineBlock2, self).__init__()
         if has_bias:
-            self.bias_affine = dg.Linear(bias_dim, in_channel)
+            std = np.sqrt(1 / bias_dim)
+            self.bias_affine = dg.Linear(bias_dim, in_channel, param_attr=I.Normal(scale=std))
         std = np.sqrt(1.0 / in_channel)
-        initializer = I.NormalInitializer(loc=0., scale=std)
-        affine = dg.Linear(in_channel, out_channel, param_attr=initializer)
+        affine = dg.Linear(in_channel, out_channel, param_attr=I.Normal(scale=std))
         self.affine = weight_norm(affine, dim=-1)
 
         self.has_bias = has_bias
@@ -171,9 +171,8 @@ class AttentionBlock(dg.Layer):
         # multispeaker case
         if has_bias:
             std = np.sqrt(1.0 / bias_dim)
-            initializer = I.NormalInitializer(loc=0., scale=std)
-            self.q_pos_affine = dg.Linear(bias_dim, 1, param_attr=initializer)
-            self.k_pos_affine = dg.Linear(bias_dim, 1, param_attr=initializer)
+            self.q_pos_affine = dg.Linear(bias_dim, 1, param_attr=I.Normal(scale=std))
+            self.k_pos_affine = dg.Linear(bias_dim, 1, param_attr=I.Normal(scale=std))
             self.omega_initial = self.create_parameter(shape=[1], 
                 attr=I.ConstantInitializer(value=omega_default))
         
@@ -184,21 +183,17 @@ class AttentionBlock(dg.Layer):
                                        scale=np.sqrt(1. / input_dim))
         initializer = I.NumpyArrayInitializer(init_weight.astype(np.float32))
         # 3 affine transformation to project q, k, v into attention_dim
-        q_affine = dg.Linear(input_dim, attention_dim, 
-                                    param_attr=initializer)
+        q_affine = dg.Linear(input_dim, attention_dim, param_attr=initializer)
         self.q_affine = weight_norm(q_affine, dim=-1)
-        k_affine = dg.Linear(input_dim, attention_dim, 
-                                    param_attr=initializer)
+        k_affine = dg.Linear(input_dim, attention_dim, param_attr=initializer)
         self.k_affine = weight_norm(k_affine, dim=-1)
 
         std = np.sqrt(1.0 / input_dim)
-        initializer = I.NormalInitializer(loc=0., scale=std)
-        v_affine = dg.Linear(input_dim, attention_dim, param_attr=initializer)
+        v_affine = dg.Linear(input_dim, attention_dim, param_attr=I.Normal(scale=std))
         self.v_affine = weight_norm(v_affine, dim=-1)
 
         std = np.sqrt(1.0 / attention_dim)
-        initializer = I.NormalInitializer(loc=0., scale=std)
-        out_affine = dg.Linear(attention_dim, input_dim, param_attr=initializer)
+        out_affine = dg.Linear(attention_dim, input_dim, param_attr=I.Normal(scale=std))
         self.out_affine = weight_norm(out_affine, dim=-1)
 
         self.keep_prob = keep_prob
@@ -289,11 +284,11 @@ class Decoder(dg.Layer):
         # output mel spectrogram
         output_dim = reduction_factor * in_channels # r * mel_dim
         std = np.sqrt(1.0 / decoder_dim)
-        initializer = I.NormalInitializer(loc=0., scale=std)
-        out_affine = dg.Linear(decoder_dim, output_dim, param_attr=initializer)
+        out_affine = dg.Linear(decoder_dim, output_dim, param_attr=I.Normal(scale=std))
         self.out_affine = weight_norm(out_affine, dim=-1)
         if has_bias:
-            self.out_sp_affine = dg.Linear(bias_dim, output_dim)
+            std = np.sqrt(1 / bias_dim)
+            self.out_sp_affine = dg.Linear(bias_dim, output_dim, param_attr=I.Normal(scale=std))
 
         self.has_bias = has_bias
         self.kernel_size = kernel_size
@@ -351,8 +346,7 @@ class PostNet(dg.Layer):
             ConvBlock(postnet_dim, kernel_size, False, has_bias, bias_dim, keep_prob) for _ in range(layers)
         ])
         std = np.sqrt(1.0 / postnet_dim)
-        initializer = I.NormalInitializer(loc=0., scale=std)
-        post_affine = dg.Linear(postnet_dim, out_channels, param_attr=initializer)
+        post_affine = dg.Linear(postnet_dim, out_channels, param_attr=I.Normal(scale=std))
         self.post_affine = weight_norm(post_affine, dim=-1)
         self.upsample_factor = upsample_factor
 
