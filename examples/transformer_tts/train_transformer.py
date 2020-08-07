@@ -13,7 +13,7 @@
 # limitations under the License.
 import os
 from tqdm import tqdm
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from collections import OrderedDict
 import argparse
 from pprint import pprint
@@ -27,6 +27,41 @@ from parakeet.models.transformer_tts.utils import cross_entropy
 from data import LJSpeechLoader
 from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.utils import io
+
+
+def add_scalars(self, main_tag, tag_scalar_dict, step, walltime=None):
+    """Add scalars to vdl record file.
+    Args:
+        main_tag (string): The parent name for the tags
+        tag_scalar_dict (dict): Key-value pair storing the tag and corresponding values
+        step (int): Step of scalars
+        walltime (float): Wall time of scalars.
+    Example:
+        for index in range(1, 101):
+            writer.add_scalar(tag="train/loss", value=index*0.2, step=index)
+            writer.add_scalar(tag="train/lr", value=index*0.5, step=index)
+    """
+    import time
+    from visualdl.writer.record_writer import RecordFileWriter
+    from visualdl.component.base_component import scalar
+
+    fw_logdir = self.logdir
+    walltime = round(time.time()) if walltime is None else walltime
+    for tag, value in tag_scalar_dict.items():
+        tag = os.path.join(fw_logdir, main_tag, tag)
+        if '%' in tag:
+            raise RuntimeError("% can't appear in tag!")
+        if tag in self._all_writers:
+            fw = self._all_writers[tag]
+        else:
+            fw = RecordFileWriter(
+                logdir=tag,
+                max_queue_size=self._max_queue,
+                flush_secs=self._flush_secs,
+                filename_suffix=self._filename_suffix)
+            self._all_writers.update({tag: fw})
+        fw.add_record(
+            scalar(tag=main_tag, value=value, step=step, walltime=walltime))
 
 
 def add_config_options_to_parser(parser):
@@ -62,8 +97,9 @@ def main(args):
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    writer = SummaryWriter(os.path.join(args.output,
-                                        'log')) if local_rank == 0 else None
+    writer = LogWriter(os.path.join(args.output,
+                                    'log')) if local_rank == 0 else None
+    writer.add_scalars = add_scalars
 
     fluid.enable_dygraph(place)
     network_cfg = cfg['network']
@@ -162,8 +198,7 @@ def main(args):
                         writer.add_image(
                             'Attention_%d_0' % global_step,
                             x,
-                            i * 4 + j,
-                            dataformats="HWC")
+                            i * 4 + j)
 
                 for i, prob in enumerate(attn_enc):
                     for j in range(cfg['network']['encoder_num_head']):
@@ -173,8 +208,7 @@ def main(args):
                         writer.add_image(
                             'Attention_enc_%d_0' % global_step,
                             x,
-                            i * 4 + j,
-                            dataformats="HWC")
+                            i * 4 + j)
 
                 for i, prob in enumerate(attn_dec):
                     for j in range(cfg['network']['decoder_num_head']):
@@ -184,8 +218,7 @@ def main(args):
                         writer.add_image(
                             'Attention_dec_%d_0' % global_step,
                             x,
-                            i * 4 + j,
-                            dataformats="HWC")
+                            i * 4 + j)
 
         if parallel:
             loss = model.scale_loss(loss)

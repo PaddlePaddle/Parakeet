@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 import os
 from tqdm import tqdm
 from pathlib import Path
@@ -60,8 +60,8 @@ def main(args):
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    writer = SummaryWriter(os.path.join(args.output,
-                                        'log')) if local_rank == 0 else None
+    writer = LogWriter(os.path.join(args.output,
+                                    'log')) if local_rank == 0 else None
 
     fluid.enable_dygraph(place)
     model = Vocoder(cfg['train']['batch_size'], cfg['vocoder']['hidden_size'],

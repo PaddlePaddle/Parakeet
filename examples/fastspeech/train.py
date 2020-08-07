@@ -22,7 +22,7 @@ from ruamel import yaml
 from tqdm import tqdm
 from matplotlib import cm
 from collections import OrderedDict
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 import paddle.fluid.dygraph as dg
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
@@ -69,8 +69,8 @@ def main(args):
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    writer = SummaryWriter(os.path.join(args.output,
-                                        'log')) if local_rank == 0 else None
+    writer = LogWriter(os.path.join(args.output,
+                                    'log')) if local_rank == 0 else None
 
     model = FastSpeech(cfg['network'], num_mels=cfg['audio']['num_mels'])
     model.train()

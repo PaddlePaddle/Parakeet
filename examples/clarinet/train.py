@@ -21,7 +21,7 @@ import random
 from tqdm import tqdm
 import pickle
 import numpy as np
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 
 import paddle.fluid.dygraph as dg
 from paddle import fluid
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     checkpoint_dir = os.path.join(args.output, "checkpoints")
     state_dir = os.path.join(args.output, "states")
     log_dir = os.path.join(args.output, "log")
-    writer = SummaryWriter(log_dir)
+    writer = LogWriter(log_dir)
 
     if args.checkpoint is not None:
         iteration = io.load_parameters(

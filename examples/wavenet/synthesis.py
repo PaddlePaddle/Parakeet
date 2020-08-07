@@ -17,7 +17,6 @@ import os
 import ruamel.yaml
 import argparse
 from tqdm import tqdm
-from tensorboardX import SummaryWriter
 from paddle import fluid
 fluid.require_version('1.8.0')
 import paddle.fluid.dygraph as dg

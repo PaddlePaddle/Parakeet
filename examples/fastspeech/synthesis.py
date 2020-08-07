@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from scipy.io.wavfile import write
 from collections import OrderedDict
 import argparse
@@ -78,7 +78,7 @@ def synthesis(text_input, args):
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    writer = SummaryWriter(os.path.join(args.output, 'log'))
+    writer = LogWriter(os.path.join(args.output, 'log'))
 
     model = FastSpeech(cfg['network'], num_mels=cfg['audio']['num_mels'])
     # Load parameters.

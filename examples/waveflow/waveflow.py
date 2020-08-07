@@ -42,7 +42,7 @@ class WaveFlow():
         rank (int, optional): the rank of the process in a multi-process
             scenario. Defaults to 0.
         nranks (int, optional): the total number of processes. Defaults to 1.
-        tb_logger (obj, optional): logger to visualize metrics.
+        vdl_logger (obj, optional): logger to visualize metrics.
             Defaults to None.
 
     Returns:
@@ -55,13 +55,13 @@ class WaveFlow():
                  parallel=False,
                  rank=0,
                  nranks=1,
-                 tb_logger=None):
+                 vdl_logger=None):
         self.config = config
         self.checkpoint_dir = checkpoint_dir
         self.parallel = parallel
         self.rank = rank
         self.nranks = nranks
-        self.tb_logger = tb_logger
+        self.vdl_logger = vdl_logger
         self.dtype = "float16" if config.use_fp16 else "float32"
 
     def build(self, training=True):
@@ -161,8 +161,8 @@ class WaveFlow():
                   load_time - start_time, graph_time - load_time)
             print(log)
 
-            tb = self.tb_logger
-            tb.add_scalar("Train-Loss-Rank-0", loss_val, iteration)
+            vdl_writer = self.vdl_logger
+            vdl_writer.add_scalar("Train-Loss-Rank-0", loss_val, iteration)
 
     @dg.no_grad
     def valid_step(self, iteration):
@@ -175,7 +175,7 @@ class WaveFlow():
             None
         """
         self.waveflow.eval()
-        tb = self.tb_logger
+        vdl_writer = self.vdl_logger
 
         total_loss = []
         sample_audios = []
@@ -188,10 +188,12 @@ class WaveFlow():
 
             # Visualize latent z and scale log_s.
             if self.rank == 0 and i == 0:
-                tb.add_histogram("Valid-Latent_z", valid_z.numpy(), iteration)
+                vdl_writer.add_histogram("Valid-Latent_z", valid_z.numpy(),
+                                         iteration)
                 for j, valid_log_s in enumerate(valid_log_s_list):
                     hist_name = "Valid-{}th-Flow-Log_s".format(j)
-                    tb.add_histogram(hist_name, valid_log_s.numpy(), iteration)
+                    vdl_writer.add_histogram(hist_name, valid_log_s.numpy(),
+                                             iteration)
 
             valid_loss = self.criterion(valid_outputs)
             total_loss.append(float(valid_loss.numpy()))
@@ -202,7 +204,7 @@ class WaveFlow():
             log = "Test | Rank: {} AvgLoss: {:<8.3f} Time {:<8.3f}".format(
                 self.rank, loss_val, total_time)
             print(log)
-            tb.add_scalar("Valid-Avg-Loss", loss_val, iteration)
+            vdl_writer.add_scalar("Valid-Avg-Loss", loss_val, iteration)
 
     @dg.no_grad
     def infer(self, iteration):

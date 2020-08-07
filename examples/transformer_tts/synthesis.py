@@ -16,7 +16,7 @@ from scipy.io.wavfile import write
 import numpy as np
 from tqdm import tqdm
 from matplotlib import cm
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from ruamel import yaml
 from pathlib import Path
 import argparse
@@ -81,7 +81,7 @@ def synthesis(text_input, args):
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    writer = SummaryWriter(os.path.join(args.output, 'log'))
+    writer = LogWriter(os.path.join(args.output, 'log'))
 
     fluid.enable_dygraph(place)
     with fluid.unique_name.guard():
@@ -121,8 +121,7 @@ def synthesis(text_input, args):
             writer.add_image(
                 'Attention_%d_0' % global_step,
                 x,
-                i * 4 + j,
-                dataformats="HWC")
+                i * 4 + j)
 
     if args.vocoder == 'griffin-lim':
         #synthesis use griffin-lim

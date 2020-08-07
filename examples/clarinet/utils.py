@@ -15,7 +15,6 @@
 from __future__ import division
 import os
 import soundfile as sf
-from tensorboardX import SummaryWriter
 from collections import OrderedDict
 
 from paddle import fluid
