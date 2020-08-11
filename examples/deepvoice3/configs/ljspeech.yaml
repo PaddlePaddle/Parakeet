@@ -39,6 +39,7 @@ clip_value: 5.0
 clip_norm: 100.0
 
 # training:
+max_iteration: 1000000
 batch_size: 16
 report_interval: 10000
 save_interval: 10000

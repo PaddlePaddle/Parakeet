@@ -81,7 +81,7 @@ def train(args, config):
     optim = create_optimizer(model, config)
 
     global global_step
-    max_iteration = 1000000
+    max_iteration = config["max_iteration"]
     
     iterator = iter(tqdm.tqdm(train_loader))
     while global_step <= max_iteration:
