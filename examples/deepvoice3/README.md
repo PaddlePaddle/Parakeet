@@ -87,7 +87,7 @@ runs/Jul07_09-39-34_instance-mqcyj27y-4/
 ...
 ```
 
-Since e use waveflow to synthesize audio while training, so download the trained waveflow model and extract it in current directory before training.
+Since we use waveflow to synthesize audio while training, so download the trained waveflow model and extract it in current directory before training.
 
 ```bash
 wget https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_ckpt_1.0.zip

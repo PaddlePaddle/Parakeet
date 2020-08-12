@@ -62,10 +62,8 @@ class DataCollector(object):
         for example in examples:
             text, spec, mel, _ = example
             text_seqs.append(en.text_to_sequence(text, self.p_pronunciation))
-            # if max_frames - mel.shape[0] < 0:
-            #     import pdb; pdb.set_trace()
-            specs.append(np.pad(spec, [(0, max_frames - spec.shape[0]), (0, 0)]))
-            mels.append(np.pad(mel, [(0, max_frames - mel.shape[0]), (0, 0)]))
+            specs.append(np.pad(spec, [(0, max_frames - spec.shape[0]), (0, 0)], mode="constant"))
+            mels.append(np.pad(mel, [(0, max_frames - mel.shape[0]), (0, 0)], mode="constant"))
 
         specs = np.stack(specs)
         mels = np.stack(mels)
