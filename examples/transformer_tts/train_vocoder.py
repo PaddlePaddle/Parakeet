@@ -121,7 +121,7 @@ def main(args):
             model.clear_gradients()
 
             if local_rank == 0:
-                writer.add_scalars('training_loss', {'loss': loss.numpy(), },
+                writer.add_scalar('training_loss/loss', loss.numpy(),
                                    global_step)
 
             # save checkpoint
