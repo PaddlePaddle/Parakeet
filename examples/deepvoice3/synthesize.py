@@ -11,7 +11,6 @@ from paddle import fluid
 from paddle.fluid import layers as F
 from paddle.fluid import dygraph as dg
 from paddle.fluid.io import DataLoader
-from tensorboardX import SummaryWriter
 import soundfile as sf
 
 from parakeet.data import SliceDataset, DataCargo, PartialyRandomizedSimilarTimeLengthSampler, SequentialSampler

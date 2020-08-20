@@ -21,7 +21,6 @@ import random
 from tqdm import tqdm
 import pickle
 import numpy as np
-from tensorboardX import SummaryWriter
 
 import paddle.fluid.dygraph as dg
 from paddle import fluid

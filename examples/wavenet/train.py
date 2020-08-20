@@ -17,7 +17,7 @@ import os
 import ruamel.yaml
 import argparse
 import tqdm
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from paddle import fluid
 fluid.require_version('1.8.0')
 import paddle.fluid.dygraph as dg
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     eval_interval = train_config["eval_interval"]
     checkpoint_dir = os.path.join(args.output, "checkpoints")
     log_dir = os.path.join(args.output, "log")
-    writer = SummaryWriter(log_dir)
+    writer = LogWriter(log_dir)
 
     # load parameters and optimizer, and update iterations done so far
     if args.checkpoint is not None:

@@ -13,7 +13,7 @@
 # limitations under the License.
 import os
 from tqdm import tqdm
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from collections import OrderedDict
 import argparse
 from pprint import pprint
@@ -62,8 +62,8 @@ def main(args):
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    writer = SummaryWriter(os.path.join(args.output,
-                                        'log')) if local_rank == 0 else None
+    writer = LogWriter(os.path.join(args.output,
+                                    'log')) if local_rank == 0 else None
 
     fluid.enable_dygraph(place)
     network_cfg = cfg['network']
@@ -131,23 +131,28 @@ def main(args):
         loss = loss + stop_loss
 
         if local_rank == 0:
-            writer.add_scalars('training_loss', {
-                'mel_loss': mel_loss.numpy(),
-                'post_mel_loss': post_mel_loss.numpy()
-            }, global_step)
-
+            writer.add_scalar('training_loss/mel_loss',
+                              mel_loss.numpy(),
+                              global_step)
+            writer.add_scalar('training_loss/post_mel_loss',
+                              post_mel_loss.numpy(),
+                              global_step)
             writer.add_scalar('stop_loss', stop_loss.numpy(), global_step)
 
             if parallel:
-                writer.add_scalars('alphas', {
-                    'encoder_alpha': model._layers.encoder.alpha.numpy(),
-                    'decoder_alpha': model._layers.decoder.alpha.numpy(),
-                }, global_step)
+                writer.add_scalar('alphas/encoder_alpha',
+                                   model._layers.encoder.alpha.numpy(),
+                                   global_step)
+                writer.add_scalar('alphas/decoder_alpha',
+                                   model._layers.decoder.alpha.numpy(),
+                                   global_step)
             else:
-                writer.add_scalars('alphas', {
-                    'encoder_alpha': model.encoder.alpha.numpy(),
-                    'decoder_alpha': model.decoder.alpha.numpy(),
-                }, global_step)
+                writer.add_scalar('alphas/encoder_alpha',
+                                   model.encoder.alpha.numpy(),
+                                   global_step)
+                writer.add_scalar('alphas/decoder_alpha',
+                                   model.decoder.alpha.numpy(),
+                                   global_step)
 
             writer.add_scalar('learning_rate',
                               optimizer._learning_rate.step().numpy(),
@@ -162,8 +167,7 @@ def main(args):
                         writer.add_image(
                             'Attention_%d_0' % global_step,
                             x,
-                            i * 4 + j,
-                            dataformats="HWC")
+                            i * 4 + j)
 
                 for i, prob in enumerate(attn_enc):
                     for j in range(cfg['network']['encoder_num_head']):
@@ -173,8 +177,7 @@ def main(args):
                         writer.add_image(
                             'Attention_enc_%d_0' % global_step,
                             x,
-                            i * 4 + j,
-                            dataformats="HWC")
+                            i * 4 + j)
 
                 for i, prob in enumerate(attn_dec):
                     for j in range(cfg['network']['decoder_num_head']):
@@ -184,8 +187,7 @@ def main(args):
                         writer.add_image(
                             'Attention_dec_%d_0' % global_step,
                             x,
-                            i * 4 + j,
-                            dataformats="HWC")
+                            i * 4 + j)
 
         if parallel:
             loss = model.scale_loss(loss)

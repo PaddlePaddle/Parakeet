@@ -22,7 +22,8 @@ import argparse
 import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
+
 
 import utils
 from parakeet.utils import io
@@ -78,8 +79,8 @@ def train(config):
         os.makedirs(checkpoint_dir)
 
     # Create tensorboard logger.
-    tb = SummaryWriter(os.path.join(run_dir, "logs")) \
-        if rank == 0 else None
+    vdl = LogWriter(os.path.join(run_dir, "logs")) \
+          if rank == 0 else None
 
     # Configurate device
     place = fluid.CUDAPlace(rank) if use_gpu else fluid.CPUPlace()
@@ -94,7 +95,7 @@ def train(config):
         print("Random Seed: ", seed)
 
         # Build model.
-        model = WaveFlow(config, checkpoint_dir, parallel, rank, nranks, tb)
+        model = WaveFlow(config, checkpoint_dir, parallel, rank, nranks, vdl)
         iteration = model.build()
 
         while iteration < config.max_iterations:
@@ -113,7 +114,7 @@ def train(config):
 
     # Close TensorBoard.
     if rank == 0:
-        tb.close()
+        vdl.close()
 
 
 if __name__ == "__main__":

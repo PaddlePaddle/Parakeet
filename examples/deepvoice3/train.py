@@ -10,7 +10,7 @@ from paddle.fluid import layers as F
 from paddle.fluid import initializer as I
 from paddle.fluid import dygraph as dg
 from paddle.fluid.io import DataLoader
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 
 from parakeet.models.deepvoice3 import Encoder, Decoder, PostNet, SpectraNet
 from parakeet.data import SliceDataset, DataCargo, SequentialSampler, RandomSampler
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     global global_step
     global_step = 1
     global writer
-    writer = SummaryWriter()
+    writer = LogWriter()
     print("[Training] tensorboard log and checkpoints are save in {}".format(
         writer.logdir))
     train(args, config)
