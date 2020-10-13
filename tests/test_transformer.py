@@ -6,34 +6,12 @@ paddle.disable_static(paddle.CPUPlace())
 
 from parakeet.modules import transformer
 
-def sequence_mask(lengths, max_length=None, dtype="bool"):
-    max_length = max_length or np.max(lengths)
-    ids = np.arange(max_length)
-    return (ids < np.expand_dims(lengths, -1)).astype(dtype)
-
-def future_mask(lengths, max_length=None, dtype="bool"):
-    max_length = max_length or np.max(lengths)
-    return np.tril(np.tril(np.ones(max_length)))
-
 class TestPositionwiseFFN(unittest.TestCase):
     def test_io(self):
         net = transformer.PositionwiseFFN(8, 12)
         x = paddle.randn([2, 3, 4, 8])
         y = net(x)
         self.assertTupleEqual(y.numpy().shape, (2, 3, 4, 8))
-
-
-class TestCombineMask(unittest.TestCase):
-    def test_equality(self):
-        lengths = np.array([12, 8, 9, 10])
-        padding_mask = sequence_mask(lengths, dtype="float64")
-        no_future_mask = future_mask(lengths, dtype="float64")
-        combined_mask1 = np.expand_dims(padding_mask, 1) * no_future_mask
-        
-        combined_mask2 = transformer.combine_mask(
-            paddle.to_tensor(padding_mask), paddle.to_tensor(no_future_mask)
-        )
-        np.testing.assert_allclose(combined_mask2.numpy(), combined_mask1)
 
 
 class TestTransformerEncoderLayer(unittest.TestCase):

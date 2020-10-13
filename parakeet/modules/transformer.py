@@ -4,7 +4,7 @@ from paddle import nn
 from paddle.nn import functional as F
 
 from parakeet.modules import attention as attn
-
+from parakeet.modules.masking import combine_mask
 class PositionwiseFFN(nn.Layer):
     """
     A faithful implementation of Position-wise Feed-Forward Network 
@@ -41,21 +41,6 @@ class PositionwiseFFN(nn.Layer):
         """
         return self.linear2(self.dropout(F.relu(self.linear1(x))))
 
-def combine_mask(padding_mask, no_future_mask):
-    """
-    Combine the padding mask and no future mask for transformer decoder. 
-    Padding mask is used to mask padding positions and no future mask is used 
-    to prevent the decoder to see future information.
-
-    Args:
-        padding_mask (Tensor): shape(batch_size, time_steps), dtype: float32 or float64, decoder padding mask. 
-        no_future_mask (Tensor): shape(time_steps, time_steps), dtype: float32 or float64, no future mask.
-
-    Returns:
-        Tensor: shape(batch_size, time_steps, time_steps), combined mask.
-    """
-    # TODO: to support boolean mask by using logical_and?
-    return paddle.unsqueeze(padding_mask, 1) * no_future_mask
 
 class TransformerEncoderLayer(nn.Layer):
     """
@@ -135,7 +120,7 @@ class TransformerDecoderLayer(nn.Layer):
         """
         tq = q.shape[1]
         no_future_mask = paddle.tril(paddle.ones([tq, tq])) #(tq, tq)
-        combined_mask = combine_mask(decoder_mask, no_future_mask)
+        combined_mask = combine_mask(decoder_mask.unsqueeze(1), no_future_mask)
         context_vector, self_attn_weights = self.self_mha(q, q, q, combined_mask)
         q = self.layer_norm1(q + context_vector)
         

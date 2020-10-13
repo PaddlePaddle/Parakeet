@@ -207,8 +207,8 @@ class TransformerDecoder(nn.LayerList):
             self_attention_weights.append(self_attention_weights_i)
             cross_attention_weights.append(cross_attention_weights_i)
         return x, self_attention_weights, cross_attention_weights
-    
-    
+
+
 class DecoderPreNet(nn.Layer):
     def __init__(self, d_model, d_hidden, dropout):
         self.lin1 = nn.Linear(d_model, d_hidden)
@@ -248,8 +248,8 @@ class TransformerTTS(nn.Layer):
         self.encoder = TransformerEncoder(d_model, n_heads, d_ffn, encoder_layers, dropout)
         self.decoder_prenet = DecoderPreNet(d_model, d_prenet, dropout)
         self.decoder = TransformerDecoder(d_model, n_heads, d_ffn, decoder_layers, dropout)
-        self.decoder_postnet = nn.Linear(d_model, reduction_factor * d_mel)
-        self.postnet = PostNet(d_mel, d_postnet, d_mel, postnet_kernel_size, postnet_layers)
+        self.final_proj = nn.Linear(d_model, reduction_factor * d_mel)
+        self.decoder_postnet = PostNet(d_mel, d_postnet, d_mel, postnet_kernel_size, postnet_layers)
     
     def forward(self):
         pass
