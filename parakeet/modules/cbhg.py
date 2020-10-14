@@ -4,21 +4,7 @@ from paddle import nn
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 
-
-class Conv1dBatchNorm(nn.Layer):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0,
-                 weight_attr=None, bias_attr=None):
-        super(Conv1dBatchNorm, self).__init__()
-        # TODO(chenfeiyu): carefully initialize Conv1d's weight
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride,
-                              padding=padding,
-                              weight_attr=weight_attr,
-                              bias_attr=bias_attr)
-        # TODO: channel last, but BatchNorm1d does not support channel last layout
-        self.bn = nn.BatchNorm1d(out_channels)
-
-    def forward(self, x):
-        return self.bn(self.conv(x))
+from parakeet.modules.conv import Conv1dBatchNorm
 
 
 class Highway(nn.Layer):

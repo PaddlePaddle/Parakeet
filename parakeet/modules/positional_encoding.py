@@ -2,7 +2,7 @@ import math
 import paddle
 from paddle.nn import functional as F
 
-def positional_encoding(start_index, length, size, dtype="float32"):
+def positional_encoding(start_index, length, size, dtype=None):
     """
     Generate standard positional encoding.
     
@@ -22,6 +22,7 @@ def positional_encoding(start_index, length, size, dtype="float32"):
     """
     if (size % 2 != 0):
         raise ValueError("size should be divisible by 2")
+    dtype = dtype or paddle.get_default_dtype()
     channel = paddle.arange(0, size, 2, dtype=dtype)
     index = paddle.arange(start_index, start_index + length, 1, dtype=dtype)
     p = paddle.unsqueeze(index, -1) / (10000 ** (channel / float(size)))

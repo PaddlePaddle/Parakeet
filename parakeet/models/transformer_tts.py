@@ -4,8 +4,10 @@ from paddle import nn
 from paddle.nn import functional as F
 
 from parakeet.modules.attention import _split_heads, _concat_heads, drop_head, scaled_dot_product_attention
-from parakeet.modules.transformer import PositionwiseFFN, combine_mask
+from parakeet.modules.transformer import PositionwiseFFN
+from parakeet.modules import masking
 from parakeet.modules.cbhg import Conv1dBatchNorm
+from parakeet.modules import positional_encoding as pe
 
 # Transformer TTS's own implementation of transformer
 class MultiheadAttention(nn.Layer):
@@ -160,7 +162,7 @@ class TransformerDecoderLayer(nn.Layer):
         """
         tq = q.shape[1]
         no_future_mask = paddle.tril(paddle.ones([tq, tq])) #(tq, tq)
-        combined_mask = combine_mask(decoder_mask, no_future_mask)
+        combined_mask = masking.combine_mask(decoder_mask.unsqueeze(1), no_future_mask)
         
         # pre norm
         q_in = q
@@ -234,25 +236,57 @@ class PostNet(nn.Layer):
         self.last_norm = nn.BatchNorm1d(d_output)
     
     def forward(self, x):
+        x_in = x
         for layer in self.convs:
             x = paddle.tanh(layer(x))
-        x = self.last_norm(x)
+        x = self.last_norm(x + x_in)
         return x
 
 
 class TransformerTTS(nn.Layer):
-    def __init__(self, vocab_size, padding_idx, d_model, d_mel, n_heads, d_ffn, 
+    def __init__(self, vocab_size, padding_idx, d_model, d_mel, n_heads, d_ffn, positional_encoding_scalar,
                  encoder_layers, decoder_layers, d_prenet, d_postnet, postnet_layers, 
-                 postnet_kernel_size, reduction_factor, dropout):
+                 postnet_kernel_size, max_reduction_factor, dropout):
         self.encoder_prenet = nn.Embedding(vocab_size, d_model, padding_idx)
+        self.encoder_pe = pe.positional_encoding(0, 1000, d_model) # it may be extended later
         self.encoder = TransformerEncoder(d_model, n_heads, d_ffn, encoder_layers, dropout)
+        
         self.decoder_prenet = DecoderPreNet(d_model, d_prenet, dropout)
+        self.decoder_pe = pe.positional_encoding(0, 1000, d_model) # it may be extended later
         self.decoder = TransformerDecoder(d_model, n_heads, d_ffn, decoder_layers, dropout)
-        self.final_proj = nn.Linear(d_model, reduction_factor * d_mel)
+        self.final_proj = nn.Linear(d_model, max_reduction_factor * d_mel)
         self.decoder_postnet = PostNet(d_mel, d_postnet, d_mel, postnet_kernel_size, postnet_layers)
+        
+        # specs
+        self.padding_idx = padding_idx
+        self.d_model = d_model
+        self.pe_scalar = positional_encoding_scalar
+        
+        
     
-    def forward(self):
+    def forward(self, text, mel, stop):
         pass
+        
+        
+    def encode(self, text):
+        T_enc = text.shape[-1]
+        embed = self.encoder_prenet(text)
+        pe = self.encoder_pe[:T_enc, :] # (T, C)
+        x = embed.scale(math.sqrt(self.d_model)) + pe.scale(self.pe_scalar)
+        encoder_padding_mask = masking.id_mask(text, self.padding_idx)
+        
+        x = F.dropout(x, training=self.training)
+        x, attention_weights = self.encoder(x, encoder_padding_mask)
+        return x, attention_weights, encoder_padding_mask
+    
+    def decode(self, ):
+        pass
+        
+        
+        
+        
+        
+        
     
     def infer(self):
         pass

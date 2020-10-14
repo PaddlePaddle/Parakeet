@@ -79,3 +79,20 @@ class Conv1dCell(nn.Conv1d):
         y_t = paddle.matmul(input, self._reshaped_weight, transpose_y=True)
         y_t = y_t + self.bias
         return y_t
+
+
+class Conv1dBatchNorm(nn.Layer):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0,
+                 weight_attr=None, bias_attr=None):
+        super(Conv1dBatchNorm, self).__init__()
+        # TODO(chenfeiyu): carefully initialize Conv1d's weight
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride,
+                              padding=padding,
+                              weight_attr=weight_attr,
+                              bias_attr=bias_attr)
+        # TODO: channel last, but BatchNorm1d does not support channel last layout
+        self.bn = nn.BatchNorm1d(out_channels)
+
+    def forward(self, x):
+        return self.bn(self.conv(x))
+    

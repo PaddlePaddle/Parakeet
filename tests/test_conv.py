@@ -30,3 +30,32 @@ class TestConv1dCell(unittest.TestCase):
 
         np.testing.assert_allclose(y2.numpy(), y1.numpy())
         
+        
+class TestConv1dBatchNorm(unittest.TestCase):
+    def __init__(self, methodName="runTest", causal=False):
+        super(TestConv1dBatchNorm, self).__init__(methodName)
+        self.causal = causal
+        
+    def setUp(self):
+        k = 5
+        paddding = (k - 1, 0) if self.causal else ((k-1) // 2, k //2)
+        self.net = conv.Conv1dBatchNorm(4, 6, (k,), 1, padding=paddding)
+
+    def test_input_output(self):
+        x = paddle.randn([4, 4, 16])
+        out = self.net(x)
+        out_np = out.numpy()
+        self.assertTupleEqual(out_np.shape, (4, 6, 16))
+        
+    def runTest(self):
+        self.test_input_output()
+
+
+def load_tests(loader, standard_tests, pattern):
+    suite = unittest.TestSuite()
+    suite.addTest(TestConv1dBatchNorm("runTest", True))
+    suite.addTest(TestConv1dBatchNorm("runTest", False))
+    
+    suite.addTest(TestConv1dCell("test_equality"))
+
+    return suite

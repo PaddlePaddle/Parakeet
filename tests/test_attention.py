@@ -98,7 +98,4 @@ def load_tests(loader, standard_tests, pattern):
     suite.addTest(TestMultiheadAttention("test_io", same_qk=True))
     suite.addTest(TestMultiheadAttention("test_io", same_qk=False))
     
-    suite.addTest(TestDropHeadMultiheadAttention("test_io", same_qk=True))
-    suite.addTest(TestDropHeadMultiheadAttention("test_io", same_qk=False))
-    
     return suite

@@ -54,3 +54,11 @@ class TestTransformerDecoderLayer(unittest.TestCase):
         self.assertTupleEqual(y.numpy().shape, (4, 32, 64))
         self.assertTupleEqual(self_attn_weights.numpy().shape, (4, 8, 32, 32))
         self.assertTupleEqual(cross_attn_weights.numpy().shape, (4, 8, 32, 24))
+        
+        
+class TestTransformerTTS(unittest.TestCase):
+    def test_io(self):
+        return
+        net = tts.TransformerTTS(vocab_size, padding_idx, d_model, d_mel, n_heads, d_ffn, positional_encoding_scalar,
+                 encoder_layers, decoder_layers, d_prenet, d_postnet, postnet_layers, 
+                 postnet_kernel_size, max_reduction_factor, dropout)
