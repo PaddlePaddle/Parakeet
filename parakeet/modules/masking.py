@@ -5,7 +5,7 @@ def id_mask(input, padding_index=0, dtype="bool"):
     return paddle.cast(input != padding_index, dtype)
 
 def feature_mask(input, axis, dtype="bool"):
-    feature_sum = paddle.sum(paddle.abs(input), axis=axis, keepdim=True)
+    feature_sum = paddle.sum(paddle.abs(input), axis)
     return paddle.cast(feature_sum != 0, dtype)
 
 def combine_mask(padding_mask, no_future_mask):
