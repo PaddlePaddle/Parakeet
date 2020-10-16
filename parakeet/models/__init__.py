@@ -11,3 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from parakeet.models.clarinet import *
+from parakeet.models.waveflow import *
+from parakeet.models.wavenet import *
+
+from parakeet.models.transformer_tts import *
+from parakeet.models.deepvoice3 import *
+# from parakeet.models.fastspeech import *

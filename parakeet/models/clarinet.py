@@ -5,6 +5,8 @@ from paddle import distribution as D
 
 from parakeet.models.wavenet import WaveNet, UpsampleNet, crop
 
+__all__ = ["Clarinet"]
+
 class ParallelWaveNet(nn.LayerList):
     def __init__(self, n_loops, n_layers, residual_channels, condition_dim,
                  filter_size):

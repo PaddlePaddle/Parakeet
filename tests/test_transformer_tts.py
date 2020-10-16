@@ -78,9 +78,10 @@ class TestTransformerTTS(unittest.TestCase):
         text = text * mask
         
         encoded, attention_weights, encoder_mask = net.encode(text)
-        print(encoded.numpy().shape)
-        print([item.shape for item in attention_weights])
-        print(encoder_mask.numpy().shape)
+        print("output shapes:")
+        print("encoded:", encoded.numpy().shape)
+        print("encoder_attentions:", [item.shape for item in attention_weights])
+        print("encoder_mask:", encoder_mask.numpy().shape)
         
     def test_all_io(self):
         net = self.net
@@ -96,7 +97,7 @@ class TestTransformerTTS(unittest.TestCase):
         mel = mel * mask.unsqueeze(-1)
         
         encoded, encoder_attention_weights, encoder_mask = net.encode(text)
-        mel_output, mel_intermediate, cross_attention_weights = net.decode(encoded, mel, encoder_mask)
+        mel_output, mel_intermediate, cross_attention_weights, stop_logits = net.decode(encoded, mel, encoder_mask)
         
         print("output shapes:")
         print("encoder_output:", encoded.numpy().shape)
@@ -105,5 +106,17 @@ class TestTransformerTTS(unittest.TestCase):
         print("mel_output: ", mel_output.numpy().shape)
         print("mel_intermediate: ", mel_intermediate.numpy().shape)
         print("decoder_attentions:", [item.shape for item in cross_attention_weights])
+        print("stop_logits:", stop_logits.numpy().shape)
         
+    def test_predict_io(self):
+        net = self.net
+        net.eval()
+        with paddle.no_grad():
+            text = paddle.randint(0, 128, [176])
+            decoder_output, encoder_attention_weights, cross_attention_weights = net.predict(text)
+        
+        print("output shapes:")
+        print("mel_output: ", decoder_output.numpy().shape)
+        print("encoder_attentions:", [item.shape for item in encoder_attention_weights])
+        print("decoder_attentions:", [item.shape for item in cross_attention_weights])
         

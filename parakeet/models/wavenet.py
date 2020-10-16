@@ -26,6 +26,8 @@ import paddle.fluid.layers.distributions as D
 
 from parakeet.modules.conv import Conv1dCell
 
+__all__ = ["ConditionalWavenet"]
+
 def quantize(values, n_bands):
     """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in [0, n_bands).
 

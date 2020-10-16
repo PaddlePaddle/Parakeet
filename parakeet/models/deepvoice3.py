@@ -8,6 +8,8 @@ from paddle.nn import initializer as I
 
 from parakeet.modules import positional_encoding as pe
 
+__all__ = ["SpectraNet"]
+
 class ConvBlock(nn.Layer):
     def __init__(self, in_channel, kernel_size, causal=False, has_bias=False, 
                  bias_dim=None, keep_prob=1.):

@@ -11,7 +11,8 @@ import itertools
 import numpy as np
 import paddle.fluid.dygraph as dg
 from paddle import fluid
-from parakeet.modules import weight_norm
+
+__all__ = ["WaveFlow"]
 
 def fold(x, n_group):
     """Fold audio or spectrogram's temporal dimension in to groups.

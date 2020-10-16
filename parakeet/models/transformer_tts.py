@@ -9,6 +9,8 @@ from parakeet.modules import masking
 from parakeet.modules.cbhg import Conv1dBatchNorm
 from parakeet.modules import positional_encoding as pe
 
+__all__ = ["TransformerTTS"]
+
 # Transformer TTS's own implementation of transformer
 class MultiheadAttention(nn.Layer):
     """
@@ -255,11 +257,21 @@ class TransformerTTS(nn.Layer):
         self.decoder = TransformerDecoder(d_model, n_heads, d_ffn, decoder_layers, dropout)
         self.final_proj = nn.Linear(d_model, max_reduction_factor * d_mel)
         self.decoder_postnet = CNNPostNet(d_mel, d_postnet, d_mel, postnet_kernel_size, postnet_layers)
+        self.stop_conditioner = nn.Linear(d_mel, 3)
         
         # specs
         self.padding_idx = padding_idx
         self.d_model = d_model
         self.pe_scalar = positional_encoding_scalar
+        
+        # start and end 
+        dtype = paddle.get_default_dtype()
+        self.start_vec = paddle.fill_constant([1, d_mel], dtype=dtype, value=0)
+        self.end_vec = paddle.fill_constant([1, d_mel], dtype=dtype, value=0)
+        self.stop_prob_index = 2
+        
+        self.max_r = max_reduction_factor
+        self.r = max_reduction_factor # set it every call
         
         
     def forward(self, text, mel, stop):
@@ -292,11 +304,45 @@ class TransformerTTS(nn.Layer):
 
         output_proj = self.final_proj(decoder_output)
         mel_intermediate = paddle.reshape(output_proj, [batch_size, -1, mel_dim])
+        stop_logits = self.stop_conditioner(mel_intermediate)
         
         mel_channel_first = paddle.transpose(mel_intermediate, [0, 2, 1])
         mel_output = self.decoder_postnet(mel_channel_first)
         mel_output = paddle.transpose(mel_output, [0, 2, 1])
-        return mel_output, mel_intermediate, cross_attention_weights
+        return mel_output, mel_intermediate, cross_attention_weights, stop_logits
     
-    def infer(self):
-        pass
+    def predict(self, input, max_length=1000, verbose=True):
+        """[summary]
+
+        Args:
+            input (Tensor): shape (T), dtype int, input text sequencce.
+            max_length (int, optional): max decoder steps. Defaults to 1000.
+            verbose (bool, optional): display progress bar. Defaults to True.
+        """
+        text_input = paddle.unsqueeze(input, 0) # (1, T)
+        decoder_input = paddle.unsqueeze(self.start_vec, 0) # (B=1, T, C)
+        decoder_output = paddle.unsqueeze(self.start_vec, 0) # (B=1, T, C)
+        
+        # encoder the text sequence
+        encoder_output, encoder_attentions, encoder_padding_mask = self.encode(text_input)
+        for _ in range(int(max_length // self.r) + 1):
+            mel_output, _, cross_attention_weights, stop_logits = self.decode(
+                encoder_output, decoder_input, encoder_padding_mask)
+            
+            # extract last step and append it to decoder input
+            decoder_input = paddle.concat([decoder_input, mel_output[:, -1:, :]], 1)
+            # extract last r steps and append it to decoder output
+            decoder_output = paddle.concat([decoder_output, mel_output[:, -self.r:, :]], 1)
+            
+            # stop condition?
+            if paddle.argmax(stop_logits[:, -1, :]) == self.stop_prob_index:
+                if verbose:
+                    print("Hits stop condition.")
+                break
+
+        return decoder_output[:, 1:, :], encoder_attentions, cross_attention_weights
+        
+        
+        
+        
+        
