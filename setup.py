@@ -64,6 +64,9 @@ setup_info = dict(
         'sox',
         'soundfile',
         'llvmlite==0.31.0',
+        'opencc',
+        'g2p_en',
+        'g2pM'
     ],
 
     # Package info
