@@ -27,7 +27,12 @@ class English(Phonetics):
         self.vocab = Vocab(self.phonemes + self.punctuations)
     
     def phoneticize(self, sentence):
-        return self.backend(sentence)
+        start = self.vocab.start_symbol
+        end = self.vocab.end_symbol
+        phonemes = ([] if start is None else [start]) \
+                 + self.backend(sentence) \
+                 + ([] if end is None else [end])
+        return phonemes
     
     def numericalize(self, phonemes):
         ids = [self.vocab.lookup(item) for item in phonemes if item in self.vocab.stoi]
@@ -58,6 +63,11 @@ class Chinese(Phonetics):
     def phoneticize(self, sentence):
         simplified = self.opencc_backend.convert(sentence)
         phonemes = self.backend(simplified)
+        start = self.vocab.start_symbol
+        end = self.vocab.end_symbol
+        phonemes = ([] if start is None else [start]) \
+                 + phonemes \
+                 + ([] if end is None else [end])
         return self._filter_symbols(phonemes)
         
     def _filter_symbols(self, phonemes):

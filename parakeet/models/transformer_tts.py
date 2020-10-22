@@ -2,11 +2,12 @@ import math
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
+from paddle.nn import initializer as I
 
 from parakeet.modules.attention import _split_heads, _concat_heads, drop_head, scaled_dot_product_attention
 from parakeet.modules.transformer import PositionwiseFFN
 from parakeet.modules import masking
-from parakeet.modules.cbhg import Conv1dBatchNorm
+from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules import positional_encoding as pe
 
 __all__ = ["TransformerTTS"]
@@ -21,7 +22,7 @@ class MultiheadAttention(nn.Layer):
     Another deviation is that it concats the input query and context vector before
     applying the output projection.
     """
-    def __init__(self, model_dim, num_heads, k_dim=None, v_dim=None):
+    def __init__(self, model_dim, num_heads, k_dim=None, v_dim=None, k_input_dim=None, v_input_dim=None):
         """
         Args:
             model_dim (int): the feature size of query.
@@ -42,9 +43,11 @@ class MultiheadAttention(nn.Layer):
         depth = model_dim // num_heads
         k_dim = k_dim or depth
         v_dim = v_dim or depth
+        k_input_dim = k_input_dim or model_dim
+        v_input_dim = v_input_dim or model_dim
         self.affine_q = nn.Linear(model_dim, num_heads * k_dim)
-        self.affine_k = nn.Linear(model_dim, num_heads * k_dim)
-        self.affine_v = nn.Linear(model_dim, num_heads * v_dim)
+        self.affine_k = nn.Linear(k_input_dim, num_heads * k_dim)
+        self.affine_v = nn.Linear(v_input_dim, num_heads * v_dim)
         self.affine_o = nn.Linear(model_dim + num_heads * v_dim, model_dim)
         
         self.num_heads = num_heads
@@ -128,7 +131,7 @@ class TransformerDecoderLayer(nn.Layer):
     """
     Transformer decoder layer.
     """
-    def __init__(self, d_model, n_heads, d_ffn, dropout=0.):
+    def __init__(self, d_model, n_heads, d_ffn, dropout=0., d_encoder=None):
         """
         Args:
             d_model (int): the feature size of the input, and the output.
@@ -141,7 +144,7 @@ class TransformerDecoderLayer(nn.Layer):
         self.self_mha = MultiheadAttention(d_model, n_heads)
         self.layer_norm1 = nn.LayerNorm([d_model], epsilon=1e-6)
         
-        self.cross_mha = MultiheadAttention(d_model, n_heads)
+        self.cross_mha = MultiheadAttention(d_model, n_heads, k_input_dim=d_encoder, v_input_dim=d_encoder)
         self.layer_norm2 = nn.LayerNorm([d_model], epsilon=1e-6)
         
         self.ffn = PositionwiseFFN(d_model, d_ffn, dropout)
@@ -194,10 +197,10 @@ class TransformerEncoder(nn.LayerList):
 
 
 class TransformerDecoder(nn.LayerList):
-    def __init__(self, d_model, n_heads, d_ffn, n_layers, dropout=0.):
+    def __init__(self, d_model, n_heads, d_ffn, n_layers, dropout=0., d_encoder=None):
         super(TransformerDecoder, self).__init__()
         for _ in range(n_layers):
-            self.append(TransformerDecoderLayer(d_model, n_heads, d_ffn, dropout))
+            self.append(TransformerDecoderLayer(d_model, n_heads, d_ffn, dropout, d_encoder=d_encoder))
 
     def forward(self, q, k, v, encoder_mask, decoder_mask):
         self_attention_weights = []
@@ -233,7 +236,7 @@ class CNNPostNet(nn.Layer):
             c_out = d_output if i == n_layers - 1 else d_hidden
             self.convs.append(
                 Conv1dBatchNorm(c_in, c_out, kernel_size, padding=padding))
-        self.last_norm = nn.BatchNorm1d(d_output)
+        self.last_norm = nn.BatchNorm1D(d_output)
     
     def forward(self, x):
         x_in = x
@@ -244,44 +247,51 @@ class CNNPostNet(nn.Layer):
 
 
 class TransformerTTS(nn.Layer):
-    def __init__(self, vocab_size, padding_idx, d_model, d_mel, n_heads, d_ffn, positional_encoding_scalar,
+    def __init__(self, vocab_size, padding_idx, d_encoder, d_decoder, d_mel, n_heads, d_ffn,
                  encoder_layers, decoder_layers, d_prenet, d_postnet, postnet_layers, 
                  postnet_kernel_size, max_reduction_factor, dropout):
         super(TransformerTTS, self).__init__()
-        self.encoder_prenet = nn.Embedding(vocab_size, d_model, padding_idx)
-        self.encoder_pe = pe.positional_encoding(0, 1000, d_model) # it may be extended later
-        self.encoder = TransformerEncoder(d_model, n_heads, d_ffn, encoder_layers, dropout)
+        # initial pe scalar is 1, though it is trainable
+        self.pe_scalar = self.create_parameter([1], attr=I.Constant(1.))
         
-        self.decoder_prenet = MLPPreNet(d_mel, d_prenet, d_model, dropout)
-        self.decoder_pe = pe.positional_encoding(0, 1000, d_model) # it may be extended later
-        self.decoder = TransformerDecoder(d_model, n_heads, d_ffn, decoder_layers, dropout)
-        self.final_proj = nn.Linear(d_model, max_reduction_factor * d_mel)
+        # encoder
+        self.encoder_prenet = nn.Embedding(vocab_size, d_encoder, padding_idx)
+        self.encoder_pe = pe.positional_encoding(0, 1000, d_encoder) # it may be extended later
+        self.encoder = TransformerEncoder(d_encoder, n_heads, d_ffn, encoder_layers, dropout)
+        
+        # decoder
+        self.decoder_prenet = MLPPreNet(d_mel, d_prenet, d_decoder, dropout)
+        self.decoder_pe = pe.positional_encoding(0, 1000, d_decoder) # it may be extended later
+        self.decoder = TransformerDecoder(d_decoder, n_heads, d_ffn, decoder_layers, dropout, d_encoder=d_encoder)
+        self.final_proj = nn.Linear(d_decoder, max_reduction_factor * d_mel)
         self.decoder_postnet = CNNPostNet(d_mel, d_postnet, d_mel, postnet_kernel_size, postnet_layers)
         self.stop_conditioner = nn.Linear(d_mel, 3)
         
         # specs
         self.padding_idx = padding_idx
-        self.d_model = d_model
-        self.pe_scalar = positional_encoding_scalar
+        self.d_encoder = d_encoder
+        self.d_decoder = d_decoder
         
-        # start and end 
+        # start and end: though it is only used in predict 
+        # it can also be used in training
         dtype = paddle.get_default_dtype()
-        self.start_vec = paddle.fill_constant([1, d_mel], dtype=dtype, value=0)
-        self.end_vec = paddle.fill_constant([1, d_mel], dtype=dtype, value=0)
+        self.start_vec = paddle.full([1, d_mel], 0, dtype=dtype)
+        self.end_vec = paddle.full([1, d_mel], 0, dtype=dtype)
         self.stop_prob_index = 2
         
         self.max_r = max_reduction_factor
         self.r = max_reduction_factor # set it every call
         
-        
     def forward(self, text, mel, stop):
-        pass
-        
+        encoded, encoder_attention_weights, encoder_mask = self.encode(text)
+        mel_output, mel_intermediate, cross_attention_weights, stop_logits = self.decode(encoded, mel, encoder_mask)
+        return mel_output, mel_intermediate, encoder_attention_weights, cross_attention_weights
+
     def encode(self, text):
         T_enc = text.shape[-1]
         embed = self.encoder_prenet(text)
         pe = self.encoder_pe[:T_enc, :] # (T, C)
-        x = embed.scale(math.sqrt(self.d_model)) + pe.scale(self.pe_scalar)
+        x = embed.scale(math.sqrt(self.d_encoder)) + pe * self.pe_scalar
         encoder_padding_mask = masking.id_mask(text, self.padding_idx, dtype=x.dtype)
         
         x = F.dropout(x, training=self.training)
@@ -341,8 +351,13 @@ class TransformerTTS(nn.Layer):
                 break
 
         return decoder_output[:, 1:, :], encoder_attentions, cross_attention_weights
-        
-        
-        
-        
-        
+
+
+class TransformerTTSLoss(nn.Layer):
+    def __init__(self, stop_loss_scale):
+        super(TransformerTTSLoss, self).__init__()
+        self.stop_loss_scale = stop_loss_scale
+    
+    def forward(self, ):
+
+        return loss, details

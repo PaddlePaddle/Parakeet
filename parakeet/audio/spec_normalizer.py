@@ -7,6 +7,9 @@ the generated spectrogram so as to be used with vocoders like griffin lim.
 
 The base class describe the interface. `transform` is used to perform 
 transformation and `inverse` is used to perform the inverse transformation.
+
+check issues:
+https://github.com/mozilla/TTS/issues/377
 """
 import numpy as np
 
@@ -18,6 +21,9 @@ class NormalizerBase(object):
         raise NotImplementedError("inverse must be implemented")
 
 class LogMagnitude(NormalizerBase):
+    """
+    This is a simple normalizer used in Waveglow, Waveflow, tacotron2...
+    """
     def __init__(self, min=1e-7):
         self.min = min
     
@@ -28,7 +34,11 @@ class LogMagnitude(NormalizerBase):
     
     def inverse(self, x):
         return np.exp(x)
-    
+
+
 class UnitMagnitude(NormalizerBase):
     # dbscale and (0, 1) normalization
+    """
+    This is the normalizer used in the 
+    """
     pass

@@ -40,7 +40,7 @@ class CBHG(nn.Layer):
         proj_out_channels = projection_channels + \
             [in_channels]  # ensure residual connection
         for c_in, c_out in zip(proj_in_channels, proj_out_channels):
-            conv = nn.Conv1d(c_in, c_out, (3,), padding=(1, 1))
+            conv = nn.Conv1D(c_in, c_out, (3,), padding=(1, 1))
             self.projections.append(conv)
 
         if in_channels != highway_features:

@@ -21,7 +21,7 @@ class ConvBlock(nn.Layer):
 
         std = math.sqrt(4 * keep_prob / (kernel_size * in_channel))
         padding = "valid" if causal else "same"
-        conv = nn.Conv1d(in_channel, 2 * in_channel, (kernel_size, ),
+        conv = nn.Conv1D(in_channel, 2 * in_channel, (kernel_size, ),
                          padding=padding, 
                          data_format="NLC",
                          weight_attr=I.Normal(scale=std))

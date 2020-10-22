@@ -63,8 +63,7 @@ class TestTransformerDecoderLayer(unittest.TestCase):
 class TestTransformerTTS(unittest.TestCase):
     def setUp(self):
         net = tts.TransformerTTS(
-            128, 0, 64, 80, 4, 128, 
-            0.5,
+            128, 0, 64, 128, 80, 4, 128, 
             6, 6, 128, 128, 4, 
             3, 10, 0.5)
         self.net = net

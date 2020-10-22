@@ -1,7 +1,7 @@
 import paddle
 from paddle import nn
 
-class Conv1dCell(nn.Conv1d):
+class Conv1dCell(nn.Conv1D):
     """
     A subclass of Conv1d layer, which can be used like an RNN cell. It can take 
     step input and return step output. It is done by keeping an internal buffer, 
@@ -86,12 +86,12 @@ class Conv1dBatchNorm(nn.Layer):
                  weight_attr=None, bias_attr=None):
         super(Conv1dBatchNorm, self).__init__()
         # TODO(chenfeiyu): carefully initialize Conv1d's weight
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride,
+        self.conv = nn.Conv1D(in_channels, out_channels, kernel_size, stride,
                               padding=padding,
                               weight_attr=weight_attr,
                               bias_attr=bias_attr)
         # TODO: channel last, but BatchNorm1d does not support channel last layout
-        self.bn = nn.BatchNorm1d(out_channels)
+        self.bn = nn.BatchNorm1D(out_channels)
 
     def forward(self, x):
         return self.bn(self.conv(x))

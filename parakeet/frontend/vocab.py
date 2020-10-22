@@ -22,11 +22,10 @@ class Vocab(object):
         
         self.stoi = OrderedDict()
         self.stoi.update(self.special_symbols)
-        N = len(self.special_symbols)
         
         for i, s in enumerate(symbols):
             if s not in self.stoi:
-                self.stoi[s] = N +i
+                self.stoi[s] = len(self.stoi)
         self.itos = {v: k for k, v in self.stoi.items()}
 
     def __len__(self):
