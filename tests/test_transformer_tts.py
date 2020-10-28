@@ -65,7 +65,7 @@ class TestTransformerTTS(unittest.TestCase):
         net = tts.TransformerTTS(
             128, 0, 64, 128, 80, 4, 128, 
             6, 6, 128, 128, 4, 
-            3, 10, 0.5)
+            3, 10, 0.1)
         self.net = net
         
     def test_encode_io(self):
