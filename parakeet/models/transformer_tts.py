@@ -288,20 +288,47 @@ class TransformerDecoder(nn.LayerList):
 
 class MLPPreNet(nn.Layer):
     def __init__(self, d_input, d_hidden, d_output):
+        # (lin + relu + dropout) * n + last projection
         super(MLPPreNet, self).__init__()
         self.lin1 = nn.Linear(d_input, d_hidden)
-        self.lin2 = nn.Linear(d_hidden, d_output)
+        self.lin2 = nn.Linear(d_hidden, d_hidden)
+        self.lin3 = nn.Linear(d_output, d_output)
         
     def forward(self, x, dropout):
         # the original code said also use dropout in inference
         l1 = F.dropout(F.relu(self.lin1(x)), dropout, training=self.training)
         l2 = F.dropout(F.relu(self.lin2(l1)), dropout, training=self.training)
-        return l2
+        l3 = self.lin3(l2)
+        return l3
+
+
+class CNNPreNet(nn.Layer):
+    def __init__(self, d_input, d_hidden, d_output, kernel_size, n_layers, 
+                 dropout=0.):
+        # (conv + bn + relu + dropout) * n + last projection
+        super(CNNPreNet, self).__init__()
+        self.convs = nn.LayerList()
+        c_in = d_input
+        for _ in range(n_layers):
+            self.convs.append(
+                Conv1dBatchNorm(c_in, d_hidden, kernel_size, 
+                                weight_attr=I.XavierUniform(),
+                                padding="same", data_format="NLC"))
+            c_in = d_hidden
+        self.affine_out = nn.Linear(d_hidden, d_output)
+        self.dropout = dropout
+    
+    def forward(self, x):
+        for layer in self.convs:
+            x = F.dropout(F.relu(layer(x)), self.dropout, training=self.training)
+        x = self.affine_out(x)
+        return x
 
 
 class CNNPostNet(nn.Layer):
     def __init__(self, d_input, d_hidden, d_output, kernel_size, n_layers):
         super(CNNPostNet, self).__init__()
+        self.first_norm = nn.BatchNorm1D(d_output)
         self.convs = nn.LayerList()
         kernel_size = kernel_size if isinstance(kernel_size, (tuple, list)) else (kernel_size, ) 
         padding = (kernel_size[0] - 1, 0)
@@ -309,14 +336,23 @@ class CNNPostNet(nn.Layer):
             c_in = d_input if i == 0 else d_hidden
             c_out = d_output if i == n_layers - 1 else d_hidden
             self.convs.append(
-                Conv1dBatchNorm(c_in, c_out, kernel_size, padding=padding))
-        self.last_norm = nn.BatchNorm1D(d_output)
+                Conv1dBatchNorm(c_in, c_out, kernel_size, 
+                                weight_attr=I.XavierUniform(), 
+                                padding=padding))
+        # for a layer that ends with a normalization layer that is targeted to
+        # output a non zero-central output, it may take a long time to 
+        # train the scale and bias
+        # NOTE: it can also be a non-causal conv
     
     def forward(self, x):
+        # why not use pre norms
         x_in = x
-        for layer in self.convs:
-            x = paddle.tanh(layer(x))
-        x = self.last_norm(x + x_in)
+        x = self.first_norm(x)
+        for i, layer in enumerate(self.convs):
+            x = layer(x)
+            if i != (len(self.convs) - 1):
+                x = F.tanh(x)
+        x = x_in + x
         return x
 
 
@@ -326,7 +362,8 @@ class TransformerTTS(nn.Layer):
                  postnet_kernel_size, max_reduction_factor, dropout):
         super(TransformerTTS, self).__init__()
         # encoder
-        self.encoder_prenet = nn.Embedding(vocab_size, d_encoder, padding_idx)
+        self.embedding = nn.Embedding(vocab_size, d_encoder, padding_idx)
+        self.encoder_prenet = CNNPreNet(d_encoder, d_encoder, d_encoder, 5, 3, dropout)
         self.encoder_pe = pe.positional_encoding(0, 1000, d_encoder) # it may be extended later
         self.encoder_pe_scalar = self.create_parameter([1], attr=I.Constant(1.))
         self.encoder = TransformerEncoder(d_encoder, n_heads, d_ffn, encoder_layers, dropout)
@@ -366,7 +403,7 @@ class TransformerTTS(nn.Layer):
 
     def encode(self, text):
         T_enc = text.shape[-1]
-        embed = self.encoder_prenet(text)
+        embed = self.encoder_prenet(self.embedding(text))
         if embed.shape[1] > self.encoder_pe.shape[0]:
             new_T = max(embed.shape[1], self.encoder_pe.shape[0] * 2)
             self.encoder_pe = pe.positional_encoding(0, new_T, self.d_encoder)
@@ -466,7 +503,7 @@ class TransformerTTSLoss(nn.Layer):
         mask2 = mask + last_position.scale(self.stop_loss_scale - 1).astype(mask.dtype)
         stop_loss = L.masked_softmax_with_cross_entropy(stop_logits, stop_probs.unsqueeze(-1), mask2.unsqueeze(-1))
         
-        loss = mel_loss1 + mel_loss2 + stop_loss
+        loss =  mel_loss1 + mel_loss2 + stop_loss
         details = dict(
             mel_loss1=mel_loss1, # ouput mel loss
             mel_loss2=mel_loss2, # intermediate mel loss

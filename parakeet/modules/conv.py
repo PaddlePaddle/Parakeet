@@ -83,15 +83,16 @@ class Conv1dCell(nn.Conv1D):
 
 class Conv1dBatchNorm(nn.Layer):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0,
-                 weight_attr=None, bias_attr=None):
+                 weight_attr=None, bias_attr=None, data_format="NCL"):
         super(Conv1dBatchNorm, self).__init__()
         # TODO(chenfeiyu): carefully initialize Conv1d's weight
         self.conv = nn.Conv1D(in_channels, out_channels, kernel_size, stride,
                               padding=padding,
                               weight_attr=weight_attr,
-                              bias_attr=bias_attr)
+                              bias_attr=bias_attr,
+                              data_format=data_format)
         # TODO: channel last, but BatchNorm1d does not support channel last layout
-        self.bn = nn.BatchNorm1D(out_channels)
+        self.bn = nn.BatchNorm1D(out_channels, data_format=data_format)
 
     def forward(self, x):
         return self.bn(self.conv(x))

@@ -75,19 +75,16 @@ def batch_wav(minibatch, pad_value=0., dtype=np.float32):
     """pad audios to the largest length and batch them.
 
     Args:
-        minibatch (List[np.ndarray]): list of rank-1 float arrays(mono-channel audio, shape(T,)) or list of rank-2 float arrays(multi-channel audio, shape(C, T), C stands for numer of channels, T stands for length), dtype float.
+        minibatch (List[np.ndarray]): list of rank-1 float arrays(mono-channel audio, shape(T,)), dtype float.
         pad_value (float, optional): the pad value. Defaults to 0..
         dtype (np.dtype, optional): the data type of the output. Defaults to np.float32.
 
     Returns:
-        np.ndarray: the output batch. It is a rank-2 float array of shape(B, T) if the minibatch is a list of mono-channel audios, or a rank-3 float array of shape(B, C, T) if the minibatch is a list of multi-channel audios.
+        np.ndarray: shape(B, T), the output batch.
     """
 
     peek_example = minibatch[0]
-    if len(peek_example.shape) == 1:
-        mono_channel = True
-    elif len(peek_example.shape) == 2:
-        mono_channel = False
+    assert len(peek_example.shape) == 1, "we only handles mono-channel wav"
 
     # assume (channel, n_samples) or (n_samples, )
     lengths = [example.shape[-1] for example in minibatch]
@@ -96,33 +93,27 @@ def batch_wav(minibatch, pad_value=0., dtype=np.float32):
     batch = []
     for example in minibatch:
         pad_len = max_len - example.shape[-1]
-        if mono_channel:
-            batch.append(
-                np.pad(example, [(0, pad_len)],
-                       mode='constant',
-                       constant_values=pad_value))
-        else:
-            batch.append(
-                np.pad(example, [(0, 0), (0, pad_len)],
-                       mode='constant',
-                       constant_values=pad_value))
-
+        batch.append(
+            np.pad(example, [(0, pad_len)],
+                    mode='constant',
+                    constant_values=pad_value))
     return np.array(batch, dtype=dtype)
 
 
 class SpecBatcher(object):
     """A wrapper class for `batch_spec`"""
 
-    def __init__(self, pad_value=0., dtype=np.float32):
+    def __init__(self, pad_value=0., time_major=False, dtype=np.float32):
         self.pad_value = pad_value
         self.dtype = dtype
+        self.time_major = time_major
 
     def __call__(self, minibatch):
-        out = batch_spec(minibatch, pad_value=self.pad_value, dtype=self.dtype)
+        out = batch_spec(minibatch, pad_value=self.pad_value, time_major=self.time_major, dtype=self.dtype)
         return out
 
 
-def batch_spec(minibatch, pad_value=0., dtype=np.float32):
+def batch_spec(minibatch, pad_value=0., time_major=False, dtype=np.float32):
     """Pad spectra to the largest length and batch them.
 
     Args:
@@ -131,31 +122,28 @@ def batch_spec(minibatch, pad_value=0., dtype=np.float32):
         dtype (np.dtype, optional): data type of the output. Defaults to np.float32.
 
     Returns:
-        np.ndarray: a rank-3 array of shape(B, F, T) when the minibatch is a list of mono-channel spectrograms, or a rank-4 array of shape(B, C, F, T) when the minibatch is a list of multi-channel spectorgrams.
+        np.ndarray: a rank-3 array of shape(B, F, T) or (B, T, F).
     """
-    # assume (F, T) or (C, F, T)
+    # assume (F, T) or (T, F)
     peek_example = minibatch[0]
-    if len(peek_example.shape) == 2:
-        mono_channel = True
-    elif len(peek_example.shape) == 3:
-        mono_channel = False
+    assert len(peek_example.shape) == 2, "we only handles mono channel spectrogram"
 
-    # assume (channel, F, n_frame) or (F, n_frame)
-    lengths = [example.shape[-1] for example in minibatch]
+    # assume (F, n_frame) or (n_frame, F)
+    time_idx = 0 if time_major else -1
+    lengths = [example.shape[time_idx] for example in minibatch]
     max_len = np.max(lengths)
 
     batch = []
     for example in minibatch:
-        pad_len = max_len - example.shape[-1]
-        if mono_channel:
+        pad_len = max_len - example.shape[time_idx]
+        if time_major:
             batch.append(
-                np.pad(example, [(0, 0), (0, pad_len)],
-                       mode='constant',
-                       constant_values=pad_value))
+                np.pad(example, [(0, pad_len), (0, 0)],
+                        mode='constant',
+                        constant_values=pad_value))
         else:
             batch.append(
-                np.pad(example, [(0, 0), (0, 0), (0, pad_len)],
-                       mode='constant',
-                       constant_values=pad_value))
-
+                np.pad(example, [(0, 0), (0, pad_len)],
+                        mode='constant',
+                        constant_values=pad_value))
     return np.array(batch, dtype=dtype)
