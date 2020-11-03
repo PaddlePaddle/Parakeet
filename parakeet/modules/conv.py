@@ -92,8 +92,10 @@ class Conv1dBatchNorm(nn.Layer):
                               bias_attr=bias_attr,
                               data_format=data_format)
         # TODO: channel last, but BatchNorm1d does not support channel last layout
-        self.bn = nn.BatchNorm1D(out_channels, data_format=data_format)
+        self.bn = nn.BatchNorm1D(out_channels, momentum=0.99, epsilon=1e-3, data_format=data_format)
 
     def forward(self, x):
-        return self.bn(self.conv(x))
+        x = self.conv(x)
+        x = self.bn(x)
+        return x
     

@@ -3,6 +3,7 @@ import matplotlib
 from matplotlib import cm, pyplot
 
 def pack_attention_images(attention_weights, rotate=False):
+    # add a box
     attention_weights = np.pad(attention_weights, 
                                [(0, 0), (1, 1), (1, 1)], 
                                mode="constant",
@@ -25,3 +26,6 @@ def pack_attention_images(attention_weights, rotate=False):
     img = np.block([[total[i, j] for j in range(cols)] for i in range(rows)])
     return img
 
+
+def min_max_normalize(v):
+    return (v - v.min()) / (v.max() - v.min())

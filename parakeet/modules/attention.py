@@ -27,7 +27,7 @@ def scaled_dot_product_attention(q, k, v, mask=None, dropout=0.0, training=True)
     scaled_logit = paddle.scale(qk, 1.0 / math.sqrt(d))
     
     if mask is not None:
-        scaled_logit += paddle.scale((1.0 - mask), -1e12) # hard coded here
+        scaled_logit += paddle.scale((1.0 - mask), -1e9) # hard coded here
     
     attn_weights = F.softmax(scaled_logit, axis=-1)
     attn_weights = F.dropout(attn_weights, dropout, training=training)

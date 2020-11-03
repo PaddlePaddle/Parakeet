@@ -39,7 +39,9 @@ class PositionwiseFFN(nn.Layer):
         Returns:
             Tensor: shape(*, input_size), the output tensor.
         """
-        return self.linear2(self.dropout(F.relu(self.linear1(x))))
+        l1 = self.dropout(F.relu(self.linear1(x)))
+        l2 = self.linear2(l1)
+        return l2
 
 
 class TransformerEncoderLayer(nn.Layer):
