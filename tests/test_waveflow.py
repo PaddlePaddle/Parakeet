@@ -114,10 +114,10 @@ class TestWaveFlow(unittest.TestCase):
         x = paddle.randn([4, 32 * 8 ])
         condition = paddle.randn([4, 7, 32 * 8])
         net = waveflow.WaveFlow(2, 8, 8, 16, 7, (3, 3))
-        z, logs_list = net(x, condition)
+        z, logs_det_jacobian = net(x, condition)
 
-        self.assertTupleEqual(z.numpy().shape, (4, 8, 32))
-        self.assertTupleEqual(logs_list[0].numpy().shape, (4, 1, 7, 32))
+        self.assertTupleEqual(z.numpy().shape, (4, 32 * 8))
+        self.assertTupleEqual(logs_det_jacobian.numpy().shape, (1,))
 
     def test_inverse(self):
         z = paddle.randn([4, 32 * 8 ])
@@ -128,7 +128,7 @@ class TestWaveFlow(unittest.TestCase):
 
         with paddle.no_grad():
             x = net.inverse(z, condition)
-        self.assertTupleEqual(x.numpy().shape, (4, 8, 32))
+        self.assertTupleEqual(x.numpy().shape, (4, 32 * 8))
         
 
         
