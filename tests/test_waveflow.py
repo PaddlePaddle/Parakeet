@@ -83,7 +83,7 @@ class TestFlow(unittest.TestCase):
     def test_inverse_row(self):
         net = waveflow.Flow(8, 16, 7, (3, 3), 8)
         net.eval()
-        net.start_sequence()
+        net._start_sequence()
 
         x_row = paddle.randn([4, 1, 1, 32]) # last row
         condition_row = paddle.randn([4, 7, 1, 32])
@@ -97,7 +97,6 @@ class TestFlow(unittest.TestCase):
     def test_inverse(self):
         net = waveflow.Flow(8, 16, 7, (3, 3), 8)
         net.eval()
-        net.start_sequence()
 
         z = paddle.randn([4, 1, 8, 32])
         condition = paddle.randn([4, 7, 8, 32])
@@ -129,6 +128,3 @@ class TestWaveFlow(unittest.TestCase):
         with paddle.no_grad():
             x = net.inverse(z, condition)
         self.assertTupleEqual(x.numpy().shape, (4, 32 * 8))
-        
-
-        
