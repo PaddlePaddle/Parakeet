@@ -2,6 +2,8 @@
 安装
 ==============
 
+.. toctree::
+    :maxdepth: 2
 
 安装 PaddlePaddle
 ---------------------
