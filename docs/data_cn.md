@@ -167,7 +167,7 @@ ljspeech = TransformDataset(meta, transform)
 
 当然也可以选择专门写一个转换脚本把转换后的数据集保存下来，然后再写一个适配的 Dataset 子类去加载这些保存的数据。实际这么做的效率会更高。
 
-接下来我们需要写一个函数将多个样例组成批次。因为其中的 mel 频谱是序列数据，所以我们需要进行 padding. 
+接下来我们需要写一个可调用对象将多个样例组成批次。因为其中的 ids 和 mel 频谱是序列数据，所以我们需要进行 padding. 
 
 ```python
 class LJSpeechCollector(object):
@@ -187,7 +187,7 @@ class LJSpeechCollector(object):
         return ids, np.transpose(mels, [0, 2, 1]), stop_probs
 ```
 
-以上的组件准备就续后，可以准备整个数据流。
+以上的组件准备就绪后，可以准备整个数据流。
 
 ```python
 def create_dataloader(source_path, valid_size, batch_size):
@@ -213,4 +213,4 @@ def create_dataloader(source_path, valid_size, batch_size):
     return train_loader, valid_loader
 ```
 
-train_loader 和 valid_loader 可以被迭代。对其迭代器使用 next, 返回的是 paddle.Tensor 的 list, 代表一个 batch，这些就可以直接用作 `paddle.nn.Layer` 的输入了。
+train_loader 和 valid_loader 可以被迭代。对其迭代器使用 next, 返回的是 `paddle.Tensor` 的 list, 代表一个 batch，这些就可以直接用作 `paddle.nn.Layer` 的输入了。
