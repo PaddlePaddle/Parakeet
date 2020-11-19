@@ -26,7 +26,7 @@ def summary(layer: nn.Layer):
     print("layer has {} parameters, {} elements.".format(num_params,
                                                          num_elements))
 
-def gradien_norm(layer: nn.Layer):
+def gradient_norm(layer: nn.Layer):
     grad_norm_dict = {}
     for name, param in layer.state_dict().items():
         if param.trainable:
