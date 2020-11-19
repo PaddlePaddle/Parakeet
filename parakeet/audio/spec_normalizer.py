@@ -41,4 +41,16 @@ class UnitMagnitude(NormalizerBase):
     """
     This is the normalizer used in the 
     """
-    pass
+    def __init__(self, min=1e-5):
+        self.min = min
+    
+    def transform(self, x):
+        db_scale = 20 * np.log10(np.maximum(self.min, x)) - 20
+        normalized = (db_scale + 100) / 100
+        clipped = np.clip(normalized, 0, 1)
+        return clipped
+    
+    def inverse(self, x):
+        denormalized = np.clip(x, 0, 1) * 100 - 100
+        out = np.exp((denormalized + 20) / 20 * np.log(10))
+        return out
