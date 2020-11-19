@@ -13,6 +13,5 @@
 # limitations under the License.
 
 from .dataset import *
-from .datasets import *
 from .sampler import *
 from .batch import *
