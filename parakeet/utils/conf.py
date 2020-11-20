@@ -7,10 +7,10 @@ import yaml
 class Config(attrdict.AttrDict):
     def dump(self, path):
         with open(path, 'wt') as f:
-            yaml.safe_dump(dict(self), f)
+            yaml.safe_dump(dict(self), f, default_flow_style=None)
 
     def dumps(self):
-        return yaml.safe_dump(dict(self))
+        return yaml.safe_dump(dict(self), default_flow_style=None)
 
     @classmethod
     def from_file(cls, path):
