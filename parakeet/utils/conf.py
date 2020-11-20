@@ -25,6 +25,7 @@ class Config(attrdict.AttrDict):
 
     def merge_args(self, args):
         args_dict = vars(args)
+        args_dict.pop("config") # exclude config file path
         nested_dict = flatdict.FlatDict(args_dict, delimiter=".").as_dict()
         self.update(nested_dict)
         
@@ -36,6 +37,9 @@ class Config(attrdict.AttrDict):
         return flat
 
     def add_options_to_parser(self, parser):
+        parser.add_argument(
+            "--config", type=str, 
+            help="extra config file to override the default config")
         flat = self.flatten()
         g = parser.add_argument_group("config file options")
         for k, v in flat.items():
