@@ -1,16 +1,16 @@
 import attrdict
 import flatdict
 import argparse
-from ruamel import yaml
+import yaml
 
 
 class Config(attrdict.AttrDict):
     def dump(self, path):
         with open(path, 'wt') as f:
-            yaml.safe_dump(dict(self), f, default_flow_style=False)
+            yaml.safe_dump(dict(self), f)
 
     def dumps(self):
-        return yaml.safe_dump(dict(self), default_flow_style=False)
+        return yaml.safe_dump(dict(self))
 
     @classmethod
     def from_file(cls, path):
