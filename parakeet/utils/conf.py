@@ -26,7 +26,7 @@ class Config(attrdict.AttrDict):
     def merge_args(self, args):
         args_dict = vars(args)
         # remove options that is not passed via CLI
-        for k, v in args_dict:
+        for k, v in args_dict.items():
             if v is None:
                 args_dict.pop(k)
         args_dict.pop("config") # exclude config file path
