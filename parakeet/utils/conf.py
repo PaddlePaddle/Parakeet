@@ -43,5 +43,5 @@ class Config(attrdict.AttrDict):
         flat = self.flatten()
         g = parser.add_argument_group("config file options")
         for k, v in flat.items():
-            g.add_argument("--{}".format(k), type=type(v), default=v, 
+            g.add_argument("--{}".format(k), type=type(v), 
                            help="config file option: {}".format(k))
