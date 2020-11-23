@@ -21,17 +21,17 @@ class Config(attrdict.AttrDict):
     def merge_file(self, path):
         with open(path, 'rt') as f:
             other = yaml.safe_load(f)
-        self.update(other)
+        self.update(self + other)
 
     def merge_args(self, args):
         args_dict = vars(args)
         args_dict.pop("config") # exclude config file path
         args_dict = {k: v for k, v in args_dict.items() if v is not None}
         nested_dict = flatdict.FlatDict(args_dict, delimiter=".").as_dict()
-        self.update(nested_dict)
+        self.update(self + nested_dict)
         
     def merge(self, other):
-        self.update(other)
+        self.update(self + other)
 
     def flatten(self):
         flat = flatdict.FlatDict(self, delimiter='.')
