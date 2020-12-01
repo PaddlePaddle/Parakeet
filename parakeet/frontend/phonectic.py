@@ -44,6 +44,7 @@ class English(Phonetics):
     def __call__(self, sentence):
         return self.numericalize(self.phoneticize(sentence))
     
+    @property
     def vocab_size(self):
         return len(self.vocab)
 
@@ -88,6 +89,7 @@ class Chinese(Phonetics):
     def __call__(self, sentence):
         return self.numericalize(self.phoneticize(sentence))
     
+    @property
     def vocab_size(self):
         return len(self.vocab)
     

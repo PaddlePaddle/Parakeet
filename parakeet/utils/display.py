@@ -26,6 +26,14 @@ def pack_attention_images(attention_weights, rotate=False):
     img = np.block([[total[i, j] for j in range(cols)] for i in range(rows)])
     return img
 
+def add_attention_plots(writer, tag, attention_weights, global_step):
+    attns = [attn[0].numpy() for attn in attention_weights]
+    for i, attn in enumerate(attns):
+        img = pack_attention_images(attn)
+        writer.add_image(f"{tag}/{i}", 
+                        cm.plasma(img),
+                        global_step=global_step,
+                        dataformats="HWC")
 
 def min_max_normalize(v):
     return (v - v.min()) / (v.max() - v.min())
