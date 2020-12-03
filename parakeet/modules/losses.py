@@ -23,9 +23,3 @@ def masked_l1_loss(prediction, target, mask):
 def masked_softmax_with_cross_entropy(logits, label, mask, axis=-1):
     ce = F.softmax_with_cross_entropy(logits, label, axis=axis)
     return weighted_mean(ce, mask)
-
-
-
-
-    
-
