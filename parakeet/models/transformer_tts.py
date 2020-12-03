@@ -491,7 +491,7 @@ class TransformerTTS(nn.Layer):
             decoder_output = paddle.concat([decoder_output, mel_output[:, -self.r:, :]], 1)
             
             # stop condition: (if any ouput frame of the output multiframes hits the stop condition)
-            if paddle.any(paddle.argmax(stop_logits[0, :, :], axis=-1) == self.stop_prob_index):
+            if paddle.any(paddle.argmax(stop_logits[0, -self.r:, :], axis=-1) == self.stop_prob_index):
                 if verbose:
                     print("Hits stop condition.")
                 break
