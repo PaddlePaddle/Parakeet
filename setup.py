@@ -66,7 +66,8 @@ setup_info = dict(
         'llvmlite==0.31.0',
         'opencc',
         'g2p_en',
-        'g2pM'
+        'g2pM',
+        'yacs',
     ],
 
     # Package info
