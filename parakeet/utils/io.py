@@ -132,13 +132,13 @@ def load_parameters(model,
                 k].dtype:
             model_dict[k] = v.astype(state_dict[k].numpy().dtype)
 
-    model.set_dict(model_dict)
+    model.set_state_dict(model_dict)
 
     print("[checkpoint] Rank {}: loaded model from {}.pdparams".format(
         local_rank, checkpoint_path))
 
     if optimizer and optimizer_dict:
-        optimizer.set_dict(optimizer_dict)
+        optimizer.set_state_dict(optimizer_dict)
         print("[checkpoint] Rank {}: loaded optimizer state from {}.pdopt".
               format(local_rank, checkpoint_path))
 

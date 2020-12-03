@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .audio import AudioProcessor
+from .spec_normalizer import NormalizerBase, LogMagnitude

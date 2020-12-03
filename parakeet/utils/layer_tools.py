@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-import paddle.fluid.dygraph as dg
+from paddle import nn
 
 
-def summary(layer):
+def summary(layer: nn.Layer):
     num_params = num_elements = 0
     print("layer summary:")
     for name, param in layer.state_dict().items():
@@ -26,12 +26,18 @@ def summary(layer):
     print("layer has {} parameters, {} elements.".format(num_params,
                                                          num_elements))
 
+def gradient_norm(layer: nn.Layer):
+    grad_norm_dict = {}
+    for name, param in layer.state_dict().items():
+        if param.trainable:
+            grad = param.gradient()
+            grad_norm_dict[name] = np.linalg.norm(grad) / grad.size
+    return grad_norm_dict
 
-def freeze(layer):
+def freeze(layer: nn.Layer):
     for param in layer.parameters():
         param.trainable = False
 
-
-def unfreeze(layer):
+def unfreeze(layer: nn.Layer):
     for param in layer.parameters():
         param.trainable = True
