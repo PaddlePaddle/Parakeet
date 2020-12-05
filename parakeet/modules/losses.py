@@ -14,8 +14,9 @@ def weighted_mean(input, weight):
     Returns:
         Tensor: shape(1,), weighted mean tensor with the same dtype as input.
     """
-    weight = paddle.cast(weight, input.dtype) 
-    return paddle.mean(input * weight)
+    weight = paddle.cast(weight, input.dtype)
+    broadcast_factor = input.numel() / weight.numel()
+    return paddle.sum(input * weight) / (paddle.sum(weight) * broadcast_factor)
 
 def masked_l1_loss(prediction, target, mask):
     abs_error = F.l1_loss(prediction, target, reduction='none')
