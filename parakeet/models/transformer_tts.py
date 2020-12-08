@@ -273,12 +273,14 @@ class MLPPreNet(nn.Layer):
         super(MLPPreNet, self).__init__()
         self.lin1 = nn.Linear(d_input, d_hidden)
         self.lin2 = nn.Linear(d_hidden, d_hidden)
+        self.lin3 = nn.Linear(d_hidden, d_hidden)
         self.dropout = dropout
         
     def forward(self, x, dropout):
         l1 = F.dropout(F.relu(self.lin1(x)), self.dropout, training=self.training)
         l2 = F.dropout(F.relu(self.lin2(l1)), self.dropout, training=self.training)
-        return l2
+        l3 = self.lin3(l2)
+        return l3
 
 # NOTE: not used in 
 class CNNPreNet(nn.Layer):
@@ -317,6 +319,7 @@ class CNNPostNet(nn.Layer):
                 Conv1dBatchNorm(c_in, c_out, kernel_size, 
                                 weight_attr=I.XavierUniform(), 
                                 padding=padding))
+        self.last_bn = nn.BatchNorm1D(d_output)
         # for a layer that ends with a normalization layer that is targeted to
         # output a non zero-central output, it may take a long time to 
         # train the scale and bias
@@ -328,7 +331,7 @@ class CNNPostNet(nn.Layer):
             x = layer(x)
             if i != (len(self.convs) - 1):
                 x = F.tanh(x)
-        x = x_in + x
+        x = self.last_bn(x_in + x)
         return x
 
 
@@ -491,7 +494,7 @@ class TransformerTTS(nn.Layer):
             decoder_output = paddle.concat([decoder_output, mel_output[:, -self.r:, :]], 1)
             
             # stop condition: (if any ouput frame of the output multiframes hits the stop condition)
-            if paddle.any(paddle.argmax(stop_logits[0, :, :], axis=-1) == self.stop_prob_index):
+            if paddle.any(paddle.argmax(stop_logits[0, -self.r:, :], axis=-1) == self.stop_prob_index):
                 if verbose:
                     print("Hits stop condition.")
                 break
@@ -523,6 +526,34 @@ class TransformerTTSLoss(nn.Layer):
         mel_len = mask.shape[-1]
         last_position = F.one_hot(mask.sum(-1).astype("int64") - 1, num_classes=mel_len)
         mask2 = mask + last_position.scale(self.stop_loss_scale - 1).astype(mask.dtype)
+        stop_loss = L.masked_softmax_with_cross_entropy(
+            stop_logits, stop_probs.unsqueeze(-1), mask2.unsqueeze(-1))
+        
+        loss =  mel_loss1 + mel_loss2 + stop_loss
+        losses = dict(
+            loss=loss,           # total loss
+            mel_loss1=mel_loss1, # ouput mel loss
+            mel_loss2=mel_loss2, # intermediate mel loss
+            stop_loss=stop_loss  # stop prob loss
+        )
+        return losses
+
+
+class AdaptiveTransformerTTSLoss(nn.Layer):
+    def __init__(self):
+        super(AdaptiveTransformerTTSLoss, self).__init__()
+    
+    def forward(self, mel_output, mel_intermediate, mel_target, stop_logits, stop_probs):
+        mask = masking.feature_mask(mel_target, axis=-1, dtype=mel_target.dtype)
+        mask1 = paddle.unsqueeze(mask, -1)
+        mel_loss1 = L.masked_l1_loss(mel_output, mel_target, mask1)
+        mel_loss2 = L.masked_l1_loss(mel_intermediate, mel_target, mask1)
+        
+        batch_size, mel_len = mask.shape
+        valid_lengths = mask.sum(-1).astype("int64")
+        last_position = F.one_hot(valid_lengths - 1, num_classes=mel_len)
+        stop_loss_scale = valid_lengths.sum() / batch_size - 1
+        mask2 = mask + last_position.scale(stop_loss_scale - 1).astype(mask.dtype)
         stop_loss = L.masked_softmax_with_cross_entropy(
             stop_logits, stop_probs.unsqueeze(-1), mask2.unsqueeze(-1))
         
