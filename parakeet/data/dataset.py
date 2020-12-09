@@ -16,6 +16,11 @@ import six
 import paddle
 from paddle.io import Dataset
 
+__all__ = [
+    "split", "TransformDataset", "CacheDataset", "TupleDataset", 
+    "DictDataset", "SliceDataset", "SubsetDataset", "FilterDataset", 
+    "ChainDataset",
+]
 
 def split(dataset, first_size):
     """A utility function to split a dataset into two datasets."""

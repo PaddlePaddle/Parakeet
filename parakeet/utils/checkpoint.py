@@ -14,15 +14,19 @@
 
 import os
 import time
-
 import numpy as np
 import paddle
 from paddle import distributed as dist
+from paddle.nn import Layer
+from paddle.optimizer import Optimizer
+
 from parakeet.utils import mp_tools
 
+__all__ = ["load_parameters", "save_parameters"]
 
-def _load_latest_checkpoint(checkpoint_dir):
-    """Get the iteration number corresponding to the latest saved checkpoint
+
+def _load_latest_checkpoint(checkpoint_dir: str) -> int:
+    """Get the iteration number corresponding to the latest saved checkpoint.
 
     Args:
         checkpoint_dir (str): the directory where checkpoint is saved.
@@ -31,18 +35,17 @@ def _load_latest_checkpoint(checkpoint_dir):
         int: the latest iteration number.
     """
     checkpoint_record = os.path.join(checkpoint_dir, "checkpoint")
-    # Create checkpoint index file if not exist.
     if (not os.path.isfile(checkpoint_record)):
         return 0
 
     # Fetch the latest checkpoint index.
-    with open(checkpoint_record, "r") as handle:
+    with open(checkpoint_record, "rt") as handle:
         latest_checkpoint = handle.readline().split()[-1]
         iteration = int(latest_checkpoint.split("-")[-1])
 
     return iteration
 
-def _save_checkpoint(checkpoint_dir, iteration):
+def _save_checkpoint(checkpoint_dir: str, iteration: int):
     """Save the iteration number of the latest model to be checkpointed.
 
     Args:
@@ -54,7 +57,7 @@ def _save_checkpoint(checkpoint_dir, iteration):
     """
     checkpoint_record = os.path.join(checkpoint_dir, "checkpoint")
     # Update the latest checkpoint index.
-    with open(checkpoint_record, "w") as handle:
+    with open(checkpoint_record, "wt") as handle:
         handle.write("model_checkpoint_path: step-{}".format(iteration))
 
 def load_parameters(model,
@@ -64,8 +67,8 @@ def load_parameters(model,
     """Load a specific model checkpoint from disk. 
 
     Args:
-        model (obj): model to load parameters.
-        optimizer (obj, optional): optimizer to load states if needed.
+        model (Layer): model to load parameters.
+        optimizer (Optimizer, optional): optimizer to load states if needed.
             Defaults to None.
         checkpoint_dir (str, optional): the directory where checkpoint is saved.
         checkpoint_path (str, optional): if specified, load the checkpoint
@@ -113,8 +116,8 @@ def save_parameters(checkpoint_dir, iteration, model, optimizer=None):
     Args:
         checkpoint_dir (str): the directory where checkpoint is saved.
         iteration (int): the latest iteration number.
-        model (obj): model to be checkpointed.
-        optimizer (obj, optional): optimizer to be checkpointed.
+        model (Layer): model to be checkpointed.
+        optimizer (Optimizer, optional): optimizer to be checkpointed.
             Defaults to None.
 
     Returns:

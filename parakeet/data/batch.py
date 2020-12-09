@@ -17,6 +17,10 @@ Batch functions for text sequences, audio and spectrograms are provided.
 """
 import numpy as np
 
+__all__ = [
+    "batch_text_id", "batch_wav", "batch_spec",
+    "TextIDBatcher", "WavBatcher", "SpecBatcher",
+]
 
 class TextIDBatcher(object):
     """A wrapper class for `batch_text_id`."""
