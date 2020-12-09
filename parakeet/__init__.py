@@ -14,4 +14,4 @@
 
 __version__ = "0.2.0"
 
-from parakeet import audio, data, datastes, frontend, models, modules, training, utils
+from parakeet import audio, data, datasets, frontend, models, modules, training, utils

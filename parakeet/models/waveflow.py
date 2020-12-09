@@ -141,6 +141,15 @@ class ResidualBlock(nn.Layer):
             raise ValueError("Only use start sequence at evaluation mode.")
         self._conv_buffer = None
 
+        # NOTE: call self.conv's weight norm hook expliccitly since 
+        # its weight will be visited directly in `add_input` without 
+        # calling its `__call__` method. If we do not trigger the weight 
+        # norm hook, the weight may be outdated. e.g. after loading from 
+        # a saved checkpoint 
+        # see also: https://github.com/pytorch/pytorch/issues/47588
+        for hook in self.conv._forward_pre_hooks.values():
+            hook(self.conv, None)
+
     def add_input(self, x_row, condition_row):
         """Compute the output for a row and update the buffer.
 
@@ -158,10 +167,6 @@ class ResidualBlock(nn.Layer):
         self._update_buffer(x_row)
 
         rw = self.rw
-        # call self.conv's weight norm hook expliccitly since its __call__ 
-        # method is not called here
-        for hook in self.conv._forward_pre_hooks.values():
-            hook(self.conv, self._conv_buffer)
         x_row = F.conv2d(
             self._conv_buffer,
             self.conv.weight,
