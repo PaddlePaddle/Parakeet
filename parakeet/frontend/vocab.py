@@ -2,6 +2,10 @@ from typing import Dict, Iterable, List
 from ruamel import yaml
 from collections import OrderedDict
 
+
+__all__ = ["Vocab"]
+
+
 class Vocab(object):
     def __init__(self, symbols: Iterable[str], 
                   padding_symbol="<pad>",

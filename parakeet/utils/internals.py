@@ -1,6 +1,9 @@
 import numpy as np
 from paddle.framework import core
 
+__all__ = ["convert_dtype_to_np_dtype_"]
+
+
 def convert_dtype_to_np_dtype_(dtype):
     """
     Convert paddle's data type to corrsponding numpy data type.

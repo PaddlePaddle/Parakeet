@@ -1,6 +1,8 @@
 from paddle.io import Dataset
 from pathlib import Path
 
+__all__ = ["LJSpeechMetaData"]
+
 class LJSpeechMetaData(Dataset):
     def __init__(self, root):
         self.root = Path(root).expanduser()

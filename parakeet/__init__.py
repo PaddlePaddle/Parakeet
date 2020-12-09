@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.0.0"
+__version__ = "0.2.0"
 
-from parakeet import data, frontend, models, modules
+from parakeet import audio, data, datastes, frontend, models, modules, training, utils

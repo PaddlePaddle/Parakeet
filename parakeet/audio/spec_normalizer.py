@@ -13,6 +13,9 @@ https://github.com/mozilla/TTS/issues/377
 """
 import numpy as np
 
+__all__ = ["NormalizerBase", "LogMagnitude", "UnitMagnitude"]
+
+
 class NormalizerBase(object):
     def transform(self, spec):
         raise NotImplementedError("transform must be implemented")

@@ -6,6 +6,9 @@ from parakeet.frontend import Vocab
 from opencc import OpenCC
 from parakeet.frontend.punctuation import get_punctuations
 
+__all__ = ["Phonetics", "English", "Chinese"]
+
+
 class Phonetics(ABC):
     @abstractmethod
     def __call__(self, sentence):

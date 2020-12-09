@@ -2,6 +2,8 @@ from paddle.io import Dataset
 import os
 import librosa
 
+__all__ = ["AudioFolderDataset"]
+
 class AudioFolderDataset(Dataset):
     def __init__(self, path, sample_rate, extension="wav"):
         self.root = os.path.expanduser(path)

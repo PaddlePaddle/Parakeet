@@ -32,11 +32,11 @@ def quantize(values, n_bands):
     """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in [0, n_bands).
 
     Args:
-        values (Variable): dtype: flaot32 or float64. the floating point value.
+        values (Tensor): dtype: flaot32 or float64. the floating point value.
         n_bands (int): the number of bands. The output integer Tensor's value is in the range [0, n_bans).
 
     Returns:
-        Variable: the quantized tensor, dtype: int64.
+        Tensor: the quantized tensor, dtype: int64.
     """
     quantized = paddle.cast((values + 1.0) / 2.0 * n_bands, "int64")
     return quantized
@@ -46,11 +46,11 @@ def dequantize(quantized, n_bands, dtype=None):
     """Linearlly dequantize an integer Tensor into a float Tensor in the range [-1, 1).
 
     Args:
-        quantized (Variable): dtype: int64. The quantized value in the range [0, n_bands).
+        quantized (Tensor): dtype: int64. The quantized value in the range [0, n_bands).
         n_bands (int): number of bands. The input integer Tensor's value is in the range [0, n_bans).
 
     Returns:
-        Variable: the dequantized tensor, dtype is specified by dtype.
+        Tensor: the dequantized tensor, dtype is specified by dtype.
     """
     dtype = dtype or paddle.get_default_dtype()
     value = (paddle.cast(quantized, dtype) + 0.5) * (2.0 / n_bands) - 1.0
@@ -61,12 +61,12 @@ def crop(x, audio_start, audio_length):
     """Crop the upsampled condition to match audio_length. The upsampled condition has the same time steps as the whole audio does. But since audios are sliced to 0.5 seconds randomly while conditions are not, upsampled conditions should also be sliced to extaclt match the time steps of the audio slice.
 
     Args:
-        x (Variable): shape(B, C, T), dtype float32, the upsample condition.
-        audio_start (Variable): shape(B, ), dtype: int64, the index the starting point.
+        x (Tensor): shape(B, C, T), dtype float32, the upsample condition.
+        audio_start (Tensor): shape(B,), dtype: int64, the index the starting point.
         audio_length (int): the length of the audio (number of samples it contaions).
 
     Returns:
-        Variable: shape(B, C, audio_length), cropped condition.
+        Tensor: shape(B, C, audio_length), cropped condition.
     """
     # crop audio
     slices = []  # for each example
