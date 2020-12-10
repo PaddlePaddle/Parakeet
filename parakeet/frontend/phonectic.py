@@ -16,13 +16,10 @@ from abc import ABC, abstractmethod
 from typing import Union
 from g2p_en import G2p
 from g2pM import G2pM
-import re
-import unicodedata
-from builtins import str as unicode
 from parakeet.frontend import Vocab
 from opencc import OpenCC
 from parakeet.frontend.punctuation import get_punctuations
-from parakeet.frontend.normalizer.numbers import normalize_numbers
+from parakeet.frontend.normalizer.normalizer import normalize
 
 __all__ = ["Phonetics", "English", "EnglishCharacter", "Chinese"]
 
@@ -77,29 +74,16 @@ class English(Phonetics):
 class EnglishCharacter(Phonetics):
     def __init__(self):
         self.backend = G2p()
-        self.phonemes = list(self.backend.graphemes)
+        self.graphemes = list(self.backend.graphemes)
         self.punctuations = get_punctuations("en")
-        self.vocab = Vocab(self.phonemes + self.punctuations)
-
-    def _prepocessing(self, text):
-        # preprocessing
-        text = unicode(text)
-        text = normalize_numbers(text)
-        text = ''.join(
-            char for char in unicodedata.normalize('NFD', text)
-            if unicodedata.category(char) != 'Mn')  # Strip accents
-        text = text.lower()
-        text = re.sub(r"[^ a-z'.,?!\-]", "", text)
-        text = text.replace("i.e.", "that is")
-        text = text.replace("e.g.", "for example")
-        return text
+        self.vocab = Vocab(self.graphemes + self.punctuations)
 
     def phoneticize(self, sentence):
         start = self.vocab.start_symbol
         end = self.vocab.end_symbol
 
         chars = ([] if start is None else [start]) \
-                 + _prepocessing(sentence) \
+                 + normalize(sentence) \
                  + ([] if end is None else [end])
         return chars
 
