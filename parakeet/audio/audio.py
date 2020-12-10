@@ -16,6 +16,8 @@ import librosa
 import soundfile as sf
 import numpy as np
 
+__all__ = ["AudioProcessor"]
+
 class AudioProcessor(object):
     def __init__(self,
                  sample_rate:int,
@@ -26,7 +28,7 @@ class AudioProcessor(object):
                  f_min:int=0,
                  f_max:int=None,
                  window="hann",
-                 center="True",
+                 center=True,
                  pad_mode="reflect"):
         # read & write
         self.sample_rate = sample_rate

@@ -4,6 +4,38 @@ from paddle.nn import functional as F
 from scipy import signal
 import numpy as np 
 
+__all__ = ["quantize", "dequantize", "STFT"]
+
+
+def quantize(values, n_bands):
+    """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in [0, n_bands).
+
+    Args:
+        values (Tensor): dtype: flaot32 or float64. the floating point value.
+        n_bands (int): the number of bands. The output integer Tensor's value is in the range [0, n_bans).
+
+    Returns:
+        Tensor: the quantized tensor, dtype: int64.
+    """
+    quantized = paddle.cast((values + 1.0) / 2.0 * n_bands, "int64")
+    return quantized
+
+
+def dequantize(quantized, n_bands, dtype=None):
+    """Linearlly dequantize an integer Tensor into a float Tensor in the range [-1, 1).
+
+    Args:
+        quantized (Tensor): dtype: int64. The quantized value in the range [0, n_bands).
+        n_bands (int): number of bands. The input integer Tensor's value is in the range [0, n_bans).
+        dtype (str, optional): data type of the output.
+    Returns:
+        Tensor: the dequantized tensor, dtype is specified by dtype.
+    """
+    dtype = dtype or paddle.get_default_dtype()
+    value = (paddle.cast(quantized, dtype) + 0.5) * (2.0 / n_bands) - 1.0
+    return value
+
+
 class STFT(nn.Layer):
     def __init__(self, n_fft, hop_length, win_length, window="hanning"):
         """A module for computing differentiable stft transform. See `librosa.stft` for more details.

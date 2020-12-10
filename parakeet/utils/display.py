@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib
 from matplotlib import cm, pyplot
 
+__all__ = ["pack_attention_images", "add_attention_plots", "min_max_normalize"]
+
+
 def pack_attention_images(attention_weights, rotate=False):
     # add a box
     attention_weights = np.pad(attention_weights, 

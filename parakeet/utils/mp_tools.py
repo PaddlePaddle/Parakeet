@@ -2,6 +2,9 @@ import paddle
 from paddle import distributed as dist
 from functools import wraps
 
+__all__ = ["rank_zero_only"]
+
+
 def rank_zero_only(func):
     local_rank = dist.get_rank()
 
