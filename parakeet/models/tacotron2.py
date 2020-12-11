@@ -29,7 +29,7 @@ class DecoderPreNet(nn.Layer):
                  d_input: int,
                  d_hidden: int,
                  d_output: int,
-                 dropout_rate: int=0.2):
+                 dropout_rate: float=0.2):
         super().__init__()
 
         self.dropout_rate = dropout_rate
@@ -49,7 +49,7 @@ class DecoderPostNet(nn.Layer):
                  kernel_size: int=5,
                  padding: int=0,
                  num_layers: int=5,
-                 dropout=0.1):
+                 dropout: float=0.1):
         super().__init__()
         self.dropout = dropout
         self.num_layers = num_layers
