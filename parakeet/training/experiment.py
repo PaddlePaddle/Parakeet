@@ -59,6 +59,7 @@ class ExperimentBase(object):
         self.args = args
 
     def setup(self):
+        paddle.set_device(self.args.device)
         if self.parallel:
             self.init_parallel()
 
