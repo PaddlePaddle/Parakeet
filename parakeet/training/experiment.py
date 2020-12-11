@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import time
 import logging
 from pathlib import Path
@@ -11,6 +25,7 @@ from collections import defaultdict
 import parakeet
 from parakeet.utils import checkpoint, mp_tools
 
+
 class ExperimentBase(object):
     """
     An experiment template in order to structure the training code and take care of saving, loading, logging, visualization stuffs. It's intended to be flexible and simple. 
@@ -22,7 +37,7 @@ class ExperimentBase(object):
     We have some conventions to follow.
     1. Experiment should have `.model`, `.optimizer`, `.train_loader` and `.valid_loader`, `.config`, `.args` attributes.
     2. The config should have a `.training` field, which has `valid_interval`, `save_interval` and `max_iteration` keys. It is used as the trigger to invoke validation, checkpointing and stop of the experiment.
-    3. There are three method, namely `train_batch`, `valid`, `setup_model` and `setup_dataloader` that should be implemented.
+    3. There are four method, namely `train_batch`, `valid`, `setup_model` and `setup_dataloader` that should be implemented.
 
     Feel free to add/overwrite other methods and standalone functions if you need.
 
@@ -54,6 +69,7 @@ class ExperimentBase(object):
         main(config, args)
 
     """
+
     def __init__(self, config, args):
         self.config = config
         self.args = args
@@ -67,7 +83,7 @@ class ExperimentBase(object):
         self.setup_visualizer()
         self.setup_logger()
         self.setup_checkpointer()
-        
+
         self.setup_dataloader()
         self.setup_model()
 
@@ -82,13 +98,13 @@ class ExperimentBase(object):
         dist.init_parallel_env()
 
     def save(self):
-        checkpoint.save_parameters(
-            self.checkpoint_dir, self.iteration, self.model, self.optimizer)
+        checkpoint.save_parameters(self.checkpoint_dir, self.iteration,
+                                   self.model, self.optimizer)
 
     def resume_or_load(self):
         iteration = checkpoint.load_parameters(
-            self.model, 
-            self.optimizer, 
+            self.model,
+            self.optimizer,
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_path=self.args.checkpoint_path)
         self.iteration = iteration
@@ -115,10 +131,10 @@ class ExperimentBase(object):
 
             if self.iteration % self.config.training.valid_interval == 0:
                 self.valid()
-        
+
             if self.iteration % self.config.training.save_interval == 0:
                 self.save()
-    
+
     def run(self):
         self.resume_or_load()
         try:
@@ -126,7 +142,7 @@ class ExperimentBase(object):
         except KeyboardInterrupt:
             self.save()
             exit(-1)
-    
+
     @mp_tools.rank_zero_only
     def setup_output_dir(self):
         # output dir
@@ -134,7 +150,7 @@ class ExperimentBase(object):
         output_dir.mkdir(exist_ok=True)
 
         self.output_dir = output_dir
-    
+
     @mp_tools.rank_zero_only
     def setup_checkpointer(self):
         # checkpoint dir
@@ -161,7 +177,7 @@ class ExperimentBase(object):
 
     @mp_tools.rank_zero_only
     def dump_config(self):
-        with open(self.output_dir / "config.yaml", 'wt') as f: 
+        with open(self.output_dir / "config.yaml", 'wt') as f:
             print(self.config, file=f)
 
     def train_batch(self):
@@ -177,4 +193,3 @@ class ExperimentBase(object):
 
     def setup_dataloader(self):
         raise NotImplementedError("setup_dataloader should be implemented.")
-

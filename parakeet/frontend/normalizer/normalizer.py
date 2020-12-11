@@ -20,13 +20,13 @@ from parakeet.frontend.normalizer.numbers import normalize_numbers
 
 def normalize(sentence):
     # preprocessing
-    text = unicode(text)
-    text = normalize_numbers(text)
-    text = ''.join(
-        char for char in unicodedata.normalize('NFD', text)
+    sentence = unicode(sentence)
+    sentence = normalize_numbers(sentence)
+    sentence = ''.join(
+        char for char in unicodedata.normalize('NFD', sentence)
         if unicodedata.category(char) != 'Mn')  # Strip accents
-    text = text.lower()
-    text = re.sub(r"[^ a-z'.,?!\-]", "", text)
-    text = text.replace("i.e.", "that is")
-    text = text.replace("e.g.", "for example")
-    return text
+    sentence = sentence.lower()
+    sentence = re.sub(r"[^ a-z'.,?!\-]", "", sentence)
+    sentence = sentence.replace("i.e.", "that is")
+    sentence = sentence.replace("e.g.", "for example")
+    return sentence.split()

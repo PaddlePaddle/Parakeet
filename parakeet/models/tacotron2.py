@@ -16,6 +16,7 @@ import math
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
+import parakeet
 from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules.attention import LocationSensitiveAttention
 from parakeet.modules import masking
@@ -31,6 +32,7 @@ class DecoderPreNet(nn.Layer):
                  dropout_rate: int=0.2):
         super().__init__()
 
+        self.dropout_rate = dropout_rate
         self.linear1 = nn.Linear(d_input, d_hidden, bias_attr=False)
         self.linear2 = nn.Linear(d_hidden, d_output, bias_attr=False)
 
@@ -50,6 +52,7 @@ class DecoderPostNet(nn.Layer):
                  dropout=0.1):
         super().__init__()
         self.dropout = dropout
+        self.num_layers = num_layers
 
         self.conv_batchnorms = nn.LayerList()
         k = math.sqrt(1.0 / (d_mels * kernel_size))
@@ -89,7 +92,8 @@ class DecoderPostNet(nn.Layer):
         for i in range(len(self.conv_batchnorms) - 1):
             input = F.dropout(
                 F.tanh(self.conv_batchnorms[i](input), self.dropout))
-        input = F.dropout(self.conv_batchnorms[-1](input), self.dropout)
+        input = F.dropout(self.conv_batchnorms[self.num_layers - 1](input),
+                          self.dropout)
         return input
 
 
@@ -120,7 +124,7 @@ class Tacotron2Encoder(nn.Layer):
             d_hidden, self.hidden_size, direction="bidirectional")
 
     def forward(self, x, input_lens=None):
-        for conv_batchnorm in conv_batchnorms:
+        for conv_batchnorm in self.conv_batchnorms:
             x = F.dropout(F.relu(conv_batchnorm(x)),
                           self.p_dropout)  #(B, T, C)
 
@@ -209,7 +213,7 @@ class Tacotron2Decoder(nn.Layer):
             attention_weights_cat, self.mask)
         self.attention_weights_cum += self.attention_weights
 
-        # The second lasm layer
+        # The second lstm layer
         decoder_input = paddle.concat(
             [self.attention_hidden, self.attention_context], axis=-1)
         _, (self.decoder_hidden, self.decoder_cell) = self.decoder_rnn(
@@ -225,29 +229,29 @@ class Tacotron2Decoder(nn.Layer):
         stop_logit = self.stop_layer(decoder_hidden_attention_context)
         return decoder_output, stop_logit, self.attention_weights
 
-    def forward(self, key, query, mask):
-        query = paddle.reshape(
-            query,
-            [query.shape[0], query.shape[1] // self.reduction_factor, -1])
-        query = paddle.concat(
+    def forward(self, keys, querys, mask):
+        querys = paddle.reshape(
+            querys,
+            [querys.shape[0], querys.shape[1] // self.reduction_factor, -1])
+        querys = paddle.concat(
             [
                 paddle.zeros(
                     shape=[
-                        query.shape[0], 1,
-                        query.shape[-1] * self.reduction_factor
+                        querys.shape[0], 1,
+                        querys.shape[-1] * self.reduction_factor
                     ],
-                    dtype=query.dtype), query
+                    dtype=querys.dtype), querys
             ],
             axis=1)
-        query = self.prenet(query)
+        querys = self.prenet(querys)
 
-        self._initialize_decoder_states(key)
+        self._initialize_decoder_states(keys)
         self.mask = mask
 
         mel_outputs, stop_logits, alignments = [], [], []
-        while len(mel_outputs) < query.shape[
+        while len(mel_outputs) < querys.shape[
                 1] - 1:  # Ignore the last time step
-            query = query[:, len(mel_outputs), :]
+            query = querys[:, len(mel_outputs), :]
             mel_output, stop_logit, attention_weights = self._decode(query)
             mel_outputs += [mel_output]
             stop_logits += [stop_logit]
@@ -308,9 +312,8 @@ class Tacotron2(nn.Layer):
     def __init__(self,
                  frontend: parakeet.frontend.Phonetics,
                  d_mels: int=80,
-                 d_embedding: int=512,
-                 encoder_conv_layers: int=3,
                  d_encoder: int=512,
+                 encoder_conv_layers: int=3,
                  encoder_kernel_size: int=5,
                  d_prenet: int=256,
                  d_attention_rnn: int=1024,
@@ -329,11 +332,11 @@ class Tacotron2(nn.Layer):
                  p_postnet_dropout: float=0.5):
         super().__init__()
 
-        std = math.sqrt(2.0 / (frontend.vocab_size + d_embedding))
+        std = math.sqrt(2.0 / (frontend.vocab_size + d_encoder))
         val = math.sqrt(3.0) * std  # uniform bounds for std
         self.embedding = nn.Embedding(
             frontend.vocab_size,
-            d_embedding,
+            d_encoder,
             weight_attr=paddle.ParamAttr(initializer=nn.initializer.Uniform(
                 low=-val, high=val)))
         self.encoder = Tacotron2Encoder(d_encoder, encoder_conv_layers,
