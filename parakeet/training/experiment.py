@@ -109,7 +109,7 @@ class ExperimentBase(object):
 
     def train(self):
         self.new_epoch()
-        while self.iteration <= self.config.training.max_iteration:
+        while self.iteration < self.config.training.max_iteration:
             self.iteration += 1
             self.train_batch()
 
@@ -131,7 +131,7 @@ class ExperimentBase(object):
     def setup_output_dir(self):
         # output dir
         output_dir = Path(self.args.output).expanduser()
-        output_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         self.output_dir = output_dir
     
