@@ -488,7 +488,7 @@ class ConditionalWaveFlow(nn.LayerList):
         z, log_det_jacobian = self.decoder(audio, condition)
         return z, log_det_jacobian
     
-    @paddle.fluid.dygraph.no_grad
+    @paddle.no_grad()
     def synthesize(self, mel):
         condition = self.encoder(mel, trim_conv_artifact=True) #(B, C, T)
         batch_size, _, time_steps = condition.shape
