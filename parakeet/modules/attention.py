@@ -1,10 +1,30 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 import numpy as np
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
-def scaled_dot_product_attention(q, k, v, mask=None, dropout=0.0, training=True):
+
+def scaled_dot_product_attention(q,
+                                 k,
+                                 v,
+                                 mask=None,
+                                 dropout=0.0,
+                                 training=True):
     """
     scaled dot product attention with mask. Assume q, k, v all have the same 
     leader dimensions(denoted as * in descriptions below). Dropout is applied to 
@@ -22,17 +42,18 @@ def scaled_dot_product_attention(q, k, v, mask=None, dropout=0.0, training=True)
         out (Tensor): shape(*, T_q, d_v), the context vector.
         attn_weights (Tensor): shape(*, T_q, T_k), the attention weights.
     """
-    d = q.shape[-1] # we only support imperative execution
+    d = q.shape[-1]  # we only support imperative execution
     qk = paddle.matmul(q, k, transpose_y=True)
     scaled_logit = paddle.scale(qk, 1.0 / math.sqrt(d))
-    
+
     if mask is not None:
-        scaled_logit += paddle.scale((1.0 - mask), -1e9) # hard coded here
-    
+        scaled_logit += paddle.scale((1.0 - mask), -1e9)  # hard coded here
+
     attn_weights = F.softmax(scaled_logit, axis=-1)
     attn_weights = F.dropout(attn_weights, dropout, training=training)
     out = paddle.matmul(attn_weights, v)
     return out, attn_weights
+
 
 def drop_head(x, drop_n_heads, training):
     """
@@ -48,12 +69,12 @@ def drop_head(x, drop_n_heads, training):
     """
     if not training or (drop_n_heads == 0):
         return x
-    
+
     batch_size, num_heads, _, _ = x.shape
     # drop all heads
     if num_heads == drop_n_heads:
         return paddle.zeros_like(x)
-    
+
     mask = np.ones([batch_size, num_heads])
     mask[:, :drop_n_heads] = 0
     for subarray in mask:
@@ -63,17 +84,20 @@ def drop_head(x, drop_n_heads, training):
     out = x * paddle.to_tensor(mask)
     return out
 
+
 def _split_heads(x, num_heads):
     batch_size, time_steps, _ = x.shape
     x = paddle.reshape(x, [batch_size, time_steps, num_heads, -1])
     x = paddle.transpose(x, [0, 2, 1, 3])
     return x
 
+
 def _concat_heads(x):
     batch_size, _, time_steps, _ = x.shape
     x = paddle.transpose(x, [0, 2, 1, 3])
     x = paddle.reshape(x, [batch_size, time_steps, -1])
     return x
+
 
 # Standard implementations of Monohead Attention & Multihead Attention
 class MonoheadAttention(nn.Layer):
@@ -99,10 +123,10 @@ class MonoheadAttention(nn.Layer):
         self.affine_k = nn.Linear(model_dim, k_dim)
         self.affine_v = nn.Linear(model_dim, v_dim)
         self.affine_o = nn.Linear(v_dim, model_dim)
-        
+
         self.model_dim = model_dim
         self.dropout = dropout
-    
+
     def forward(self, q, k, v, mask):
         """
         Compute context vector and attention weights.
@@ -119,22 +143,28 @@ class MonoheadAttention(nn.Layer):
             out (Tensor), shape(batch_size, time_steps_q, model_dim), the context vector.
             attention_weights (Tensor): shape(batch_size, times_steps_q, time_steps_k), the attention weights.
         """
-        q = self.affine_q(q) # (B, T, C)
+        q = self.affine_q(q)  # (B, T, C)
         k = self.affine_k(k)
         v = self.affine_v(v)
-        
+
         context_vectors, attention_weights = scaled_dot_product_attention(
             q, k, v, mask, self.dropout, self.training)
-        
+
         out = self.affine_o(context_vectors)
         return out, attention_weights
 
-        
+
 class MultiheadAttention(nn.Layer):
     """
     Multihead scaled dot product attention.
     """
-    def __init__(self, model_dim, num_heads, dropout=0.0, k_dim=None, v_dim=None):
+
+    def __init__(self,
+                 model_dim,
+                 num_heads,
+                 dropout=0.0,
+                 k_dim=None,
+                 v_dim=None):
         """
         Multihead Attention module.
 
@@ -154,7 +184,7 @@ class MultiheadAttention(nn.Layer):
             ValueError: if model_dim is not divisible by num_heads
         """
         super(MultiheadAttention, self).__init__()
-        if model_dim % num_heads !=0:
+        if model_dim % num_heads != 0:
             raise ValueError("model_dim must be divisible by num_heads")
         depth = model_dim // num_heads
         k_dim = k_dim or depth
@@ -163,11 +193,11 @@ class MultiheadAttention(nn.Layer):
         self.affine_k = nn.Linear(model_dim, num_heads * k_dim)
         self.affine_v = nn.Linear(model_dim, num_heads * v_dim)
         self.affine_o = nn.Linear(num_heads * v_dim, model_dim)
-        
+
         self.num_heads = num_heads
         self.model_dim = model_dim
         self.dropout = dropout
-    
+
     def forward(self, q, k, v, mask):
         """
         Compute context vector and attention weights.
@@ -184,14 +214,67 @@ class MultiheadAttention(nn.Layer):
             out (Tensor), shape(batch_size, time_steps_q, model_dim), the context vector.
             attention_weights (Tensor): shape(batch_size, times_steps_q, time_steps_k), the attention weights.
         """
-        q = _split_heads(self.affine_q(q), self.num_heads) # (B, h, T, C)
+        q = _split_heads(self.affine_q(q), self.num_heads)  # (B, h, T, C)
         k = _split_heads(self.affine_k(k), self.num_heads)
         v = _split_heads(self.affine_v(v), self.num_heads)
-        mask = paddle.unsqueeze(mask, 1) # unsqueeze for the h dim
-        
+        mask = paddle.unsqueeze(mask, 1)  # unsqueeze for the h dim
+
         context_vectors, attention_weights = scaled_dot_product_attention(
             q, k, v, mask, self.dropout, self.training)
         # NOTE: there is more sophisticated implementation: Scheduled DropHead
-        context_vectors = _concat_heads(context_vectors) # (B, T, h*C)
+        context_vectors = _concat_heads(context_vectors)  # (B, T, h*C)
         out = self.affine_o(context_vectors)
         return out, attention_weights
+
+
+class LocationSensitiveAttention(nn.Layer):
+    def __init__(self,
+                 d_query: int,
+                 d_key: int,
+                 d_attention: int,
+                 location_filters: int,
+                 location_kernel_size: int):
+        super().__init__()
+
+        self.query_layer = nn.Linear(d_query, d_attention, bias_attr=False)
+        self.key_layer = nn.Linear(d_key, d_attention, bias_attr=False)
+        self.value = nn.Linear(d_attention, 1, bias_attr=False)
+
+        #Location Layer
+        self.location_conv = nn.Conv1D(
+            2,
+            location_filters,
+            location_kernel_size,
+            1,
+            int((location_kernel_size - 1) / 2),
+            1,
+            bias_attr=False,
+            data_format='NLC')
+        self.location_layer = nn.Linear(
+            location_filters, d_attention, bias_attr=False)
+
+    def forward(self,
+                query,
+                processed_key,
+                value,
+                attention_weights_cat,
+                mask=None):
+
+        processed_query = self.query_layer(paddle.unsqueeze(query, axis=[1]))
+        processed_attention_weights = self.location_layer(
+            self.location_conv(attention_weights_cat))
+        alignment = self.value(
+            paddle.tanh(processed_attention_weights + processed_key +
+                        processed_query))
+
+        if mask is not None:
+            alignment = alignment + (1.0 - mask) * -1e9
+
+        attention_weights = F.softmax(alignment, axis=1)
+        attention_context = paddle.matmul(
+            attention_weights, value, transpose_x=True)
+
+        attention_weights = paddle.squeeze(attention_weights, axis=[-1])
+        attention_context = paddle.squeeze(attention_context, axis=[1])
+
+        return attention_context, attention_weights
