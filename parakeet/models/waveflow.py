@@ -1,10 +1,12 @@
 import math
 import numpy as np
+from typing import List, Union
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 
+from parakeet.utils import checkpoint
 from parakeet.modules import geometry as geo
 
 __all__ = ["UpsampleNet", "WaveFlow", "ConditionalWaveFlow", "WaveFlowLoss"]
@@ -478,10 +480,23 @@ class WaveFlow(nn.LayerList):
 
 
 class ConditionalWaveFlow(nn.LayerList):
-    def __init__(self, encoder, decoder):
+    def __init__(self, 
+                upsample_factors: List[int], 
+                n_flows: int, 
+                n_layers: int, 
+                n_group: int, 
+                channels: int, 
+                n_mels: int, 
+                kernel_size: Union[int, List[int]]):
         super(ConditionalWaveFlow, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder = UpsampleNet(upsample_factors)
+        self.decoder = WaveFlow(
+        n_flows=n_flows,
+        n_layers=n_layers,
+        n_group=n_group,
+        channels=channels,
+        mel_bands=n_mels,
+        kernel_size=kernel_size)
 
     def forward(self, audio, mel):
         condition = self.encoder(mel)
@@ -489,12 +504,33 @@ class ConditionalWaveFlow(nn.LayerList):
         return z, log_det_jacobian
     
     @paddle.no_grad()
-    def synthesize(self, mel):
+    def infer(self, mel):
         condition = self.encoder(mel, trim_conv_artifact=True) #(B, C, T)
         batch_size, _, time_steps = condition.shape
         z = paddle.randn([batch_size, time_steps], dtype=mel.dtype)
         x = self.decoder.inverse(z, condition)
         return x
+    
+    @paddle.no_grad()
+    def predict(self, mel):
+        mel = paddle.to_tensor(mel)
+        mel = paddle.unsqueeze(mel, 0)
+        audio = self.infer(mel)
+        audio = audio[0].numpy()
+        return audio
+    
+    @classmethod
+    def from_pretrained(cls, config, checkpoint_path):
+        model = cls(
+            upsample_factors=config.model.upsample_factors,
+            n_flows=config.model.n_flows,
+            n_layers=config.model.n_layers,
+            n_group=config.model.n_group,
+            channels=config.model.channels,
+            n_mels=config.data.n_mels,
+            kernel_size=config.model.kernel_size)
+        checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
+        return model
 
 
 class WaveFlowLoss(nn.Layer):
