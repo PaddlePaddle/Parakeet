@@ -389,7 +389,6 @@ class Tacotron2(nn.Layer):
 
     @paddle.no_grad()
     def infer(self, text_inputs, stop_threshold=0.5, max_decoder_steps=1000):
-        self.eval()
         embedded_inputs = self.embedding(text_inputs)
         encoder_outputs = self.encoder(embedded_inputs)
         mel_outputs, stop_logits, alignments = self.decoder.infer(
