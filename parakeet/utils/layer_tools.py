@@ -36,6 +36,14 @@ def gradient_norm(layer: nn.Layer):
             grad_norm_dict[name] = np.linalg.norm(grad) / grad.size
     return grad_norm_dict
 
+def recursively_remove_weight_norm(layer: nn.Layer):
+    for layer in layer.sublayers():
+        try:
+            nn.utils.remove_weight_norm(layer)
+        except:
+            # ther is not weight norm hoom in this layer
+            pass
+
 def freeze(layer: nn.Layer):
     for param in layer.parameters():
         param.trainable = False

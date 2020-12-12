@@ -14,7 +14,7 @@
 
 import math
 import time
-from typing import Union, Sequence
+from typing import Union, Sequence, List
 from tqdm import trange
 import numpy as np
 
@@ -26,6 +26,7 @@ import paddle.fluid.layers.distributions as D
 
 from parakeet.modules.conv import Conv1dCell
 from parakeet.modules.audio import quantize, dequantize, STFT
+from parakeet.utils import checkpoint, layer_tools
 
 
 def crop(x, audio_start, audio_length):
@@ -290,18 +291,18 @@ class WaveNet(nn.Layer):
             if (output_dim % 3 != 0):
                 raise ValueError(
                     "with Mixture of Gaussians(mog) output, the output dim must be divisible by 3, but get {}".format(output_dim))
-            self.embed = nn.utils.weight_norm(nn.Linear(1, residual_channels), dim=-1)
+            self.embed = nn.utils.weight_norm(nn.Linear(1, residual_channels), dim=1)
 
         self.resnet = ResidualNet(n_stack, n_loop, residual_channels,
                                   condition_dim, filter_size)
         self.context_size = self.resnet.context_size
 
         skip_channels = residual_channels  # assume the same channel
-        self.proj1 = nn.utils.weight_norm(nn.Linear(skip_channels, skip_channels), dim=-1)
-        self.proj2 = nn.utils.weight_norm(nn.Linear(skip_channels, skip_channels), dim=-1)
+        self.proj1 = nn.utils.weight_norm(nn.Linear(skip_channels, skip_channels), dim=1)
+        self.proj2 = nn.utils.weight_norm(nn.Linear(skip_channels, skip_channels), dim=1)
         # if loss_type is softmax, output_dim is n_vocab of waveform magnitude.
         # if loss_type is mog, output_dim is 3 * gaussian, (weight, mean and stddev)
-        self.proj3 = nn.utils.weight_norm(nn.Linear(skip_channels, output_dim), dim=-1)
+        self.proj3 = nn.utils.weight_norm(nn.Linear(skip_channels, output_dim), dim=1)
 
         self.loss_type = loss_type
         self.output_dim = output_dim
@@ -509,17 +510,29 @@ class WaveNet(nn.Layer):
             return self.compute_mog_loss(y, t)
 
 
-class ConditionalWavenet(nn.Layer):
-    def __init__(self, encoder, decoder):
+class ConditionalWaveNet(nn.Layer):
+    def __init__(self, 
+                 upsample_factors: List[int], 
+                 n_stack: int, 
+                 n_loop: int, 
+                 residual_channels: int, 
+                 output_dim: int,
+                 n_mels: int, 
+                 filter_size: int=2, 
+                 loss_type: str="mog", 
+                 log_scale_min: float=-9.0):
         """Conditional Wavenet, which contains an UpsampleNet as the encoder and a WaveNet as the decoder. It is an autoregressive model.
-
-        Args:
-            encoder (UpsampleNet): the UpsampleNet as the encoder.
-            decoder (WaveNet): the WaveNet as the decoder.
         """
-        super(ConditionalWavenet, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        super(ConditionalWaveNet, self).__init__()
+        self.encoder = UpsampleNet(upsample_factors)
+        self.decoder = WaveNet(n_stack=n_stack, 
+                          n_loop=n_loop,
+                          residual_channels=residual_channels,
+                          output_dim=output_dim,
+                          condition_dim=n_mels,
+                          filter_size=filter_size,
+                          loss_type=loss_type,
+                          log_scale_min=log_scale_min)
 
     def forward(self, audio, mel, audio_start):
         """Compute the output distribution given the mel spectrogram and the input(for teacher force training).
@@ -570,7 +583,7 @@ class ConditionalWavenet(nn.Layer):
         return samples
 
     @paddle.no_grad()
-    def synthesis(self, mel):
+    def infer(self, mel):
         """Synthesize waveform from mel spectrogram.
 
         Args:
@@ -595,3 +608,29 @@ class ConditionalWavenet(nn.Layer):
 
         samples = paddle.concat(samples, -1)
         return samples
+
+    @paddle.no_grad()
+    def predict(self, mel):
+        mel = paddle.to_tensor(mel)
+        mel = paddle.unsqueeze(mel, 0)
+        audio = self.infer(mel)
+        audio = audio[0].numpy()
+        return audio
+
+    @classmethod
+    def from_pretrained(cls, config, checkpoint_path):
+        model = cls(
+            upsample_factors=config.model.upsample_factors,
+            n_stack=config.model.n_stack, 
+            n_loop=config.model.n_loop,
+            residual_channels=config.model.residual_channels,
+            output_dim=config.model.output_dim,
+            n_mels=config.data.n_mels,
+            filter_size=config.model.filter_size,
+            loss_type=config.model.loss_type,
+            log_scale_min=config.model.log_scale_min)
+        layer_tools.summary(model)
+        checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
+        return model
+
+    

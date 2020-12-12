@@ -26,6 +26,7 @@ from parakeet.modules import masking
 from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules import positional_encoding as pe
 from parakeet.modules import losses as L
+from parakeet.utils import checkpoint, scheduler
 
 __all__ = ["TransformerTTS", "TransformerTTSLoss"]
 
@@ -285,8 +286,7 @@ class TransformerDecoder(nn.LayerList):
                     d_model, n_heads, d_ffn, dropout, d_encoder=d_encoder))
 
     def forward(self, q, k, v, encoder_mask, decoder_mask, drop_n_heads=0):
-        """[summary]
-
+        """
         Args:
             q (Tensor): shape(batch_size, time_steps_q, d_model)
             k (Tensor): shape(batch_size, time_steps_k, d_encoder)
@@ -328,40 +328,6 @@ class MLPPreNet(nn.Layer):
             F.relu(self.lin2(l1)), self.dropout, training=self.training)
         l3 = self.lin3(l2)
         return l3
-
-
-# NOTE: not used in 
-class CNNPreNet(nn.Layer):
-    def __init__(self,
-                 d_input,
-                 d_hidden,
-                 d_output,
-                 kernel_size,
-                 n_layers,
-                 dropout=0.):
-        # (conv + bn + relu + dropout) * n + last projection
-        super(CNNPreNet, self).__init__()
-        self.convs = nn.LayerList()
-        c_in = d_input
-        for _ in range(n_layers):
-            self.convs.append(
-                Conv1dBatchNorm(
-                    c_in,
-                    d_hidden,
-                    kernel_size,
-                    weight_attr=I.XavierUniform(),
-                    padding="same",
-                    data_format="NLC"))
-            c_in = d_hidden
-        self.affine_out = nn.Linear(d_hidden, d_output)
-        self.dropout = dropout
-
-    def forward(self, x):
-        for layer in self.convs:
-            x = F.dropout(
-                F.relu(layer(x)), self.dropout, training=self.training)
-        x = self.affine_out(x)
-        return x
 
 
 class CNNPostNet(nn.Layer):
@@ -536,7 +502,8 @@ class TransformerTTS(nn.Layer):
 
         return mel_output, mel_intermediate, cross_attention_weights, stop_logits
 
-    def predict(self, input, raw_input=True, max_length=1000, verbose=True):
+    @paddle.no_grad()
+    def infer(self, input, max_length=1000, verbose=True):
         """Predict log scale magnitude mel spectrogram from text input.
 
         Args:
@@ -544,19 +511,13 @@ class TransformerTTS(nn.Layer):
             max_length (int, optional): max decoder steps. Defaults to 1000.
             verbose (bool, optional): display progress bar. Defaults to True.
         """
-        if raw_input:
-            text_ids = paddle.to_tensor(self.frontend(input))
-            text_input = paddle.unsqueeze(text_ids, 0)  # (1, T)
-        else:
-            text_input = input
-
         decoder_input = paddle.unsqueeze(self.start_vec, 0)  # (B=1, T, C)
         decoder_output = paddle.unsqueeze(self.start_vec, 0)  # (B=1, T, C)
 
         # encoder the text sequence
         encoder_output, encoder_attentions, encoder_padding_mask = self.encode(
-            text_input)
-        for _ in range(int(max_length // self.r) + 1):
+            input)
+        for _ in trange(int(max_length // self.r) + 1):
             mel_output, _, cross_attention_weights, stop_logits = self.decode(
                 encoder_output, decoder_input, encoder_padding_mask)
 
@@ -584,9 +545,44 @@ class TransformerTTS(nn.Layer):
         }
         return outputs
 
+    @paddle.no_grad()
+    def predict(self, input, max_length=1000, verbose=True):
+        text_ids = paddle.to_tensor(self.frontend(input))
+        input = paddle.unsqueeze(text_ids, 0)  # (1, T)
+        outputs = self.infer(input, max_length=max_length, verbose=verbose)
+        outputs = {k: v[0].numpy() for k, v in outputs.items()}
+        return outputs
+
     def set_constants(self, reduction_factor, drop_n_heads):
         self.r = reduction_factor
         self.drop_n_heads = drop_n_heads
+
+    @classmethod
+    def from_pretrained(cls, frontend, config, checkpoint_path):
+        model = TransformerTTS(
+            frontend, 
+            d_encoder=config.model.d_encoder,
+            d_decoder=config.model.d_decoder,
+            d_mel=config.data.d_mel,
+            n_heads=config.model.n_heads,
+            d_ffn=config.model.d_ffn,
+            encoder_layers=config.model.encoder_layers,
+            decoder_layers=config.model.decoder_layers,
+            d_prenet=config.model.d_prenet,
+            d_postnet=config.model.d_postnet,
+            postnet_layers=config.model.postnet_layers,
+            postnet_kernel_size=config.model.postnet_kernel_size,
+            max_reduction_factor=config.model.max_reduction_factor,
+            decoder_prenet_dropout=config.model.decoder_prenet_dropout,
+            dropout=config.model.dropout)
+
+        iteration = checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
+        drop_n_heads = scheduler.StepWise(config.training.drop_n_heads)
+        reduction_factor = scheduler.StepWise(config.training.reduction_factor)
+        model.set_constants(
+            reduction_factor=reduction_factor(iteration), 
+            drop_n_heads=drop_n_heads(iteration))
+        return model
 
 
 class TransformerTTSLoss(nn.Layer):
@@ -606,37 +602,6 @@ class TransformerTTSLoss(nn.Layer):
         last_position = F.one_hot(
             mask.sum(-1).astype("int64") - 1, num_classes=mel_len)
         mask2 = mask + last_position.scale(self.stop_loss_scale - 1).astype(
-            mask.dtype)
-        stop_loss = L.masked_softmax_with_cross_entropy(
-            stop_logits, stop_probs.unsqueeze(-1), mask2.unsqueeze(-1))
-
-        loss = mel_loss1 + mel_loss2 + stop_loss
-        losses = dict(
-            loss=loss,  # total loss
-            mel_loss1=mel_loss1,  # ouput mel loss
-            mel_loss2=mel_loss2,  # intermediate mel loss
-            stop_loss=stop_loss  # stop prob loss
-        )
-        return losses
-
-
-class AdaptiveTransformerTTSLoss(nn.Layer):
-    def __init__(self):
-        super(AdaptiveTransformerTTSLoss, self).__init__()
-
-    def forward(self, mel_output, mel_intermediate, mel_target, stop_logits,
-                stop_probs):
-        mask = masking.feature_mask(
-            mel_target, axis=-1, dtype=mel_target.dtype)
-        mask1 = paddle.unsqueeze(mask, -1)
-        mel_loss1 = L.masked_l1_loss(mel_output, mel_target, mask1)
-        mel_loss2 = L.masked_l1_loss(mel_intermediate, mel_target, mask1)
-
-        batch_size, mel_len = mask.shape
-        valid_lengths = mask.sum(-1).astype("int64")
-        last_position = F.one_hot(valid_lengths - 1, num_classes=mel_len)
-        stop_loss_scale = valid_lengths.sum() / batch_size - 1
-        mask2 = mask + last_position.scale(stop_loss_scale - 1).astype(
             mask.dtype)
         stop_loss = L.masked_softmax_with_cross_entropy(
             stop_logits, stop_probs.unsqueeze(-1), mask2.unsqueeze(-1))
