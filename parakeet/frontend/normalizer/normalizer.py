@@ -29,4 +29,4 @@ def normalize(sentence):
     sentence = re.sub(r"[^ a-z'.,?!\-]", "", sentence)
     sentence = sentence.replace("i.e.", "that is")
     sentence = sentence.replace("e.g.", "for example")
-    return sentence.split()
+    return sentence
