@@ -93,7 +93,7 @@ def add_multi_attention_plots(writer, tag, attention_weights, global_step):
 
 
 def add_spectrogram_plots(writer, tag, spec, global_step):
-    spec = spec.numpy()
+    spec = spec.numpy().T
     fig, ax = plt.subplots(figsize=(12, 3))
     im = ax.imshow(spec, aspect="auto", origin="lower", interpolation='none')
     plt.colorbar(im, ax=ax)
