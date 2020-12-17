@@ -79,23 +79,14 @@ class EnglishCharacter(Phonetics):
         self.vocab = Vocab(self.graphemes + self.punctuations)
 
     def phoneticize(self, sentence):
-        start = self.vocab.start_symbol
-        end = self.vocab.end_symbol
-
-        words = ([] if start is None else [start]) \
-                 + normalize(sentence) \
-                 + ([] if end is None else [end])
+        words = normalize(sentence)
         return words
 
-    def numericalize(self, words):
-        ids = []
-        for word in words:
-            if word in self.vocab.stoi:
-                ids.append(self.vocab.lookup(word))
-                continue
-            for char in word:
-                if char in self.vocab.stoi:
-                    ids.append(self.vocab.lookup(char))
+    def numericalize(self, sentence):
+        ids = [
+            self.vocab.lookup(item) for item in sentence
+            if item in self.vocab.stoi
+        ]
         return ids
 
     def reverse(self, ids):
