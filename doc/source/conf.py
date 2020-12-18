@@ -34,7 +34,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     "sphinx_rtd_theme",	
-    'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax',
+    'numpydoc',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -60,3 +61,4 @@ html_static_path = ['_static']
 source_suffix = ['.rst', '.md']
 
 # -- Extension configuration -------------------------------------------------
+numpydoc_show_class_members = False

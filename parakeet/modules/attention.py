@@ -36,10 +36,13 @@ def scaled_dot_product_attention(q,
     
     q: Tensor [shape=(*, T_q, d)]
         the query tensor.
+        
     k: Tensor [shape=(*, T_k, d)]
         the key tensor.
+        
     v: Tensor [shape=(*, T_k, d_v)]
         the value tensor.
+        
     mask: Tensor, [shape=(*, T_q, T_k) or broadcastable shape], optional
         the mask tensor, zeros correspond to paddings. Defaults to None.
     
@@ -47,6 +50,7 @@ def scaled_dot_product_attention(q,
     ----------
     out: Tensor [shape(*, T_q, d_v)] 
         the context vector.
+        
     attn_weights [Tensor shape(*, T_q, T_k)]
         the attention weights.
     """
