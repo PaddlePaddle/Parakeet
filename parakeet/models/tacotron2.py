@@ -27,19 +27,18 @@ __all__ = ["Tacotron2", "Tacotron2Loss"]
 
 
 class DecoderPreNet(nn.Layer):
-    """
-    Decoder prenet module for Tacotron2.
+    """Decoder prenet module for Tacotron2.
 
     Parameters
     ----------
     d_input: int
-        input dimension
+        input feature size
 
     d_hidden: int
         hidden size
 
     d_output: int
-        output Dimension
+        output feature size
 
     dropout_rate: float
         droput probability
@@ -62,12 +61,12 @@ class DecoderPreNet(nn.Layer):
 
         Parameters
         ----------
-        x: Tensor[shape=(B, T_mel, C)]
+        x: Tensor [shape=(B, T_mel, C)]
             batch of the sequences of padded mel spectrogram
         
         Returns
         -------
-        output: Tensor[shape=(B, T_mel, C)]
+        output: Tensor [shape=(B, T_mel, C)]
             batch of the sequences of padded hidden state
 
         """
@@ -78,8 +77,7 @@ class DecoderPreNet(nn.Layer):
 
 
 class DecoderPostNet(nn.Layer):
-    """
-    Decoder postnet module for Tacotron2.
+    """Decoder postnet module for Tacotron2.
 
     Parameters
     ----------
@@ -151,12 +149,12 @@ class DecoderPostNet(nn.Layer):
 
         Parameters
         ----------
-        input: Tensor[shape=(B, T_mel, C)]
+        input: Tensor [shape=(B, T_mel, C)]
             output sequence of features from decoder
         
         Returns
         -------
-        output: Tensor[shape=(B, T_mel, C)]
+        output: Tensor [shape=(B, T_mel, C)]
             output sequence of features after postnet
 
         """
@@ -170,8 +168,7 @@ class DecoderPostNet(nn.Layer):
 
 
 class Tacotron2Encoder(nn.Layer):
-    """
-    Tacotron2 encoder module for Tacotron2.
+    """Tacotron2 encoder module for Tacotron2.
 
     Parameters
     ----------
@@ -218,15 +215,15 @@ class Tacotron2Encoder(nn.Layer):
 
         Parameters
         ----------
-        x: Tensor[shape=(B, T)]
+        x: Tensor [shape=(B, T)]
             batch of the sequencees of padded character ids
         
-        text_lens: Tensor[shape=(B,)]
+        text_lens: Tensor [shape=(B,)]
             batch of lengths of each text input batch.
         
         Returns
         -------
-        output : Tensor[shape=(B, T, C)]
+        output : Tensor [shape=(B, T, C)]
             batch of the sequences of padded hidden states
 
         """
@@ -239,8 +236,7 @@ class Tacotron2Encoder(nn.Layer):
 
 
 class Tacotron2Decoder(nn.Layer):
-    """
-    Tacotron2 decoder module for Tacotron2.
+    """Tacotron2 decoder module for Tacotron2.
 
     Parameters
     ----------
@@ -278,7 +274,8 @@ class Tacotron2Decoder(nn.Layer):
         droput probability in location sensitive attention
 
     p_decoder_dropout: float
-        droput probability in decoder"""
+        droput probability in decoder
+    """
 
     def __init__(self,
                  d_mels: int,
@@ -396,15 +393,14 @@ class Tacotron2Decoder(nn.Layer):
         
         Returns
         -------
-        mel_output: Tensor[shape=(B, T_mel, C)]
+        mel_output: Tensor [shape=(B, T_mel, C)]
             output sequence of features
 
-        stop_logits: Tensor[shape=(B, T_mel)]
+        stop_logits: Tensor [shape=(B, T_mel)]
             output sequence of stop logits
 
-        alignments: Tensor[shape=(B, T_mel, T_text)]
+        alignments: Tensor [shape=(B, T_mel, T_text)]
             attention weights
-
         """
         querys = paddle.reshape(
             querys,
@@ -441,7 +437,7 @@ class Tacotron2Decoder(nn.Layer):
 
         Parameters
         ----------
-        keys: Tensor[shape=(B, T_text, C)]
+        keys: Tensor [shape=(B, T_text, C)]
             batch of the sequences of padded output from encoder
         
         stop_threshold: float
@@ -452,13 +448,13 @@ class Tacotron2Decoder(nn.Layer):
         
         Returns
         -------
-        mel_output: Tensor[shape=(B, T_mel, C)]
+        mel_output: Tensor [shape=(B, T_mel, C)]
             output sequence of features
 
-        stop_logits: Tensor[shape=(B, T_mel)]
+        stop_logits: Tensor [shape=(B, T_mel)]
             output sequence of stop logits
 
-        alignments: Tensor[shape=(B, T_mel, T_text)]
+        alignments: Tensor [shape=(B, T_mel, T_text)]
             attention weights
 
         """
@@ -494,12 +490,11 @@ class Tacotron2Decoder(nn.Layer):
 
 
 class Tacotron2(nn.Layer):
-    """
-    Tacotron2 model for end-to-end text-to-speech (E2E-TTS).
+    """Tacotron2 model for end-to-end text-to-speech (E2E-TTS).
 
     This is a model of Spectrogram prediction network in Tacotron2 described
     in `Natural TTS Synthesis
-    by Conditioning WaveNet on Mel Spectrogram Predictions`,
+    by Conditioning WaveNet on Mel Spectrogram Predictions`_,
     which converts the sequence of characters
     into the sequence of mel spectrogram.
 
@@ -620,16 +615,16 @@ class Tacotron2(nn.Layer):
 
         Parameters
         ----------
-        text_inputs: Tensor[shape=(B, T_text)]
+        text_inputs: Tensor [shape=(B, T_text)]
             batch of the sequencees of padded character ids
         
-        mels: Tensor[shape(B, T_mel, C)]
+        mels: Tensor [shape(B, T_mel, C)]
             batch of the sequences of padded mel spectrogram
         
-        text_lens: Tensor[shape=(B,)]
+        text_lens: Tensor [shape=(B,)]
             batch of lengths of each text input batch.
         
-        output_lens: Tensor[shape=(B,)]
+        output_lens: Tensor [shape=(B,)]
             batch of lengths of each mels batch.
         
         Returns
@@ -679,7 +674,7 @@ class Tacotron2(nn.Layer):
 
         Parameters
         ----------
-        text_inputs: Tensor[shape=(B, T_text)]
+        text_inputs: Tensor [shape=(B, T_text)]
             batch of the sequencees of padded character ids
         
         stop_threshold: float
@@ -765,10 +760,10 @@ class Tacotron2(nn.Layer):
         
         Returns
         -------
-        mel_outputs_postnet: Tensor[shape=(T_mel, C)]
+        mel_outputs_postnet: Tensor [shape=(T_mel, C)]
             output sequence of sepctrogram after postnet
 
-        alignments: Tensor[shape=(T_mel, T_text)]
+        alignments: Tensor [shape=(T_mel, T_text)]
             attention weights 
         """
         model = cls(frontend,
@@ -809,24 +804,24 @@ class Tacotron2Loss(nn.Layer):
 
         Parameters
         ----------
-        mel_outputs: Tensor[shape=(B, T_mel, C)]
+        mel_outputs: Tensor [shape=(B, T_mel, C)]
             output mel spectrogram sequence
         
-        mel_outputs_postnet: Tensor[shape(B, T_mel, C)]
+        mel_outputs_postnet: Tensor [shape(B, T_mel, C)]
             output mel spectrogram sequence after postnet
         
-        stop_logits: Tensor[shape=(B, T_mel)]
+        stop_logits: Tensor [shape=(B, T_mel)]
             output sequence of stop logits befor sigmoid
         
-        mel_targets: Tensor[shape=(B,)]
+        mel_targets: Tensor [shape=(B, T_mel, C)]
             target mel spectrogram sequence
         
-        stop_tokens:
+        stop_tokens: Tensor [shape=(B,)]
             target stop token
         
         Returns
         -------
-        losses : Dict[str, float]
+        losses : Dict[str, Tensor]
             
             loss: the sum of the other three losses
 
