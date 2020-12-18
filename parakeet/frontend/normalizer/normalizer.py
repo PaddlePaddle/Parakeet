@@ -19,6 +19,8 @@ from parakeet.frontend.normalizer.numbers import normalize_numbers
 
 
 def normalize(sentence):
+    """ Normalize English text.
+    """
     # preprocessing
     sentence = unicode(sentence)
     sentence = normalize_numbers(sentence)

@@ -18,6 +18,7 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
+
 def scaled_dot_product_attention(q,
                                  k,
                                  v,
@@ -139,10 +140,11 @@ class MonoheadAttention(nn.Layer):
         Feature size of the key of each scaled dot product attention. If not 
         provided, it is set to `model_dim / num_heads`. Defaults to None.
     """
-    def __init__(self, 
-                 model_dim: int, 
-                 dropout: float=0.0, 
-                 k_dim: int=None, 
+
+    def __init__(self,
+                 model_dim: int,
+                 dropout: float=0.0,
+                 k_dim: int=None,
                  v_dim: int=None):
         super(MonoheadAttention, self).__init__()
         k_dim = k_dim or model_dim
@@ -219,6 +221,7 @@ class MultiheadAttention(nn.Layer):
     ValueError
         If ``model_dim`` is not divisible by ``num_heads``.
     """
+
     def __init__(self,
                  model_dim: int,
                  num_heads: int,
@@ -279,6 +282,28 @@ class MultiheadAttention(nn.Layer):
 
 
 class LocationSensitiveAttention(nn.Layer):
+    """Location Sensitive Attention module.
+
+    Reference: `Attention-Based Models for Speech Recognition <https://arxiv.org/pdf/1506.07503.pdf>`_
+
+    Parameters
+    -----------
+    d_query: int
+        The feature size of query.
+        
+    d_key : int
+        The feature size of key.
+        
+    d_attention : int
+        The feature size of dimension. 
+        
+    location_filters : int
+        Filter size of attention convolution.
+        
+    location_kernel_size : int
+        Kernel size of attention convolution.
+    """
+
     def __init__(self,
                  d_query: int,
                  d_key: int,
@@ -310,6 +335,34 @@ class LocationSensitiveAttention(nn.Layer):
                 value,
                 attention_weights_cat,
                 mask=None):
+        """Compute context vector and attention weights.
+        
+        Parameters
+        -----------
+        query : Tensor [shape=(batch_size, d_query)] 
+            The queries.
+            
+        processed_key : Tensor [shape=(batch_size, time_steps_k, d_attention)] 
+            The keys after linear layer.
+            
+        value : Tensor [shape=(batch_size, time_steps_k, d_key)] 
+            The values.
+
+        attention_weights_cat : Tensor [shape=(batch_size, time_step_k, 2)]
+            Attention weights concat.
+            
+        mask : Tensor, optional
+            The mask. Shape should be (batch_size, times_steps_q, time_steps_k) or broadcastable shape.
+            Defaults to None.
+
+        Returns
+        ----------
+        attention_context : Tensor [shape=(batch_size, time_steps_q, d_attention)] 
+            The context vector.
+            
+        attention_weights : Tensor [shape=(batch_size, times_steps_q, time_steps_k)]
+            The attention weights.
+        """
 
         processed_query = self.query_layer(paddle.unsqueeze(query, axis=[1]))
         processed_attention_weights = self.location_layer(
