@@ -32,16 +32,16 @@ class DecoderPreNet(nn.Layer):
     Parameters
     ----------
     d_input: int
-        input feature size
+        The input feature size.
 
     d_hidden: int
-        hidden size
+        The hidden size.
 
     d_output: int
-        output feature size
+        The output feature size.
 
     dropout_rate: float
-        droput probability
+        The droput probability.
 
     """
 
@@ -49,7 +49,7 @@ class DecoderPreNet(nn.Layer):
                  d_input: int,
                  d_hidden: int,
                  d_output: int,
-                 dropout_rate: float=0.2):
+                 dropout_rate: float):
         super().__init__()
 
         self.dropout_rate = dropout_rate
@@ -62,12 +62,12 @@ class DecoderPreNet(nn.Layer):
         Parameters
         ----------
         x: Tensor [shape=(B, T_mel, C)]
-            batch of the sequences of padded mel spectrogram
+            Batch of the sequences of padded mel spectrogram.
         
         Returns
         -------
         output: Tensor [shape=(B, T_mel, C)]
-            batch of the sequences of padded hidden state
+            Batch of the sequences of padded hidden state.
 
         """
 
@@ -82,28 +82,28 @@ class DecoderPostNet(nn.Layer):
     Parameters
     ----------
     d_mels: int
-        number of mel bands
+        The number of mel bands.
 
     d_hidden: int
-        hidden size of postnet
+        The hidden size of postnet.
 
     kernel_size: int
-        kernel size of the conv layer in postnet
+        The kernel size of the conv layer in postnet.
 
     num_layers: int
-        number of conv layers in postnet
+        The number of conv layers in postnet.
 
     dropout: float
-        droput probability
+        The droput probability.
 
     """
 
     def __init__(self,
-                 d_mels: int=80,
-                 d_hidden: int=512,
-                 kernel_size: int=5,
-                 num_layers: int=5,
-                 dropout: float=0.1):
+                 d_mels: int,
+                 d_hidden: int,
+                 kernel_size: int,
+                 num_layers: int,
+                 dropout: float):
         super().__init__()
         self.dropout = dropout
         self.num_layers = num_layers
@@ -150,12 +150,12 @@ class DecoderPostNet(nn.Layer):
         Parameters
         ----------
         input: Tensor [shape=(B, T_mel, C)]
-            output sequence of features from decoder
+            Output sequence of features from decoder.
         
         Returns
         -------
         output: Tensor [shape=(B, T_mel, C)]
-            output sequence of features after postnet
+            Output sequence of features after postnet.
 
         """
 
@@ -173,16 +173,16 @@ class Tacotron2Encoder(nn.Layer):
     Parameters
     ----------
     d_hidden: int
-        hidden size in encoder module
+        The hidden size in encoder module.
     
     conv_layers: int
-        number of conv layers
+        The number of conv layers.
 
     kernel_size: int
-        kernel size of conv layers
+        The kernel size of conv layers.
     
     p_dropout: float
-        droput probability
+        The droput probability.
     """
 
     def __init__(self,
@@ -216,15 +216,15 @@ class Tacotron2Encoder(nn.Layer):
         Parameters
         ----------
         x: Tensor [shape=(B, T)]
-            batch of the sequencees of padded character ids
+            Batch of the sequencees of padded character ids.
         
-        text_lens: Tensor [shape=(B,)]
-            batch of lengths of each text input batch.
+        text_lens: Tensor [shape=(B,)], optional
+            Batch of lengths of each text input batch. Defaults to None.
         
         Returns
         -------
         output : Tensor [shape=(B, T, C)]
-            batch of the sequences of padded hidden states
+            Batch of the sequences of padded hidden states.
 
         """
         for conv_batchnorm in self.conv_batchnorms:
@@ -241,40 +241,40 @@ class Tacotron2Decoder(nn.Layer):
     Parameters
     ----------
     d_mels: int
-        number of mel bands
+        The number of mel bands.
 
     reduction_factor: int
-        reduction factor of tacotron
+        The reduction factor of tacotron.
     
     d_encoder: int
-        hidden size of encoder
+        The hidden size of encoder.
 
     d_prenet: int
-        hidden size in decoder prenet
+        The hidden size in decoder prenet.
 
     d_attention_rnn: int
-        attention rnn layer hidden size
+        The attention rnn layer hidden size.
 
     d_decoder_rnn: int
-        decoder rnn layer hidden size
+        The decoder rnn layer hidden size.
     
     d_attention: int
-        hidden size of the linear layer in location sensitive attention
+        The hidden size of the linear layer in location sensitive attention.
 
     attention_filters: int
-        filter size of the conv layer in location sensitive attention
+        The filter size of the conv layer in location sensitive attention.
             
     attention_kernel_size: int
-        kernel size of the conv layer in location sensitive attention
+        The kernel size of the conv layer in location sensitive attention.
 
     p_prenet_dropout: float
-        droput probability in decoder prenet
+        The droput probability in decoder prenet.
 
     p_attention_dropout: float
-        droput probability in location sensitive attention
+        The droput probability in location sensitive attention.
 
     p_decoder_dropout: float
-        droput probability in decoder
+        The droput probability in decoder.
     """
 
     def __init__(self,
@@ -382,25 +382,25 @@ class Tacotron2Decoder(nn.Layer):
 
         Parameters
         ----------
-        keys: Tensor[shape=(B, T_text, C)]
-            batch of the sequences of padded output from encoder
+        keys: Tensor[shape=(B, T_key, C)]
+            Batch of the sequences of padded output from encoder.
         
-        querys: Tensor[shape(B, T_mel, C)]
-            batch of the sequences of padded mel spectrogram
+        querys: Tensor[shape(B, T_query, C)]
+            Batch of the sequences of padded mel spectrogram.
         
-        mask: Tensor[shape=(B, T_text, 1)]
-            mask generated with text length
+        mask: Tensor
+            Mask generated with text length. Shape should be (B, T_key, T_query) or broadcastable shape.
         
         Returns
         -------
-        mel_output: Tensor [shape=(B, T_mel, C)]
-            output sequence of features
+        mel_output: Tensor [shape=(B, T_query, C)]
+            Output sequence of features.
 
-        stop_logits: Tensor [shape=(B, T_mel)]
-            output sequence of stop logits
+        stop_logits: Tensor [shape=(B, T_query)]
+            Output sequence of stop logits.
 
-        alignments: Tensor [shape=(B, T_mel, T_text)]
-            attention weights
+        alignments: Tensor [shape=(B, T_query, T_key)]
+            Attention weights.
         """
         querys = paddle.reshape(
             querys,
@@ -437,25 +437,25 @@ class Tacotron2Decoder(nn.Layer):
 
         Parameters
         ----------
-        keys: Tensor [shape=(B, T_text, C)]
-            batch of the sequences of padded output from encoder
+        keys: Tensor [shape=(B, T_key, C)]
+            Batch of the sequences of padded output from encoder.
         
-        stop_threshold: float
-            stop synthesize when stop logit is greater than this stop threshold
+        stop_threshold: float, optional
+            Stop synthesize when stop logit is greater than this stop threshold. Defaults to 0.5.
         
-        max_decoder_steps: int
-            number of max step when synthesize
+        max_decoder_steps: int, optional
+            Number of max step when synthesize. Defaults to 1000.
         
         Returns
         -------
         mel_output: Tensor [shape=(B, T_mel, C)]
-            output sequence of features
+            Output sequence of features.
 
         stop_logits: Tensor [shape=(B, T_mel)]
-            output sequence of stop logits
+            Output sequence of stop logits.
 
-        alignments: Tensor [shape=(B, T_mel, T_text)]
-            attention weights
+        alignments: Tensor [shape=(B, T_mel, T_key)]
+            Attention weights.
 
         """
         query = paddle.zeros(
@@ -493,75 +493,72 @@ class Tacotron2(nn.Layer):
     """Tacotron2 model for end-to-end text-to-speech (E2E-TTS).
 
     This is a model of Spectrogram prediction network in Tacotron2 described
-    in ``Natural TTS Synthesis
-    by Conditioning WaveNet on Mel Spectrogram Predictions``,
+    in `Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions 
+    <https://arxiv.org/abs/1712.05884>`_,
     which converts the sequence of characters
     into the sequence of mel spectrogram.
-
-    `Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions 
-    <https://arxiv.org/abs/1712.05884>`_.
 
     Parameters
     ----------
     frontend : parakeet.frontend.Phonetics
-        frontend used to preprocess text
+        Frontend used to preprocess text.
 
     d_mels: int
-        number of mel bands
+        Number of mel bands.
     
     d_encoder: int
-        hidden size in encoder module
+        Hidden size in encoder module.
     
     encoder_conv_layers: int
-        number of conv layers in encoder
+        Number of conv layers in encoder.
 
     encoder_kernel_size: int
-        kernel size of conv layers in encoder
+        Kernel size of conv layers in encoder.
 
     d_prenet: int
-        hidden size in decoder prenet
+        Hidden size in decoder prenet.
 
     d_attention_rnn: int
-        attention rnn layer hidden size in decoder
+        Attention rnn layer hidden size in decoder.
 
     d_decoder_rnn: int
-        decoder rnn layer hidden size in decoder
+        Decoder rnn layer hidden size in decoder.
 
     attention_filters: int
-        filter size of the conv layer in location sensitive attention
+        Filter size of the conv layer in location sensitive attention.
             
     attention_kernel_size: int
-        kernel size of the conv layer in location sensitive attention
+        Kernel size of the conv layer in location sensitive attention.
 
     d_attention: int
-        hidden size of the linear layer in location sensitive attention
+        Hidden size of the linear layer in location sensitive attention.
 
     d_postnet: int
-        hidden size of postnet
+        Hidden size of postnet.
 
     postnet_kernel_size: int
-        kernel size of the conv layer in postnet
+        Kernel size of the conv layer in postnet.
 
     postnet_conv_layers: int
-        number of conv layers in postnet
+        Number of conv layers in postnet.
 
     reduction_factor: int
-        reduction factor of tacotron
+        Reduction factor of tacotron2.
 
     p_encoder_dropout: float
-        droput probability in encoder
+        Droput probability in encoder.
 
     p_prenet_dropout: float
-        droput probability in decoder prenet
+        Droput probability in decoder prenet.
 
     p_attention_dropout: float
-        droput probability in location sensitive attention
+        Droput probability in location sensitive attention.
 
     p_decoder_dropout: float
-        droput probability in decoder
+        Droput probability in decoder.
 
     p_postnet_dropout: float
-        droput probability in postnet
+        Droput probability in postnet.
 
     """
 
@@ -616,28 +613,28 @@ class Tacotron2(nn.Layer):
         Parameters
         ----------
         text_inputs: Tensor [shape=(B, T_text)]
-            batch of the sequencees of padded character ids
+            Batch of the sequencees of padded character ids.
         
         mels: Tensor [shape(B, T_mel, C)]
-            batch of the sequences of padded mel spectrogram
+            Batch of the sequences of padded mel spectrogram.
         
         text_lens: Tensor [shape=(B,)]
-            batch of lengths of each text input batch.
+            Batch of lengths of each text input batch.
         
-        output_lens: Tensor [shape=(B,)]
-            batch of lengths of each mels batch.
+        output_lens: Tensor [shape=(B,)], optional
+            Batch of lengths of each mels batch. Defaults to None.
         
         Returns
         -------
         outputs : Dict[str, Tensor]
             
-            mel_output: output sequence of features (B, T_mel, C)
+            mel_output: output sequence of features (B, T_mel, C);
 
-            mel_outputs_postnet: output sequence of features after postnet (B, T_mel, C)
+            mel_outputs_postnet: output sequence of features after postnet (B, T_mel, C);
 
-            stop_logits: output sequence of stop logits (B, T_mel)
+            stop_logits: output sequence of stop logits (B, T_mel);
 
-            alignments: attention weights (B, T_mel, T_text)
+            alignments: attention weights (B, T_mel, T_text).
         """
         embedded_inputs = self.embedding(text_inputs)
         encoder_outputs = self.encoder(embedded_inputs, text_lens)
@@ -675,25 +672,25 @@ class Tacotron2(nn.Layer):
         Parameters
         ----------
         text_inputs: Tensor [shape=(B, T_text)]
-            batch of the sequencees of padded character ids
+            Batch of the sequencees of padded character ids.
         
-        stop_threshold: float
-            stop synthesize when stop logit is greater than this stop threshold
+        stop_threshold: float, optional
+            Stop synthesize when stop logit is greater than this stop threshold. Defaults to 0.5.
         
-        max_decoder_steps: int
-            number of max step when synthesize
+        max_decoder_steps: int, optional
+            Number of max step when synthesize. Defaults to 1000.
         
         Returns
         -------
         outputs : Dict[str, Tensor]
 
-            mel_output: output sequence of sepctrogram (B, T_mel, C)
+            mel_output: output sequence of sepctrogram (B, T_mel, C);
 
-            mel_outputs_postnet: output sequence of sepctrogram after postnet (B, T_mel, C)
+            mel_outputs_postnet: output sequence of sepctrogram after postnet (B, T_mel, C);
 
-            stop_logits: output sequence of stop logits (B, T_mel)
+            stop_logits: output sequence of stop logits (B, T_mel);
 
-            alignments: attention weights (B, T_mel, T_text)
+            alignments: attention weights (B, T_mel, T_text).
         """
         embedded_inputs = self.embedding(text_inputs)
         encoder_outputs = self.encoder(embedded_inputs)
@@ -721,21 +718,21 @@ class Tacotron2(nn.Layer):
         Parameters
         ----------
         text: str
-            sequence of characters
+            Sequence of characters.
         
-        stop_threshold: float
-            stop synthesize when stop logit is greater than this stop threshold
+        stop_threshold: float, optional
+            Stop synthesize when stop logit is greater than this stop threshold. Defaults to 0.5.
         
-        max_decoder_steps: int
-            number of max step when synthesize
+        max_decoder_steps: int, optional
+            Number of max step when synthesize. Defaults to 1000.
         
         Returns
         -------
         outputs : Dict[str, Tensor]
 
-            mel_outputs_postnet: output sequence of sepctrogram after postnet (T_mel, C)
+            mel_outputs_postnet: output sequence of sepctrogram after postnet (T_mel, C);
 
-            alignments: attention weights (T_mel, T_text)
+            alignments: attention weights (T_mel, T_text).
         """
         ids = np.asarray(self.frontend(text))
         ids = paddle.unsqueeze(paddle.to_tensor(ids, dtype='int64'), [0])
@@ -750,21 +747,21 @@ class Tacotron2(nn.Layer):
         Parameters
         ----------
         frontend: parakeet.frontend.Phonetics
-            frontend used to preprocess text
+            Frontend used to preprocess text.
         
         config: yacs.config.CfgNode
-            model configs
+            Model configs.
         
         checkpoint_path: Path
-            the path of pretrained model checkpoint
+            The path of pretrained model checkpoint.
         
         Returns
         -------
         mel_outputs_postnet: Tensor [shape=(T_mel, C)]
-            output sequence of sepctrogram after postnet
+            Output sequence of sepctrogram after postnet.
 
         alignments: Tensor [shape=(T_mel, T_text)]
-            attention weights 
+            Attention weights.
         """
         model = cls(frontend,
                     d_mels=config.data.d_mels,
@@ -805,31 +802,31 @@ class Tacotron2Loss(nn.Layer):
         Parameters
         ----------
         mel_outputs: Tensor [shape=(B, T_mel, C)]
-            output mel spectrogram sequence
+            Output mel spectrogram sequence.
         
         mel_outputs_postnet: Tensor [shape(B, T_mel, C)]
-            output mel spectrogram sequence after postnet
+            Output mel spectrogram sequence after postnet.
         
         stop_logits: Tensor [shape=(B, T_mel)]
-            output sequence of stop logits befor sigmoid
+            Output sequence of stop logits befor sigmoid.
         
         mel_targets: Tensor [shape=(B, T_mel, C)]
-            target mel spectrogram sequence
+            Target mel spectrogram sequence.
         
         stop_tokens: Tensor [shape=(B,)]
-            target stop token
+            Target stop token.
         
         Returns
         -------
         losses : Dict[str, Tensor]
             
-            loss: the sum of the other three losses
+            loss: the sum of the other three losses;
 
-            mel_loss: MSE loss compute by mel_targets and mel_outputs
+            mel_loss: MSE loss compute by mel_targets and mel_outputs;
 
-            post_mel_loss: MSE loss compute by mel_targets and mel_outputs_postnet
+            post_mel_loss: MSE loss compute by mel_targets and mel_outputs_postnet;
 
-            stop_loss: stop loss computed by stop_logits and stop token 
+            stop_loss: stop loss computed by stop_logits and stop token.
         """
         mel_loss = paddle.nn.MSELoss()(mel_outputs, mel_targets)
         post_mel_loss = paddle.nn.MSELoss()(mel_outputs_postnet, mel_targets)
