@@ -5,23 +5,35 @@ from paddle.nn import functional as F
 
 from parakeet.modules import attention as attn
 from parakeet.modules.masking import combine_mask
+
+__all__ = [
+    "PositionwiseFFN",
+    "TransformerEncoderLayer",
+    "TransformerDecoderLayer",
+]
+
 class PositionwiseFFN(nn.Layer):
-    """
-    A faithful implementation of Position-wise Feed-Forward Network 
+    """A faithful implementation of Position-wise Feed-Forward Network 
     in `Attention is All You Need <https://arxiv.org/abs/1706.03762>`_.
-    It is basically a 3-layer MLP, with relu actication and dropout in between.
+    It is basically a 2-layer MLP, with relu actication and dropout in between.
+    
+    Parameters
+    ----------
+    input_size: int
+        The feature size of the intput. It is also the feature size of the 
+        output.
+        
+    hidden_size: int
+        The hidden size.
+        
+    dropout: float
+        The probability of the Dropout applied to the output of the first 
+        layer, by default 0.
     """
     def __init__(self, 
                  input_size: int, 
                  hidden_size: int, 
                  dropout=0.0):
-        """
-        Args:
-            input_size (int): the input feature size.
-            hidden_size (int): the hidden layer's feature size.
-            dropout (float, optional): probability of dropout applied to the 
-                output of the first fully connected layer. Defaults to 0.0.
-        """
         super(PositionwiseFFN, self).__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, input_size)
@@ -31,13 +43,17 @@ class PositionwiseFFN(nn.Layer):
         self.hidden_szie = hidden_size
 
     def forward(self, x):
-        """positionwise feed forward network.
+        """Forward pass of positionwise feed forward network.
 
-        Args:
-            x (Tensor): shape(*, input_size), the input tensor.
+        Parameters
+        ----------
+        x : Tensor [shape=(*, input_size)]
+            The input tensor, where ``\*`` means arbitary shape.
 
-        Returns:
-            Tensor: shape(*, input_size), the output tensor.
+        Returns
+        -------
+        Tensor [shape=(*, input_size)]
+            The output tensor.
         """
         l1 = self.dropout(F.relu(self.linear1(x)))
         l2 = self.linear2(l1)
@@ -45,56 +61,100 @@ class PositionwiseFFN(nn.Layer):
 
 
 class TransformerEncoderLayer(nn.Layer):
-    """
-    Transformer encoder layer.
+    """A faithful implementation of Transformer encoder layer in 
+    `Attention is All You Need <https://arxiv.org/abs/1706.03762>`_.
+    
+    Parameters
+    ----------
+    d_model :int 
+        The feature size of the input. It is also the feature size of the 
+        output.
+        
+    n_heads : int
+        The number of heads of self attention (a ``MultiheadAttention`` 
+        layer).
+        
+    d_ffn : int 
+        The hidden size of the positional feed forward network (a 
+        ``PositionwiseFFN`` layer).
+        
+    dropout : float, optional
+        The probability of the dropout in MultiHeadAttention and 
+        PositionwiseFFN, by default 0.
+        
+    Notes
+    ------
+    It uses the PostLN (post layer norm) scheme. 
     """
     def __init__(self, d_model, n_heads, d_ffn, dropout=0.):
-        """
-        Args:
-            d_model (int): the feature size of the input, and the output.
-            n_heads (int): the number of heads in the internal MultiHeadAttention layer.
-            d_ffn (int): the hidden size of the internal PositionwiseFFN.
-            dropout (float, optional): the probability of the dropout in 
-                MultiHeadAttention and PositionwiseFFN. Defaults to 0.
-        """
         super(TransformerEncoderLayer, self).__init__()
         self.self_mha = attn.MultiheadAttention(d_model, n_heads, dropout)
         self.layer_norm1 = nn.LayerNorm([d_model], epsilon=1e-6)
         
         self.ffn = PositionwiseFFN(d_model, d_ffn, dropout)
         self.layer_norm2 = nn.LayerNorm([d_model], epsilon=1e-6)
+        
+        self.dropout = dropout
     
     def forward(self, x, mask):
-        """
-        Args:
-            x (Tensor): shape(batch_size, time_steps, d_model), the decoder input.
-            mask (Tensor): shape(batch_size, time_steps), the padding mask.
+        """Forward pass of TransformerEncoderLayer.
         
-        Returns:
-            (x, attn_weights)
-            x (Tensor): shape(batch_size, time_steps, d_model), the decoded.
-            attn_weights (Tensor), shape(batch_size, n_heads, time_steps, time_steps), self attention.
-        """
-        context_vector, attn_weights = self.self_mha(x, x, x, paddle.unsqueeze(mask, 1))
-        x = self.layer_norm1(x + context_vector)
+        Parameters
+        ----------
+        x : Tensor [shape=(batch_size, time_steps, d_model)]
+            The input.
+            
+        mask : Tensor [shape=(batch_size, time_steps, time_steps) or broadcastable shape]
+            The padding mask.
         
-        x = self.layer_norm2(x + self.ffn(x))
+        Returns
+        -------
+        x :Tensor [shape=(batch_size, time_steps, d_model)]
+            The encoded output.
+            
+        attn_weights : Tensor [shape=(batch_size, n_heads, time_steps, time_steps)]
+            The attention weights of the self attention.
+        """
+        context_vector, attn_weights = self.self_mha(x, x, x, mask)
+        x = self.layer_norm1(
+            F.dropout(x + context_vector,
+                      self.dropout,
+                      training=self.training))
+        
+        x = self.layer_norm2(
+            F.dropout(x + self.ffn(x),
+                      self.dropout,
+                      training=self.training))
         return x, attn_weights
 
 
 class TransformerDecoderLayer(nn.Layer):
-    """
-    Transformer decoder layer.
+    """A faithful implementation of Transformer decoder layer in 
+    `Attention is All You Need <https://arxiv.org/abs/1706.03762>`_.
+    
+    Parameters
+    ----------
+    d_model :int 
+        The feature size of the input. It is also the feature size of the 
+        output.
+        
+    n_heads : int
+        The number of heads of attentions (``MultiheadAttention`` 
+        layers).
+        
+    d_ffn : int 
+        The hidden size of the positional feed forward network (a 
+        ``PositionwiseFFN`` layer).
+        
+    dropout : float, optional
+        The probability of the dropout in MultiHeadAttention and 
+        PositionwiseFFN, by default 0.
+        
+    Notes
+    ------
+    It uses the PostLN (post layer norm) scheme. 
     """
     def __init__(self, d_model, n_heads, d_ffn, dropout=0.):
-        """
-        Args:
-            d_model (int): the feature size of the input, and the output.
-            n_heads (int): the number of heads in the internal MultiHeadAttention layer.
-            d_ffn (int): the hidden size of the internal PositionwiseFFN.
-            dropout (float, optional): the probability of the dropout in 
-                MultiHeadAttention and PositionwiseFFN. Defaults to 0.
-        """
         super(TransformerDecoderLayer, self).__init__()
         self.self_mha = attn.MultiheadAttention(d_model, n_heads, dropout)
         self.layer_norm1 = nn.LayerNorm([d_model], epsilon=1e-6)
@@ -104,30 +164,52 @@ class TransformerDecoderLayer(nn.Layer):
         
         self.ffn = PositionwiseFFN(d_model, d_ffn, dropout)
         self.layer_norm3 = nn.LayerNorm([d_model], epsilon=1e-6)
+        
+        self.dropout = dropout
     
     def forward(self, q, k, v, encoder_mask, decoder_mask):
+        """Forward pass of TransformerEncoderLayer.
+        
+        Parameters
+        ----------
+        q : Tensor [shape=(batch_size, time_steps_q, d_model)] 
+            The decoder input.
+        k : Tensor [shape=(batch_size, time_steps_k, d_model)] 
+            The keys.
+        v : Tensor [shape=(batch_size, time_steps_k, d_model)]
+            The values
+        encoder_mask : Tensor
+            Encoder padding mask, shape is ``(batch_size, time_steps_k, 
+            time_steps_k)`` or broadcastable shape.
+        decoder_mask : Tensor
+            Decoder mask, shape is ``(batch_size, time_steps_q, time_steps_k)``
+            or broadcastable shape. 
+        
+        Returns
+        --------
+        q : Tensor [shape=(batch_size, time_steps_q, d_model)]
+            The decoder output.
+            
+        self_attn_weights : Tensor [shape=(batch_size, n_heads, time_steps_q, time_steps_q)]
+            Decoder self attention.
+            
+        cross_attn_weights : Tensor [shape=(batch_size, n_heads, time_steps_q, time_steps_k)] 
+            Decoder-encoder cross attention.
         """
-        Args:
-            q (Tensor): shape(batch_size, time_steps_q, d_model), the decoder input.
-            k (Tensor): shape(batch_size, time_steps_k, d_model), keys.
-            v (Tensor): shape(batch_size, time_steps_k, d_model), values
-            encoder_mask (Tensor): shape(batch_size, time_steps_k) encoder padding mask.
-            decoder_mask (Tensor): shape(batch_size, time_steps_q) decoder padding mask.
+        context_vector, self_attn_weights = self.self_mha(q, q, q, decoder_mask)
+        q = self.layer_norm1(
+            F.dropout(q + context_vector, 
+                      self.dropout, 
+                      training=self.training))
         
-        Returns:
-            (q, self_attn_weights, cross_attn_weights)
-            q (Tensor): shape(batch_size, time_steps_q, d_model), the decoded.
-            self_attn_weights (Tensor), shape(batch_size, n_heads, time_steps_q, time_steps_q), decoder self attention.
-            cross_attn_weights (Tensor), shape(batch_size, n_heads, time_steps_q, time_steps_k), decoder-encoder cross attention.
-        """
-        tq = q.shape[1]
-        no_future_mask = paddle.tril(paddle.ones([tq, tq])) #(tq, tq)
-        combined_mask = combine_mask(decoder_mask.unsqueeze(1), no_future_mask)
-        context_vector, self_attn_weights = self.self_mha(q, q, q, combined_mask)
-        q = self.layer_norm1(q + context_vector)
+        context_vector, cross_attn_weights = self.cross_mha(q, k, v, encoder_mask)
+        q = self.layer_norm2(
+            F.dropout(q + context_vector,
+                      self.dropout,
+                      training=self.training))
         
-        context_vector, cross_attn_weights = self.cross_mha(q, k, v, paddle.unsqueeze(encoder_mask, 1))
-        q = self.layer_norm2(q + context_vector)
-        
-        q = self.layer_norm3(q + self.ffn(q))
+        q = self.layer_norm3(
+            F.dropout(q + self.ffn(q),
+                      self.dropout,
+                      training=self.training))
         return q, self_attn_weights, cross_attn_weights

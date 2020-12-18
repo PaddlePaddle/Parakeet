@@ -3,21 +3,34 @@ import numpy as np
 import paddle
 from paddle.nn import functional as F
 
+__all__ = ["positional_encoding"]
 
 def positional_encoding(start_index, length, size, dtype=None):
-    """
-    Generate standard positional encoding.
+    r"""Generate standard positional encoding matrix.
     
-    pe(pos, 2i) = sin(pos / 10000 ** (2i / size))
-    pe(pos, 2i+1) = cos(pos / 10000 ** (2i / size))
+    .. math::
     
-    Args:
-        start_index (int): the start index.
-        length (int): the length of the positional encoding.
-        size (int): positional encoding dimension.
+        pe(pos, 2i) = sin(\frac{pos}{10000^{\frac{2i}{size}}}) \\
+        pe(pos, 2i+1) = cos(\frac{pos}{10000^{\frac{2i}{size}}})
     
-    Returns:
-        encodings (Tensor): shape(length, size), the positional encoding.
+    Parameters
+    ----------
+    start_index : int
+        The start index.
+    length : int
+        The timesteps of the positional encoding to generate.
+    size : int 
+        Feature size of positional encoding.
+    
+    Returns
+    -------
+    Tensor [shape=(length, size)]
+        The positional encoding.
+        
+    Raises
+    ------
+    ValueError
+        If ``size`` is not divisible by 2.
     """
     if (size % 2 != 0):
         raise ValueError("size should be divisible by 2")
