@@ -29,47 +29,63 @@ __all__ = ["ExperimentBase"]
 
 class ExperimentBase(object):
     """
-    An experiment template in order to structure the training code and take care of saving, loading, logging, visualization stuffs. It's intended to be flexible and simple. 
+    An experiment template in order to structure the training code and take 
+    care of saving, loading, logging, visualization stuffs. It's intended to 
+    be flexible and simple. 
     
-    So it only handles output directory (create directory for the outut, create a checkpoint directory, dump the config in use and create visualizer and logger)in a standard way without restricting the input/output protocols of the model and dataloader. It leaves the main part for the user to implement their own(setup the model, criterion, optimizer, defaine a training step, define a validation function and customize all the text and visual logs).
+    So it only handles output directory (create directory for the output, 
+    create a checkpoint directory, dump the config in use and create 
+    visualizer and logger) in a standard way without enforcing any
+    input-output protocols to the model and dataloader. It leaves the main 
+    part for the user to implement their own (setup the model, criterion, 
+    optimizer, define a training step, define a validation function and 
+    customize all the text and visual logs).
 
-    It does not save too much boilerplate code. The users still have to write the forward/backward/update mannually, but they are free to add non-standard behaviors if needed.
+    It does not save too much boilerplate code. The users still have to write 
+    the forward/backward/update mannually, but they are free to add 
+    non-standard behaviors if needed.
 
     We have some conventions to follow.
-    1. Experiment should have `.model`, `.optimizer`, `.train_loader` and `.valid_loader`, `.config`, `.args` attributes.
-    2. The config should have a `.training` field, which has `valid_interval`, `save_interval` and `max_iteration` keys. It is used as the trigger to invoke validation, checkpointing and stop of the experiment.
-    3. There are four method, namely `train_batch`, `valid`, `setup_model` and `setup_dataloader` that should be implemented.
+    1. Experiment should have ``model``, ``optimizer``, ``train_loader`` and 
+    ``valid_loader``, ``config`` and ``args`` attributes.
+    2. The config should have a ``training`` field, which has 
+    ``valid_interval``, ``save_interval`` and ``max_iteration`` keys. It is 
+    used as the trigger to invoke validation, checkpointing and stop of the 
+    experiment.
+    3. There are four methods, namely ``train_batch``, ``valid``, 
+    ``setup_model`` and ``setup_dataloader`` that should be implemented.
 
-    Feel free to add/overwrite other methods and standalone functions if you need.
+    Feel free to add/overwrite other methods and standalone functions if you 
+    need.
+    
+    Parameters
+    ----------
+    config: yacs.config.CfgNode
+        The configuration used for the experiment.
+    
+    args: argparse.Namespace
+        The parsed command line arguments.
 
-
-    Examples:
+    Examples
     --------
-    def main_sp(config, args):
-        exp = Experiment(config, args)
-        exp.setup()
-        exp.run()
-
-    def main(config, args):
-        if args.nprocs > 1 and args.device == "gpu":
-            dist.spawn(main_sp, args=(config, args), nprocs=args.nprocs)
-        else:
-            main_sp(config, args)
-
-    if __name__ == "__main__":
-        config = get_cfg_defaults()
-        parser = default_argument_parser()
-        args = parser.parse_args()
-        if args.config: 
-            config.merge_from_file(args.config)
-        if args.opts:
-            config.merge_from_list(args.opts)
-        config.freeze()
-        print(config)
-        print(args)
-
-        main(config, args)
-
+    >>> def main_sp(config, args):
+    >>>     exp = Experiment(config, args)
+    >>>     exp.setup()
+    >>>     exp.run()
+    >>> 
+    >>> config = get_cfg_defaults()
+    >>> parser = default_argument_parser()
+    >>> args = parser.parse_args()
+    >>> if args.config: 
+    >>>     config.merge_from_file(args.config)
+    >>> if args.opts:
+    >>>     config.merge_from_list(args.opts)
+    >>> config.freeze()
+    >>> 
+    >>> if args.nprocs > 1 and args.device == "gpu":
+    >>>     dist.spawn(main_sp, args=(config, args), nprocs=args.nprocs)
+    >>> else:
+    >>>     main_sp(config, args)
     """
 
     def __init__(self, config, args):
@@ -77,6 +93,8 @@ class ExperimentBase(object):
         self.args = args
 
     def setup(self):
+        """Setup the experiment.
+        """
         paddle.set_device(self.args.device)
         if self.parallel:
             self.init_parallel()
@@ -95,16 +113,29 @@ class ExperimentBase(object):
 
     @property
     def parallel(self):
+        """A flag indicating whether the experiment should run with 
+        multiprocessing.
+        """
         return self.args.device == "gpu" and self.args.nprocs > 1
 
     def init_parallel(self):
+        """Init environment for multiprocess training.
+        """
         dist.init_parallel_env()
 
     def save(self):
+        """Save checkpoint (model parameters and optimizer states).
+        """
         checkpoint.save_parameters(self.checkpoint_dir, self.iteration,
                                    self.model, self.optimizer)
 
     def resume_or_load(self):
+        """Resume from latest checkpoint at checkpoints in the output 
+        directory or load a specified checkpoint.
+        
+        If ``args.checkpoint_path`` is not None, load the checkpoint, else
+        resume training.
+        """
         iteration = checkpoint.load_parameters(
             self.model,
             self.optimizer,
@@ -113,6 +144,13 @@ class ExperimentBase(object):
         self.iteration = iteration
 
     def read_batch(self):
+        """Read a batch from the train_loader.
+
+        Returns
+        -------
+        List[Tensor]
+            A batch.
+        """
         try:
             batch = next(self.iterator)
         except StopIteration:
@@ -121,12 +159,19 @@ class ExperimentBase(object):
         return batch
 
     def new_epoch(self):
+        """Reset the train loader and increment ``epoch``.
+        """
         self.epoch += 1
         if self.parallel:
             self.train_loader.batch_sampler.set_epoch(self.epoch)
         self.iterator = iter(self.train_loader)
 
     def train(self):
+        """The training process.
+        
+        It includes forward/backward/update and periodical validation and 
+        saving.
+        """
         self.new_epoch()
         while self.iteration < self.config.training.max_iteration:
             self.iteration += 1
@@ -139,6 +184,9 @@ class ExperimentBase(object):
                 self.save()
 
     def run(self):
+        """The routine of the experiment after setup. This method is intended
+        to be used by the user.
+        """
         self.resume_or_load()
         try:
             self.train()
@@ -148,6 +196,8 @@ class ExperimentBase(object):
 
     @mp_tools.rank_zero_only
     def setup_output_dir(self):
+        """Create a directory used for output.
+        """
         # output dir
         output_dir = Path(self.args.output).expanduser()
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -156,6 +206,10 @@ class ExperimentBase(object):
 
     @mp_tools.rank_zero_only
     def setup_checkpointer(self):
+        """Create a directory used to save checkpoints into.
+        
+        It is "checkpoints" inside the output directory.
+        """
         # checkpoint dir
         checkpoint_dir = self.output_dir / "checkpoints"
         checkpoint_dir.mkdir(exist_ok=True)
@@ -164,12 +218,28 @@ class ExperimentBase(object):
 
     @mp_tools.rank_zero_only
     def setup_visualizer(self):
+        """Initialize a visualizer to log the experiment.
+        
+        The visual log is saved in the output directory.
+        
+        Notes
+        ------
+        Only the main process has a visualizer with it. Use multiple 
+        visualizers in multiprocess to write to a same log file may cause 
+        unexpected behaviors.
+        """
         # visualizer
         visualizer = SummaryWriter(logdir=str(self.output_dir))
 
         self.visualizer = visualizer
 
     def setup_logger(self):
+        """Initialize a text logger to log the experiment.
+        
+        Each process has its own text logger. The logging message is write to 
+        the standard output and a text file named ``worker_n.log`` in the 
+        output directory, where ``n`` means the rank of the process. 
+        """
         logger = logging.getLogger(__name__)
         logger.setLevel("INFO")
         logger.addHandler(logging.StreamHandler())
@@ -180,19 +250,34 @@ class ExperimentBase(object):
 
     @mp_tools.rank_zero_only
     def dump_config(self):
+        """Save the configuration used for this experiment. 
+        
+        It is saved in to ``config.yaml`` in the output directory at the 
+        beginning of the experiment.
+        """
         with open(self.output_dir / "config.yaml", 'wt') as f:
             print(self.config, file=f)
 
     def train_batch(self):
+        """The training loop. A subclass should implement this method.
+        """
         raise NotImplementedError("train_batch should be implemented.")
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()
     def valid(self):
+        """The validation. A subclass should implement this method.
+        """
         raise NotImplementedError("valid should be implemented.")
 
     def setup_model(self):
+        """Setup model, criterion and optimizer, etc. A subclass should 
+        implement this method.
+        """
         raise NotImplementedError("setup_model should be implemented.")
 
     def setup_dataloader(self):
+        """Setup training dataloader and validation dataloader. A subclass 
+        should implement this method.
+        """
         raise NotImplementedError("setup_dataloader should be implemented.")

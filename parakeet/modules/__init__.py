@@ -12,3 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from parakeet.modules.attention import *
+from parakeet.modules.audio import *
+from parakeet.modules.conv import *
+from parakeet.modules.geometry import *
+from parakeet.modules.losses import *
+from parakeet.modules.masking import *
+from parakeet.modules.positional_encoding import *
+from parakeet.modules.transformer import *
