@@ -752,16 +752,13 @@ class Tacotron2(nn.Layer):
         config: yacs.config.CfgNode
             Model configs.
         
-        checkpoint_path: Path
-            The path of pretrained model checkpoint.
+        checkpoint_path: Path or str
+            The path of pretrained model checkpoint, without extension name.
         
         Returns
         -------
-        mel_outputs_postnet: Tensor [shape=(T_mel, C)]
-            Output sequence of sepctrogram after postnet.
-
-        alignments: Tensor [shape=(T_mel, T_text)]
-            Attention weights.
+        Tacotron2
+            The model build from pretrined result.
         """
         model = cls(frontend,
                     d_mels=config.data.d_mels,
