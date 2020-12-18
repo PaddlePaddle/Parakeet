@@ -493,13 +493,13 @@ class Tacotron2(nn.Layer):
     """Tacotron2 model for end-to-end text-to-speech (E2E-TTS).
 
     This is a model of Spectrogram prediction network in Tacotron2 described
-    in `Natural TTS Synthesis
-    by Conditioning WaveNet on Mel Spectrogram Predictions`_,
+    in ``Natural TTS Synthesis
+    by Conditioning WaveNet on Mel Spectrogram Predictions``,
     which converts the sequence of characters
     into the sequence of mel spectrogram.
 
-    .. _`Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions`:
-       https://arxiv.org/abs/1712.05884
+    `Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions 
+    <https://arxiv.org/abs/1712.05884>`_.
 
     Parameters
     ----------
