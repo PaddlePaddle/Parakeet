@@ -43,16 +43,16 @@ class PositionwiseFFN(nn.Layer):
         self.hidden_szie = hidden_size
 
     def forward(self, x):
-        """Forward pass of positionwise feed forward network.
+        r"""Forward pass of positionwise feed forward network.
 
         Parameters
         ----------
-        x : Tensor [shape=(*, input_size)]
+        x : Tensor [shape=(\*, input_size)]
             The input tensor, where ``\*`` means arbitary shape.
 
         Returns
         -------
-        Tensor [shape=(*, input_size)]
+        Tensor [shape=(\*, input_size)]
             The output tensor.
         """
         l1 = self.dropout(F.relu(self.linear1(x)))
@@ -104,8 +104,9 @@ class TransformerEncoderLayer(nn.Layer):
         x : Tensor [shape=(batch_size, time_steps, d_model)]
             The input.
             
-        mask : Tensor [shape=(batch_size, time_steps, time_steps) or broadcastable shape]
-            The padding mask.
+        mask : Tensor
+            The padding mask. The shape is (batch_size, time_steps, 
+            time_steps) or broadcastable shape.
         
         Returns
         -------

@@ -54,7 +54,7 @@ def feature_mask(input, axis, dtype="bool"):
     Returns
     -------
     Tensor
-        The geenrated mask with `spatial` shape as mentioned above.
+        The geenrated mask with ``spatial`` shape as mentioned above.
         
         It has one less dimension than ``input`` does.
     """
@@ -103,7 +103,7 @@ def future_mask(time_steps, dtype="bool"):
     time_steps : int
         Decoder time steps.
     dtype : str, optional
-        The data type of the generate mask, by default "bool"
+        The data type of the generate mask, by default "bool".
 
     Returns
     -------

@@ -6,18 +6,18 @@ def shuffle_dim(x, axis, perm=None):
 
     Parameters
     ----------
-        x : Tensor
-            The input tensor.
-            
-        axis : int
-            The axis to shuffle.
-            
-        perm : List[int], ndarray, optional
-            The order to reorder the tensor along the `axis`-th dimension.
-            
-            It is a permutation of ``[0, d)``, where d is the size of the 
-            ``axis``-th dimension of the input tensor. If not provided, 
-            a random permutation is used. Defaults to None.
+    x : Tensor
+        The input tensor.
+        
+    axis : int
+        The axis to shuffle.
+        
+    perm : List[int], ndarray, optional
+        The order to reorder the tensor along the ``axis``-th dimension.
+        
+        It is a permutation of ``[0, d)``, where d is the size of the 
+        ``axis``-th dimension of the input tensor. If not provided, 
+        a random permutation is used. Defaults to None.
 
     Returns
     ---------

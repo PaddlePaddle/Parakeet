@@ -24,7 +24,7 @@ def scaled_dot_product_attention(q,
                                  mask=None,
                                  dropout=0.0,
                                  training=True):
-    """Scaled dot product attention with masking. 
+    r"""Scaled dot product attention with masking. 
     
     Assume that q, k, v all have the same leading dimensions (denoted as * in 
     descriptions below). Dropout is applied to attention weights before 
@@ -33,24 +33,24 @@ def scaled_dot_product_attention(q,
     Parameters
     -----------
     
-    q : Tensor [shape=(*, T_q, d)]
+    q : Tensor [shape=(\*, T_q, d)]
         the query tensor.
         
-    k : Tensor [shape=(*, T_k, d)]
+    k : Tensor [shape=(\*, T_k, d)]
         the key tensor.
         
-    v : Tensor [shape=(*, T_k, d_v)]
+    v : Tensor [shape=(\*, T_k, d_v)]
         the value tensor.
         
-    mask : Tensor, [shape=(*, T_q, T_k) or broadcastable shape], optional
+    mask : Tensor, [shape=(\*, T_q, T_k) or broadcastable shape], optional
         the mask tensor, zeros correspond to paddings. Defaults to None.
     
     Returns
     ----------
-    out : Tensor [shape=(*, T_q, d_v)] 
+    out : Tensor [shape=(\*, T_q, d_v)] 
         the context vector.
 
-    attn_weights : Tensor [shape=(*, T_q, T_k)]
+    attn_weights : Tensor [shape=(\*, T_q, T_k)]
         the attention weights.
     """
     d = q.shape[-1]  # we only support imperative execution
@@ -208,16 +208,16 @@ class MultiheadAttention(nn.Layer):
         
     k_dim : int, optional
         Feature size of the key of each scaled dot product attention. If not 
-        provided, it is set to `model_dim / num_heads`. Defaults to None.
+        provided, it is set to ``model_dim / num_heads``. Defaults to None.
         
     v_dim : int, optional
         Feature size of the key of each scaled dot product attention. If not 
-        provided, it is set to `model_dim / num_heads`. Defaults to None.
+        provided, it is set to ``model_dim / num_heads``. Defaults to None.
 
     Raises
     ---------
     ValueError
-        if `model_dim` is not divisible by `num_heads`.
+        If ``model_dim`` is not divisible by ``num_heads``.
     """
     def __init__(self,
                  model_dim: int,

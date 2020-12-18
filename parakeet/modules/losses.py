@@ -18,8 +18,8 @@ def weighted_mean(input, weight):
     -----------
     input : Tensor 
         The input tensor.
-    weight : Tensor [broadcastable shape with the input]
-        The weight tensor.
+    weight : Tensor
+        The weight tensor with broadcastable shape with the input.
 
     Returns
     ----------

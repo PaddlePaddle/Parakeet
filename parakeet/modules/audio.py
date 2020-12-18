@@ -151,7 +151,7 @@ class STFT(nn.Layer):
         Returns
         ------------
         Tensor [shape=(B, C, 1, T)] 
-            The power spectrum. (C = 1 + `n_fft` // 2)
+            The power spectrum.
         """
         real, imag = self(x)
         power = real**2 + imag**2
@@ -168,7 +168,7 @@ class STFT(nn.Layer):
         Returns
         ------------
         Tensor [shape=(B, C, 1, T)] 
-            The magnitude of the spectrum. (C = 1 + `n_fft` // 2)
+            The magnitude of the spectrum.
         """
         power = self.power(x)
         magnitude = paddle.sqrt(power)
