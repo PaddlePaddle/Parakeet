@@ -8,28 +8,48 @@ __all__ = ["quantize", "dequantize", "STFT"]
 
 
 def quantize(values, n_bands):
-    """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in [0, n_bands).
+    """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in 
+    [0, n_bands).
 
-    Args:
-        values (Tensor): dtype: flaot32 or float64. the floating point value.
-        n_bands (int): the number of bands. The output integer Tensor's value is in the range [0, n_bans).
+    Parameters
+    -----------
+    values : Tensor [dtype: flaot32 or float64]
+        The floating point value.
+        
+    n_bands : int
+        The number of bands. The output integer Tensor's value is in the range 
+        [0, n_bans).
 
-    Returns:
-        Tensor: the quantized tensor, dtype: int64.
+    Returns
+    ----------
+    Tensor [dtype: int 64]
+        The quantized tensor.
     """
     quantized = paddle.cast((values + 1.0) / 2.0 * n_bands, "int64")
     return quantized
 
 
 def dequantize(quantized, n_bands, dtype=None):
-    """Linearlly dequantize an integer Tensor into a float Tensor in the range [-1, 1).
+    """Linearlly dequantize an integer Tensor into a float Tensor in the range 
+    [-1, 1).
 
-    Args:
-        quantized (Tensor): dtype: int64. The quantized value in the range [0, n_bands).
-        n_bands (int): number of bands. The input integer Tensor's value is in the range [0, n_bans).
-        dtype (str, optional): data type of the output.
-    Returns:
-        Tensor: the dequantized tensor, dtype is specified by dtype.
+    Parameters
+    -----------
+    quantized : Tensor [dtype: int]
+        The quantized value in the range [0, n_bands).
+        
+    n_bands : int
+        Number of bands. The input integer Tensor's value is in the range 
+        [0, n_bans).
+        
+    dtype : str, optional
+        Data type of the output.
+        
+    Returns
+    -----------
+    Tensor
+        The dequantized tensor, dtype is specified by `dtype`. If `dtype` is 
+        not specified, the default float data type is used.
     """
     dtype = dtype or paddle.get_default_dtype()
     value = (paddle.cast(quantized, dtype) + 0.5) * (2.0 / n_bands) - 1.0
@@ -37,15 +57,36 @@ def dequantize(quantized, n_bands, dtype=None):
 
 
 class STFT(nn.Layer):
+    """A module for computing stft transformation in a differentiable way. 
+    
+    Parameters
+    ------------
+    n_fft : int
+        Number of samples in a frame.
+        
+    hop_length : int
+        Number of samples shifted between adjacent frames.
+        
+    win_length : int
+        Length of the window.
+        
+    window : str, optional
+        Name of window function, see `scipy.signal.get_window` for more 
+        details. Defaults to "hanning".
+        
+    Notes
+    -----------
+    It behaves like ``librosa.core.stft``. See ``librosa.core.stft`` for more 
+    details.
+    
+    Given a audio which ``T`` samples, it the STFT transformation outputs a 
+    spectrum with (C, frames) and complex dtype, where ``C = 1 + n_fft / 2`` 
+    and ``frames = 1 + T // hop_lenghth``.
+    
+    Ony ``center`` and ``reflect`` padding is supported now.
+    
+    """
     def __init__(self, n_fft, hop_length, win_length, window="hanning"):
-        """A module for computing differentiable stft transform. See `librosa.stft` for more details.
-
-        Args:
-            n_fft (int): number of samples in a frame.
-            hop_length (int): number of samples shifted between adjacent frames.
-            win_length (int): length of the window function.
-            window (str, optional): name of window function, see `scipy.signal.get_window` for more details. Defaults to "hanning".
-        """
         super(STFT, self).__init__()
         self.hop_length = hop_length
         self.n_bin = 1 + n_fft // 2
@@ -73,13 +114,18 @@ class STFT(nn.Layer):
     def forward(self, x):
         """Compute the stft transform.
 
-        Args:
-            x (Variable): shape(B, T), dtype flaot32, the input waveform.
+        Parameters
+        ------------
+        x : Tensor [shape=(B, T)]
+            The input waveform.
 
-        Returns:
-            (real, imag)
-            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram. (C = 1 + n_fft // 2)
-            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram. (C = 1 + n_fft // 2) 
+        Returns
+        ------------
+        real : Tensor [shape=(B, C, 1, frames)] 
+            The real part of the spectrogram.
+            
+        imag : Tensor [shape=(B, C, 1, frames)] 
+            The image part of the spectrogram.
         """
         # x(batch_size, time_steps)
         # pad it first with reflect mode
@@ -95,30 +141,34 @@ class STFT(nn.Layer):
         return real, imag
 
     def power(self, x):
-        """Compute the power spectrogram.
+        """Compute the power spectrum.
 
-        Args:
-            (real, imag)
-            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram.
-            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram.
+        Parameters
+        ------------
+        x : Tensor [shape=(B, T)]
+            The input waveform.
 
-        Returns:
-            Variable: shape(B, C, 1, T), dtype flaot32, the power spectrogram.
+        Returns
+        ------------
+        Tensor [shape=(B, C, 1, T)] 
+            The power spectrum.
         """
         real, imag = self(x)
         power = real**2 + imag**2
         return power
 
     def magnitude(self, x):
-        """Compute the magnitude spectrogram.
+        """Compute the magnitude of the spectrum.
 
-        Args:
-            (real, imag)
-            real (Variable): shape(B, C, 1, T), dtype flaot32, the real part of the spectrogram.
-            imag (Variable): shape(B, C, 1, T), dtype flaot32, the image part of the spectrogram.
+        Parameters
+        ------------
+        x : Tensor [shape=(B, T)]
+            The input waveform.
 
-        Returns:
-            Variable: shape(B, C, 1, T), dtype flaot32, the magnitude spectrogram. It is the square root of the power spectrogram.
+        Returns
+        ------------
+        Tensor [shape=(B, C, 1, T)] 
+            The magnitude of the spectrum.
         """
         power = self.power(x)
         magnitude = paddle.sqrt(power)

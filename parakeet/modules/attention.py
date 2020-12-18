@@ -18,14 +18,13 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
-
 def scaled_dot_product_attention(q,
                                  k,
                                  v,
                                  mask=None,
                                  dropout=0.0,
                                  training=True):
-    """Scaled dot product attention with masking. 
+    r"""Scaled dot product attention with masking. 
     
     Assume that q, k, v all have the same leading dimensions (denoted as * in 
     descriptions below). Dropout is applied to attention weights before 
@@ -34,24 +33,24 @@ def scaled_dot_product_attention(q,
     Parameters
     -----------
     
-    q: Tensor [shape=(*, T_q, d)]
+    q : Tensor [shape=(\*, T_q, d)]
         the query tensor.
         
-    k: Tensor [shape=(*, T_k, d)]
+    k : Tensor [shape=(\*, T_k, d)]
         the key tensor.
         
-    v: Tensor [shape=(*, T_k, d_v)]
+    v : Tensor [shape=(\*, T_k, d_v)]
         the value tensor.
         
-    mask: Tensor, [shape=(*, T_q, T_k) or broadcastable shape], optional
+    mask : Tensor, [shape=(\*, T_q, T_k) or broadcastable shape], optional
         the mask tensor, zeros correspond to paddings. Defaults to None.
     
     Returns
     ----------
-    out: Tensor [shape(*, T_q, d_v)] 
+    out : Tensor [shape=(\*, T_q, d_v)] 
         the context vector.
-        
-    attn_weights [Tensor shape(*, T_q, T_k)]
+
+    attn_weights : Tensor [shape=(\*, T_q, T_k)]
         the attention weights.
     """
     d = q.shape[-1]  # we only support imperative execution
@@ -67,17 +66,25 @@ def scaled_dot_product_attention(q,
     return out, attn_weights
 
 
-def drop_head(x, drop_n_heads, training):
-    """
-    Drop n heads from multiple context vectors.
+def drop_head(x, drop_n_heads, training=True):
+    """Drop n context vectors from multiple ones.
 
-    Args:
-        x (Tensor): shape(batch_size, num_heads, time_steps, channels), the input.
-        drop_n_heads (int): [description]
-        training ([type]): [description]
+    Parameters
+    ----------
+    x : Tensor [shape=(batch_size, num_heads, time_steps, channels)]
+        The input, multiple context vectors.
+        
+    drop_n_heads : int [0<= drop_n_heads <= num_heads]
+        Number of vectors to drop.
+        
+    training : bool
+        A flag indicating whether it is in training. If `False`, no dropout is 
+        applied.
 
-    Returns:
-        [type]: [description]
+    Returns
+    -------
+    Tensor
+        The output.
     """
     if not training or (drop_n_heads == 0):
         return x
@@ -113,21 +120,30 @@ def _concat_heads(x):
 
 # Standard implementations of Monohead Attention & Multihead Attention
 class MonoheadAttention(nn.Layer):
-    def __init__(self, model_dim, dropout=0.0, k_dim=None, v_dim=None):
-        """
-        Monohead Attention module.
+    """Monohead Attention module.
 
-        Args:
-            model_dim (int): the feature size of query.
-            dropout (float, optional): dropout probability of scaled dot product
-                attention and final context vector. Defaults to 0.0.
-            k_dim (int, optional): feature size of the key of each scaled dot 
-                product attention. If not provided, it is set to 
-                model_dim / num_heads. Defaults to None.
-            v_dim (int, optional): feature size of the key of each scaled dot 
-                product attention. If not provided, it is set to 
-                model_dim / num_heads. Defaults to None.
-        """
+    Parameters
+    ----------
+    model_dim : int
+        Feature size of the query.
+        
+    dropout : float, optional
+        Dropout probability of scaled dot product attention and final context 
+        vector. Defaults to 0.0.
+        
+    k_dim : int, optional
+        Feature size of the key of each scaled dot product attention. If not 
+        provided, it is set to `model_dim / num_heads`. Defaults to None.
+        
+    v_dim : int, optional
+        Feature size of the key of each scaled dot product attention. If not 
+        provided, it is set to `model_dim / num_heads`. Defaults to None.
+    """
+    def __init__(self, 
+                 model_dim: int, 
+                 dropout: float=0.0, 
+                 k_dim: int=None, 
+                 v_dim: int=None):
         super(MonoheadAttention, self).__init__()
         k_dim = k_dim or model_dim
         v_dim = v_dim or model_dim
@@ -140,20 +156,29 @@ class MonoheadAttention(nn.Layer):
         self.dropout = dropout
 
     def forward(self, q, k, v, mask):
-        """
-        Compute context vector and attention weights.
+        """Compute context vector and attention weights.
         
-        Args:
-            q (Tensor): shape(batch_size, time_steps_q, model_dim), the queries.
-            k (Tensor): shape(batch_size, time_steps_k, model_dim), the keys.
-            v (Tensor): shape(batch_size, time_steps_k, model_dim), the values.
-            mask (Tensor): shape(batch_size, times_steps_q, time_steps_k) or 
-                broadcastable shape, dtype: float32 or float64, the mask.
+        Parameters
+        -----------
+        q : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+            The queries.
+            
+        k : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+            The keys.
+            
+        v : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+            The values.
+            
+        mask : Tensor [shape=(batch_size, times_steps_q, time_steps_k] or broadcastable shape
+            The mask.
 
-        Returns:
-            (out, attention_weights)
-            out (Tensor), shape(batch_size, time_steps_q, model_dim), the context vector.
-            attention_weights (Tensor): shape(batch_size, times_steps_q, time_steps_k), the attention weights.
+        Returns
+        ----------
+        out : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+            The context vector.
+            
+        attention_weights : Tensor [shape=(batch_size, times_steps_q, time_steps_k)]
+            The attention weights.
         """
         q = self.affine_q(q)  # (B, T, C)
         k = self.affine_k(k)
@@ -167,34 +192,39 @@ class MonoheadAttention(nn.Layer):
 
 
 class MultiheadAttention(nn.Layer):
-    """
-    Multihead scaled dot product attention.
-    """
+    """Multihead Attention module.
 
+    Parameters
+    -----------
+    model_dim: int
+        The feature size of query.
+        
+    num_heads : int
+        The number of attention heads.
+        
+    dropout : float, optional
+        Dropout probability of scaled dot product attention and final context 
+        vector. Defaults to 0.0.
+        
+    k_dim : int, optional
+        Feature size of the key of each scaled dot product attention. If not 
+        provided, it is set to ``model_dim / num_heads``. Defaults to None.
+        
+    v_dim : int, optional
+        Feature size of the key of each scaled dot product attention. If not 
+        provided, it is set to ``model_dim / num_heads``. Defaults to None.
+
+    Raises
+    ---------
+    ValueError
+        If ``model_dim`` is not divisible by ``num_heads``.
+    """
     def __init__(self,
-                 model_dim,
-                 num_heads,
-                 dropout=0.0,
-                 k_dim=None,
-                 v_dim=None):
-        """
-        Multihead Attention module.
-
-        Args:
-            model_dim (int): the feature size of query.
-            num_heads (int): the number of attention heads.
-            dropout (float, optional): dropout probability of scaled dot product
-                attention and final context vector. Defaults to 0.0.
-            k_dim (int, optional): feature size of the key of each scaled dot 
-                product attention. If not provided, it is set to 
-                model_dim / num_heads. Defaults to None.
-            v_dim (int, optional): feature size of the key of each scaled dot 
-                product attention. If not provided, it is set to 
-                model_dim / num_heads. Defaults to None.
-
-        Raises:
-            ValueError: if model_dim is not divisible by num_heads
-        """
+                 model_dim: int,
+                 num_heads: int,
+                 dropout: float=0.0,
+                 k_dim: int=None,
+                 v_dim: int=None):
         super(MultiheadAttention, self).__init__()
         if model_dim % num_heads != 0:
             raise ValueError("model_dim must be divisible by num_heads")
@@ -211,20 +241,29 @@ class MultiheadAttention(nn.Layer):
         self.dropout = dropout
 
     def forward(self, q, k, v, mask):
-        """
-        Compute context vector and attention weights.
+        """Compute context vector and attention weights.
         
-        Args:
-            q (Tensor): shape(batch_size, time_steps_q, model_dim), the queries.
-            k (Tensor): shape(batch_size, time_steps_k, model_dim), the keys.
-            v (Tensor): shape(batch_size, time_steps_k, model_dim), the values.
-            mask (Tensor): shape(batch_size, times_steps_q, time_steps_k) or 
-                broadcastable shape, dtype: float32 or float64, the mask.
+        Parameters
+        -----------
+        q : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+            The queries.
+            
+        k : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+            The keys.
+            
+        v : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+            The values.
+            
+        mask : Tensor [shape=(batch_size, times_steps_q, time_steps_k] or broadcastable shape
+            The mask.
 
-        Returns:
-            (out, attention_weights)
-            out (Tensor), shape(batch_size, time_steps_q, model_dim), the context vector.
-            attention_weights (Tensor): shape(batch_size, times_steps_q, time_steps_k), the attention weights.
+        Returns
+        ----------
+        out : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+            The context vector.
+            
+        attention_weights : Tensor [shape=(batch_size, times_steps_q, time_steps_k)]
+            The attention weights.
         """
         q = _split_heads(self.affine_q(q), self.num_heads)  # (B, h, T, C)
         k = _split_heads(self.affine_k(k), self.num_heads)
