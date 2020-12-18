@@ -1,32 +1,114 @@
 import paddle
 from paddle.fluid.layers import sequence_mask
 
+__all__ = [
+    "id_mask",
+    "feature_mask",
+    "combine_mask",
+    "future_mask",
+]
+
 def id_mask(input, padding_index=0, dtype="bool"):
+    """Generate mask with input ids. 
+    
+    Those positions where the value equals ``padding_index`` correspond to 0 or
+    ``False``, otherwise, 1 or ``True``.
+
+    Parameters
+    ----------
+    input : Tensor [dtype: int]
+        The input tensor. It represents the ids.
+        
+    padding_index : int, optional
+        The id which represents padding, by default 0.
+        
+    dtype : str, optional
+        Data type of the returned mask, by default "bool".
+
+    Returns
+    -------
+    Tensor
+        The generate mask. It has the same shape as ``input`` does.
+    """
     return paddle.cast(input != padding_index, dtype)
 
+
 def feature_mask(input, axis, dtype="bool"):
+    """Compute mask from input features.
+    
+    For a input features, represented as batched feature vectors, those vectors
+    which all zeros are considerd padding vectors.
+
+    Parameters
+    ----------
+    input : Tensor [dtype: float]
+        The input tensor which represents featues.
+        
+    axis : int
+        The index of the feature dimension in ``input``. Other dimensions are
+        considered ``spatial`` dimensions.
+        
+    dtype : str, optional
+        Data type of the generated mask, by default "bool"
+
+    Returns
+    -------
+    Tensor
+        The geenrated mask with ``spatial`` shape as mentioned above.
+        
+        It has one less dimension than ``input`` does.
+    """
     feature_sum = paddle.sum(paddle.abs(input), axis)
     return paddle.cast(feature_sum != 0, dtype)
 
-def combine_mask(padding_mask, no_future_mask):
-    """
-    Combine the padding mask and no future mask for transformer decoder. 
-    Padding mask is used to mask padding positions and no future mask is used 
-    to prevent the decoder to see future information.
 
-    Args:
-        padding_mask (Tensor): shape(batch_size, time_steps), dtype: float32 or float64, decoder padding mask. 
-        no_future_mask (Tensor): shape(time_steps, time_steps), dtype: float32 or float64, no future mask.
+def combine_mask(mask1, mask2):
+    """Combine two mask with multiplication or logical and.
 
-    Returns:
-        Tensor: shape(batch_size, time_steps, time_steps), combined mask.
+    Parameters
+    -----------
+    mask1 : Tensor
+        The first mask. 
+        
+    mask2 : Tensor
+        The second mask with broadcastable shape with ``mask1``.
+        
+    Returns
+    --------
+    Tensor
+        Combined mask.
+        
+    Notes
+    ------
+    It is mainly used to combine the padding mask and no future mask for 
+    transformer decoder. 
+    
+    Padding mask is used to mask padding positions of the decoder inputs and 
+    no future mask is used to prevent the decoder to see future information.
     """
-    # TODO: to support boolean mask by using logical_and?
-    if padding_mask.dtype == paddle.fluid.core.VarDesc.VarType.BOOL:
-        return paddle.logical_and(padding_mask, no_future_mask)
+    if mask1.dtype == paddle.fluid.core.VarDesc.VarType.BOOL:
+        return paddle.logical_and(mask1, mask2)
     else:
-        return padding_mask * no_future_mask
+        return mask1 * mask2
+
 
 def future_mask(time_steps, dtype="bool"):
+    """Generate lower triangular mask.
+    
+    It is used at transformer decoder to prevent the decoder to see future 
+    information.
+
+    Parameters
+    ----------
+    time_steps : int
+        Decoder time steps.
+    dtype : str, optional
+        The data type of the generate mask, by default "bool".
+
+    Returns
+    -------
+    Tensor
+        The generated mask.
+    """
     mask = paddle.tril(paddle.ones([time_steps, time_steps]))
     return paddle.cast(mask, dtype)

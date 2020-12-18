@@ -30,15 +30,26 @@ from parakeet.utils import checkpoint, layer_tools
 
 
 def crop(x, audio_start, audio_length):
-    """Crop the upsampled condition to match audio_length. The upsampled condition has the same time steps as the whole audio does. But since audios are sliced to 0.5 seconds randomly while conditions are not, upsampled conditions should also be sliced to extaclt match the time steps of the audio slice.
+    """Crop the upsampled condition to match audio_length. 
+    
+    The upsampled condition has the same time steps as the whole audio does. 
+    But since audios are sliced to 0.5 seconds randomly while conditions are 
+    not, upsampled conditions should also be sliced to extactly match the time 
+    steps of the audio slice.
 
-    Args:
-        x (Tensor): shape(B, C, T), dtype float32, the upsample condition.
-        audio_start (Tensor): shape(B, ), dtype: int64, the index the starting point.
-        audio_length (int): the length of the audio (number of samples it contaions).
+    Parameters
+    ----------
+    x : Tensor [shape=(B, C, T)]
+        The upsampled condition.
+    audio_start : Tensor [shape=(B,), dtype:int]
+        The index of the starting point of the audio clips.
+    audio_length : int
+        The length of the audio clip(number of samples it contaions).
 
-    Returns:
-        Tensor: shape(B, C, audio_length), cropped condition.
+    Returns
+    -------
+    Tensor [shape=(B, C, audio_length)]
+        Cropped condition.
     """
     # crop audio
     slices = []  # for each example
@@ -54,15 +65,37 @@ def crop(x, audio_start, audio_length):
 
 
 class UpsampleNet(nn.LayerList):
-    def __init__(self, upscale_factors=[16, 16]):
-        """UpsamplingNet.
-        It consists of several layers of Conv2DTranspose. Each Conv2DTranspose layer upsamples the time dimension by its `stride` times. And each Conv2DTranspose's filter_size at frequency dimension is 3.
+    """A network used to upsample mel spectrogram to match the time steps of 
+    audio.
+    
+    It consists of several layers of Conv2DTranspose. Each Conv2DTranspose 
+    layer upsamples the time dimension by its `stride` times. 
+    
+    Also, each Conv2DTranspose's filter_size at frequency dimension is 3.
 
-        Args:
-            upscale_factors (list[int], optional): time upsampling factors for each Conv2DTranspose Layer. The `UpsampleNet` contains len(upscale_factor) Conv2DTranspose Layers. Each upscale_factor is used as the `stride` for the corresponding Conv2DTranspose. Defaults to [16, 16].
-        Note:
-            np.prod(upscale_factors) should equals the `hop_length` of the stft transformation used to extract spectrogram features from audios. For example, 16 * 16 = 256, then the spectram extracted using a stft transformation whose `hop_length` is 256. See `librosa.stft` for more details.
-        """
+    Parameters
+    ----------
+    upscale_factors : List[int], optional
+        Time upsampling factors for each Conv2DTranspose Layer. 
+        
+        The ``UpsampleNet`` contains ``len(upscale_factor)`` Conv2DTranspose 
+        Layers. Each upscale_factor is used as the ``stride`` for the 
+        corresponding Conv2DTranspose. Defaults to [16, 16], this the default 
+        upsampling factor is 256.
+        
+    Notes
+    ------
+    ``np.prod(upscale_factors)`` should equals the ``hop_length`` of the stft 
+    transformation used to extract spectrogram features from audio. 
+    
+    For example, ``16 * 16 = 256``, then the spectrogram extracted with a stft 
+    transformation whose ``hop_length`` equals 256 is suitable. 
+        
+    See Also
+    ---------
+    ``librosa.core.stft``
+    """
+    def __init__(self, upscale_factors=[16, 16]):
         super(UpsampleNet, self).__init__()
         self.upscale_factors = list(upscale_factors)
         self.upscale_factor = 1
@@ -78,13 +111,20 @@ class UpsampleNet(nn.LayerList):
                         padding=(1, factor // 2))))
 
     def forward(self, x):
-        """Compute the upsampled condition.
+        r"""Compute the upsampled condition.
 
-        Args:
-            x (Tensor): shape(B, F, T), dtype float32, the condition (mel spectrogram here.) (F means the frequency bands). In the internal Conv2DTransposes, the frequency dimension is treated as `height` dimension instead of `in_channels`.
+        Parameters
+        -----------
+        x : Tensor [shape=(B, F, T)]
+            The condition (mel spectrogram here). ``F`` means the frequency 
+            bands, which is the feature size of the input. 
+            
+            In the internal Conv2DTransposes, the frequency dimension 
+            is treated as ``height`` dimension instead of ``in_channels``.
 
         Returns:
-            Tensor: shape(B, F, T * upscale_factor), dtype float32, the upsampled condition.
+            Tensor [shape=(B, F, T \* upscale_factor)]
+                The upsampled condition.
         """
         x = paddle.unsqueeze(x, 1)
         for sublayer in self:
@@ -94,19 +134,36 @@ class UpsampleNet(nn.LayerList):
 
 
 class ResidualBlock(nn.Layer):
+    """A Residual block used in wavenet. Conv1D-gated-tanh Block.
+        
+    It consists of a Conv1DCell and an Conv1D(kernel_size = 1) to integrate 
+    information of the condition.
+    
+    Notes
+    --------
+    It does not have parametric residual or skip connection. 
+
+    Parameters
+    -----------
+    residual_channels : int
+        The feature size of the input. It is also the feature size of the 
+        residual output and skip output.
+        
+    condition_dim : int
+        The feature size of the condition.
+        
+    filter_size : int
+        Kernel size of the internal convolution cells.
+        
+    dilation :int
+        Dilation of the internal convolution cells.
+    """
     def __init__(self, 
                  residual_channels: int, 
                  condition_dim: int, 
                  filter_size: Union[int, Sequence[int]],
                  dilation: int):
-        """A Residual block in wavenet. It does not have parametric residual or skip connection. It consists of a Conv1DCell and an Conv1D(filter_size = 1) to integrate the condition.
-
-        Args:
-            residual_channels (int): the channels of the input, residual and skip.
-            condition_dim (int): the channels of the condition.
-            filter_size (int): filter size of the internal convolution cell.
-            dilation (int): dilation of the internal convolution cell.
-        """
+        
         super(ResidualBlock, self).__init__()
         dilated_channels = 2 * residual_channels
         # following clarinet's implementation, we do not have parametric residual
@@ -133,17 +190,29 @@ class ResidualBlock(nn.Layer):
         self.condition_dim = condition_dim
 
     def forward(self, x, condition=None):
-        """Conv1D gated-tanh Block.
+        """Forward pass of the ResidualBlock.
 
-        Args:
-            x (Tensor): shape(B, C_res, T), the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.) dtype float32.
-            condition (Tensor, optional): shape(B, C_cond, T), the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels). Defaults to None.
+        Parameters
+        -----------
+        x : Tensor [shape=(B, C, T)]
+            The input tensor.
+             
+        condition : Tensor, optional [shape(B, C_cond, T)]
+            The condition. 
+            
+            It has been upsampled in time steps, so it has the same time steps 
+            as the input does.(C_cond stands for the condition's channels). 
+            Defaults to None.
 
-        Returns:
-            (residual, skip_connection)
-            residual (Tensor): shape(B, C_res, T), the residual, which is used as the input to the next layer of ResidualBlock.
-            skip_connection (Tensor): shape(B, C_res, T), the skip connection. This output is accumulated with that of other ResidualBlocks. 
-        """
+        Returns
+        -----------
+        residual : Tensor [shape=(B, C, T)]
+            The residual, which is used as the input to the next ResidualBlock.
+            
+        skip_connection : Tensor [shape=(B, C, T)]
+            Tthe skip connection. This output is accumulated with that of 
+            other ResidualBlocks. 
+    """
         h = x
 
         # dilated conv
@@ -163,22 +232,38 @@ class ResidualBlock(nn.Layer):
         return residual, skip_connection
 
     def start_sequence(self):
-        """Prepare the ResidualBlock to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """Prepare the ResidualBlock to generate a new sequence. 
+        
+        Warnings
+        ---------
+        This method should be called before calling ``add_input`` multiple times.
         """
         self.conv.start_sequence()
         self.condition_proj.start_sequence()
 
     def add_input(self, x, condition=None):
-        """Add a step input. This method works similarily with `forward` but in a `step-in-step-out` fashion.
+        """Take a step input and return a step output. 
+        
+        This method works similarily with ``forward`` but in a 
+        ``step-in-step-out`` fashion.
 
-        Args:
-            x (Tensor): shape(B, C_res), input for a step, dtype float32.
-            condition (Tensor, optional): shape(B, C_cond). condition for a step, dtype float32. Defaults to None.
+        Parameters
+        ----------
+        x : Tensor [shape=(B, C)]
+            Input for a step.
+            
+        condition : Tensor, optional [shape=(B, C_cond)]
+            Condition for a step. Defaults to None.
 
-        Returns:
-            (residual, skip_connection)
-            residual (Tensor): shape(B, C_res), the residual for a step, which is used as the input to the next layer of ResidualBlock.
-            skip_connection (Tensor): shape(B, C_res), the skip connection for a step. This output is accumulated with that of other ResidualBlocks. 
+        Returns
+        ----------
+        residual : Tensor [shape=(B, C)] 
+            The residual for a step, which is used as the input to the next 
+            layer of ResidualBlock.
+            
+        skip_connection : Tensor [shape=(B, C)]
+            T he skip connection for a step. This output is accumulated with 
+            that of other ResidualBlocks. 
         """
         h = x
 
@@ -511,6 +596,54 @@ class WaveNet(nn.Layer):
 
 
 class ConditionalWaveNet(nn.Layer):
+    r"""Conditional Wavenet. An implementation of 
+    `WaveNet: A Generative Model for Raw Audio <http://arxiv.org/abs/1609.03499>`_.
+    
+    It contains an UpsampleNet as the encoder and a WaveNet as the decoder. 
+    It is an autoregressive model that generate raw audio.
+
+    Parameters
+    ----------
+    upsample_factors : List[int]
+        The upsampling factors of the UpsampleNet.
+        
+    n_stack : int
+        Number of convolution stacks in the WaveNet. 
+        
+    n_loop : int
+        Number of convolution layers in a convolution stack.
+        
+        Convolution layers in a stack have exponentially growing dilations, 
+        from 1 to .. math:: `k^{n_{loop} - 1}`, where k is the kernel size.
+        
+    residual_channels : int
+        Feature size of each ResidualBlocks.
+        
+    output_dim : int
+        Feature size of the output. See ``loss_type`` for details.
+        
+    n_mels : int
+        The number of bands of mel spectrogram.
+        
+    filter_size : int, optional
+        Convolution kernel size of each ResidualBlock, by default 2.
+        
+    loss_type : str, optional ["mog" or "softmax"]
+        The output type and loss type of the model, by default "mog".
+        
+        If "softmax", the model input should be quantized audio and the model 
+        outputs a discret distribution.
+        
+        If "mog", the model input is audio in floating point format, and the 
+        model outputs parameters for a mixture of gaussian distributions. 
+        Namely, the weight, mean and logscale of each gaussian distribution. 
+        Thus, the ``output_size`` should be a multiple of 3.
+        
+    log_scale_min : float, optional
+        Minimum value of the log probability density, by default -9.0.
+        
+        This is only used for computing loss when ``loss_type`` is "mog", If the 
+    """
     def __init__(self, 
                  upsample_factors: List[int], 
                  n_stack: int, 
@@ -521,29 +654,37 @@ class ConditionalWaveNet(nn.Layer):
                  filter_size: int=2, 
                  loss_type: str="mog", 
                  log_scale_min: float=-9.0):
-        """Conditional Wavenet, which contains an UpsampleNet as the encoder and a WaveNet as the decoder. It is an autoregressive model.
-        """
         super(ConditionalWaveNet, self).__init__()
         self.encoder = UpsampleNet(upsample_factors)
         self.decoder = WaveNet(n_stack=n_stack, 
-                          n_loop=n_loop,
-                          residual_channels=residual_channels,
-                          output_dim=output_dim,
-                          condition_dim=n_mels,
-                          filter_size=filter_size,
-                          loss_type=loss_type,
-                          log_scale_min=log_scale_min)
+                               n_loop=n_loop,
+                               residual_channels=residual_channels,
+                               output_dim=output_dim,
+                               condition_dim=n_mels,
+                               filter_size=filter_size,
+                               loss_type=loss_type,
+                               log_scale_min=log_scale_min)
 
     def forward(self, audio, mel, audio_start):
         """Compute the output distribution given the mel spectrogram and the input(for teacher force training).
 
-        Args:
-            audio (Tensor): shape(B, T_audio), dtype float32, ground truth waveform, used for teacher force training.
-            mel (Tensor): shape(B, F, T_mel), dtype float32, mel spectrogram. Note that it is the spectrogram for the whole utterance.
-            audio_start (Tensor): shape(B, ), dtype: int, audio slices' start positions for each utterance.
+        Parameters
+        -----------
+        audio : Tensor [shape=(B, T_audio)]
+            ground truth waveform, used for teacher force training.
+            
+        mel : Tensor [shape(B, F, T_mel)]
+            Mel spectrogram. Note that it is the spectrogram for the whole 
+            utterance.
+            
+        audio_start : Tensor [shape=(B,), dtype: int]
+            Audio slices' start positions for each utterance.
 
-        Returns:
-            Tensor: shape(B, T_audio - 1, C_putput), parameters for the output distribution.(C_output is the `output_dim` of the decoder.)
+        Returns
+        ----------
+        Tensor [shape(B, T_audio - 1, C_output)]
+            Parameters for the output distribution, where ``C_output`` is the 
+            ``output_dim`` of the decoder.)
         """
         audio_length = audio.shape[1]  # audio clip's length
         condition = self.encoder(mel)
@@ -557,14 +698,21 @@ class ConditionalWaveNet(nn.Layer):
         return y
 
     def loss(self, y, t):
-        """compute loss with respect to the output distribution and the targer audio.
+        """Compute loss with respect to the output distribution and the target 
+        audio.
 
-        Args:
-            y (Tensor): shape(B, T - 1, C_output), dtype float32, parameters of the output distribution.
-            t (Tensor): shape(B, T), dtype float32, target waveform.
+        Parameters
+        -----------
+        y : Tensor [shape=(B, T - 1, C_output)]
+            Parameters of the output distribution.
+            
+        t : Tensor [shape(B, T)] 
+            target waveform.
 
-        Returns:
-            Tensor: shape(1, ), dtype float32, the loss.
+        Returns
+        --------
+        Tensor: [shape=(1,)]
+            the loss.
         """
         t = t[:, 1:]
         loss = self.decoder.loss(y, t)
@@ -573,24 +721,35 @@ class ConditionalWaveNet(nn.Layer):
     def sample(self, y):
         """Sample from the output distribution.
 
-        Args:
-            y (Tensor): shape(B, T, C_output), dtype float32, parameters of the output distribution.
+        Parameters
+        -----------
+        y : Tensor [shape=(B, T, C_output)]
+            Parameters of the output distribution.
 
-        Returns:
-            Tensor: shape(B, T), dtype float32, sampled waveform from the output distribution.
+        Returns
+        --------
+        Tensor [shape=(B, T)] 
+            Sampled waveform from the output distribution.
         """
         samples = self.decoder.sample(y)
         return samples
 
     @paddle.no_grad()
     def infer(self, mel):
-        """Synthesize waveform from mel spectrogram.
+        r"""Synthesize waveform from mel spectrogram.
 
-        Args:
-            mel (Tensor): shape(B, F, T), condition(mel spectrogram here).
+        Parameters
+        -----------
+        mel : Tensor [shape=(B, F, T)] 
+            The ondition (mel spectrogram here).
 
-        Returns:
-            Tensor: shape(B, T * upsacle_factor), synthesized waveform.(`upscale_factor` is the `upscale_factor` of the encoder `UpsampleNet`)
+        Returns
+        -----------
+        Tensor [shape=(B, T \* upsacle_factor)]
+            Synthesized waveform.
+            
+            ``upscale_factor`` is the ``upscale_factor`` of the encoder 
+            ``UpsampleNet``.
         """
         condition = self.encoder(mel)
         batch_size, _, time_steps = condition.shape
@@ -610,6 +769,20 @@ class ConditionalWaveNet(nn.Layer):
 
     @paddle.no_grad()
     def predict(self, mel):
+        r"""Synthesize audio from mel spectrogram. 
+        
+        The output and input are numpy arrays without batch.
+
+        Parameters
+        ----------
+        mel : np.ndarray [shape=(C, T)]
+            Mel spectrogram of an utterance.
+
+        Returns
+        -------
+        Tensor : np.ndarray [shape=(C, T \* upsample_factor)]
+            The synthesized waveform of an utterance.
+        """
         mel = paddle.to_tensor(mel)
         mel = paddle.unsqueeze(mel, 0)
         audio = self.infer(mel)
@@ -618,6 +791,21 @@ class ConditionalWaveNet(nn.Layer):
 
     @classmethod
     def from_pretrained(cls, config, checkpoint_path):
+        """Build a ConditionalWaveNet model from a pretrained model.
+
+        Parameters
+        ----------        
+        config: yacs.config.CfgNode
+            model configs
+        
+        checkpoint_path: Path or str
+            the path of pretrained model checkpoint, without extension name
+        
+        Returns
+        -------
+        ConditionalWaveNet
+            The model built from pretrained result.
+        """
         model = cls(
             upsample_factors=config.model.upsample_factors,
             n_stack=config.model.n_stack, 
@@ -631,5 +819,3 @@ class ConditionalWaveNet(nn.Layer):
         layer_tools.summary(model)
         checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
         return model
-
-    

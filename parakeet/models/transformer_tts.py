@@ -33,8 +33,7 @@ __all__ = ["TransformerTTS", "TransformerTTSLoss"]
 
 # Transformer TTS's own implementation of transformer
 class MultiheadAttention(nn.Layer):
-    """
-    Multihead scaled dot product attention with drop head. See 
+    """Multihead scaled dot product attention with drop head. See 
     [Scheduled DropHead: A Regularization Method for Transformer Models](https://arxiv.org/abs/2004.13342) 
     for details.
     
