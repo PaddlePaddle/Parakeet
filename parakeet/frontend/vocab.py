@@ -1,5 +1,4 @@
 from typing import Dict, Iterable, List
-from ruamel import yaml
 from collections import OrderedDict
 
 

@@ -15,7 +15,7 @@
 import numpy as np
 from paddle import nn
 
-__all__ = ["summary","gradient_norm", "freeze", "unfreeze"]
+__all__ = ["summary", "gradient_norm", "freeze", "unfreeze"]
 
 
 def summary(layer: nn.Layer):

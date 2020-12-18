@@ -20,22 +20,6 @@ parakeet.modules.audio module
    :undoc-members:
    :show-inheritance:
 
-parakeet.modules.cbhg module
-----------------------------
-
-.. automodule:: parakeet.modules.cbhg
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-parakeet.modules.connections module
------------------------------------
-
-.. automodule:: parakeet.modules.connections
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 parakeet.modules.conv module
 ----------------------------
 
