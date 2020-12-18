@@ -25,22 +25,34 @@ def scaled_dot_product_attention(q,
                                  mask=None,
                                  dropout=0.0,
                                  training=True):
-    """
-    scaled dot product attention with mask. Assume q, k, v all have the same 
-    leader dimensions(denoted as * in descriptions below). Dropout is applied to 
-    attention weights before weighted sum of values.
-
-    Args:
-        q (Tensor): shape(*, T_q, d), the query tensor.
-        k (Tensor): shape(*, T_k, d), the key tensor.
-        v (Tensor): shape(*, T_k, d_v), the value tensor.
-        mask (Tensor, optional): shape(*, T_q, T_k) or broadcastable shape, the 
-            mask tensor, 0 correspond to padding. Defaults to None.
+    """Scaled dot product attention with masking. 
     
-    Returns:
-        (out, attn_weights)
-        out (Tensor): shape(*, T_q, d_v), the context vector.
-        attn_weights (Tensor): shape(*, T_q, T_k), the attention weights.
+    Assume that q, k, v all have the same leading dimensions (denoted as * in 
+    descriptions below). Dropout is applied to attention weights before 
+    weighted sum of values.
+
+    Parameters
+    -----------
+    
+    q: Tensor [shape=(*, T_q, d)]
+        the query tensor.
+        
+    k: Tensor [shape=(*, T_k, d)]
+        the key tensor.
+        
+    v: Tensor [shape=(*, T_k, d_v)]
+        the value tensor.
+        
+    mask: Tensor, [shape=(*, T_q, T_k) or broadcastable shape], optional
+        the mask tensor, zeros correspond to paddings. Defaults to None.
+    
+    Returns
+    ----------
+    out: Tensor [shape(*, T_q, d_v)] 
+        the context vector.
+        
+    attn_weights [Tensor shape(*, T_q, T_k)]
+        the attention weights.
     """
     d = q.shape[-1]  # we only support imperative execution
     qk = paddle.matmul(q, k, transpose_y=True)
