@@ -80,10 +80,6 @@ class Experiment(ExperimentBase):
         z, log_det_jocobian = self.model(wav, mel)
         return z, log_det_jocobian
 
-    def compute_losses(self, outputs):
-        loss = self.criterion(outputs)
-        return loss
-
     def train_batch(self):
         start = time.time()
         batch = self.read_batch()
@@ -92,8 +88,8 @@ class Experiment(ExperimentBase):
         self.model.train()
         self.optimizer.clear_grad()
         mel, wav = batch
-        outputs = self.compute_outputs(mel, wav)
-        loss = self.compute_losses(outputs)
+        z, log_det_jocobian = self.compute_outputs(mel, wav)
+        loss = self.criterion(z, log_det_jocobian)
         loss.backward() 
         self.optimizer.step()
         iteration_time = time.time() - start
@@ -112,8 +108,8 @@ class Experiment(ExperimentBase):
         valid_iterator = iter(self.valid_loader)
         valid_losses = []
         mel, wav = next(valid_iterator)
-        outputs = self.compute_outputs(mel, wav)
-        loss = self.compute_losses(outputs)
+        z, log_det_jocobian = self.compute_outputs(mel, wav)
+        loss = self.criterion(z, log_det_jocobian)
         valid_losses.append(float(loss))
         valid_loss = np.mean(valid_losses)
         self.visualizer.add_scalar("valid/loss", valid_loss, global_step=self.iteration)
