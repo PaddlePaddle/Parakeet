@@ -28,6 +28,7 @@ from parakeet.modules.conv import Conv1dCell
 from parakeet.modules.audio import quantize, dequantize, STFT
 from parakeet.utils import checkpoint, layer_tools
 
+__all__ = ["WaveNet", "ConditionalWaveNet"]
 
 def crop(x, audio_start, audio_length):
     """Crop the upsampled condition to match audio_length. 
@@ -285,21 +286,35 @@ class ResidualBlock(nn.Layer):
 
 
 class ResidualNet(nn.LayerList):
+    """The residual network in wavenet. 
+    
+    It consists of ``n_stack`` stacks, each of which consists of ``n_loop``
+    ResidualBlocks.
+
+    Parameters
+    ----------
+    n_stack : int
+        Number of stacks in the ``ResidualNet``.
+        
+    n_loop : int
+        Number of ResidualBlocks in a stack.
+        
+    residual_channels : int
+        Input feature size of each ``ResidualBlock``'s input.
+        
+    condition_dim : int
+        Feature size of the condition.
+        
+    filter_size : int
+        Kernel size of the internal ``Conv1dCell`` of each ``ResidualBlock``.
+
+    """
     def __init__(self, 
                  n_stack: int, 
                  n_loop: int, 
                  residual_channels: int, 
                  condition_dim: int,
                  filter_size: int):
-        """The residual network in wavenet. It consists of `n_layer` stacks, each of which consists of `n_loop` ResidualBlocks.
-
-        Args:
-            n_stack (int): number of stacks in the `ResidualNet`.
-            n_loop (int): number of ResidualBlocks in a stack.
-            residual_channels (int): channels of each `ResidualBlock`'s input.
-            condition_dim (int): channels of the condition.
-            filter_size (int): filter size of the internal Conv1DCell of each `ResidualBlock`.
-        """
         super(ResidualNet, self).__init__()
         # double the dilation at each layer in a stack
         dilations = [2**i for i in range(n_loop)] * n_stack
@@ -308,13 +323,21 @@ class ResidualNet(nn.LayerList):
             self.append(ResidualBlock(residual_channels, condition_dim, filter_size, dilation))
 
     def forward(self, x, condition=None):
-        """
-        Args:
-            x (Tensor): shape(B, C_res, T), dtype float32, the input. (B stands for batch_size, C_res stands for residual channels, T stands for time steps.)
-            condition (Tensor, optional): shape(B, C_cond, T), dtype float32, the condition, it has been upsampled in time steps, so it has the same time steps as the input does.(C_cond stands for the condition's channels) Defaults to None.
+        """Forward pass of ``ResidualNet``.
+        
+        Parameters
+        ----------
+        x : Tensor [shape=(B, C, T)]
+            The input. 
+            
+        condition : Tensor, optional [shape=(B, C_cond, T)]
+            The condition, it has been upsampled in time steps, so it has the 
+            same time steps as the input does. Defaults to None.
 
-        Returns:
-            skip_connection (Tensor): shape(B, C_res, T), dtype float32, the output.
+        Returns
+        --------
+        Tensor [shape=(B, C, T)]
+            The output.
         """
         for i, func in enumerate(self):
             x, skip = func(x, condition)
@@ -326,22 +349,32 @@ class ResidualNet(nn.LayerList):
         return skip_connections
 
     def start_sequence(self):
-        """Prepare the ResidualNet to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """Prepare the ResidualNet to generate a new sequence. This method 
+        should be called before starting calling ``add_input`` multiple times.
         """
         for block in self:
             block.start_sequence()
 
     def add_input(self, x, condition=None):
-        """Add a step input. This method works similarily with `forward` but in a `step-in-step-out` fashion.
+        """Take a step input and return a step output. 
+        
+        This method works similarily with ``forward`` but in a 
+        ``step-in-step-out`` fashion.
 
-        Args:
-            x (Tensor): shape(B, C_res), dtype float32, input for a step.
-            condition (Tensor, optional): shape(B, C_cond), dtype float32, condition for a step. Defaults to None.
+        Parameters
+        ----------
+        x : Tensor [shape=(B, C)]
+            Input for a step.
+            
+        condition : Tensor, optional [shape=(B, C_cond)]
+            Condition for a step. Defaults to None.
 
-        Returns:
-            skip_connection (Tensor): shape(B, C_res), dtype float32, the output for a step.
+        Returns
+        ----------            
+        Tensor [shape=(B, C)]
+            The skip connection for a step. This output is accumulated with 
+            that of other ResidualBlocks. 
         """
-
         for i, func in enumerate(self):
             x, skip = func.add_input(x, condition)
             if i == 0:
@@ -353,20 +386,49 @@ class ResidualNet(nn.LayerList):
 
 
 class WaveNet(nn.Layer):
+    """Wavenet that transform upsampled mel spectrogram into waveform.
+
+    Parameters
+    -----------
+    n_stack : int
+        ``n_stack`` for the internal ``ResidualNet``.
+        
+    n_loop : int
+        ``n_loop`` for the internal ``ResidualNet``.
+        
+    residual_channels : int
+        Feature size of the input.
+        
+    output_dim : int
+        Feature size of the input.
+        
+    condition_dim : int
+        Feature size of the condition (mel spectrogram bands).
+        
+    filter_size : int
+        Kernel size of the internal ``ResidualNet``.
+        
+    loss_type : str, optional ["mog" or "softmax"]
+        The output type and loss type of the model, by default "mog".
+        
+        If "softmax", the model input is first quantized audio and the model 
+        outputs a discret categorical distribution.
+        
+        If "mog", the model input is audio in floating point format, and the 
+        model outputs parameters for a mixture of gaussian distributions. 
+        Namely, the weight, mean and log scale of each gaussian distribution. 
+        Thus, the ``output_size`` should be a multiple of 3.
+    
+    log_scale_min : float, optional
+        Minimum value of the log scale of gaussian distributions, by default 
+        -9.0.
+        
+        This is only used for computing loss when ``loss_type`` is "mog", If 
+        the predicted log scale is less than -9.0, it is clipped at -9.0.
+    """
     def __init__(self, n_stack, n_loop, residual_channels, output_dim,
                  condition_dim, filter_size, loss_type, log_scale_min):
-        """Wavenet that transform upsampled mel spectrogram into waveform.
 
-        Args:
-            n_stack (int): n_stack for the internal ResidualNet.
-            n_loop (int): n_loop for the internal ResidualNet.
-            residual_channels (int): the channel of the input.
-            output_dim (int): the channel of the output distribution. 
-            condition_dim (int): the channel of the condition.
-            filter_size (int): the filter size of the internal ResidualNet.
-            loss_type (str): loss type of the wavenet. Possible values are 'softmax' and 'mog'. If `loss_type` is 'softmax', the output is the logits of the catrgotical(multinomial) distribution, `output_dim` means the number of classes of the categorical distribution. If `loss_type` is mog(mixture of gaussians), the output is the parameters of a mixture of gaussians, which consists of weight(in the form of logit) of each gaussian distribution and its mean and log standard deviaton. So when `loss_type` is 'mog', `output_dim` should be perfectly divided by 3.
-            log_scale_min (int): the minimum value of log standard deviation of the output gaussian distributions. Note that this value is only used for computing loss if `loss_type` is 'mog', values less than `log_scale_min` is clipped when computing loss.
-        """
         super(WaveNet, self).__init__()
         if loss_type not in ["softmax", "mog"]:
             raise ValueError("loss_type {} is not supported".format(loss_type))
@@ -396,14 +458,19 @@ class WaveNet(nn.Layer):
         self.log_scale_min = log_scale_min
 
     def forward(self, x, condition=None):
-        """compute the output distribution (represented by its parameters).
+        """Forward pass of ``WaveNet``.
 
-        Args:
-            x (Tensor): shape(B, T), dtype float32, the input waveform.
-            condition (Tensor, optional): shape(B, C_cond, T), dtype float32, the upsampled condition. Defaults to None.
+        Parameters
+        -----------
+        x : Tensor [shape=(B, T)] 
+            The input waveform.
+        condition : Tensor, optional [shape=(B, C_cond, T)]
+            the upsampled condition. Defaults to None.
 
-        Returns:
-            Tensor: shape(B, T, C_output), dtype float32, the parameter of the output distributions.
+        Returns
+        -------
+        Tensor: [shape=(B, T, C_output)]
+            The parameters of the output distributions.
         """
 
         # Causal Conv
@@ -426,19 +493,28 @@ class WaveNet(nn.Layer):
         return y
 
     def start_sequence(self):
-        """Prepare the WaveNet to generate a new sequence. This method should be called before starting calling `add_input` multiple times.
+        """Prepare the WaveNet to generate a new sequence. This method should 
+        be called before starting calling ``add_input`` multiple times.
         """
         self.resnet.start_sequence()
 
     def add_input(self, x, condition=None):
-        """compute the output distribution (represented by its parameters) for a step. It works similarily with the `forward` method but in a `step-in-step-out` fashion.
+        """Compute the output distribution (represented by its parameters) for 
+        a step. It works similarily with the ``forward`` method but in a 
+        ``step-in-step-out`` fashion.
 
-        Args:
-            x (Tensor): shape(B,), dtype float32, a step of the input waveform.
-            condition (Tensor, optional): shape(B, C_cond, ), dtype float32, a step of the upsampled condition. Defaults to None.
+        Parameters
+        -----------
+        x : Tensor [shape=(B,)]
+            A step of the input waveform.
+            
+        condition : Tensor, optional [shape=(B, C_cond)]
+            A step of the upsampled condition. Defaults to None.
 
-        Returns:
-            Tensor: shape(B, C_output), dtype float32, the parameter of the output distributions.
+        Returns
+        --------
+        Tensor: [shape=(B, C_output)]
+            A step of the parameters of the output distributions.
         """
         # Causal Conv
         if self.loss_type == "softmax":
@@ -458,14 +534,28 @@ class WaveNet(nn.Layer):
         return y
 
     def compute_softmax_loss(self, y, t):
-        """compute the loss where output distribution is a categorial distribution.
+        """Compute the loss when output distributions are categorial 
+        distributions.
 
-        Args:
-            y (Tensor): shape(B, T, C_output), dtype float32, the logits of the output distribution.
-            t (Tensor): shape(B, T), dtype float32, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+        Parameters
+        ----------
+        y : Tensor [shape=(B, T, C_output)]
+            The logits of the output distributions.
+            
+        t : Tensor [shape=(B, T)]
+            The target audio. The audio is first quantized then used as the 
+            target.
+            
+        Notes
+        -------
+        Output distributions whose input contains padding is neglected in 
+        loss computation. So the first ``context_size`` steps does not 
+        contribute to the loss.
 
-        Returns:
-            Tensor: shape(1, ), dtype float32, the loss.
+        Returns
+        --------
+        Tensor: [shape=(1,)]
+            The loss.
         """
         # context size is not taken into account
         y = y[:, self.context_size:, :]
@@ -479,13 +569,18 @@ class WaveNet(nn.Layer):
         return reduced_loss
 
     def sample_from_softmax(self, y):
-        """Sample from the output distribution where the output distribution is a categorical distriobution.
+        """Sample from the output distribution when the output distributions 
+        are categorical distriobutions.
 
-        Args:
-            y (Tensor): shape(B, T, C_output), the logits of the output distribution
+        Parameters
+        ----------
+        y : Tensor [shape=(B, T, C_output)]
+            The logits of the output distributions.
 
-        Returns:
-            Tensor: shape(B, T), waveform sampled from the output distribution.
+        Returns
+        --------
+        Tensor [shape=(B, T)]
+            Waveform sampled from the output distribution.
         """
         # dequantize
         batch_size, time_steps, output_dim, = y.shape
@@ -497,14 +592,32 @@ class WaveNet(nn.Layer):
         return samples
 
     def compute_mog_loss(self, y, t):
-        """compute the loss where output distribution is a mixture of Gaussians.
+        """Compute the loss where output distributions is a mixture of 
+        Gaussians distributions.
 
-        Args:
-            y (Tensor): shape(B, T, C_output), dtype float32, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
-            t (Tensor): shape(B, T), dtype float32, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+        Parameters
+        -----------
+        y : Tensor [shape=(B, T, C_output)]
+            The parameterd of the output distribution. It is the concatenation 
+            of 3 parts, the logits of every distribution, the mean of each 
+            distribution and the log standard deviation of each distribution. 
+            
+            Each part's shape is (B, T, n_mixture), where ``n_mixture`` means 
+            the number of Gaussians in the mixture.
+            
+        t : Tensor [shape=(B, T)]
+            The target audio. 
+            
+        Notes
+        -------
+        Output distributions whose input contains padding is neglected in 
+        loss computation. So the first ``context_size`` steps does not 
+        contribute to the loss.
 
-        Returns:
-            Tensor: shape(1, ), dtype float32, the loss.
+        Returns
+        --------
+        Tensor: [shape=(1,)]
+            The loss.
         """
         n_mixture = self.output_dim // 3
 
@@ -536,12 +649,23 @@ class WaveNet(nn.Layer):
         return loss
 
     def sample_from_mog(self, y):
-        """Sample from the output distribution where the output distribution is a mixture of Gaussians.
-        Args:
-            y (Tensor): shape(B, T, C_output), dtype float32, the parameterd of the output distribution. It is the concatenation of 3 parts, the logits of every distribution, the mean of each distribution and the log standard deviation of each distribution. Each part's shape is (B, T, n_mixture), where `n_mixture` means the number of Gaussians in the mixture.
+        """Sample from the output distribution when the output distribution 
+        is a mixture of Gaussian distributions.
+        
+        Parameters
+        ------------
+        y : Tensor [shape=(B, T, C_output)]
+            The parameterd of the output distribution. It is the concatenation 
+            of 3 parts, the logits of every distribution, the mean of each 
+            distribution and the log standard deviation of each distribution. 
+            
+            Each part's shape is (B, T, n_mixture), where ``n_mixture`` means 
+            the number of Gaussians in the mixture.
 
-        Returns:
-            Tensor: shape(B, T), waveform sampled from the output distribution.
+        Returns
+        --------
+        Tensor: [shape=(B, T)]
+            Waveform sampled from the output distribution.
         """
         batch_size, time_steps, output_dim = y.shape
         n_mixture = output_dim // 3
@@ -568,11 +692,16 @@ class WaveNet(nn.Layer):
 
     def sample(self, y):
         """Sample from the output distribution.
-        Args:
-            y (Tensor): shape(B, T, C_output), dtype float32, the parameterd of the output distribution.
+        
+        Parameters
+        ----------
+        y : Tensor [shape=(B, T, C_output)]
+            The parameterd of the output distribution.
 
-        Returns:
-            Tensor: shape(B, T), waveform sampled from the output distribution.
+        Returns
+        --------
+        Tensor [shape=(B, T)]
+            Waveform sampled from the output distribution.
         """
         if self.loss_type == "softmax":
             return self.sample_from_softmax(y)
@@ -580,14 +709,20 @@ class WaveNet(nn.Layer):
             return self.sample_from_mog(y)
 
     def loss(self, y, t):
-        """compute the loss where output distribution is a mixture of Gaussians.
+        """Compute the loss given the output distribution and the target.
 
-        Args:
-            y (Tensor): shape(B, T, C_output), dtype float32, the parameterd of the output distribution.
-            t (Tensor): shape(B, T), dtype float32, the target audio. Note that the target's corresponding time index is one step ahead of the output distribution. And output distribution whose input contains padding is neglected in loss computation.
+        Parameters
+        ----------
+        y : Tensor [shape=(B, T, C_output)]
+            The parameters of the output distribution.
+            
+        t : Tensor [shape=(B, T)]
+            The target audio.
 
-        Returns:
-            Tensor: shape(1, ), dtype float32, the loss.
+        Returns
+        ---------
+        Tensor: [shape=(1,)]    
+            The loss.
         """
         if self.loss_type == "softmax":
             return self.compute_softmax_loss(y, t)
@@ -640,9 +775,11 @@ class ConditionalWaveNet(nn.Layer):
         Thus, the ``output_size`` should be a multiple of 3.
         
     log_scale_min : float, optional
-        Minimum value of the log probability density, by default -9.0.
+        Minimum value of the log scale of gaussian distributions, by default 
+        -9.0.
         
-        This is only used for computing loss when ``loss_type`` is "mog", If the 
+        This is only used for computing loss when ``loss_type`` is "mog", If 
+        the predicted log scale is less than -9.0, it is clipped at -9.0.
     """
     def __init__(self, 
                  upsample_factors: List[int], 
