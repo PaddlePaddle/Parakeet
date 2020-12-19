@@ -1,6 +1,14 @@
 parakeet.frontend package
 =========================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   parakeet.frontend.normalizer
+
 Submodules
 ----------
 
