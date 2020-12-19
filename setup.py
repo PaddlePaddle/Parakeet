@@ -69,6 +69,7 @@ setup_info = dict(
         'g2p_en',
         'g2pM',
         'yacs',
+        'tensorboardX',
     ],
     extras_require={
         'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],

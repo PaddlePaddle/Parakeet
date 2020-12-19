@@ -350,7 +350,7 @@ class ResidualNet(nn.LayerList):
 
     def start_sequence(self):
         """Prepare the ResidualNet to generate a new sequence. This method 
-        should be called before starting calling `add_input` multiple times.
+        should be called before starting calling ``add_input`` multiple times.
         """
         for block in self:
             block.start_sequence()
@@ -372,7 +372,7 @@ class ResidualNet(nn.LayerList):
         Returns
         ----------            
         Tensor [shape=(B, C)]
-            T he skip connection for a step. This output is accumulated with 
+            The skip connection for a step. This output is accumulated with 
             that of other ResidualBlocks. 
         """
         for i, func in enumerate(self):
@@ -514,7 +514,7 @@ class WaveNet(nn.Layer):
         Returns
         --------
         Tensor: [shape=(B, C_output)]
-            A steo of the parameters of the output distributions.
+            A step of the parameters of the output distributions.
         """
         # Causal Conv
         if self.loss_type == "softmax":
@@ -714,7 +714,7 @@ class WaveNet(nn.Layer):
         Parameters
         ----------
         y : Tensor [shape=(B, T, C_output)]
-            The parameterd of the output distribution.
+            The parameters of the output distribution.
             
         t : Tensor [shape=(B, T)]
             The target audio.

@@ -24,7 +24,7 @@ def fold(x, n_group):
 
     Returns
     ---------
-    Tensor : [shape=(`*, time_steps // n_group, group)]
+    Tensor : [shape=(\*, time_steps // n_group, group)]
         Folded tensor.
     """
     *spatial_shape, time_steps = x.shape
@@ -230,7 +230,7 @@ class ResidualBlock(nn.Layer):
         res : Tensor [shape=(batch_size, channel, 1, width)]
             A row of the the residual output.
             
-        res : Tensor [shape=(batch_size, channel, 1, width)]
+        skip : Tensor [shape=(batch_size, channel, 1, width)]
             A row of the skip output.
         """
         x_row_in = x_row
@@ -349,7 +349,7 @@ class ResidualNet(nn.LayerList):
         res : Tensor [shape=(batch_size, channel, 1, width)]
             A row of the the residual output.
             
-        res : Tensor [shape=(batch_size, channel, 1, width)]
+        skip : Tensor [shape=(batch_size, channel, 1, width)]
             A row of the skip output.
         """
         skip_connections = []
@@ -364,8 +364,8 @@ class Flow(nn.Layer):
     """A bijection (Reversable layer) that transform a density of latent 
     variables p(Z) into a complex data distribution p(X).
 
-    It's an auto regressive flow. The `forward` method implements the 
-    probability density estimation. The `inverse` method implements the 
+    It's an auto regressive flow. The ``forward`` method implements the 
+    probability density estimation. The ``inverse`` method implements the 
     sampling.
     
     Parameters
