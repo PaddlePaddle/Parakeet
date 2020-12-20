@@ -17,7 +17,8 @@ from typing import Union
 from g2p_en import G2p
 from g2pM import G2pM
 from parakeet.frontend import Vocab
-from opencc import OpenCC
+# discard opencc untill we find an easy solution to install it on windows
+# from opencc import OpenCC
 from parakeet.frontend.punctuation import get_punctuations
 from parakeet.frontend.normalizer.normalizer import normalize
 
@@ -211,7 +212,7 @@ class Chinese(Phonetics):
     """
 
     def __init__(self):
-        self.opencc_backend = OpenCC('t2s.json')
+        # self.opencc_backend = OpenCC('t2s.json')
         self.backend = G2pM()
         self.phonemes = self._get_all_syllables()
         self.punctuations = get_punctuations("cn")
@@ -236,7 +237,8 @@ class Chinese(Phonetics):
         List[str]
             The list of pronunciation sequence.
         """
-        simplified = self.opencc_backend.convert(sentence)
+        # simplified = self.opencc_backend.convert(sentence)
+        simplified = sentence
         phonemes = self.backend(simplified)
         start = self.vocab.start_symbol
         end = self.vocab.end_symbol
