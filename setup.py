@@ -36,7 +36,13 @@ def find_version(*file_paths):
 
 
 VERSION = find_version('parakeet', '__init__.py')
-long_description = read('README.md')
+long_description = """Parakeet aims to provide a flexible, efficient and 
+state-of-the-art text-to-speech toolkit for the open-source community. It is 
+built on PaddlePaddle dynamic graph and includes many influential TTS models 
+proposed by `Baidu Research <http://research.baidu.com>_ and other research 
+groups.
+"""  
+
 
 setup_info = dict(
     # Metadata
