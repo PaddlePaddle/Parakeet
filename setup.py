@@ -78,8 +78,9 @@ setup_info = dict(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence'
-        'License :: OSI Approved :: Apache2 License',
+        'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ], )
