@@ -18,7 +18,7 @@ from typing import Union, Sequence, List
 from tqdm import trange
 import numpy as np
 
-import paddle 
+import paddle
 from paddle import nn
 from paddle.nn import functional as F
 import paddle.fluid.initializer as I
@@ -29,6 +29,7 @@ from parakeet.modules.audio import quantize, dequantize, STFT
 from parakeet.utils import checkpoint, layer_tools
 
 __all__ = ["WaveNet", "ConditionalWaveNet"]
+
 
 def crop(x, audio_start, audio_length):
     """Crop the upsampled condition to match audio_length. 
@@ -96,6 +97,7 @@ class UpsampleNet(nn.LayerList):
     ---------
     ``librosa.core.stft``
     """
+
     def __init__(self, upscale_factors=[16, 16]):
         super(UpsampleNet, self).__init__()
         self.upscale_factors = list(upscale_factors)
@@ -106,9 +108,11 @@ class UpsampleNet(nn.LayerList):
         for factor in self.upscale_factors:
             self.append(
                 nn.utils.weight_norm(
-                    nn.Conv2DTranspose(1, 1, 
-                        kernel_size=(3, 2 * factor), 
-                        stride=(1, factor), 
+                    nn.Conv2DTranspose(
+                        1,
+                        1,
+                        kernel_size=(3, 2 * factor),
+                        stride=(1, factor),
                         padding=(1, factor // 2))))
 
     def forward(self, x):
@@ -159,29 +163,34 @@ class ResidualBlock(nn.Layer):
     dilation :int
         Dilation of the internal convolution cells.
     """
-    def __init__(self, 
-                 residual_channels: int, 
-                 condition_dim: int, 
+
+    def __init__(self,
+                 residual_channels: int,
+                 condition_dim: int,
                  filter_size: Union[int, Sequence[int]],
                  dilation: int):
-        
+
         super(ResidualBlock, self).__init__()
         dilated_channels = 2 * residual_channels
         # following clarinet's implementation, we do not have parametric residual
         # & skip connection.
 
-        _filter_size = filter_size[0] if isinstance(filter_size, (list, tuple)) else filter_size
+        _filter_size = filter_size[0] if isinstance(filter_size, (
+            list, tuple)) else filter_size
         std = math.sqrt(1 / (_filter_size * residual_channels))
-        conv = Conv1dCell(residual_channels, 
-                          dilated_channels, 
-                          filter_size, 
-                          dilation=dilation, 
-                          weight_attr=I.Normal(scale=std))
+        conv = Conv1dCell(
+            residual_channels,
+            dilated_channels,
+            filter_size,
+            dilation=dilation,
+            weight_attr=I.Normal(scale=std))
         self.conv = nn.utils.weight_norm(conv)
 
         std = math.sqrt(1 / condition_dim)
-        condition_proj = Conv1dCell(condition_dim, dilated_channels, (1,), 
-                                    weight_attr=I.Normal(scale=std))
+        condition_proj = Conv1dCell(
+            condition_dim,
+            dilated_channels, (1, ),
+            weight_attr=I.Normal(scale=std))
         self.condition_proj = nn.utils.weight_norm(condition_proj)
 
         self.filter_size = filter_size
@@ -309,10 +318,11 @@ class ResidualNet(nn.LayerList):
         Kernel size of the internal ``Conv1dCell`` of each ``ResidualBlock``.
 
     """
-    def __init__(self, 
-                 n_stack: int, 
-                 n_loop: int, 
-                 residual_channels: int, 
+
+    def __init__(self,
+                 n_stack: int,
+                 n_loop: int,
+                 residual_channels: int,
                  condition_dim: int,
                  filter_size: int):
         super(ResidualNet, self).__init__()
@@ -320,7 +330,9 @@ class ResidualNet(nn.LayerList):
         dilations = [2**i for i in range(n_loop)] * n_stack
         self.context_size = 1 + sum(dilations)
         for dilation in dilations:
-            self.append(ResidualBlock(residual_channels, condition_dim, filter_size, dilation))
+            self.append(
+                ResidualBlock(residual_channels, condition_dim, filter_size,
+                              dilation))
 
     def forward(self, x, condition=None):
         """Forward pass of ``ResidualNet``.
@@ -345,7 +357,7 @@ class ResidualNet(nn.LayerList):
                 skip_connections = skip
             else:
                 skip_connections = paddle.scale(skip_connections + skip,
-                                        math.sqrt(0.5))
+                                                math.sqrt(0.5))
         return skip_connections
 
     def start_sequence(self):
@@ -381,7 +393,7 @@ class ResidualNet(nn.LayerList):
                 skip_connections = skip
             else:
                 skip_connections = paddle.scale(skip_connections + skip,
-                                        math.sqrt(0.5))
+                                                math.sqrt(0.5))
         return skip_connections
 
 
@@ -426,6 +438,7 @@ class WaveNet(nn.Layer):
         This is only used for computing loss when ``loss_type`` is "mog", If 
         the predicted log scale is less than -9.0, it is clipped at -9.0.
     """
+
     def __init__(self, n_stack, n_loop, residual_channels, output_dim,
                  condition_dim, filter_size, loss_type, log_scale_min):
 
@@ -437,19 +450,24 @@ class WaveNet(nn.Layer):
         else:
             if (output_dim % 3 != 0):
                 raise ValueError(
-                    "with Mixture of Gaussians(mog) output, the output dim must be divisible by 3, but get {}".format(output_dim))
-            self.embed = nn.utils.weight_norm(nn.Linear(1, residual_channels), dim=1)
+                    "with Mixture of Gaussians(mog) output, the output dim must be divisible by 3, but get {}".
+                    format(output_dim))
+            self.embed = nn.utils.weight_norm(
+                nn.Linear(1, residual_channels), dim=1)
 
         self.resnet = ResidualNet(n_stack, n_loop, residual_channels,
                                   condition_dim, filter_size)
         self.context_size = self.resnet.context_size
 
         skip_channels = residual_channels  # assume the same channel
-        self.proj1 = nn.utils.weight_norm(nn.Linear(skip_channels, skip_channels), dim=1)
-        self.proj2 = nn.utils.weight_norm(nn.Linear(skip_channels, skip_channels), dim=1)
+        self.proj1 = nn.utils.weight_norm(
+            nn.Linear(skip_channels, skip_channels), dim=1)
+        self.proj2 = nn.utils.weight_norm(
+            nn.Linear(skip_channels, skip_channels), dim=1)
         # if loss_type is softmax, output_dim is n_vocab of waveform magnitude.
         # if loss_type is mog, output_dim is 3 * gaussian, (weight, mean and stddev)
-        self.proj3 = nn.utils.weight_norm(nn.Linear(skip_channels, output_dim), dim=1)
+        self.proj3 = nn.utils.weight_norm(
+            nn.Linear(skip_channels, output_dim), dim=1)
 
         self.loss_type = loss_type
         self.output_dim = output_dim
@@ -781,26 +799,28 @@ class ConditionalWaveNet(nn.Layer):
         This is only used for computing loss when ``loss_type`` is "mog", If 
         the predicted log scale is less than -9.0, it is clipped at -9.0.
     """
-    def __init__(self, 
-                 upsample_factors: List[int], 
-                 n_stack: int, 
-                 n_loop: int, 
-                 residual_channels: int, 
+
+    def __init__(self,
+                 upsample_factors: List[int],
+                 n_stack: int,
+                 n_loop: int,
+                 residual_channels: int,
                  output_dim: int,
-                 n_mels: int, 
-                 filter_size: int=2, 
-                 loss_type: str="mog", 
+                 n_mels: int,
+                 filter_size: int=2,
+                 loss_type: str="mog",
                  log_scale_min: float=-9.0):
         super(ConditionalWaveNet, self).__init__()
         self.encoder = UpsampleNet(upsample_factors)
-        self.decoder = WaveNet(n_stack=n_stack, 
-                               n_loop=n_loop,
-                               residual_channels=residual_channels,
-                               output_dim=output_dim,
-                               condition_dim=n_mels,
-                               filter_size=filter_size,
-                               loss_type=loss_type,
-                               log_scale_min=log_scale_min)
+        self.decoder = WaveNet(
+            n_stack=n_stack,
+            n_loop=n_loop,
+            residual_channels=residual_channels,
+            output_dim=output_dim,
+            condition_dim=n_mels,
+            filter_size=filter_size,
+            loss_type=loss_type,
+            log_scale_min=log_scale_min)
 
     def forward(self, audio, mel, audio_start):
         """Compute the output distribution given the mel spectrogram and the input(for teacher force training).
@@ -895,11 +915,11 @@ class ConditionalWaveNet(nn.Layer):
         self.decoder.start_sequence()
         x_t = paddle.zeros((batch_size, ), dtype=mel.dtype)
         for i in trange(time_steps):
-            c_t = condition[:, :, i] # (B, C)
-            y_t = self.decoder.add_input(x_t, c_t) #(B, C)
+            c_t = condition[:, :, i]  # (B, C)
+            y_t = self.decoder.add_input(x_t, c_t)  #(B, C)
             y_t = paddle.unsqueeze(y_t, 1)
-            x_t = self.sample(y_t) # (B, 1)
-            x_t = paddle.squeeze(x_t, 1) #(B,)
+            x_t = self.sample(y_t)  # (B, 1)
+            x_t = paddle.squeeze(x_t, 1)  #(B,)
             samples.append(x_t)
         samples = paddle.stack(samples, -1)
         return samples
@@ -943,16 +963,15 @@ class ConditionalWaveNet(nn.Layer):
         ConditionalWaveNet
             The model built from pretrained result.
         """
-        model = cls(
-            upsample_factors=config.model.upsample_factors,
-            n_stack=config.model.n_stack, 
-            n_loop=config.model.n_loop,
-            residual_channels=config.model.residual_channels,
-            output_dim=config.model.output_dim,
-            n_mels=config.data.n_mels,
-            filter_size=config.model.filter_size,
-            loss_type=config.model.loss_type,
-            log_scale_min=config.model.log_scale_min)
+        model = cls(upsample_factors=config.model.upsample_factors,
+                    n_stack=config.model.n_stack,
+                    n_loop=config.model.n_loop,
+                    residual_channels=config.model.residual_channels,
+                    output_dim=config.model.output_dim,
+                    n_mels=config.data.n_mels,
+                    filter_size=config.model.filter_size,
+                    loss_type=config.model.loss_type,
+                    log_scale_min=config.model.log_scale_min)
         layer_tools.summary(model)
         checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
         return model

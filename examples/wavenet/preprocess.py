@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import tqdm
 import csv
@@ -23,7 +37,7 @@ class Transform(object):
         self.win_length = win_length
         self.hop_length = hop_length
         self.n_mels = n_mels
-        
+
         self.spec_normalizer = UnitMagnitude(min=1e-5)
 
     def __call__(self, example):
@@ -87,12 +101,8 @@ def create_dataset(config, input_dir, output_dir, verbose=True):
     output_dir = Path(output_dir).expanduser()
     output_dir.mkdir(exist_ok=True)
 
-    transform = Transform(
-        config.sample_rate, 
-        config.n_fft, 
-        config.win_length, 
-        config.hop_length, 
-        config.n_mels)
+    transform = Transform(config.sample_rate, config.n_fft, config.win_length,
+                          config.hop_length, config.n_mels)
     file_names = []
 
     for example in tqdm.tqdm(dataset):
@@ -108,23 +118,35 @@ def create_dataset(config, input_dir, output_dir, verbose=True):
         np.save(str(mel_dir / base_name), mel)
 
         file_names.append((base_name, mel.shape[-1], audio.shape[-1]))
-    
+
     meta_data = pd.DataFrame.from_records(file_names)
-    meta_data.to_csv(str(output_dir / "metadata.csv"), sep="\t", index=None, header=None)
-    print("saved meta data in to {}".format(os.path.join(output_dir, "metadata.csv")))
+    meta_data.to_csv(
+        str(output_dir / "metadata.csv"), sep="\t", index=None, header=None)
+    print("saved meta data in to {}".format(
+        os.path.join(output_dir, "metadata.csv")))
 
     print("Done!")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="create dataset")
-    parser.add_argument("--config", type=str, metavar="FILE", help="extra config to overwrite the default config")
-    parser.add_argument("--input", type=str, help="path of the ljspeech dataset")
-    parser.add_argument("--output", type=str, help="path to save output dataset")
-    parser.add_argument("--opts", nargs=argparse.REMAINDER,
+    parser.add_argument(
+        "--config",
+        type=str,
+        metavar="FILE",
+        help="extra config to overwrite the default config")
+    parser.add_argument(
+        "--input", type=str, help="path of the ljspeech dataset")
+    parser.add_argument(
+        "--output", type=str, help="path to save output dataset")
+    parser.add_argument(
+        "--opts",
+        nargs=argparse.REMAINDER,
         help="options to overwrite --config file and the default config, passing in KEY VALUE pairs"
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="print msg")
-    
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="print msg")
+
     config = get_cfg_defaults()
     args = parser.parse_args()
     if args.config:

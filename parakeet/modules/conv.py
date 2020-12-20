@@ -20,6 +20,7 @@ __all__ = [
     "Conv1dBatchNorm",
 ]
 
+
 class Conv1dCell(nn.Conv1D):
     """A subclass of Conv1D layer, which can be used in an autoregressive 
     decoder like an RNN cell. 
@@ -231,6 +232,7 @@ class Conv1dBatchNorm(nn.Layer):
     epsilon : [type], optional
         The epsilon of the BatchNorm1D layer, by default 1e-05
     """
+
     def __init__(self,
                  in_channels,
                  out_channels,

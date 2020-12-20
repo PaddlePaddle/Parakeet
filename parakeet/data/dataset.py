@@ -17,16 +17,24 @@ import paddle
 from paddle.io import Dataset
 
 __all__ = [
-    "split", "TransformDataset", "CacheDataset", "TupleDataset", 
-    "DictDataset", "SliceDataset", "SubsetDataset", "FilterDataset", 
+    "split",
+    "TransformDataset",
+    "CacheDataset",
+    "TupleDataset",
+    "DictDataset",
+    "SliceDataset",
+    "SubsetDataset",
+    "FilterDataset",
     "ChainDataset",
 ]
+
 
 def split(dataset, first_size):
     """A utility function to split a dataset into two datasets."""
     first = SliceDataset(dataset, 0, first_size)
     second = SliceDataset(dataset, first_size, len(dataset))
     return first, second
+
 
 class TransformDataset(Dataset):
     def __init__(self, dataset, transform):
@@ -141,7 +149,7 @@ class DictDataset(Dataset):
                     for i in six.moves.range(length)]
         else:
             return batches
-    
+
     def __len__(self):
         return self._length
 

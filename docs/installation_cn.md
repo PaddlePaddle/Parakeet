@@ -31,7 +31,7 @@ python -m pip install paddlepaddle==2.0.0rc0 -i https://mirror.baidu.com/pypi/si
 # ubuntu, debian
 sudo apt-get install libsndfile1
 
-# centos, fedora, 
+# centos, fedora,
 sudo yum install libsndfile
 
 # openSUSE

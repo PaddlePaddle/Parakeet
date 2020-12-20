@@ -45,6 +45,7 @@ def _load_latest_checkpoint(checkpoint_dir: str) -> int:
 
     return iteration
 
+
 def _save_checkpoint(checkpoint_dir: str, iteration: int):
     """Save the iteration number of the latest model to be checkpointed.
 
@@ -59,6 +60,7 @@ def _save_checkpoint(checkpoint_dir: str, iteration: int):
     # Update the latest checkpoint index.
     with open(checkpoint_record, "wt") as handle:
         handle.write("model_checkpoint_path: step-{}".format(iteration))
+
 
 def load_parameters(model,
                     optimizer=None,
@@ -97,17 +99,18 @@ def load_parameters(model,
     params_path = checkpoint_path + ".pdparams"
     model_dict = paddle.load(params_path)
     model.set_state_dict(model_dict)
-    print("[checkpoint] Rank {}: loaded model from {}".format(
-        local_rank, params_path))
-    
+    print("[checkpoint] Rank {}: loaded model from {}".format(local_rank,
+                                                              params_path))
+
     optimizer_path = checkpoint_path + ".pdopt"
     if optimizer and os.path.isfile(optimizer_path):
         optimizer_dict = paddle.load(optimizer_path)
         optimizer.set_state_dict(optimizer_dict)
-        print("[checkpoint] Rank {}: loaded optimizer state from {}".
-              format(local_rank, optimizer_path))
+        print("[checkpoint] Rank {}: loaded optimizer state from {}".format(
+            local_rank, optimizer_path))
 
     return iteration
+
 
 @mp_tools.rank_zero_only
 def save_parameters(checkpoint_dir, iteration, model, optimizer=None):
@@ -124,7 +127,7 @@ def save_parameters(checkpoint_dir, iteration, model, optimizer=None):
         None
     """
     checkpoint_path = os.path.join(checkpoint_dir, "step-{}".format(iteration))
-    
+
     model_dict = model.state_dict()
     params_path = checkpoint_path + ".pdparams"
     paddle.save(model_dict, params_path)

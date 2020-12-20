@@ -18,9 +18,14 @@ Batch functions for text sequences, audio and spectrograms are provided.
 import numpy as np
 
 __all__ = [
-    "batch_text_id", "batch_wav", "batch_spec",
-    "TextIDBatcher", "WavBatcher", "SpecBatcher",
+    "batch_text_id",
+    "batch_wav",
+    "batch_spec",
+    "TextIDBatcher",
+    "WavBatcher",
+    "SpecBatcher",
 ]
+
 
 class TextIDBatcher(object):
     """A wrapper class for `batch_text_id`."""
@@ -99,8 +104,8 @@ def batch_wav(minibatch, pad_value=0., dtype=np.float32):
         pad_len = max_len - example.shape[-1]
         batch.append(
             np.pad(example, [(0, pad_len)],
-                    mode='constant',
-                    constant_values=pad_value))
+                   mode='constant',
+                   constant_values=pad_value))
     return np.array(batch, dtype=dtype)
 
 
@@ -113,7 +118,11 @@ class SpecBatcher(object):
         self.time_major = time_major
 
     def __call__(self, minibatch):
-        out = batch_spec(minibatch, pad_value=self.pad_value, time_major=self.time_major, dtype=self.dtype)
+        out = batch_spec(
+            minibatch,
+            pad_value=self.pad_value,
+            time_major=self.time_major,
+            dtype=self.dtype)
         return out
 
 
@@ -130,7 +139,8 @@ def batch_spec(minibatch, pad_value=0., time_major=False, dtype=np.float32):
     """
     # assume (F, T) or (T, F)
     peek_example = minibatch[0]
-    assert len(peek_example.shape) == 2, "we only handles mono channel spectrogram"
+    assert len(
+        peek_example.shape) == 2, "we only handles mono channel spectrogram"
 
     # assume (F, n_frame) or (n_frame, F)
     time_idx = 0 if time_major else -1
@@ -143,11 +153,11 @@ def batch_spec(minibatch, pad_value=0., time_major=False, dtype=np.float32):
         if time_major:
             batch.append(
                 np.pad(example, [(0, pad_len), (0, 0)],
-                        mode='constant',
-                        constant_values=pad_value))
+                       mode='constant',
+                       constant_values=pad_value))
         else:
             batch.append(
                 np.pad(example, [(0, 0), (0, pad_len)],
-                        mode='constant',
-                        constant_values=pad_value))
+                       mode='constant',
+                       constant_values=pad_value))
     return np.array(batch, dtype=dtype)
