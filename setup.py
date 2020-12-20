@@ -40,7 +40,7 @@ long_description = read('README.md')
 
 setup_info = dict(
     # Metadata
-    name='parakeet',
+    name='paddle-parakeet',
     version=VERSION,
     author='PaddleSL Team',
     author_email='',
