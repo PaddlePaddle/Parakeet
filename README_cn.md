@@ -228,6 +228,6 @@ Parakeet 同时提供了示例模型的训练好的参数，可从下表中获�
 
 正在开发中。
 
-## 版权和许可 
+## 版权和许可
 
 Parakeet 以 [Apache-2.0 license](LICENSE) 提供。

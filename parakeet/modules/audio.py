@@ -1,8 +1,22 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from scipy import signal
-import numpy as np 
+import numpy as np
 
 __all__ = ["quantize", "dequantize", "STFT"]
 
@@ -86,6 +100,7 @@ class STFT(nn.Layer):
     Ony ``center`` and ``reflect`` padding is supported now.
     
     """
+
     def __init__(self, n_fft, hop_length, win_length, window="hanning"):
         super(STFT, self).__init__()
         self.hop_length = hop_length
@@ -109,7 +124,8 @@ class STFT(nn.Layer):
                             (self.n_bin, 1, 1, self.n_fft))
 
         w = np.concatenate([w_real, w_imag], axis=0)
-        self.weight = paddle.cast(paddle.to_tensor(w), paddle.get_default_dtype())
+        self.weight = paddle.cast(
+            paddle.to_tensor(w), paddle.get_default_dtype())
 
     def forward(self, x):
         """Compute the stft transform.

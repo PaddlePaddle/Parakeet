@@ -27,6 +27,7 @@ from parakeet.utils import checkpoint, mp_tools
 
 __all__ = ["ExperimentBase"]
 
+
 class ExperimentBase(object):
     """
     An experiment template in order to structure the training code and take 

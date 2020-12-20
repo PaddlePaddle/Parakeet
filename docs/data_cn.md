@@ -21,7 +21,7 @@
 
 一般来说，我们将一个 Dataset 的子类看作是数据集和实验的具体需求之间的适配器。
 
-parakeet 还提供了若干个高阶的 Dataset 类，用于从已有的 Dataset 产生新的 Dataset. 
+parakeet 还提供了若干个高阶的 Dataset 类，用于从已有的 Dataset 产生新的 Dataset.
 
 1. 用于字段组合的有 TupleDataset, DictDataset;
 2. 用于数据集切分合并的有 SliceDataset, SubsetDataset, ChainDataset;
@@ -137,7 +137,7 @@ class Transform(object):
         self.processor = AudioProcessor(
             sample_rate=22050,
             n_fft=1024,
-            win_length=1024, 
+            win_length=1024,
             hop_length=256,
             f_max=8000)
         self.normalizer = LogMagnitude()
@@ -167,7 +167,7 @@ ljspeech = TransformDataset(meta, transform)
 
 当然也可以选择专门写一个转换脚本把转换后的数据集保存下来，然后再写一个适配的 Dataset 子类去加载这些保存的数据。实际这么做的效率会更高。
 
-接下来我们需要写一个可调用对象将多个样例组成批次。因为其中的 ids 和 mel 频谱是序列数据，所以我们需要进行 padding. 
+接下来我们需要写一个可调用对象将多个样例组成批次。因为其中的 ids 和 mel 频谱是序列数据，所以我们需要进行 padding.
 
 ```python
 class LJSpeechCollector(object):
@@ -197,10 +197,10 @@ def create_dataloader(source_path, valid_size, batch_size):
 
     valid_set, train_set = dataset.split(lj, valid_size)
     train_loader = DataLoader(
-        train_set, 
-        return_list=False, 
-        batch_size=batch_size, 
-        shuffle=True, 
+        train_set,
+        return_list=False,
+        batch_size=batch_size,
+        shuffle=True,
         drop_last=True,
         collate_fn=LJSpeechCollector())
     valid_loader = DataLoader(

@@ -559,7 +559,7 @@ class TransformerTTS(nn.Layer):
     @classmethod
     def from_pretrained(cls, frontend, config, checkpoint_path):
         model = TransformerTTS(
-            frontend, 
+            frontend,
             d_encoder=config.model.d_encoder,
             d_decoder=config.model.d_decoder,
             d_mel=config.data.d_mel,
@@ -575,11 +575,12 @@ class TransformerTTS(nn.Layer):
             decoder_prenet_dropout=config.model.decoder_prenet_dropout,
             dropout=config.model.dropout)
 
-        iteration = checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
+        iteration = checkpoint.load_parameters(
+            model, checkpoint_path=checkpoint_path)
         drop_n_heads = scheduler.StepWise(config.training.drop_n_heads)
         reduction_factor = scheduler.StepWise(config.training.reduction_factor)
         model.set_constants(
-            reduction_factor=reduction_factor(iteration), 
+            reduction_factor=reduction_factor(iteration),
             drop_n_heads=drop_n_heads(iteration))
         return model
 

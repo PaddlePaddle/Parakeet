@@ -72,5 +72,3 @@ Dataset --(transform)--> Dataset  --+
 ```
 
 在这个软件源中包含了几个例子，可以在 [Parakeet/examples](../examples) 中查看。这些实验被作为样例提供给用户，可以直接运行。同时也欢迎用户添加新的模型和实验并为 `Parakeet` 贡献代码。
-
-

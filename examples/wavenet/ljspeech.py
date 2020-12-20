@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 from pathlib import Path
 import pickle
@@ -9,19 +23,20 @@ from parakeet.data.batch import batch_spec, batch_wav
 from parakeet.data import dataset
 from parakeet.audio import AudioProcessor
 
+
 class LJSpeech(Dataset):
     """A simple dataset adaptor for the processed ljspeech dataset."""
+
     def __init__(self, root):
         self.root = Path(root).expanduser()
         meta_data = pandas.read_csv(
             str(self.root / "metadata.csv"),
             sep="\t",
             header=None,
-            names=["fname", "frames", "samples"]
-        )
-        
+            names=["fname", "frames", "samples"])
+
         records = []
-        for row in meta_data.itertuples() :
+        for row in meta_data.itertuples():
             mel_path = str(self.root / "mel" / (row.fname + ".npy"))
             wav_path = str(self.root / "wav" / (row.fname + ".npy"))
             records.append((mel_path, wav_path))
@@ -39,6 +54,7 @@ class LJSpeech(Dataset):
 
 class LJSpeechCollector(object):
     """A simple callable to batch LJSpeech examples."""
+
     def __init__(self, padding_value=0.):
         self.padding_value = padding_value
 
@@ -48,15 +64,15 @@ class LJSpeechCollector(object):
         wavs = [example[1] for example in examples]
         mels = batch_spec(mels, pad_value=self.padding_value)
         wavs = batch_wav(wavs, pad_value=self.padding_value)
-        audio_starts = np.zeros((batch_size,), dtype=np.int64)
+        audio_starts = np.zeros((batch_size, ), dtype=np.int64)
         return mels, wavs, audio_starts
 
 
 class LJSpeechClipCollector(object):
     def __init__(self, clip_frames=65, hop_length=256):
-        self.clip_frames = clip_frames 
+        self.clip_frames = clip_frames
         self.hop_length = hop_length
-    
+
     def __call__(self, examples):
         mels = []
         wavs = []
@@ -75,7 +91,8 @@ class LJSpeechClipCollector(object):
         mel, wav = example
         frames = mel.shape[-1]
         start = np.random.randint(0, frames - self.clip_frames)
-        wav_clip = wav[start * self.hop_length: (start + self.clip_frames) * self.hop_length]
+        wav_clip = wav[start * self.hop_length:(start + self.clip_frames) *
+                       self.hop_length]
         return mel, wav_clip, start
 
 
@@ -132,7 +149,3 @@ class DataCollector(object):
             audios = np.array(audios, dtype=np.float32)
         audio_starts = np.array(audio_starts, dtype=np.int64)
         return audios, mels, audio_starts
-
-
-
-

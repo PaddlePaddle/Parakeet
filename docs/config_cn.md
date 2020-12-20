@@ -18,7 +18,7 @@
 
 常见的配置文件的格式有 `ini`, `yaml`, `toml`, `json` 等。
 
-`ini` 
+`ini`
 优点：简单，支持字符串插值等操作。
 缺点：仅支持两层结构，值不带类型信息，解析的时候需要手动 cast。
 
@@ -102,11 +102,3 @@ optional arguments:
   --opts ...            options to overwrite --config file and the default
                         config, passing in KEY VALUE pairs
 ```
-
-
-
-
-
-
-
-

@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import time
 import logging
 from pathlib import Path
@@ -19,12 +33,13 @@ from parakeet.training.experiment import ExperimentBase
 from config import get_cfg_defaults
 from ljspeech import LJSpeech, LJSpeechCollector, Transform
 
+
 class Experiment(ExperimentBase):
     def setup_model(self):
         config = self.config
         frontend = English()
         model = TransformerTTS(
-            frontend, 
+            frontend,
             d_encoder=config.model.d_encoder,
             d_decoder=config.model.d_decoder,
             d_mel=config.data.d_mel,
@@ -46,8 +61,7 @@ class Experiment(ExperimentBase):
             beta1=0.9,
             beta2=0.98,
             epsilon=1e-9,
-            parameters=model.parameters()
-        )
+            parameters=model.parameters())
         criterion = TransformerTTSLoss(config.model.stop_loss_scale)
         drop_n_heads = scheduler.StepWise(config.training.drop_n_heads)
         reduction_factor = scheduler.StepWise(config.training.reduction_factor)
@@ -63,21 +77,24 @@ class Experiment(ExperimentBase):
         config = self.config
 
         ljspeech_dataset = LJSpeech(args.data)
-        transform = Transform(config.data.mel_start_value, config.data.mel_end_value)
-        ljspeech_dataset = dataset.TransformDataset(ljspeech_dataset, transform)
-        valid_set, train_set = dataset.split(ljspeech_dataset, config.data.valid_size)
+        transform = Transform(config.data.mel_start_value,
+                              config.data.mel_end_value)
+        ljspeech_dataset = dataset.TransformDataset(ljspeech_dataset,
+                                                    transform)
+        valid_set, train_set = dataset.split(ljspeech_dataset,
+                                             config.data.valid_size)
         batch_fn = LJSpeechCollector(padding_idx=config.data.padding_idx)
-        
+
         if not self.parallel:
             train_loader = DataLoader(
-                train_set, 
-                batch_size=config.data.batch_size, 
-                shuffle=True, 
+                train_set,
+                batch_size=config.data.batch_size,
+                shuffle=True,
                 drop_last=True,
                 collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
-                train_set, 
+                train_set,
                 batch_size=config.data.batch_size,
                 num_replicas=dist.get_world_size(),
                 rank=dist.get_rank(),
@@ -95,11 +112,11 @@ class Experiment(ExperimentBase):
     def compute_outputs(self, text, mel, stop_label):
         model_core = self.model._layers if self.parallel else self.model
         model_core.set_constants(
-            self.reduction_factor(self.iteration), 
+            self.reduction_factor(self.iteration),
             self.drop_n_heads(self.iteration))
 
         # TODO(chenfeiyu): we can combine these 2 slices
-        mel_input = mel[:,:-1, :]
+        mel_input = mel[:, :-1, :]
         reduced_mel_input = mel_input[:, ::model_core.r, :]
         outputs = self.model(text, reduced_mel_input)
         return outputs
@@ -115,11 +132,8 @@ class Experiment(ExperimentBase):
 
         time_steps = mel_target.shape[1]
         losses = self.criterion(
-            mel_output[:,:time_steps, :], 
-            mel_intermediate[:,:time_steps, :], 
-            mel_target, 
-            stop_logits[:,:time_steps, :], 
-            stop_label_target)
+            mel_output[:, :time_steps, :], mel_intermediate[:, :time_steps, :],
+            mel_target, stop_logits[:, :time_steps, :], stop_label_target)
         return losses
 
     def train_batch(self):
@@ -133,7 +147,7 @@ class Experiment(ExperimentBase):
         outputs = self.compute_outputs(text, mel, stop_label)
         losses = self.compute_losses(batch, outputs)
         loss = losses["loss"]
-        loss.backward() 
+        loss.backward()
         self.optimizer.step()
         iteration_time = time.time() - start
 
@@ -141,14 +155,17 @@ class Experiment(ExperimentBase):
         # logging
         msg = "Rank: {}, ".format(dist.get_rank())
         msg += "step: {}, ".format(self.iteration)
-        msg += "time: {:>.3f}s/{:>.3f}s, ".format(data_loader_time, iteration_time)
-        msg += ', '.join('{}: {:>.6f}'.format(k, v) for k, v in losses_np.items())
+        msg += "time: {:>.3f}s/{:>.3f}s, ".format(data_loader_time,
+                                                  iteration_time)
+        msg += ', '.join('{}: {:>.6f}'.format(k, v)
+                         for k, v in losses_np.items())
         self.logger.info(msg)
-        
+
         if dist.get_rank() == 0:
             for k, v in losses_np.items():
-                self.visualizer.add_scalar(f"train_loss/{k}", v, self.iteration)
-    
+                self.visualizer.add_scalar(f"train_loss/{k}", v,
+                                           self.iteration)
+
     @mp_tools.rank_zero_only
     @paddle.no_grad()
     def valid(self):
@@ -163,10 +180,9 @@ class Experiment(ExperimentBase):
             if i < 2:
                 attention_weights = outputs["cross_attention_weights"]
                 display.add_multi_attention_plots(
-                    self.visualizer, 
-                    f"valid_sentence_{i}_cross_attention_weights", 
-                    attention_weights, 
-                    self.iteration)
+                    self.visualizer,
+                    f"valid_sentence_{i}_cross_attention_weights",
+                    attention_weights, self.iteration)
 
         # write visual log
         valid_losses = {k: np.mean(v) for k, v in valid_losses.items()}
@@ -191,7 +207,7 @@ if __name__ == "__main__":
     config = get_cfg_defaults()
     parser = default_argument_parser()
     args = parser.parse_args()
-    if args.config: 
+    if args.config:
         config.merge_from_file(args.config)
     if args.opts:
         config.merge_from_list(args.opts)

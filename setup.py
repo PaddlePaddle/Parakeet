@@ -48,7 +48,6 @@ setup_info = dict(
     description='Speech synthesis tools and models based on Paddlepaddle',
     long_description=long_description,
     license='Apache 2',
-    
     python_requires='>=3.6',
     install_requires=[
         'numpy',
@@ -71,23 +70,18 @@ setup_info = dict(
         'yacs',
         'tensorboardX',
     ],
-    extras_require={
-        'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],
-    },
+    extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 
     # Package info
     packages=find_packages(exclude=('tests', 'tests.*')),
-    zip_safe=True, 
-    
-    classifiers = [
+    zip_safe=True,
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Topic :: Scientific/Engineering :: Artificial Intelligence'
         'License :: OSI Approved :: Apache2 License',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-    ],
-    
-    )
+    ], )
 
 setup(**setup_info)
