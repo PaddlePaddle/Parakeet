@@ -391,7 +391,7 @@ class TransformerTTS(nn.Layer):
             padding_idx=frontend.vocab.padding_index,
             weight_attr=I.Uniform(-0.05, 0.05))
         # position encoding matrix may be extended later
-        self.encoder_pe = pe.positional_encoding(0, 1000, d_encoder)
+        self.encoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_encoder)
         self.encoder_pe_scalar = self.create_parameter(
             [1], attr=I.Constant(1.))
         self.encoder = TransformerEncoder(d_encoder, n_heads, d_ffn,
@@ -399,7 +399,7 @@ class TransformerTTS(nn.Layer):
 
         # decoder
         self.decoder_prenet = MLPPreNet(d_mel, d_prenet, d_decoder, dropout)
-        self.decoder_pe = pe.positional_encoding(0, 1000, d_decoder)
+        self.decoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_decoder)
         self.decoder_pe_scalar = self.create_parameter(
             [1], attr=I.Constant(1.))
         self.decoder = TransformerDecoder(
