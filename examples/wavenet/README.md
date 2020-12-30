@@ -25,7 +25,7 @@ python preprocess.py --input=LJSpeech-1.1/  --output=ljspeech_wavenet
 ## Train the model
 
 The training script requires 4 command line arguments.
-`--data` is the path of the training dataset, `--output` is the path of the output direcctory (we recommend to use a subdirectory in `runs` to manage different experiments.)
+`--data` is the path of the training dataset, `--output` is the path of the output directory (we recommend to use a subdirectory in `runs` to manage different experiments.)
 
 `--device` should be "cpu" or "gpu", `--nprocs` is the number of processes to train the model in parallel.
 
@@ -41,7 +41,7 @@ Synthesize waveform. We assume the `--input` is a directory containing several m
 
 `--checkpoint_path` should be the path of the parameter file (`.pdparams`) to load. Note that the extention name `.pdparmas` is not included here.
 
-`--device` specifiies to device to run synthesis. Due to the autoregressiveness of wavenet, using cpu may be faster.
+`--device` specifies to device to run synthesis on. Due to the autoregressiveness of wavenet, using cpu may be faster.
 
 ```bash
 python synthesize.py --input=mels/ --output=wavs/ --checkpoint_path='step-2450000' --device="cpu" --verbose
