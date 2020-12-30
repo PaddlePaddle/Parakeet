@@ -37,7 +37,7 @@ If you want distributed training, set a larger `--nprocs` (e.g. 4). Note that di
 
 ## Synthesize
 
-Synthesize waveform. We assume the `--input` is a directory containing several mel spectrogram(log magnitude) in `.npy` format. The output would be saved in `--output` directory, containing several `.wav` files with the same name as the mel spectrogram does.
+Synthesize waveform. We assume the `--input` is a directory containing several mel spectrograms(log magnitude) in `.npy` format. The output would be saved in `--output` directory, containing several `.wav` files, each with the same name as the mel spectrogram does.
 
 `--checkpoint_path` should be the path of the parameter file (`.pdparams`) to load. Note that the extention name `.pdparmas` is not included here.
 
