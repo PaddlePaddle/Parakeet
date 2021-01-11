@@ -119,7 +119,7 @@ class Experiment(ExperimentBase):
         mel, wav, audio_starts = batch
 
         y = self.model(wav, mel, audio_starts)
-        loss = self.model.loss(y, wav)
+        loss = self.model_core.loss(y, wav)
         loss.backward()
         self.optimizer.step()
         iteration_time = time.time() - start
@@ -141,7 +141,7 @@ class Experiment(ExperimentBase):
         valid_losses = []
         mel, wav, audio_starts = next(valid_iterator)
         y = self.model(wav, mel, audio_starts)
-        loss = self.model.loss(y, wav)
+        loss = self.model_core.loss(y, wav)
         valid_losses.append(float(loss))
         valid_loss = np.mean(valid_losses)
         self.visualizer.add_scalar(
