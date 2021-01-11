@@ -49,7 +49,7 @@ class Experiment(ExperimentBase):
             loss_type=config.model.loss_type,
             log_scale_min=config.model.log_scale_min)
 
-        if self.parallel > 1:
+        if self.parallel:
             model = paddle.DataParallel(model)
 
         lr_scheduler = paddle.optimizer.lr.StepDecay(
