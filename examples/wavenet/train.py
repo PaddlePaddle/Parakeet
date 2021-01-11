@@ -62,7 +62,7 @@ class Experiment(ExperimentBase):
                 config.training.gradient_max_norm))
 
         self.model = model
-        self.model_core = model._layer if self.parallel else model
+        self.model_core = model._layers if self.parallel else model
         self.optimizer = optimizer
 
     def setup_dataloader(self):
