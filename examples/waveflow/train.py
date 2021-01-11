@@ -46,7 +46,7 @@ class Experiment(ExperimentBase):
             n_mels=config.data.n_mels,
             kernel_size=config.model.kernel_size)
 
-        if self.parallel > 1:
+        if self.parallel:
             model = paddle.DataParallel(model)
         optimizer = paddle.optimizer.Adam(
             config.training.lr, parameters=model.parameters())
