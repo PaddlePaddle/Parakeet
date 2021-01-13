@@ -34,7 +34,7 @@ The code below show how to use a transformer_tts model. After loading the pretra
 >>> model = TransformerTTS.from_pretrained(
 >>>     frontend, config, checkpoint_path)
 >>> model.eval()
-
+>>> 
 >>> # text to spectrogram
 >>> sentence = "Printing, in the only sense with which we are at present concerned, differs from most if not from all the arts and crafts represented in the Exhibition"
 >>> outputs = model.predict(sentence, verbose=args.verbose)
@@ -47,14 +47,14 @@ Like the example above, after loading the pretrained ConditionalWaveFlow model, 
 
 >>> import soundfile as df
 >>> from parakeet.models import ConditionalWaveFlow
-
+>>> 
 >>> # load the pretrained model
 >>> checkpoint_dir = Path("waveflow_pretrained")
 >>> config = yacs.config.CfgNode.load_cfg(str(checkpoint_dir / "config.yaml"))
 >>> checkpoint_path = str(checkpoint_dir / "step-2000000")
 >>> vocoder = ConditionalWaveFlow.from_pretrained(config, checkpoint_path)
 >>> vocoder.eval()
-
+>>> 
 >>> # synthesize
 >>> audio = vocoder.predict(mel_output)
 >>> sf.write(audio_path, audio, config.data.sample_rate)
