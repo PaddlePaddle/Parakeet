@@ -1,3 +1,5 @@
+"""Parakeet's infrastructure for data processing.
+"""
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
