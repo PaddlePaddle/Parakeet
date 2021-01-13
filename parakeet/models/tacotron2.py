@@ -71,8 +71,10 @@ class DecoderPreNet(nn.Layer):
 
         """
 
-        x = F.dropout(F.relu(self.linear1(x)), self.dropout_rate)
-        output = F.dropout(F.relu(self.linear2(x)), self.dropout_rate)
+        x = F.dropout(
+            F.relu(self.linear1(x)), self.dropout_rate, training=True)
+        output = F.dropout(
+            F.relu(self.linear2(x)), self.dropout_rate, training=True)
         return output
 
 
@@ -161,9 +163,13 @@ class DecoderPostNet(nn.Layer):
 
         for i in range(len(self.conv_batchnorms) - 1):
             input = F.dropout(
-                F.tanh(self.conv_batchnorms[i](input), self.dropout))
-        output = F.dropout(self.conv_batchnorms[self.num_layers - 1](input),
-                           self.dropout)
+                F.tanh(self.conv_batchnorms[i](input)),
+                self.dropout,
+                training=self.training)
+        output = F.dropout(
+            self.conv_batchnorms[self.num_layers - 1](input),
+            self.dropout,
+            training=self.training)
         return output
 
 
@@ -228,8 +234,10 @@ class Tacotron2Encoder(nn.Layer):
 
         """
         for conv_batchnorm in self.conv_batchnorms:
-            x = F.dropout(F.relu(conv_batchnorm(x)),
-                          self.p_dropout)  #(B, T, C)
+            x = F.dropout(
+                F.relu(conv_batchnorm(x)),
+                self.p_dropout,
+                training=self.training)
 
         output, _ = self.lstm(inputs=x, sequence_length=input_lens)
         return output
@@ -350,8 +358,10 @@ class Tacotron2Decoder(nn.Layer):
         # The first lstm layer
         _, (self.attention_hidden, self.attention_cell) = self.attention_rnn(
             cell_input, (self.attention_hidden, self.attention_cell))
-        self.attention_hidden = F.dropout(self.attention_hidden,
-                                          self.p_attention_dropout)
+        self.attention_hidden = F.dropout(
+            self.attention_hidden,
+            self.p_attention_dropout,
+            training=self.training)
 
         # Loaction sensitive attention
         attention_weights_cat = paddle.stack(
@@ -367,7 +377,9 @@ class Tacotron2Decoder(nn.Layer):
         _, (self.decoder_hidden, self.decoder_cell) = self.decoder_rnn(
             decoder_input, (self.decoder_hidden, self.decoder_cell))
         self.decoder_hidden = F.dropout(
-            self.decoder_hidden, p=self.p_decoder_dropout)
+            self.decoder_hidden,
+            p=self.p_decoder_dropout,
+            training=self.training)
 
         # decode output one step
         decoder_hidden_attention_context = paddle.concat(

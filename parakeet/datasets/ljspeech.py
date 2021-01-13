@@ -25,7 +25,7 @@ class LJSpeechMetaData(Dataset):
         csv_path = self.root / "metadata.csv"
         records = []
         speaker_name = "ljspeech"
-        with open(str(csv_path), 'rt') as f:
+        with open(str(csv_path), 'rt', encoding='utf-8') as f:
             for line in f:
                 filename, _, normalized_text = line.strip().split("|")
                 filename = str(wav_dir / (filename + ".wav"))

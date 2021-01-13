@@ -17,10 +17,10 @@ import numpy as np
 import paddle
 from paddle.nn import functional as F
 
-__all__ = ["positional_encoding"]
+__all__ = ["sinusoid_positional_encoding"]
 
 
-def positional_encoding(start_index, length, size, dtype=None):
+def sinusoid_positional_encoding(start_index, length, size, dtype=None):
     r"""Generate standard positional encoding matrix.
     
     .. math::
