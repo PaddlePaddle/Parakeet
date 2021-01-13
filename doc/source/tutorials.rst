@@ -25,7 +25,7 @@ The code below show how to use a transformer_tts model. After loading the pretra
 >>> from parakeet.models import TransformerTTS
 >>> from pathlib import Path
 >>> import yacs
-
+>>> 
 >>> # load the pretrained model
 >>> frontend = English()
 >>> checkpoint_dir = Path("transformer_tts_pretrained")
@@ -61,12 +61,7 @@ Like the example above, after loading the pretrained ConditionalWaveFlow model, 
 
 For more details on how to use the model, please refer the documentation.
 
-.. raw:: html
 
-   <audio controls="controls">
-         <source src="https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_griffin-lim_samples_1.0/step_120000_sentence_0.wav" type="audio/wav">
-         Your browser does not support the <code>audio</code> element. 
-   </audio>
 
 
 
