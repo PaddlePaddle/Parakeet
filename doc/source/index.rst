@@ -20,12 +20,18 @@ Parakeet
 
     install
     tutorials
+    advanced 
+
+.. toctree::
+    :caption: Demos
+    :maxdepth: 1
+    
+    demo
 
 .. toctree::
     :caption: Design of Parakeet
     :maxdepth: 1
     
-    advanced
     design
 
 .. toctree::
