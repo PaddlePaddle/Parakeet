@@ -4,8 +4,8 @@ Installation
 
 
 Install PaddlePaddle
--------------------
-Parakeet requires PaddlePaddle as its backend. Not that 2.0rc or newer versions
+------------------------
+Parakeet requires PaddlePaddle as its backend. Not that 2.0.0rc1 or newer versions
 of paddle is required.
 
 Since paddlepaddle has multiple packages depending on the device (cpu or gpu) 
@@ -50,7 +50,7 @@ are listed below.
     # ubuntu, debian
     sudo apt-get install libsndfile1
 
-    # centos, fedora,
+    # centos, fedora
     sudo yum install libsndfile
 
     # openSUSE
@@ -64,22 +64,20 @@ Install Parakeet
 
 There are two ways to install parakeet according to the purpose of using it.
 
-1. If you want to run experiments provided by parakeet or add new models and 
-experiments, it is recommended to clone the project from github 
-(`Parakeet <https://github.com/PaddlePaddle/Parakeet>`_), and install it in 
-editable mode.
+#. If you want to run experiments provided by parakeet or add new models and 
+   experiments, it is recommended to clone the project from github 
+   (`Parakeet <https://github.com/PaddlePaddle/Parakeet>`_), and install it in 
+   editable mode.
 
    .. code-block:: bash
-     
-     git clone https://github.com/PaddlePaddle/Parakeet
-     cd Parakeet
-     pip install -e .
-
+       
+       git clone https://github.com/PaddlePaddle/Parakeet
+       cd Parakeet
+       pip install -e .
 
 #. If you only need to use the models for inference by parakeet, install from
-pypi is recommended。
+   pypi is recommended.
 
    .. code-block:: bash
-
-     pip install paddle-parakeet
-
+   
+       pip install paddle-parakeet

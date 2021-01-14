@@ -19,7 +19,7 @@ Parakeet
     :maxdepth: 1
 
     install
-    tutorials
+    basic
     advanced 
 
 .. toctree::
