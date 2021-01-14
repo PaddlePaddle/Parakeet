@@ -59,12 +59,12 @@ are listed below.
 For any problem with installtion of soundfile, please refer to 
 `SoundFile <https://pypi.org/project/SoundFile>`_.
 
-Insrall Parakeet
+Install Parakeet
 ------------------
 
 There are two ways to install parakeet according to the purpose of using it.
 
-#. If you want to run experiments provided by parakeet or add new models and 
+1. If you want to run experiments provided by parakeet or add new models and 
 experiments, it is recommended to clone the project from github 
 (`Parakeet <https://github.com/PaddlePaddle/Parakeet>`_), and install it in 
 editable mode.
