@@ -5,7 +5,7 @@ Installation
 
 Install PaddlePaddle
 ------------------------
-Parakeet requires PaddlePaddle as its backend. Not that 2.0.0rc1 or newer versions
+Parakeet requires PaddlePaddle as its backend. Note that 2.0.0rc1 or newer versions
 of paddle is required.
 
 Since paddlepaddle has multiple packages depending on the device (cpu or gpu) 
@@ -40,7 +40,7 @@ Experimemts in parakeet often involve audio and spectrum processing, thus
 ``librosa`` and ``soundfile`` are required. ``soundfile`` requires a extra 
 C library ``libsndfile``, which is not always handled by pip.
 
-For windows and mac users, ``libsndfile`` is also installed when Installing
+For windows and mac users, ``libsndfile`` is also installed when installing
 ``soundfile`` via pip, but for linux users, installing ``libsndfile`` via
 system package manager is required. Example commands for popular distributions 
 are listed below.

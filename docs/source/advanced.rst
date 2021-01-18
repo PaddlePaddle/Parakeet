@@ -2,7 +2,7 @@
 Advanced Usage
 ======================
 
-This sections covers how to extend parakeet by implementing you own models and 
+This sections covers how to extend parakeet by implementing your own models and 
 experiments. Guidelines on implementation are also elaborated.
 
 Model
@@ -90,7 +90,7 @@ practice, we use the dataset and dataloader abstraction.
 
 Dataset
 ^^^^^^^^^^
-Dataset is the representation of a set of examples used for a projet. In most of 
+Dataset is the representation of a set of examples used by a project. In most of 
 the cases, dataset is a collection of examples. Dataset is an object which has 
 methods below.
 
@@ -135,11 +135,11 @@ of running configuration, we use ``yaml`` configuration files.
 
 Also, we want to interact with command line options. Some options that usually 
 change according to running environments is provided by command line arguments. 
-In addition, we wan to override an option in the config file without editing 
+In addition, we want to override an option in the config file without editing 
 it. 
 
 Taking these requirements in to consideration, we use `yacs <https://github.com/rbgirshick/yacs>`_ 
-as a confi management tool. Other tools like `omegaconf <https://github.com/omry/omegaconf>`_ 
+as a config management tool. Other tools like `omegaconf <https://github.com/omry/omegaconf>`_ 
 are also powerful and have similar functions.
 
 In each example provided, there is a ``config.py``, where the default config is 
