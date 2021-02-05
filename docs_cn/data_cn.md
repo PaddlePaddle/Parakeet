@@ -86,7 +86,7 @@ Sampler 被实现为产生整数的可迭代对象。假设数据集有 `N` 个�
 
 当迭代一个 DataLoader 的时候，首先 sampler 产生多个 index, 然后根据这些 index 去取出对应的样例，并调用 batch function 把这些样例组成一个批次。当然取出样例的过程是可并行的，但调用 batch function 组成 batch 不是。
 
-另外的一种选择是使用 batch sampler, 它是产生整数列表的可迭代对象。对于一般的 sampler, 需要对其迭代器使用 next 多次才能产出多个 index, 而对于 batch sampler, 对其迭代器使用 next 一次就可以产出多个 index. 对于使用一般的 sampler 的情形，batch size 由 DataLoader 的来决定。而对于 batch sampler, 则是由它决定了 DataLoader 的 batch size, 因此可以用它来实现一些特别的需求，比如说动态 batch size.
+另外的一种选择是使用 batch sampler, 它是产生整数列表的可迭代对象。对于一般的 sampler, 需要对其迭代器使用 next 多次才能产出多个 index, 而对于 batch sampler, 对其迭代器使用 next 一次就可以产出多个 index. 对于使用一般的 sampler 的情形，batch size 由 DataLoader 来决定。而对于 batch sampler, 则是由它决定了 DataLoader 的 batch size, 因此可以用它来实现一些特别的需求，比如说动态 batch size.
 
 ## 示例代码
 
