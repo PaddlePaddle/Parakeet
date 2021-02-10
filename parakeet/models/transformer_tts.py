@@ -378,7 +378,8 @@ class TransformerTTS(nn.Layer):
                  postnet_kernel_size: int,
                  max_reduction_factor: int,
                  decoder_prenet_dropout: float,
-                 dropout: float):
+                 dropout: float,
+                 n_tones=None):
         super(TransformerTTS, self).__init__()
 
         # text frontend (text normalization and g2p)
@@ -390,6 +391,13 @@ class TransformerTTS(nn.Layer):
             d_encoder,
             padding_idx=frontend.vocab.padding_index,
             weight_attr=I.Uniform(-0.05, 0.05))
+        if n_tones:
+            self.toned = True
+            self.tone_embed = nn.Embedding(
+                n_tones,
+                d_encoder,
+                padding_idx=0,
+                weight_attr=I.Uniform(-0.005, 0.005))
         # position encoding matrix may be extended later
         self.encoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_encoder)
         self.encoder_pe_scalar = self.create_parameter(
@@ -434,8 +442,8 @@ class TransformerTTS(nn.Layer):
         self.r = max_reduction_factor  # set it every call
         self.drop_n_heads = 0
 
-    def forward(self, text, mel):
-        encoded, encoder_attention_weights, encoder_mask = self.encode(text)
+    def forward(self, text, mel, tones=None):
+        encoded, encoder_attention_weights, encoder_mask = self.encode(text, tones=tones)
         mel_output, mel_intermediate, cross_attention_weights, stop_logits = self.decode(
             encoded, mel, encoder_mask)
         outputs = {
@@ -447,9 +455,11 @@ class TransformerTTS(nn.Layer):
         }
         return outputs
 
-    def encode(self, text):
+    def encode(self, text, tones=None):
         T_enc = text.shape[-1]
         embed = self.encoder_prenet(text)
+        if self.toned:
+            embed += self.tone_embed(tones)
         if embed.shape[1] > self.encoder_pe.shape[0]:
             new_T = max(embed.shape[1], self.encoder_pe.shape[0] * 2)
             self.encoder_pe = pe.positional_encoding(0, new_T, self.d_encoder)
@@ -502,7 +512,7 @@ class TransformerTTS(nn.Layer):
         return mel_output, mel_intermediate, cross_attention_weights, stop_logits
 
     @paddle.no_grad()
-    def infer(self, input, max_length=1000, verbose=True):
+    def infer(self, input, max_length=1000, verbose=True, tones=None):
         """Predict log scale magnitude mel spectrogram from text input.
 
         Args:
@@ -515,7 +525,7 @@ class TransformerTTS(nn.Layer):
 
         # encoder the text sequence
         encoder_output, encoder_attentions, encoder_padding_mask = self.encode(
-            input)
+            input, tones=tones)
         for _ in trange(int(max_length // self.r) + 1):
             mel_output, _, cross_attention_weights, stop_logits = self.decode(
                 encoder_output, decoder_input, encoder_padding_mask)

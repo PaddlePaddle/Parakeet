@@ -594,7 +594,8 @@ class Tacotron2(nn.Layer):
                  p_prenet_dropout: float=0.5,
                  p_attention_dropout: float=0.1,
                  p_decoder_dropout: float=0.1,
-                 p_postnet_dropout: float=0.5):
+                 p_postnet_dropout: float=0.5,
+                 n_tones=None):
         super().__init__()
 
         self.frontend = frontend
@@ -605,6 +606,15 @@ class Tacotron2(nn.Layer):
             d_encoder,
             weight_attr=paddle.ParamAttr(initializer=nn.initializer.Uniform(
                 low=-val, high=val)))
+        if n_tones:
+            self.embedding_tones = nn.Embedding(
+                n_tones,
+                8,
+                padding_idx=0,
+                weight_attr=paddle.ParamAttr(initializer=nn.initializer.Uniform(
+                    low=-0.1 * val, high=0.1 * val)))
+            d_encoder += 8
+        self.toned = n_tones is not None
         self.encoder = Tacotron2Encoder(d_encoder, encoder_conv_layers,
                                         encoder_kernel_size, p_encoder_dropout)
         self.decoder = Tacotron2Decoder(
@@ -619,7 +629,7 @@ class Tacotron2(nn.Layer):
             num_layers=postnet_conv_layers,
             dropout=p_postnet_dropout)
 
-    def forward(self, text_inputs, mels, text_lens, output_lens=None):
+    def forward(self, text_inputs, mels, text_lens, output_lens=None, tones=None):
         """Calculate forward propagation of tacotron2.
 
         Parameters
@@ -649,6 +659,8 @@ class Tacotron2(nn.Layer):
             alignments: attention weights (B, T_mel, T_text).
         """
         embedded_inputs = self.embedding(text_inputs)
+        if self.toned:
+            embedded_inputs = paddle.concat([embedded_inputs, self.embedding_tones(tones)], -1)
         encoder_outputs = self.encoder(embedded_inputs, text_lens)
 
         mask = paddle.tensor.unsqueeze(
@@ -678,7 +690,7 @@ class Tacotron2(nn.Layer):
         return outputs
 
     @paddle.no_grad()
-    def infer(self, text_inputs, stop_threshold=0.5, max_decoder_steps=1000):
+    def infer(self, text_inputs, stop_threshold=0.5, max_decoder_steps=1000, tones=None):
         """Generate the mel sepctrogram of features given the sequences of character ids.
 
         Parameters
@@ -705,6 +717,8 @@ class Tacotron2(nn.Layer):
             alignments: attention weights (B, T_mel, T_text).
         """
         embedded_inputs = self.embedding(text_inputs)
+        if self.toned:
+             embedded_inputs = paddle.concat([embedded_inputs, self.embedding_tones(tones)], -1)
         encoder_outputs = self.encoder(embedded_inputs)
         mel_outputs, stop_logits, alignments = self.decoder.infer(
             encoder_outputs,
