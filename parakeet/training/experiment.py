@@ -124,6 +124,7 @@ class ExperimentBase(object):
         """
         dist.init_parallel_env()
 
+    @mp_tools.rank_zero_only
     def save(self):
         """Save checkpoint (model parameters and optimizer states).
         """
