@@ -20,11 +20,10 @@ __all__ = ["rank_zero_only"]
 
 
 def rank_zero_only(func):
-    local_rank = dist.get_rank()
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if local_rank != 0:
+        if dist.get_rank() != 0:
             return
         result = func(*args, **kwargs)
         return result
