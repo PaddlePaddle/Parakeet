@@ -195,6 +195,8 @@ class ExperimentBase(object):
         except KeyboardInterrupt:
             self.save()
             exit(-1)
+        finally:
+            self.destory()
 
     def setup_output_dir(self):
         """Create a directory used for output.
@@ -217,6 +219,11 @@ class ExperimentBase(object):
             checkpoint_dir.mkdir(exist_ok=True)
 
         self.checkpoint_dir = checkpoint_dir
+
+    @mp_tools.rank_zero_only
+    def destory(self):
+        # https://github.com/pytorch/fairseq/issues/2357
+        self.visualizer.close()
 
     @mp_tools.rank_zero_only
     def setup_visualizer(self):
