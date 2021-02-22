@@ -131,8 +131,9 @@ class Experiment(ExperimentBase):
                                                   iteration_time)
         msg += "loss: {:>.6f}".format(loss_value)
         self.logger.info(msg)
-        self.visualizer.add_scalar(
-            "train/loss", loss_value, global_step=self.iteration)
+        if dist.get_rank() == 0:
+            self.visualizer.add_scalar(
+                "train/loss", loss_value, global_step=self.iteration)
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()
