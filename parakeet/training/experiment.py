@@ -204,10 +204,7 @@ class ExperimentBase(object):
         """
         # output dir
         output_dir = Path(self.args.output).expanduser()
-        if dist.get_rank() == 0:
-            output_dir.mkdir(parents=True, exist_ok=True)
-        while not output_dir.exists():
-            time.sleep(1)
+        output_dir.mkdir(parents=True, exist_ok=True)
         
         self.output_dir = output_dir
 
@@ -218,10 +215,7 @@ class ExperimentBase(object):
         """
         # checkpoint dir
         checkpoint_dir = self.output_dir / "checkpoints"
-        if dist.get_rank() == 0:
-            checkpoint_dir.mkdir(exist_ok=True)
-        while not checkpoint_dir.exists():
-            time.sleep(1)
+        checkpoint_dir.mkdir(exist_ok=True)
 
         self.checkpoint_dir = checkpoint_dir
 
