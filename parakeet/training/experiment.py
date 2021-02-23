@@ -21,6 +21,7 @@ from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
 from tensorboardX import SummaryWriter
 from collections import defaultdict
+import time
 
 import parakeet
 from parakeet.utils import checkpoint, mp_tools
@@ -203,8 +204,7 @@ class ExperimentBase(object):
         """
         # output dir
         output_dir = Path(self.args.output).expanduser()
-        if dist.get_rank() == 0:
-            output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         
         self.output_dir = output_dir
 
@@ -215,8 +215,7 @@ class ExperimentBase(object):
         """
         # checkpoint dir
         checkpoint_dir = self.output_dir / "checkpoints"
-        if dist.get_rank() == 0:
-            checkpoint_dir.mkdir(exist_ok=True)
+        checkpoint_dir.mkdir(exist_ok=True)
 
         self.checkpoint_dir = checkpoint_dir
 
