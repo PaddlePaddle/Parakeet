@@ -18,7 +18,6 @@ import string
 __all__ = ["get_punctuations"]
 
 EN_PUNCT = [
-    " ",
     "-",
     "...",
     ",",

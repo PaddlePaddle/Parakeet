@@ -398,6 +398,8 @@ class TransformerTTS(nn.Layer):
                 d_encoder,
                 padding_idx=0,
                 weight_attr=I.Uniform(-0.005, 0.005))
+        else:
+            self.toned = False  
         # position encoding matrix may be extended later
         self.encoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_encoder)
         self.encoder_pe_scalar = self.create_parameter(
@@ -493,7 +495,7 @@ class TransformerTTS(nn.Layer):
         decoder_padding_mask = masking.feature_mask(
             input, axis=-1, dtype=input.dtype)
         decoder_mask = masking.combine_mask(
-            decoder_padding_mask.unsqueeze(-1), no_future_mask)
+            decoder_padding_mask.unsqueeze(1), no_future_mask)
         decoder_output, _, cross_attention_weights = self.decoder(
             x, encoder_output, encoder_output, encoder_padding_mask,
             decoder_mask, self.drop_n_heads)
@@ -538,6 +540,7 @@ class TransformerTTS(nn.Layer):
                 [decoder_output, mel_output[:, -self.r:, :]], 1)
 
             # stop condition: (if any ouput frame of the output multiframes hits the stop condition)
+            # import pdb; pdb.set_trace()
             if paddle.any(
                     paddle.argmax(
                         stop_logits[0, -self.r:, :], axis=-1) ==
@@ -556,6 +559,9 @@ class TransformerTTS(nn.Layer):
 
     @paddle.no_grad()
     def predict(self, input, max_length=1000, verbose=True):
+        if verbose:
+            print(input)
+            print(self.frontend.phoneticize(input))
         text_ids = paddle.to_tensor(self.frontend(input))
         input = paddle.unsqueeze(text_ids, 0)  # (1, T)
         outputs = self.infer(input, max_length=max_length, verbose=verbose)
