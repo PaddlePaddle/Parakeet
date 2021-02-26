@@ -609,11 +609,10 @@ class Tacotron2(nn.Layer):
         if n_tones:
             self.embedding_tones = nn.Embedding(
                 n_tones,
-                8,
+                d_encoder,
                 padding_idx=0,
                 weight_attr=paddle.ParamAttr(initializer=nn.initializer.Uniform(
                     low=-0.1 * val, high=0.1 * val)))
-            d_encoder += 8
         self.toned = n_tones is not None
         self.encoder = Tacotron2Encoder(d_encoder, encoder_conv_layers,
                                         encoder_kernel_size, p_encoder_dropout)
@@ -660,7 +659,8 @@ class Tacotron2(nn.Layer):
         """
         embedded_inputs = self.embedding(text_inputs)
         if self.toned:
-            embedded_inputs = paddle.concat([embedded_inputs, self.embedding_tones(tones)], -1)
+            embedded_inputs += self.embedding_tones(tones)
+            # embedded_inputs = paddle.concat([embedded_inputs, self.embedding_tones(tones)], -1)
         encoder_outputs = self.encoder(embedded_inputs, text_lens)
 
         mask = paddle.tensor.unsqueeze(
