@@ -6,7 +6,7 @@
 
 ## Dataset
 
-我们假设数据集是样例的列表。你可以通过 `__len__` 方法获取其长度，并且可以通过 `__getitem__` 方法随机访问其元素。有了上述两个调节，我们也可以用 `iter(dataset)` 来获得一个 dataset 的迭代器。我们一般通过继承 `paddle.io.Dataset` 来创建自己的数据集。为其实现 `__len__` 方法和 `__getitem__` 方法即可。
+我们假设数据集是样例的列表。你可以通过 `__len__` 方法获取其长度，并且可以通过 `__getitem__` 方法随机访问其元素。有了上述两个条件，我们也可以用 `iter(dataset)` 来获得一个 dataset 的迭代器。我们一般通过继承 `paddle.io.Dataset` 来创建自己的数据集。为其实现 `__len__` 方法和 `__getitem__` 方法即可。
 
 出于数据处理，数据加载和数据集大小等方面的考虑，可以采用集中策略来调控数据集是否被懒惰地预处理，是否被懒惰地被加载，是否常驻内存等。
 
@@ -86,7 +86,7 @@ Sampler 被实现为产生整数的可迭代对象。假设数据集有 `N` 个�
 
 当迭代一个 DataLoader 的时候，首先 sampler 产生多个 index, 然后根据这些 index 去取出对应的样例，并调用 batch function 把这些样例组成一个批次。当然取出样例的过程是可并行的，但调用 batch function 组成 batch 不是。
 
-另外的一种选择是使用 batch sampler, 它是产生整数列表的可迭代对象。对于一般的 sampler, 需要对其迭代器使用 next 多次才能产出多个 index, 而对于 batch sampler, 对其迭代器使用 next 一次就可以产出多个 index. 对于使用一般的 sampler 的情形，batch size 由 DataLoader 的来决定。而对于 batch sampler, 则是由它决定了 DataLoader 的 batch size, 因此可以用它来实现一些特别的需求，比如说动态 batch size.
+另外的一种选择是使用 batch sampler, 它是产生整数列表的可迭代对象。对于一般的 sampler, 需要对其迭代器使用 next 多次才能产出多个 index, 而对于 batch sampler, 对其迭代器使用 next 一次就可以产出多个 index. 对于使用一般的 sampler 的情形，batch size 由 DataLoader 来决定。而对于 batch sampler, 则是由它决定了 DataLoader 的 batch size, 因此可以用它来实现一些特别的需求，比如说动态 batch size.
 
 ## 示例代码
 

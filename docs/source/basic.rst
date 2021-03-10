@@ -52,7 +52,7 @@ vocoder
 Like the example above, after loading the pretrained ``ConditionalWaveFlow`` 
 model, call ``model.predict(mel)`` to synthesize raw audio (in wav format).
 
->>> import soundfile as df
+>>> import soundfile as sf
 >>> from parakeet.models import ConditionalWaveFlow
 >>> 
 >>> # load the pretrained model
