@@ -59,7 +59,6 @@ See [install](https://paddle-parakeet.readthedocs.io/en/latest/install.html) for
 Entries to the introduction, and the launch of training and synthsis for different example models:
 
 - [>>> WaveFlow](./examples/waveflow)
-- [>>> WaveNet](./examples/wavenet)
 - [>>> Transformer TTS](./examples/transformer_tts)
 - [>>> Tacotron2](./examples/tacotron2)
 
