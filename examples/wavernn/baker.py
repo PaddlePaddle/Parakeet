@@ -19,11 +19,9 @@ import numpy as np
 import pandas
 from paddle.io import Dataset, DataLoader
 import paddle
-
 from parakeet.data.batch import batch_spec, batch_wav
 from parakeet.data import dataset
 from parakeet.audio import AudioProcessor
-
 from utils.audio import label_2_float, float_2_label
 
 from config import get_cfg_defaults
