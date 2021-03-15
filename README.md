@@ -69,6 +69,14 @@ Entries to the introduction, and the launch of training and synthsis for differe
 
 Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) for audio sampels.
 
+## Pretrained models
+
+Models pretrained on LJSpeech can be downloaded here.
+
+[tacotron2](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.2.zip)
+[transformert_tts](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.2.zip)
+[waveflow_res_128](https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_ckpt_0.2.zip)
+
 ## Copyright and License
 
 Parakeet is provided under the [Apache-2.0 license](LICENSE).
