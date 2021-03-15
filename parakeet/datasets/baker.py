@@ -29,7 +29,7 @@ class BakerMetaData(Dataset):
         index = 1
         self.meta_info = ["file_path", "text", "pinyin"]
 
-        metadata_path = os.path.join(root, "000001-010000.txt")
+        metadata_path = os.path.join(root, "ProsodyLabeling/000001-010000.txt")
         wav_dirs = os.path.join(self.root, "Wave")
         with open(metadata_path, 'r', encoding='utf-8') as f:
             while True:

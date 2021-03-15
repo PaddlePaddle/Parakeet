@@ -14,6 +14,7 @@
 
 import math
 import numpy as np
+import soundfile as sf
 import librosa
 from scipy.signal import lfilter
 
@@ -33,7 +34,9 @@ def load_wav(path, sr):
 
 
 def save_wav(x, path, sr):
-    librosa.output.write_wav(path, x.astype(np.float32), sr=sr)
+    # librosa.output.write_wav(path, x.astype(np.float32), sr=sr)
+    sf.write(path, x.astype(np.float32), sr)
+
 
 
 def split_signal(x):
@@ -101,7 +104,6 @@ def de_emphasis(x, preemphasis):
 
 
 def encode_mu_law(x, mu):
-    # mu = 2 ** 9 = 512
     mu = mu - 1
     fx = np.sign(x) * np.log(1 + mu * np.abs(x)) / np.log(1 + mu)
     return np.floor((fx + 1) / 2 * mu + 0.5)

@@ -40,8 +40,8 @@ class Baker(Dataset):
 
         records = []
         for row in meta_data.itertuples():
-            mel_path = str(self.root / "mel" / (row.fname + ".npy"))
-            wav_path = str(self.root / "wav" / (row.fname + ".npy"))
+            mel_path = str(self.root / "mel" / (str(row.fname) + ".npy"))
+            wav_path = str(self.root / "wav" / (str(row.fname) + ".npy"))
             records.append((mel_path, wav_path))
         self.records = records
 

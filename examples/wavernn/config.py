@@ -19,27 +19,27 @@ _C = CN()
 _C.data = CN(
     dict(
         sample_rate=22050,                  
-        n_fft=2048,                         # fft frame size
+        n_fft=1024,                         # fft frame size
         fft_bins=1025,                      # fft bins
         num_mels=80,                        # mel bands
-        hop_length=275,                     # hop size between ajacent frame
-        win_length=1100,                    # window size
-        fmin=40,                            # Hz, min frequency when converting to mel
-        fmax=11025,                         # Hz, max frequency when converting to mel
+        hop_length=256,                     # hop size between ajacent frame
+        win_length=1024,                    # window size
+        fmin=0 ,                            # Hz, min frequency when converting to mel
+        fmax=8000 ,                         # Hz, max frequency when converting to mel
         min_level_db=-100,                  # min level db
         ref_level_db=20,                    # res level db
         bits=9,                             # bit depth of signal
         mu_law=True,                        # Recommended to suppress noise if using raw bits
         peak_norm=True,                     # Normalise to the peak of each wav file
         valid_size=50,                      # How many unseen samples to put aside for testing
-        batch_size=48                       # batch size when training
+        batch_size=64                       # batch size when training
     )
 )
 
 _C.model = CN(
     dict(
         mode='RAW',                         # either 'RAW'(softmax on raw bits) or 'MOL' (sample from mixture of logistics)
-        upsample_factors=[5, 5, 11],        # this needs to correctly factorise hop_length
+        upsample_factors=[4, 8, 8],         # this needs to correctly factorise hop_length
         rnn_dims=512,                       # thie hidden dim of rnn
         fc_dims=512,
         compute_dims=128,
@@ -58,7 +58,7 @@ _C.training = CN(
         save_interval=25000,                # the iteration interval of saving checkpoint
         generate_at_checkpoint=5,           # number of samples to generate at each checkpoint
         max_iteration=10000000,             # total number of training steps
-        seq_len=275*15,                     # the length of sequence when training, seq_len can be adjusted to increase training sequence length (will increase GPU usage)
+        seq_len=256*15,                     # the length of sequence when training, seq_len can be adjusted to increase training sequence length (will increase GPU usage)
         clip_grad_norm=4,                   # clip grad norm
         valid_interval=1000,                # the iteration interval of validating
         valid_generate_valid_interval=25000 # the iteration interval of generating valid samples

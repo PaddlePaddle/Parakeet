@@ -94,24 +94,20 @@ def sample_from_discretized_mix_logistic(y, log_scale_min=None):
     """
     Sample from discretized mixture of logistic distributions
     Args:
-        y (Tensor): B x C x T, C为 mix logistic的num_classes [1, 30, 4] 4为batch, 30 is hiden dim
+        y (Tensor): (B, C, T)
         log_scale_min (float): Log scale minimum value
     Returns:
         Tensor: sample in range of [-1, 1].
     """
     if log_scale_min is None:
         log_scale_min = float(np.log(1e-14))
-    # y_size num_classes = 30
 
-    # y: [1, 30, 4]
     assert y.shape[1] % 3 == 0
     nr_mix = y.shape[1] // 3
 
 
-    # B x T x C
-    # [1, 30, 4] -> [1, 4, 30]
+    # (B, T, C)
     y = y.transpose([0, 2, 1])
-    # nr_min = y_size // 3 = 10
     logit_probs = y[:, :, :nr_mix]
 
     # sample mixture indicator from softmax
@@ -119,27 +115,6 @@ def sample_from_discretized_mix_logistic(y, log_scale_min=None):
     temp = logit_probs - paddle.log(-paddle.log(temp))
     argmax = paddle.argmax(temp, axis=-1)
 
-    '''
-    # sample mixture indicator from softmax
-    temp = logit_probs.data.new(logit_probs.size()).uniform_(1e-5, 1.0 - 1e-5)
-    temp = logit_probs.data - torch.log(- torch.log(temp))
-    # argmax: [B, T], represent sample belongs which logistic distribution of MOL
-    _, argmax = temp.max(dim=-1)
-    '''
-
-    '''
-    >>> argmax
-    tensor([[3, 0, 3],
-            [2, 2, 0]])
-    >>> F.one_hot(argmax, 10).float()
-    tensor([[[0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],
-             [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-             [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.]],
-
-            [[0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
-             [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
-             [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]])
-    '''
     # (B, T) -> (B, T, nr_mix)
     one_hot = F.one_hot(argmax, nr_mix)
     one_hot = paddle.cast(one_hot, dtype='float32')
