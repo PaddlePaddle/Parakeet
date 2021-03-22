@@ -34,14 +34,14 @@ from ljspeech import LJSpeech, LJSpeechCollector
 
 class Experiment(ExperimentBase):
     def compute_losses(self, inputs, outputs):
-        _, mel_targets, _, _, stop_tokens = inputs
+        _, mel_targets, plens, slens, stop_tokens = inputs
 
         mel_outputs = outputs["mel_output"]
         mel_outputs_postnet = outputs["mel_outputs_postnet"]
-        stop_logits = outputs["stop_logits"]
+        attention_weight = outputs["alignments"]
 
-        losses = self.criterion(mel_outputs, mel_outputs_postnet, stop_logits,
-                                mel_targets, stop_tokens)
+        losses = self.criterion(mel_outputs, mel_outputs_postnet, mel_targets,
+                                attention_weight, slens, plens)
         return losses
 
     def train_batch(self):
@@ -145,7 +145,7 @@ class Experiment(ExperimentBase):
             weight_decay=paddle.regularizer.L2Decay(
                 config.training.weight_decay),
             grad_clip=grad_clip)
-        criterion = Tacotron2Loss()
+        criterion = Tacotron2Loss(config.mode.guided_attn_loss_sigma)
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
