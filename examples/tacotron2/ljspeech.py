@@ -87,11 +87,6 @@ class LJSpeechCollector(object):
                 zip(mel_lens, text_lens), key=lambda x: x[1], reverse=True)
         ]
 
-        stop_tokens = [
-            i
-            for i, _ in sorted(
-                zip(stop_tokens, text_lens), key=lambda x: x[1], reverse=True)
-        ]
 
         text_lens = sorted(text_lens, reverse=True)
 
@@ -100,7 +95,5 @@ class LJSpeechCollector(object):
         mels = np.transpose(
             batch_spec(
                 mels, pad_value=self.padding_value), axes=(0, 2, 1))
-        stop_tokens = batch_text_id(
-            stop_tokens, pad_id=self.padding_stop_token, dtype=mels[0].dtype)
 
-        return (texts, mels, text_lens, mel_lens, stop_tokens)
+        return texts, mels, text_lens, mel_lens
