@@ -14,6 +14,8 @@
 
 import numpy as np
 import matplotlib
+import librosa
+import librosa.display
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
 from matplotlib import cm, pyplot
@@ -69,6 +71,7 @@ def plot_alignment(alignment, title=None):
     plt.xlabel(xlabel)
     plt.ylabel('Encoder timestep')
     plt.tight_layout()
+    return fig
 
     fig.canvas.draw()
     data = save_figure_to_numpy(fig)

@@ -340,13 +340,15 @@ class CNNPostNet(nn.Layer):
             c_in = d_input if i == 0 else d_hidden
             c_out = d_output if i == n_layers - 1 else d_hidden
             self.convs.append(
-                nn.Conv1D(
+                Conv1dBatchNorm(
                     c_in,
                     c_out,
                     kernel_size,
                     weight_attr=I.XavierUniform(),
-                    padding=padding))
-        # self.last_bn = nn.BatchNorm1D(d_output)
+                    padding=padding,
+                    momentum=0.99,
+                    epsilon=1e-03))
+        self.last_bn = nn.BatchNorm1D(d_output, momentum=0.99, epsilon=1e-3)
         # for a layer that ends with a normalization layer that is targeted to
         # output a non zero-central output, it may take a long time to 
         # train the scale and bias
@@ -359,8 +361,8 @@ class CNNPostNet(nn.Layer):
             if i != (len(self.convs) - 1):
                 x = F.tanh(x)
         # TODO: check it
-        x = x_in + x
-        # x = self.last_bn(x_in + x)
+        # x = x_in + x
+        x = self.last_bn(x_in + x)
         return x
 
 
@@ -567,8 +569,13 @@ class TransformerTTS(nn.Layer):
         text_ids = paddle.to_tensor(self.frontend(input))
         input = paddle.unsqueeze(text_ids, 0)  # (1, T)
         outputs = self.infer(input, max_length=max_length, verbose=verbose)
-        outputs = {k: v[0].numpy() for k, v in outputs.items()}
-        return outputs
+        npy_outputs = {
+            "mel_output": outputs["mel_output"][0].numpy(),
+            "encoder_attention_weights": [item[0].numpy() for item in outputs["encoder_attention_weights"]],
+            "cross_attention_weights": [item[0].numpy() for item in outputs["cross_attention_weights"]],
+        }
+        
+        return npy_outputs
 
     def set_constants(self, reduction_factor, drop_n_heads):
         self.r = reduction_factor

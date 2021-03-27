@@ -19,6 +19,7 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
+import time
 
 from parakeet.utils import checkpoint
 from parakeet.modules import geometry as geo
@@ -798,10 +799,13 @@ class ConditionalWaveFlow(nn.LayerList):
         Tensor : [shape=(B, T)] 
             The synthesized audio, where``T <= T_mel \* upsample_factors``.
         """
+        start = time.time()
         condition = self.encoder(mel, trim_conv_artifact=True)  #(B, C, T)
         batch_size, _, time_steps = condition.shape
         z = paddle.randn([batch_size, time_steps], dtype=mel.dtype)
         x = self.decoder.inverse(z, condition)
+        end = time.time()
+        print("time: {}s".format(end - start))
         return x
 
     @paddle.no_grad()

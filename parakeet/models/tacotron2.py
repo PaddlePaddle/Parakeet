@@ -22,6 +22,7 @@ from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules.attention import LocationSensitiveAttention
 from parakeet.modules import masking
 from parakeet.utils import checkpoint
+from tqdm import trange
 
 __all__ = ["Tacotron2", "Tacotron2Loss"]
 
@@ -475,10 +476,11 @@ class Tacotron2Decoder(nn.Layer):
             dtype=key.dtype)  #[B, C]
 
         self._initialize_decoder_states(key)
+        T_enc = key.shape[1]
         self.mask = None
 
         mel_outputs, stop_logits, alignments = [], [], []
-        while True:
+        for _ in trange(max_decoder_steps):
             query = self.prenet(query)
             mel_output, stop_logit, alignment = self._decode(query)
 
@@ -487,8 +489,12 @@ class Tacotron2Decoder(nn.Layer):
             alignments += [alignment]
 
             if F.sigmoid(stop_logit) > stop_threshold:
+                print("hits stop condition!")
                 break
-            elif len(mel_outputs) == max_decoder_steps:
+            if int(paddle.argmax(alignment[0])) == T_enc - 1:
+                print("content exhausted!")
+                break
+            if len(mel_outputs) == max_decoder_steps:
                 print("Warning! Reached max decoder steps!!!")
                 break
 
@@ -718,7 +724,7 @@ class Tacotron2(nn.Layer):
         """
         embedded_inputs = self.embedding(text_inputs)
         if self.toned:
-             embedded_inputs = paddle.concat([embedded_inputs, self.embedding_tones(tones)], -1)
+            embedded_inputs += self.embedding_tones(tones)
         encoder_outputs = self.encoder(embedded_inputs)
         mel_outputs, stop_logits, alignments = self.decoder.infer(
             encoder_outputs,

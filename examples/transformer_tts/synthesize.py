@@ -17,13 +17,15 @@ import time
 from pathlib import Path
 import numpy as np
 import paddle
+import matplotlib
+from matplotlib import pyplot as plt
 
 import parakeet
 from parakeet.frontend import English
 from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.utils import scheduler
 from parakeet.training.cli import default_argument_parser
-from parakeet.utils.display import add_attention_plots
+from parakeet.utils.display import add_attention_plots, pack_attention_images
 
 from config import get_cfg_defaults
 
@@ -49,7 +51,16 @@ def main(config, args):
     for i, sentence in enumerate(sentences):
         outputs = model.predict(sentence, verbose=args.verbose)
         mel_output = outputs["mel_output"]
-        # cross_attention_weights = outputs["cross_attention_weights"]
+        cross_attention_weights = outputs["cross_attention_weights"]
+        attns = [attn for attn in cross_attention_weights]
+        
+        fig = plt.figure(figsize=(40, 40))
+        for j, attn in enumerate(attns):
+            plt.subplot(1, 4, j+1)
+            plt.imshow(attn[0])
+        plt.tight_layout()
+        plt.savefig(str(output_dir / f"sentence_{i}.png"))
+
         mel_output = mel_output.T  #(C, T)
         np.save(str(output_dir / f"sentence_{i}"), mel_output)
         if args.verbose:
