@@ -165,7 +165,7 @@ class ExperimentBase(object):
         """Reset the train loader and increment ``epoch``.
         """
         self.epoch += 1
-        if self.parallel:
+        if self.parallel and isinstance(self.train_loader.batch_sampler, DistributedBatchSampler):
             self.train_loader.batch_sampler.set_epoch(self.epoch)
         self.iterator = iter(self.train_loader)
 
