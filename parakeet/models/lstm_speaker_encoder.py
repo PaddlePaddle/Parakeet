@@ -33,7 +33,7 @@ class LSTMSpeakerEncoder(nn.Layer):
         if reduce:
             embed = paddle.mean(normalized_embeds, 0)
             embed = F.normalize(embed, axis=0)            
-        return normalized_embeds
+        return embeds
     
     def embed_utterance(self, utterances, initial_states=None):
         # utterances: [B, T, C] -> embed [C']
