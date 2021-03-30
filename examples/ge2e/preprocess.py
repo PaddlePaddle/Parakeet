@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from config import get_cfg_defaults
 from audio_processor import SpeakerVerificationPreprocessor
-from dataset_processors import process_librispeech, process_voxceleb1, process_voxceleb2
+from dataset_processors import process_librispeech, process_voxceleb1, process_voxceleb2, process_aidatatang_200zh, process_magicdata
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         help=
         "comma-separated list of names of the datasets you want to preprocess. only "
         "the train set of these datastes will be used. Possible names: librispeech_other, "
-        "voxceleb1, voxceleb2.")
+        "voxceleb1, voxceleb2, aidatatang_200zh, magicdata.")
     parser.add_argument(
         "--skip_existing",
         action="store_true",
@@ -79,6 +79,8 @@ if __name__ == "__main__":
         "librispeech_other": process_librispeech,
         "voxceleb1": process_voxceleb1,
         "voxceleb2": process_voxceleb2,
+        "aidatatang_200zh": process_aidatatang_200zh,
+        "magicdata": process_magicdata,
     }
 
     for dataset in args.datasets:

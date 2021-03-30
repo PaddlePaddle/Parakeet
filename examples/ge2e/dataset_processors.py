@@ -137,3 +137,26 @@ def process_voxceleb2(processor,
     speaker_dirs = list((dataset_root / "wav").glob("*"))
     _process_dataset(processor, datasets_root, speaker_dirs, dataset_name,
                      output_dir, "*.wav", skip_existing)
+
+def process_aidatatang_200zh(processor,
+                      datasets_root,
+                      output_dir,
+                      skip_existing=False):
+    dataset_name = "aidatatang_200zh/train"
+    dataset_root = datasets_root / dataset_name
+
+    speaker_dirs = list((dataset_root).glob("*"))
+    _process_dataset(processor, datasets_root, speaker_dirs, dataset_name,
+                     output_dir, "*.wav", skip_existing)
+
+
+def process_magicdata(processor,
+                      datasets_root,
+                      output_dir,
+                      skip_existing=False):
+    dataset_name = "magicdata/train"
+    dataset_root = datasets_root / dataset_name
+
+    speaker_dirs = list((dataset_root).glob("*"))
+    _process_dataset(processor, datasets_root, speaker_dirs, dataset_name,
+                     output_dir, "*.wav", skip_existing)
