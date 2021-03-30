@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from collections import defaultdict
 import time
 
