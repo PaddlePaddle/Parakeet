@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
-from tensorboardX import SummaryWriter
+from visualdl import LogWriter
 from collections import defaultdict
 import time
 
@@ -165,7 +165,7 @@ class ExperimentBase(object):
         """Reset the train loader and increment ``epoch``.
         """
         self.epoch += 1
-        if self.parallel:
+        if self.parallel and isinstance(self.train_loader.batch_sampler, DistributedBatchSampler):
             self.train_loader.batch_sampler.set_epoch(self.epoch)
         self.iterator = iter(self.train_loader)
 

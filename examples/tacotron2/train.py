@@ -86,15 +86,18 @@ class Experiment(ExperimentBase):
                 valid_losses[k].append(float(v))
 
             attention_weights = outputs["alignments"]
-            display.add_attention_plots(self.visualizer,
-                                        f"valid_sentence_{i}_alignments",
-                                        attention_weights[0], self.iteration)
-            display.add_spectrogram_plots(
-                self.visualizer, f"valid_sentence_{i}_target_spectrogram",
-                mels[0], self.iteration)
-            display.add_spectrogram_plots(
-                self.visualizer, f"valid_sentence_{i}_predicted_spectrogram",
-                outputs['mel_outputs_postnet'][0], self.iteration)
+            self.visualizer.add_figure(
+                f"valid_sentence_{i}_alignments",
+                display.plot_alignment(attention_weights[0].numpy()),
+                self.iteration)
+            self.visualizer.add_figure(
+                f"valid_sentence_{i}_target_spectrogram",
+                display.plot_spectrogram(mels[0].numpy().T),
+                self.iteration)
+            self.visualizer.add_figure(
+                f"valid_sentence_{i}_predicted_spectrogram",
+                display.plot_spectrogram(outputs['mel_outputs_postnet'][0].numpy().T),
+                self.iteration)
 
         # write visual log
         valid_losses = {k: np.mean(v) for k, v in valid_losses.items()}
