@@ -69,8 +69,8 @@ class TacotronVCTKExperiment(ExperimentBase):
         config = self.config
         args = self.args
 
-        dataset = VCTK(args.data)
-        valid_dataset, train_dataset = dataset.split(dataste,
+        vctk_dataset = VCTK(args.data)
+        valid_dataset, train_dataset = dataset.split(vctk_dataset,
                                                      config.data.valid_size)
         if self.parallel:
             sampler = DistributedBatchSampler(
