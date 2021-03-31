@@ -597,7 +597,7 @@ class Tacotron2(nn.Layer):
                                       num_layers=postnet_conv_layers,
                                       dropout=p_postnet_dropout)
 
-    def forward(self, text_inputs, mels, text_lens, output_lens=None, speaker_ids=None):
+    def forward(self, text_inputs, text_lens, mels, output_lens=None, speaker_ids=None):
         """Calculate forward propagation of tacotron2.
 
         Parameters
