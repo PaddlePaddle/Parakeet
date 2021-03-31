@@ -162,10 +162,10 @@ class TacotronVCTKExperiment(ExperimentBase):
 
         
 
-    def main_sp(config, args):
-        exp = Experiment(config, args)
-        exp.setup()
-        exp.run()
+def main_sp(config, args):
+    exp = Experiment(config, args)
+    exp.setup()
+    exp.run()
 
 
 def main(config, args):
