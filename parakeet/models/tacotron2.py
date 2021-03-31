@@ -551,6 +551,8 @@ class Tacotron2(nn.Layer):
     """
     def __init__(self,
                  vocab_size,
+                 num_speakers=1,
+                 d_speaker:int = 32,
                  d_mels: int = 80,
                  d_encoder: int = 512,
                  encoder_conv_layers: int = 3,
@@ -577,6 +579,11 @@ class Tacotron2(nn.Layer):
         self.embedding = nn.Embedding(vocab_size,
                                       d_encoder,
                                       weight_attr=I.Uniform(-val, val))
+        if num_speakers > 1:
+            self.num_speakers = num_speakers
+            self.speaker_embedding = nn.Embedding(num_speakers, d_speaker)
+            self.speaker_fc = nn.Linear(d_speaker, d_encoder)
+                                                  
         self.encoder = Tacotron2Encoder(d_encoder, encoder_conv_layers,
                                         encoder_kernel_size, p_encoder_dropout)
         self.decoder = Tacotron2Decoder(
@@ -590,7 +597,7 @@ class Tacotron2(nn.Layer):
                                       num_layers=postnet_conv_layers,
                                       dropout=p_postnet_dropout)
 
-    def forward(self, text_inputs, mels, text_lens, output_lens=None):
+    def forward(self, text_inputs, mels, text_lens, output_lens=None, speaker_ids=None):
         """Calculate forward propagation of tacotron2.
 
         Parameters
@@ -621,6 +628,11 @@ class Tacotron2(nn.Layer):
         """
         embedded_inputs = self.embedding(text_inputs)
         encoder_outputs = self.encoder(embedded_inputs, text_lens)
+        if self.num_speakers > 1:
+            speaker_embedding = self.speaker_embedding(speaker_ids)
+            speaker_feature = F.softplus(self.speaker_fc(speaker_embedding))
+            encoder_outputs += speaker_feature.unsqueeze(1)
+            
 
         # [B, T_enc, 1]
         mask = paddle.unsqueeze(
@@ -646,7 +658,7 @@ class Tacotron2(nn.Layer):
         return outputs
 
     @paddle.no_grad()
-    def infer(self, text_inputs, max_decoder_steps=1000):
+    def infer(self, text_inputs, max_decoder_steps=1000, speaker_ids=None):
         """Generate the mel sepctrogram of features given the sequences of character ids.
 
         Parameters
@@ -671,6 +683,11 @@ class Tacotron2(nn.Layer):
         """
         embedded_inputs = self.embedding(text_inputs)
         encoder_outputs = self.encoder(embedded_inputs)
+        if self.num_speakers > 1:
+            speaker_embedding = self.speaker_embedding(speaker_ids)
+            speaker_feature = F.softplus(self.speaker_fc(speaker_embedding))
+            encoder_outputs += speaker_feature.unsqueeze(1)
+            
         mel_outputs, alignments = self.decoder.infer(
             encoder_outputs, max_decoder_steps=max_decoder_steps)
 
@@ -684,50 +701,6 @@ class Tacotron2(nn.Layer):
         }
 
         return outputs
-
-    @classmethod
-    def from_pretrained(cls, config, checkpoint_path):
-        """Build a tacotron2 model from a pretrained model.
-
-        Parameters
-        ----------
-        frontend: parakeet.frontend.Phonetics
-            Frontend used to preprocess text.
-
-        config: yacs.config.CfgNode
-            Model configs.
-
-        checkpoint_path: Path or str
-            The path of pretrained model checkpoint, without extension name.
-
-        Returns
-        -------
-        Tacotron2
-            The model build from pretrined result.
-        """
-        model = cls(vocab_size=config.model.vocab_size,
-                    d_mels=config.data.d_mels,
-                    d_encoder=config.model.d_encoder,
-                    encoder_conv_layers=config.model.encoder_conv_layers,
-                    encoder_kernel_size=config.model.encoder_kernel_size,
-                    d_prenet=config.model.d_prenet,
-                    d_attention_rnn=config.model.d_attention_rnn,
-                    d_decoder_rnn=config.model.d_decoder_rnn,
-                    attention_filters=config.model.attention_filters,
-                    attention_kernel_size=config.model.attention_kernel_size,
-                    d_attention=config.model.d_attention,
-                    d_postnet=config.model.d_postnet,
-                    postnet_kernel_size=config.model.postnet_kernel_size,
-                    postnet_conv_layers=config.model.postnet_conv_layers,
-                    reduction_factor=config.model.reduction_factor,
-                    p_encoder_dropout=config.model.p_encoder_dropout,
-                    p_prenet_dropout=config.model.p_prenet_dropout,
-                    p_attention_dropout=config.model.p_attention_dropout,
-                    p_decoder_dropout=config.model.p_decoder_dropout,
-                    p_postnet_dropout=config.model.p_postnet_dropout)
-
-        checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
-        return model
 
 
 class Tacotron2Loss(nn.Layer):
