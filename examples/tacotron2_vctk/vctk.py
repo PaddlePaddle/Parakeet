@@ -10,7 +10,8 @@ from parakeet.data import batch_spec, batch_text_id
 
 class VCTK(Dataset):
     def __init__(self, root):
-        self.root = Path(root).expanduser()
+        root = Path(root).expanduser()
+        self.root = root
         record_path = self.root / "metadata.pickle"
         self.wav_root = root / "wav"
         self.mel_root = root / "wav"
