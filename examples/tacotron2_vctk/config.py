@@ -31,9 +31,9 @@ _C.data = CN(
 
 _C.model = CN(
     dict(
-        vocab_size=37,  # set this according to the frontend's vocab size
+        vocab_size=38,  # set this according to the frontend's vocab size
         num_speakers=109, # set this according to the dataset you use
-        d_speakers=32,
+        d_speaker=32,
         reduction_factor=1,  # reduction factor
         d_encoder=512,  # embedding & encoder's internal size
         encoder_conv_layers=3,  # number of conv layer in tacotron2 encoder

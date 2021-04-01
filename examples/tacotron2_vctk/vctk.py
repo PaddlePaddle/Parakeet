@@ -14,12 +14,13 @@ class VCTK(Dataset):
         self.root = root
         record_path = self.root / "metadata.pickle"
         self.wav_root = root / "wav"
-        self.mel_root = root / "wav"
+        self.mel_root = root / "mel"
         with open(record_path, 'rb') as f:
             self.metadata = pickle.load(f)
         with open(self.root / "vocab" / "phonemes.yaml", 'rt') as f:
             phonemes = yaml.safe_load(f)
             self.phoneme_vocab = Vocab(phonemes)
+            print(self.phoneme_vocab)
         with open(self.root / "vocab" / "speakers.yaml", 'rt') as f:
             speakers = yaml.safe_load(f)
             self.speaker_vocab = Vocab(speakers,

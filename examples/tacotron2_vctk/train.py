@@ -45,7 +45,7 @@ class TacotronVCTKExperiment(ExperimentBase):
             postnet_kernel_size=model_config.postnet_kernel_size,
             postnet_conv_layers=model_config.postnet_conv_layers,
             reduction_factor=model_config.reduction_factor,
-            p_encoder_dropout=model_config.p_encodewr_dropout,
+            p_encoder_dropout=model_config.p_encoder_dropout,
             p_prenet_dropout=model_config.p_prenet_dropout,
             p_attention_dropout=model_config.p_attention_dropout,
             p_decoder_dropout=model_config.p_decoder_dropout,
@@ -62,7 +62,7 @@ class TacotronVCTKExperiment(ExperimentBase):
                          grad_clip=grad_clip)
         self.optimizer = optimizer
 
-        criterion = Tacotron2Loss(config.mode.guided_attn_loss_sigma)
+        criterion = Tacotron2Loss(config.model.guided_attn_loss_sigma)
         self.criterion = criterion
 
     def setup_dataloader(self):
@@ -86,10 +86,12 @@ class TacotronVCTKExperiment(ExperimentBase):
             self.train_loader = DataLoader(train_dataset,
                                            batch_size=config.data.batch_size,
                                            num_workers=8,
+                                           collate_fn=collate_vctk_examples,
                                            shuffle=True,
                                            drop_last=True)
         self.valid_loader = DataLoader(valid_dataset, 
                                        batch_size=1,
+                                       collate_fn=collate_vctk_examples,
                                        num_workers=1,
                                        shuffle=False, 
                                        drop_last=False)
@@ -110,7 +112,7 @@ class TacotronVCTKExperiment(ExperimentBase):
         outputs = self.model(phonemes, plens, mels, slens, speaker_ids)
         
         losses = self.criterion(outputs["mel_output"], 
-                                outputs["mel_outputs_postnets"],
+                                outputs["mel_outputs_postnet"],
                                 mels, 
                                 outputs["alignments"],
                                 slens,
@@ -141,22 +143,22 @@ class TacotronVCTKExperiment(ExperimentBase):
         # this is evaluation 
         self.model.eval()
         model_core = self.model_core
-        for i, batch in self.valid_loader:
+        for i, batch in enumerate(self.valid_loader):
             phonemes, plens, mels, slens, speaker_ids = batch
             outputs = model_core.infer(phonemes, speaker_ids=speaker_ids)
             
-            fig = display.plot_spectrogram(output["mel_outputs_postnet"][0].numpy().T)
+            fig = display.plot_spectrogram(outputs["mel_outputs_postnet"][0].numpy().T)
             self.visualizer.add_figure(f"sentence_{i}/predicted_mel", fig, self.iteration)
             
             fig = display.plot_spectrogram(mels[0].numpy().T)
             self.visualizer.add_figure(f"sentence_{i}/ground_truth_mel", fig, self.iteration)
             
             fig = display.plot_alignment(outputs["alignments"][0].numpy())
-            self.visualizer.add_figure(f"sentence_{i}/predicted_mel", fig, self.iteration)
+            self.visualizer.add_figure(f"sentence_{i}/alignment", fig, self.iteration)
             
             mel_basis = librosa.filters.mel(22050, n_fft=1024, n_mels=80, fmin=0, fmax=8000)
             _inv_mel_basis = np.linalg.pinv(mel_basis)
-            spec = np.matmul(_inv_mel_basis, np.exp(output["mel_outputs_postnet"][0].numpy().T))
+            spec = np.matmul(_inv_mel_basis, np.exp(outputs["mel_outputs_postnet"][0].numpy().T))
             wav = librosa.core.griffinlim(spec, hop_length=256, win_length=1024)
             self.visualizer.add_audio(f"predicted/sentence_{i}", wav, self.iteration, sample_rate=22050)
 

@@ -59,7 +59,7 @@ def guided_attention_loss(attention_weight, dec_lens, enc_lens, g):
     total_tokens = (dec_lens * enc_lens).astype(W.dtype)
     loss = paddle.mean(paddle.sum(
         W * attention_weight, [1, 2]) / total_tokens)
-    return loss, W
+    return loss
 
 
 def weighted_mean(input, weight):
