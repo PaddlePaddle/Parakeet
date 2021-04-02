@@ -237,7 +237,7 @@ class ExperimentBase(object):
         unexpected behaviors.
         """
         # visualizer
-        visualizer = SummaryWriter(logdir=str(self.output_dir))
+        visualizer = LogWriter(logdir=str(self.output_dir))
 
         self.visualizer = visualizer
 

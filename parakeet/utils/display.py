@@ -29,6 +29,7 @@ __all__ = [
 
 
 def plot_alignment(alignment, title=None):
+    # alignment: [encoder_steps, decoder_steps)
     fig, ax = plt.subplots(figsize=(6, 4))
     im = ax.imshow(
         alignment, aspect='auto', origin='lower', interpolation='none')
