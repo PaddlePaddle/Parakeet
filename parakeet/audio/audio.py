@@ -30,9 +30,11 @@ class AudioProcessor(object):
                  f_max: int=None,
                  window="hann",
                  center=True,
-                 pad_mode="reflect"):
+                 pad_mode="reflect",
+                 normalize=True):
         # read & write
         self.sample_rate = sample_rate
+        self.normalize = normalize
 
         # stft
         self.n_fft = n_fft
@@ -61,6 +63,10 @@ class AudioProcessor(object):
     def read_wav(self, filename):
         # resampling may occur
         wav, _ = librosa.load(filename, sr=self.sample_rate)
+        
+        # normalize the volume
+        if self.normalize:
+            wav = wav / np.max(np.abs(wav)) * 0.999
         return wav
 
     def write_wav(self, path, wav):

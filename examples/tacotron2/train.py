@@ -34,14 +34,14 @@ from ljspeech import LJSpeech, LJSpeechCollector
 
 class Experiment(ExperimentBase):
     def compute_losses(self, inputs, outputs):
-        _, mel_targets, _, _, stop_tokens = inputs
+        _, mel_targets, plens, slens, stop_tokens = inputs
 
         mel_outputs = outputs["mel_output"]
         mel_outputs_postnet = outputs["mel_outputs_postnet"]
-        stop_logits = outputs["stop_logits"]
+        attention_weight = outputs["alignments"]
 
-        losses = self.criterion(mel_outputs, mel_outputs_postnet, stop_logits,
-                                mel_targets, stop_tokens)
+        losses = self.criterion(mel_outputs, mel_outputs_postnet, mel_targets,
+                                attention_weight, slens, plens)
         return losses
 
     def train_batch(self):
@@ -51,7 +51,7 @@ class Experiment(ExperimentBase):
 
         self.optimizer.clear_grad()
         self.model.train()
-        texts, mels, text_lens, output_lens, stop_tokens = batch
+        texts, mels, text_lens, output_lens = batch
         outputs = self.model(texts, mels, text_lens, output_lens)
         losses = self.compute_losses(batch, outputs)
         loss = losses["loss"]
@@ -79,7 +79,7 @@ class Experiment(ExperimentBase):
     def valid(self):
         valid_losses = defaultdict(list)
         for i, batch in enumerate(self.valid_loader):
-            texts, mels, text_lens, output_lens, stop_tokens = batch
+            texts, mels, text_lens, output_lens = batch
             outputs = self.model(texts, mels, text_lens, output_lens)
             losses = self.compute_losses(batch, outputs)
             for k, v in losses.items():
@@ -148,7 +148,7 @@ class Experiment(ExperimentBase):
             weight_decay=paddle.regularizer.L2Decay(
                 config.training.weight_decay),
             grad_clip=grad_clip)
-        criterion = Tacotron2Loss()
+        criterion = Tacotron2Loss(config.mode.guided_attn_loss_sigma)
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
@@ -163,27 +163,26 @@ class Experiment(ExperimentBase):
         batch_fn = LJSpeechCollector(padding_idx=config.data.padding_idx)
 
         if not self.parallel:
-            self.train_loader = DataLoader(
-                train_set,
-                batch_size=config.data.batch_size,
-                shuffle=True,
-                drop_last=True,
-                collate_fn=batch_fn)
+            self.train_loader = DataLoader(train_set,
+                                           batch_size=config.data.batch_size,
+                                           shuffle=True,
+                                           drop_last=True,
+                                           collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
                 batch_size=config.data.batch_size,
                 shuffle=True,
                 drop_last=True)
-            self.train_loader = DataLoader(
-                train_set, batch_sampler=sampler, collate_fn=batch_fn)
+            self.train_loader = DataLoader(train_set,
+                                           batch_sampler=sampler,
+                                           collate_fn=batch_fn)
 
-        self.valid_loader = DataLoader(
-            valid_set,
-            batch_size=config.data.batch_size,
-            shuffle=False,
-            drop_last=False,
-            collate_fn=batch_fn)
+        self.valid_loader = DataLoader(valid_set,
+                                       batch_size=config.data.batch_size,
+                                       shuffle=False,
+                                       drop_last=False,
+                                       collate_fn=batch_fn)
 
 
 def main_sp(config, args):
