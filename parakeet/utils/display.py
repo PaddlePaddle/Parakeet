@@ -24,6 +24,7 @@ from matplotlib import cm, pyplot
 __all__ = [
     "plot_alignment",
     "plot_spectrogram",
+    "plot_waveflow",
 ]
 
 
@@ -50,5 +51,14 @@ def plot_spectrogram(spec):
     plt.colorbar(im, ax=ax)
     plt.xlabel("Frames")
     plt.ylabel("Channels")
+    plt.tight_layout()
+    return fig
+
+
+def plot_waveform(spec, sr=22050):
+    # spec: [C, T] librosa convention
+    fig, ax = plt.subplots(figsize=(12, 3))
+    im = librosa.display.waveplot(y, sr=22050)
+    plt.colorbar(im, ax=ax)
     plt.tight_layout()
     return fig

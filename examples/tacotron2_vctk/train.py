@@ -1,5 +1,4 @@
 import time
-from collections import defaultdict
 import numpy as np
 import librosa
 
@@ -9,9 +8,7 @@ from paddle import DataParallel
 from paddle.io import DataLoader, DistributedBatchSampler
 from paddle.optimizer import Adam
 
-import parakeet
 from parakeet.data import dataset
-from parakeet.frontend import EnglishCharacter
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils import display, mp_tools
@@ -89,80 +86,90 @@ class TacotronVCTKExperiment(ExperimentBase):
                                            collate_fn=collate_vctk_examples,
                                            shuffle=True,
                                            drop_last=True)
-        self.valid_loader = DataLoader(valid_dataset, 
+        self.valid_loader = DataLoader(valid_dataset,
                                        batch_size=1,
                                        collate_fn=collate_vctk_examples,
                                        num_workers=1,
-                                       shuffle=False, 
+                                       shuffle=False,
                                        drop_last=False)
-        
 
     def train_batch(self):
         if self.parallel:
             dist.barrier()
-            
+
         start = time.time()
         batch = self.read_batch()
         data_loader_time = time.time() - start
-    
+
         self.optimizer.clear_grad()
         self.model.train()
         phonemes, plens, mels, slens, speaker_ids = batch
-        
+
         outputs = self.model(phonemes, plens, mels, slens, speaker_ids)
-        
-        losses = self.criterion(outputs["mel_output"], 
-                                outputs["mel_outputs_postnet"],
-                                mels, 
-                                outputs["alignments"],
-                                slens,
-                                plens)
+
+        losses = self.criterion(outputs["mel_output"],
+                                outputs["mel_outputs_postnet"], mels,
+                                outputs["alignments"], slens, plens)
         loss = losses["loss"]
         loss.backward()
         self.optimizer.step()
         iteration_time = time.time() - start
-    
+
         losses_np = {k: float(v) for k, v in losses.items()}
         # logging
         msg = "Rank: {}, ".format(dist.get_rank())
         msg += "step: {}, ".format(self.iteration)
         msg += "time: {:>.3f}s/{:>.3f}s, ".format(data_loader_time,
-                                                      iteration_time)
+                                                  iteration_time)
         msg += ', '.join('{}: {:>.6f}'.format(k, v)
-                             for k, v in losses_np.items())
+                         for k, v in losses_np.items())
         self.logger.info(msg)
-    
+
         if dist.get_rank() == 0:
             for k, v in losses_np.items():
                 self.visualizer.add_scalar(f"train_loss/{k}", v,
-                                               self.iteration)  
-                
+                                           self.iteration)
+
     @mp_tools.rank_zero_only
     @paddle.no_grad()
     def valid(self):
-        # this is evaluation 
+        # this is evaluation
         self.model.eval()
         model_core = self.model_core
         for i, batch in enumerate(self.valid_loader):
             phonemes, plens, mels, slens, speaker_ids = batch
             outputs = model_core.infer(phonemes, speaker_ids=speaker_ids)
-            
-            fig = display.plot_spectrogram(outputs["mel_outputs_postnet"][0].numpy().T)
-            self.visualizer.add_figure(f"sentence_{i}/predicted_mel", fig, self.iteration)
-            
-            fig = display.plot_spectrogram(mels[0].numpy().T)
-            self.visualizer.add_figure(f"sentence_{i}/ground_truth_mel", fig, self.iteration)
-            
-            fig = display.plot_alignment(outputs["alignments"][0].numpy())
-            self.visualizer.add_figure(f"sentence_{i}/alignment", fig, self.iteration)
-            
-            mel_basis = librosa.filters.mel(22050, n_fft=1024, n_mels=80, fmin=0, fmax=8000)
-            _inv_mel_basis = np.linalg.pinv(mel_basis)
-            spec = np.matmul(_inv_mel_basis, np.exp(outputs["mel_outputs_postnet"][0].numpy().T))
-            wav = librosa.core.griffinlim(spec, hop_length=256, win_length=1024)
-            self.visualizer.add_audio(f"predicted/sentence_{i}", wav, self.iteration, sample_rate=22050)
 
-        
+            fig = display.plot_spectrogram(
+                outputs["mel_outputs_postnet"][0].numpy().T)
+            self.visualizer.add_figure(f"sentence_{i}/predicted_mel", fig,
+                                       self.iteration)
+
+            fig = display.plot_spectrogram(mels[0].numpy().T)
+            self.visualizer.add_figure(f"sentence_{i}/ground_truth_mel", fig,
+                                       self.iteration)
+
+            fig = display.plot_alignment(outputs["alignments"][0].numpy())
+            self.visualizer.add_figure(f"sentence_{i}/alignment", fig,
+                                       self.iteration)
+
+            mel_basis = librosa.filters.mel(22050,
+                                            n_fft=1024,
+                                            n_mels=80,
+                                            fmin=0,
+                                            fmax=8000)
+            _inv_mel_basis = np.linalg.pinv(mel_basis)
+            spec = np.matmul(
+                _inv_mel_basis,
+                np.exp(outputs["mel_outputs_postnet"][0].numpy().T))
+            wav = librosa.core.griffinlim(spec,
+                                          hop_length=256,
+                                          win_length=1024)
+            self.visualizer.add_audio(f"predicted/sentence_{i}",
+                                      wav,
+                                      self.iteration,
+                                      sample_rate=22050)
+
 
 def main_sp(config, args):
     exp = TacotronVCTKExperiment(config, args)

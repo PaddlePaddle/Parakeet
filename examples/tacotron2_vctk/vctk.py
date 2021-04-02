@@ -1,9 +1,9 @@
-import numpy as np
-import paddle
-from paddle.io import Dataset
 from pathlib import Path
-import yaml
 import pickle
+import yaml
+
+import numpy as np
+from paddle.io import Dataset
 from parakeet.frontend.vocab import Vocab
 from parakeet.data import batch_spec, batch_text_id
 
@@ -34,24 +34,25 @@ class VCTK(Dataset):
         fileid = metadatum['id']
         speaker_id = fileid.split('_')[0]
         s_id = self.speaker_vocab.lookup(speaker_id)
-        phonemes = np.array([self.phoneme_vocab.lookup(item) for item in metadatum['phonemes']], dtype=np.int64)
+        phonemes = np.array([self.phoneme_vocab.lookup(item) \
+                                for item in metadatum['phonemes']],
+                            dtype=np.int64)
         mel_path = (self.mel_root / speaker_id / fileid).with_suffix(".npy")
         mel = np.load(mel_path).astype(np.float32)
-        
+
         example = (phonemes, mel, s_id)
         return example
-        
 
     def __len__(self):
         return len(self.metadata)
+
 
 def collate_vctk_examples(examples):
     phonemes, mels, speaker_ids = list(zip(*examples))
     plens = np.array([item.shape[0] for item in phonemes], dtype=np.int64)
     slens = np.array([item.shape[1] for item in mels], dtype=np.int64)
     speaker_ids = np.array(speaker_ids, dtype=np.int64)
-    
+
     phonemes = batch_text_id(phonemes, pad_id=0)
     mels = np.transpose(batch_spec(mels, pad_value=0.), [0, 2, 1])
     return phonemes, plens, mels, slens, speaker_ids
-
