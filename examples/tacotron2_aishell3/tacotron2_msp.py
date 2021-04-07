@@ -495,7 +495,7 @@ class Tacotron2Decoder(nn.Layer):
             if int(paddle.argmax(alignment[0])) == T_enc - 1:
                 if (first_hit_end is None):
                     first_hit_end = i
-            if first_hit_end is not None and i > (first_hit_end + 6):
+            if first_hit_end is not None and i > (first_hit_end + 10):
                 print("content exhausted!")
                 break
             if len(mel_outputs) == max_decoder_steps:

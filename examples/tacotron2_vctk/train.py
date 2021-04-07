@@ -115,7 +115,7 @@ class TacotronVCTKExperiment(ExperimentBase):
         self.optimizer.step()
         iteration_time = time.time() - start
 
-        losses_np = {k: float(v) for k, v in losses.items()}
+        losses_np = {k: float(v.detach()) for k, v in losses.items()}
         # logging
         msg = "Rank: {}, ".format(dist.get_rank())
         msg += "step: {}, ".format(self.iteration)
