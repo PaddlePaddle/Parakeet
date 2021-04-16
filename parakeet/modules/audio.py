@@ -16,6 +16,7 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from scipy import signal
+from librosa.util import pad_center
 import numpy as np
 
 __all__ = ["quantize", "dequantize", "STFT"]
@@ -69,6 +70,8 @@ def dequantize(quantized, n_bands, dtype=None):
     value = (paddle.cast(quantized, dtype) + 0.5) * (2.0 / n_bands) - 1.0
     return value
 
+import librosa
+librosa.stft(
 
 class STFT(nn.Layer):
     """A module for computing stft transformation in a differentiable way. 
@@ -88,6 +91,19 @@ class STFT(nn.Layer):
         Name of window function, see `scipy.signal.get_window` for more 
         details. Defaults to "hanning".
         
+    center : bool
+        If True, the signal y is padded so that frame D[:, t] is centered 
+        at y[t * hop_length]. If False, then D[:, t] begins at y[t * hop_length].
+        Defaults to True.
+    
+    pad_mode : string or function
+       If center=True, this argument is passed to np.pad for padding the edges 
+       of the signal y. By default (pad_mode="reflect"), y is padded on both 
+       sides with its own reflection, mirrored around its first and last 
+       sample respectively. If center=False, this argument is ignored.
+    
+        
+        
     Notes
     -----------
     It behaves like ``librosa.core.stft``. See ``librosa.core.stft`` for more 
@@ -101,29 +117,47 @@ class STFT(nn.Layer):
     
     """
 
-    def __init__(self, n_fft, hop_length, win_length, window="hanning"):
+    def __init__(self, n_fft, hop_length=None, win_length=None, window="hanning", center=True, pad_mode="reflect"):
         super(STFT, self).__init__()
+        # By default, use the entire frame
+        if win_length is None:
+            win_length = n_fft
+    
+        # Set the default hop, if it's not already specified
+        if hop_length is None:
+            hop_length = int(win_length // 4)
+            
         self.hop_length = hop_length
         self.n_bin = 1 + n_fft // 2
         self.n_fft = n_fft
+        self.center = center
+        self.pad_mode = pad_mode
 
         # calculate window
-        window = signal.get_window(window, win_length)
+        window = signal.get_window(window, win_length, fftbins=True)
+        
+        # pad window to n_fft size
         if n_fft != win_length:
-            pad = (n_fft - win_length) // 2
-            window = np.pad(window, ((pad, pad), ), 'constant')
+            window = pad_center(window, n_fft, mode="constant")
+            #lpad = (n_fft - win_length) // 2
+            #rpad = n_fft - win_length - lpad
+            #window = np.pad(window, ((lpad, pad), ), 'constant')
 
         # calculate weights
-        r = np.arange(0, n_fft)
-        M = np.expand_dims(r, -1) * np.expand_dims(r, 0)
-        w_real = np.reshape(window *
-                            np.cos(2 * np.pi * M / n_fft)[:self.n_bin],
-                            (self.n_bin, 1, 1, self.n_fft))
-        w_imag = np.reshape(window *
-                            np.sin(-2 * np.pi * M / n_fft)[:self.n_bin],
-                            (self.n_bin, 1, 1, self.n_fft))
-
+        #r = np.arange(0, n_fft)
+        #M = np.expand_dims(r, -1) * np.expand_dims(r, 0)
+        #w_real = np.reshape(window *
+                            #np.cos(2 * np.pi * M / n_fft)[:self.n_bin],
+                            #(self.n_bin, 1, self.n_fft))
+        #w_imag = np.reshape(window *
+                            #np.sin(-2 * np.pi * M / n_fft)[:self.n_bin],
+                            #(self.n_bin, 1, self.n_fft))
+        weight = np.fft.fft(np.eye(n_fft))[:self.n_bin]
+        w_real = weight.real
+        w_imag = weight.imag
         w = np.concatenate([w_real, w_imag], axis=0)
+        w = w * window
+        w = np.expand_dims(w, 1)
         self.weight = paddle.cast(
             paddle.to_tensor(w), paddle.get_default_dtype())
 
@@ -137,23 +171,20 @@ class STFT(nn.Layer):
 
         Returns
         ------------
-        real : Tensor [shape=(B, C, 1, frames)] 
+        real : Tensor [shape=(B, C, frames)] 
             The real part of the spectrogram.
             
-        imag : Tensor [shape=(B, C, 1, frames)] 
+        imag : Tensor [shape=(B, C, frames)] 
             The image part of the spectrogram.
         """
-        # x(batch_size, time_steps)
-        # pad it first with reflect mode
-        # TODO(chenfeiyu): report an issue on paddle.flip
-        pad_start = paddle.reverse(x[:, 1:1 + self.n_fft // 2], axis=[1])
-        pad_stop = paddle.reverse(x[:, -(1 + self.n_fft // 2):-1], axis=[1])
-        x = paddle.concat([pad_start, x, pad_stop], axis=-1)
+        x = paddle.unsqueeze(x, axis=1)
+        if self.center:
+            x = F.pad(x, [self.n_fft // 2, self.n_fft // 2], 
+                      data_format='NCL', mode=self.pad_mode)
 
-        # to BC1T, C=1
-        x = paddle.unsqueeze(x, axis=[1, 2])
-        out = F.conv2d(x, self.weight, stride=(1, self.hop_length))
-        real, imag = paddle.chunk(out, 2, axis=1)  # BC1T
+        # to BCT, C=1
+        out = F.conv1d(x, self.weight, stride=self.hop_length)
+        real, imag = paddle.chunk(out, 2, axis=1)  # BCT
         return real, imag
 
     def power(self, x):
@@ -166,7 +197,7 @@ class STFT(nn.Layer):
 
         Returns
         ------------
-        Tensor [shape=(B, C, 1, T)] 
+        Tensor [shape=(B, C, T)] 
             The power spectrum.
         """
         real, imag = self(x)
@@ -183,7 +214,7 @@ class STFT(nn.Layer):
 
         Returns
         ------------
-        Tensor [shape=(B, C, 1, T)] 
+        Tensor [shape=(B, C, T)] 
             The magnitude of the spectrum.
         """
         power = self.power(x)
