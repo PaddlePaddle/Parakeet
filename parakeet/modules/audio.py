@@ -117,11 +117,7 @@ class STFT(nn.Layer):
     """
 
     def __init__(self, n_fft, hop_length=None, win_length=None, window="hanning", center=True, pad_mode="reflect"):
-<<<<<<< HEAD
         super().__init__()
-=======
-        super(STFT, self).__init__()
->>>>>>> 6749ce40eab7c5de0ca11fe5d2fd57120b10415c
         # By default, use the entire frame
         if win_length is None:
             win_length = n_fft
