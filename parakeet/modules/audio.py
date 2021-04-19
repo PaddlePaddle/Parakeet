@@ -71,8 +71,6 @@ def dequantize(quantized, n_bands, dtype=None):
     value = (paddle.cast(quantized, dtype) + 0.5) * (2.0 / n_bands) - 1.0
     return value
 
-import librosa
-librosa.stft(
 
 class STFT(nn.Layer):
     """A module for computing stft transformation in a differentiable way. 
