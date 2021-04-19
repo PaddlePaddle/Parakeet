@@ -76,9 +76,9 @@ class LJSpeechCollector(object):
         mels = [example[1] for example in examples]
         stop_probs = [example[2] for example in examples]
 
-        ids = batch_text_id(ids, pad_id=self.padding_idx)
-        mels = batch_spec(mels, pad_value=self.padding_value)
-        stop_probs = batch_text_id(stop_probs, pad_id=self.padding_idx)
+        ids, _ = batch_text_id(ids, pad_id=self.padding_idx)
+        mels, _ = batch_spec(mels, pad_value=self.padding_value)
+        stop_probs, _ = batch_text_id(stop_probs, pad_id=self.padding_idx)
         return ids, np.transpose(mels, [0, 2, 1]), stop_probs
 
 
