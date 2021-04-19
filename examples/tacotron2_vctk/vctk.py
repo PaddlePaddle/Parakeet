@@ -53,6 +53,6 @@ def collate_vctk_examples(examples):
     slens = np.array([item.shape[1] for item in mels], dtype=np.int64)
     speaker_ids = np.array(speaker_ids, dtype=np.int64)
 
-    phonemes = batch_text_id(phonemes, pad_id=0)
-    mels = np.transpose(batch_spec(mels, pad_value=0.), [0, 2, 1])
+    phonemes, _ = batch_text_id(phonemes, pad_id=0)
+    mels, _ = np.transpose(batch_spec(mels, pad_value=0.), [0, 2, 1])
     return phonemes, plens, mels, slens, speaker_ids

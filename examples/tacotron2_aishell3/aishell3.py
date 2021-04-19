@@ -44,9 +44,9 @@ def collate_aishell3_examples(examples):
     spec_lengths = np.array([item.shape[1] for item in mel], dtype=np.int64)
     T_dec = np.max(spec_lengths)
     stop_tokens = (np.arange(T_dec) >= np.expand_dims(spec_lengths, -1)).astype(np.float32)
-    phones = batch_text_id(phones)
-    tones = batch_text_id(tones)
-    mel = batch_spec(mel)
+    phones, _ = batch_text_id(phones)
+    tones, _ = batch_text_id(tones)
+    mel, _ = batch_spec(mel)
     mel = np.transpose(mel, (0, 2, 1))
     embed = np.stack(embed)
     # 7 fields
