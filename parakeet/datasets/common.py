@@ -15,24 +15,75 @@
 from paddle.io import Dataset
 import os
 import librosa
+from pathlib import Path
+import numpy as np
+from typing import List
 
-__all__ = ["AudioFolderDataset"]
+__all__ = ["AudioSegmentDataset", "AudioDataset", "AudioFolderDataset"]
 
 
-class AudioFolderDataset(Dataset):
-    def __init__(self, path, sample_rate, extension="wav"):
-        self.root = os.path.expanduser(path)
-        self.sample_rate = sample_rate
-        self.extension = extension
-        self.file_names = [
-            os.path.join(self.root, x) for x in os.listdir(self.root) \
-                if os.path.splitext(x)[-1] == self.extension]
-        self.length = len(self.file_names)
-
-    def __len__(self):
-        return self.length
+class AudioSegmentDataset(Dataset):
+    """A simple dataset adaptor for audio files to train vocoders.
+    Read -> trim silence -> normalize -> extract a segment
+    """
+    def __init__(self, file_paths: List[Path], sample_rate: int, length: int,
+                 top_db: float):
+        self.file_paths = file_paths
+        self.sr = sample_rate
+        self.top_db = top_db
+        self.length = length  # samples in the clip
 
     def __getitem__(self, i):
-        file_name = self.file_names[i]
-        y, _ = librosa.load(file_name, sr=self.sample_rate)  # pylint: disable=unused-variable
+        fpath = self.file_paths[i]
+        y, sr = librosa.load(fpath, self.sr)
+        y, _ = librosa.effects.trim(y, top_db=self.top_db)
+        y = librosa.util.normalize(y)
+        y = y.astype(np.float32)
+
+        # pad or trim
+        if y.size <= self.length:
+            y = np.pad(y, [0, self.length - len(y)], mode='constant')
+        else:
+            start = np.random.randint(0, 1 + len(y) - self.length)
+            y = y[start:start + self.length]
         return y
+
+    def __len__(self):
+        return len(self.file_paths)
+
+
+class AudioDataset(Dataset):
+    """A simple dataset adaptor for the audio files. 
+    Read -> trim silence -> normalize
+    """
+    def __init__(self,
+                 file_paths: List[Path],
+                 sample_rate: int,
+                 top_db: float = 60):
+        self.file_paths = file_paths
+        self.sr = sample_rate
+        self.top_db = top_db
+
+    def __getitem__(self, i):
+        fpath = self.file_paths[i]
+        y, sr = librosa.load(fpath, self.sr)
+        y, _ = librosa.effects.trim(y, top_db=self.top_db)
+        y = librosa.util.normalize(y)
+        y = y.astype(np.float32)
+        return y
+
+    def __len__(self):
+        return len(self.file_paths)
+
+
+class AudioFolderDataset(AudioDataset):
+    def __init__(
+        self,
+        root,
+        sample_rate,
+        top_db=60,
+        extension=".wav",
+    ):
+        root = Path(root).expanduser()
+        file_paths = sorted(list(root.rglob("*{}".format(extension))))
+        super().__init__(file_paths, sample_rate, top_db)
