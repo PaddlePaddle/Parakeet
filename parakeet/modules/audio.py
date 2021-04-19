@@ -16,6 +16,7 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from scipy import signal
+import librosa
 from librosa.util import pad_center
 import numpy as np
 
@@ -118,7 +119,11 @@ class STFT(nn.Layer):
     """
 
     def __init__(self, n_fft, hop_length=None, win_length=None, window="hanning", center=True, pad_mode="reflect"):
+<<<<<<< HEAD
+        super().__init__()
+=======
         super(STFT, self).__init__()
+>>>>>>> 6749ce40eab7c5de0ca11fe5d2fd57120b10415c
         # By default, use the entire frame
         if win_length is None:
             win_length = n_fft
@@ -220,3 +225,16 @@ class STFT(nn.Layer):
         power = self.power(x)
         magnitude = paddle.sqrt(power)
         return magnitude
+
+
+class MelScale(nn.Layer):
+    def __init__(self, sr, n_fft, n_mels, fmin, fmax):
+        super().__init__()
+        mel_basis = librosa.filters.mel(sr, n_fft, n_mels, fmin, fmax)
+        print(mel_basis.shape)
+        self.weight = paddle.to_tensor(mel_basis)
+        
+    def forward(self, spec):
+        # (n_mels, n_freq) * (batch_size, n_freq, n_frames)
+        mel = paddle.matmul(self.weight, spec)
+        return mel

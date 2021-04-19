@@ -101,9 +101,7 @@ class UpsampleNet(nn.LayerList):
     def __init__(self, upscale_factors=[16, 16]):
         super(UpsampleNet, self).__init__()
         self.upscale_factors = list(upscale_factors)
-        self.upscale_factor = 1
-        for item in upscale_factors:
-            self.upscale_factor *= item
+        self.upscale_factor = np.prod(upscale_factors)
 
         for factor in self.upscale_factors:
             self.append(
@@ -224,13 +222,15 @@ class ResidualBlock(nn.Layer):
             other ResidualBlocks. 
     """
         h = x
-
+        length = x.shape[-1]
+        
         # dilated conv
         h = self.conv(h)
 
         # condition
+        # NOTE: expanded condition may have a larger timesteps than x
         if condition is not None:
-            h += self.condition_proj(condition)
+            h += self.condition_proj(condition)[:, :, :length]
 
         # gated tanh
         content, gate = paddle.split(h, 2, axis=1)
@@ -822,7 +822,7 @@ class ConditionalWaveNet(nn.Layer):
             loss_type=loss_type,
             log_scale_min=log_scale_min)
 
-    def forward(self, audio, mel, audio_start):
+    def forward(self, audio, mel):
         """Compute the output distribution given the mel spectrogram and the input(for teacher force training).
 
         Parameters
@@ -845,13 +845,13 @@ class ConditionalWaveNet(nn.Layer):
         """
         audio_length = audio.shape[1]  # audio clip's length
         condition = self.encoder(mel)
-        condition_slice = crop(condition, audio_start, audio_length)
+        
 
         # shifting 1 step
         audio = audio[:, :-1]
-        condition_slice = condition_slice[:, :, 1:]
+        condition = condition[:, :, 1:]
 
-        y = self.decoder(audio, condition_slice)
+        y = self.decoder(audio, condition)
         return y
 
     def loss(self, y, t):

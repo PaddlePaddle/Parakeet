@@ -30,9 +30,13 @@ from parakeet.utils import scheduler, mp_tools
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils.mp_tools import rank_zero_only
+from parakeet.datasets import AudioDataset, AudioSegmentDataset
+from parakeet.data import batch_wav
+
+from parakeet.modules.audio import STFT, MelScale
 
 from config import get_cfg_defaults
-from ljspeech import LJSpeech, LJSpeechClipCollector, LJSpeechCollector
+from ljspeech import LJSpeech
 
 
 class Experiment(ExperimentBase):
@@ -60,39 +64,48 @@ class Experiment(ExperimentBase):
             parameters=model.parameters(),
             grad_clip=paddle.nn.ClipGradByGlobalNorm(
                 config.training.gradient_max_norm))
-
+        
+        self.stft = STFT(config.data.n_fft, config.data.hop_length, config.data.win_length)
+        self.mel_scale = MelScale(config.data.sample_rate, config.data.n_fft, config.data.n_mels, config.data.fmin, config.data.fmax)
+        
         self.model = model
         self.model_core = model._layers if self.parallel else model
         self.optimizer = optimizer
+
 
     def setup_dataloader(self):
         config = self.config
         args = self.args
 
-        ljspeech_dataset = LJSpeech(args.data)
-        valid_set, train_set = dataset.split(ljspeech_dataset,
-                                             config.data.valid_size)
-
         # convolutional net's causal padding size
         context_size = config.model.n_stack \
                       * sum([(config.model.filter_size - 1) * 2**i for i in range(config.model.n_loop)]) \
                       + 1
-        context_frames = context_size // config.data.hop_length
 
         # frames used to compute loss
-        frames_per_second = config.data.sample_rate // config.data.hop_length
-        train_clip_frames = math.ceil(config.data.train_clip_seconds *
-                                      frames_per_second)
+        train_clip_size = int(config.data.train_clip_seconds * config.data.sample_rate)
+        length = context_size + train_clip_size
+        
+        root = Path(args.data).expanduser()
+        file_paths = sorted(list((root / "wavs").rglob("*.wav")))
+        train_set = AudioSegmentDataset(
+            file_paths[config.data.valid_size:],
+            config.data.sample_rate,
+            length,
+            top_db=config.data.top_db)
+        valid_set = AudioDataset(
+            file_paths[:config.data.valid_size],
+            config.data.sample_rate,
+            top_db=config.data.top_db)
 
-        num_frames = train_clip_frames + context_frames
-        batch_fn = LJSpeechClipCollector(num_frames, config.data.hop_length)
         if not self.parallel:
             train_loader = DataLoader(
                 train_set,
                 batch_size=config.data.batch_size,
                 shuffle=True,
                 drop_last=True,
-                collate_fn=batch_fn)
+                num_workers=1,
+            )
         else:
             sampler = DistributedBatchSampler(
                 train_set,
@@ -100,25 +113,36 @@ class Experiment(ExperimentBase):
                 shuffle=True,
                 drop_last=True)
             train_loader = DataLoader(
-                train_set, batch_sampler=sampler, collate_fn=batch_fn)
+                train_set, batch_sampler=sampler, num_workers=1)
 
-        valid_batch_fn = LJSpeechCollector()
         valid_loader = DataLoader(
-            valid_set, batch_size=1, collate_fn=valid_batch_fn)
+            valid_set, 
+            batch_size=config.data.batch_size, 
+            num_workers=1, 
+            collate_fn=batch_wav)
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader
 
     def train_batch(self):
+        # load data
         start = time.time()
         batch = self.read_batch()
         data_loader_time = time.time() - start
 
         self.model.train()
         self.optimizer.clear_grad()
-        mel, wav, audio_starts = batch
+        wav = batch
+        
+        # data preprocessing
+        S = self.stft.magnitude(wav)
+        mel = self.mel_scale(S)
+        logmel = 20 * paddle.log10(mel, paddle.clip(mel, min=1e-5))
+        logmel = paddle.clip((logmel + 80) / 100, min=0.0, max=1.0)
+        
+        # forward & backward
 
-        y = self.model(wav, mel, audio_starts)
+        y = self.model(wav, logmel)
         loss = self.model_core.loss(y, wav)
         loss.backward()
         self.optimizer.step()
@@ -129,24 +153,43 @@ class Experiment(ExperimentBase):
         msg += "step: {}, ".format(self.iteration)
         msg += "time: {:>.3f}s/{:>.3f}s, ".format(data_loader_time,
                                                   iteration_time)
-        msg += "loss: {:>.6f}".format(loss_value)
+        msg += "train/loss: {:>.6f}, ".format(loss_value)
+        msg += "lr: {:>.6f}".format(self.optimizer.get_lr())
         self.logger.info(msg)
         if dist.get_rank() == 0:
             self.visualizer.add_scalar(
-                "train/loss", loss_value, global_step=self.iteration)
+                "train/loss", loss_value, self.iteration)
+            self.visualizer.add_scalar(
+                "train/lr", self.optimizer.get_lr(), self.iteration)
+        
+        # now we have to call learning rate scheduler.step() mannually
+        self.optimizer._learning_rate.step()
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()
     def valid(self):
-        valid_iterator = iter(self.valid_loader)
         valid_losses = []
-        mel, wav, audio_starts = next(valid_iterator)
-        y = self.model(wav, mel, audio_starts)
-        loss = self.model_core.loss(y, wav)
-        valid_losses.append(float(loss))
-        valid_loss = np.mean(valid_losses)
+        
+        for batch in self.valid_loader:
+            wav, length = batch
+            # data preprocessing
+            S = self.stft.magnitude(wav)
+            mel = self.mel_scale(S)
+            logmel = 20 * paddle.log10(mel, paddle.clip(mel, min=1e-5))
+            logmel = paddle.clip((logmel + 80) / 100, min=0.0, max=1.0)
+            
+            y = self.model(wav, logmel)
+            loss = self.model_core.loss(y, wav)
+            valid_losses.append(float(loss))
+            valid_loss = np.mean(valid_losses)
+            
+        msg = "Rank: {}, ".format(dist.get_rank())
+        msg += "step: {}, ".format(self.iteration)
+        msg += "valid/loss: {:>.6f}".format(valid_loss)
+        self.logger.info(msg)
+        
         self.visualizer.add_scalar(
-            "valid/loss", valid_loss, global_step=self.iteration)
+            "valid/loss", valid_loss, self.iteration)
 
 
 def main_sp(config, args):

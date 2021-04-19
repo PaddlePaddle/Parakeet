@@ -20,10 +20,12 @@ _C.data = CN(
         batch_size=8,  # batch size
         valid_size=16,  # the first N examples are reserved for validation
         sample_rate=22050,  # Hz, sample rate
-        n_fft=2048,  # fft frame size
+        n_fft=1024,  # fft frame size
         win_length=1024,  # window size
         hop_length=256,  # hop size between ajacent frame
-        # f_max=8000, # Hz, max frequency when converting to mel
+        top_db=60, # db, used to trim silence
+        fmin = 0,  # Hz, max frequency when converting to mel
+        fmax=8000, # Hz, max frequency when converting to mel
         n_mels=80,  # mel bands
         train_clip_seconds=0.5,  # audio clip length(in seconds)
     ))
