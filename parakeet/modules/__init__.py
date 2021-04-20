@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from parakeet.modules.attention import *
-from parakeet.modules.audio import *
 from parakeet.modules.conv import *
 from parakeet.modules.geometry import *
 from parakeet.modules.losses import *
