@@ -60,7 +60,6 @@ _C.training = CN(
         lr=1e-3,  # learning rate
         weight_decay=1e-6,  # the coeff of weight decay
         grad_clip_thresh=1.0,  # the clip norm of grad clip.
-        plot_interval=1000,  # plot attention and spectrogram
         valid_interval=1000,  # validation
         save_interval=1000,  # checkpoint
         max_iteration=500000,  # max iteration to train

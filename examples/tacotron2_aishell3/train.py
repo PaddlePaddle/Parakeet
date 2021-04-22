@@ -54,11 +54,11 @@ class Experiment(ExperimentBase):
         self.model.train()
         texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
         outputs = self.model(texts,
-                             mels,
                              text_lens,
+                             mels,
                              output_lens,
                              tones=tones,
-                             utterance_embeds=utterance_embeds)
+                             global_condition=utterance_embeds)
         losses = self.compute_losses(batch, outputs)
         loss = losses["loss"]
         loss.backward()
@@ -87,11 +87,11 @@ class Experiment(ExperimentBase):
         for i, batch in enumerate(self.valid_loader):
             texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
             outputs = self.model(texts,
-                                 mels,
                                  text_lens,
+                                 mels,
                                  output_lens,
                                  tones=tones,
-                                 utterance_embeds=utterance_embeds)
+                                 global_condition=utterance_embeds)
             losses = self.compute_losses(batch, outputs)
             for key, value in losses.items():
                 valid_losses[key].append(float(value))
