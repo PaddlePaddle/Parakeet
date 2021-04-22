@@ -27,14 +27,13 @@ from parakeet.data import dataset
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils import display, mp_tools
-from tacotron2_msp import Tacotron2, Tacotron2Loss
+from parakeet.modules.losses import guided_attention_loss
+from parakeet.models.tacotron2_msp import Tacotron2, Tacotron2Loss
 
 from config import get_cfg_defaults
-# from ljspeech import LJSpeech, LJSpeechCollector
 
 from attrdict import AttrDict
 from aishell3 import AiShell3, collate_aishell3_examples
-from ga import guided_attention_loss
 
 
 class Experiment(ExperimentBase):
