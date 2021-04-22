@@ -13,39 +13,36 @@
 # limitations under the License.
 
 import time
-from collections import defaultdict
-import numpy as np
 from pathlib import Path
+from collections import defaultdict
+
+import numpy as np
 from matplotlib import pyplot as plt
 
 import paddle
 from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
 
-import parakeet
 from parakeet.data import dataset
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils import display, mp_tools
-from parakeet.modules.losses import guided_attention_loss
-from parakeet.models.tacotron2_msp import Tacotron2, Tacotron2Loss
+from parakeet.models.tacotron2 import Tacotron2, Tacotron2Loss
 
 from config import get_cfg_defaults
-
-from attrdict import AttrDict
 from aishell3 import AiShell3, collate_aishell3_examples
 
 
 class Experiment(ExperimentBase):
     def compute_losses(self, inputs, outputs):
-        _, _, mel_targets, _, _, _, stop_tokens = inputs
+        texts, tones, mel_targets, utterance_embeds, text_lens, output_lens, stop_tokens = inputs
 
         mel_outputs = outputs["mel_output"]
         mel_outputs_postnet = outputs["mel_outputs_postnet"]
-        stop_logits = outputs["stop_logits"]
+        alignments = outputs["alignments"]
 
-        losses = self.criterion(mel_outputs, mel_outputs_postnet, stop_logits,
-                                mel_targets, stop_tokens)
+        losses = self.criterion(mel_outputs, mel_outputs_postnet, mel_targets,
+                                alignments, output_lens, text_lens)
         return losses
 
     def train_batch(self):
@@ -56,10 +53,14 @@ class Experiment(ExperimentBase):
         self.optimizer.clear_grad()
         self.model.train()
         texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
-        outputs = self.model(texts, mels, text_lens, output_lens, tones=tones, utterance_embeds=utterance_embeds)
+        outputs = self.model(texts,
+                             mels,
+                             text_lens,
+                             output_lens,
+                             tones=tones,
+                             utterance_embeds=utterance_embeds)
         losses = self.compute_losses(batch, outputs)
-        gl, _ = guided_attention_loss(outputs["alignments"], output_lens, text_lens, 0.2)
-        loss = losses["loss"] + gl
+        loss = losses["loss"]
         loss.backward()
         self.optimizer.step()
         iteration_time = time.time() - start
@@ -72,14 +73,12 @@ class Experiment(ExperimentBase):
                                                   iteration_time)
         msg += ', '.join('{}: {:>.6f}'.format(k, v)
                          for k, v in losses_np.items())
-        msg += ", gal: {}".format(float(gl))
         self.logger.info(msg)
 
         if dist.get_rank() == 0:
-            for k, v in losses_np.items():
-                self.visualizer.add_scalar(f"train_loss/{k}", v,
+            for key, value in losses_np.items():
+                self.visualizer.add_scalar(f"train_loss/{key}", value,
                                            self.iteration)
-            self.visualizer.add_scalar("train_loss/gal", float(gl), self.iteration)
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()
@@ -87,21 +86,29 @@ class Experiment(ExperimentBase):
         valid_losses = defaultdict(list)
         for i, batch in enumerate(self.valid_loader):
             texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
-            outputs = self.model(texts, mels, text_lens, output_lens, tones=tones, utterance_embeds=utterance_embeds)
+            outputs = self.model(texts,
+                                 mels,
+                                 text_lens,
+                                 output_lens,
+                                 tones=tones,
+                                 utterance_embeds=utterance_embeds)
             losses = self.compute_losses(batch, outputs)
-            for k, v in losses.items():
-                valid_losses[k].append(float(v))
+            for key, value in losses.items():
+                valid_losses[key].append(float(value))
 
             attention_weights = outputs["alignments"]
-            display.add_attention_plots(self.visualizer,
-                                        f"valid_sentence_{i}_alignments",
-                                        attention_weights[0], self.iteration)
-            display.add_spectrogram_plots(
-                self.visualizer, f"valid_sentence_{i}_target_spectrogram",
-                mels[0], self.iteration)
-            display.add_spectrogram_plots(
-                self.visualizer, f"valid_sentence_{i}_predicted_spectrogram",
-                outputs['mel_outputs_postnet'][0], self.iteration)
+            self.visualizer.add_figure(
+                f"valid_sentence_{i}_alignments",
+                display.plot_alignment(attention_weights[0].numpy().T),
+                self.iteration)
+            self.visualizer.add_figure(
+                f"valid_sentence_{i}_target_spectrogram",
+                display.plot_spectrogram(mels[0].numpy().T), self.iteration)
+            mel_pred = outputs['mel_outputs_postnet']
+            self.visualizer.add_figure(
+                f"valid_sentence_{i}_predicted_spectrogram",
+                display.plot_spectrogram(mel_pred[0].numpy().T),
+                self.iteration)
 
         # write visual log
         valid_losses = {k: np.mean(v) for k, v in valid_losses.items()}
@@ -113,32 +120,34 @@ class Experiment(ExperimentBase):
                          for k, v in valid_losses.items())
         self.logger.info(msg)
 
-        for k, v in valid_losses.items():
-            self.visualizer.add_scalar(f"valid/{k}", v, self.iteration)
+        for key, value in valid_losses.items():
+            self.visualizer.add_scalar(f"valid/{key}", value, self.iteration)
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()
     def eval(self):
+        """Evaluation of Tacotron2 in autoregressive manner."""
         self.model.eval()
         mel_dir = Path(self.output_dir / ("eval_{}".format(self.iteration)))
         mel_dir.mkdir(parents=True, exist_ok=True)
         for i, batch in enumerate(self.test_loader):
-            texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
-            outputs = self.model.infer(texts, tones=tones, utterance_embeds=utterance_embeds)
+            texts, tones, mels, utterance_embeds, *_ = batch
+            outputs = self.model.infer(texts,
+                                       tones=tones,
+                                       utterance_embeds=utterance_embeds)
 
             display.plot_alignment(outputs["alignments"][0].numpy().T)
             plt.savefig(mel_dir / f"sentence_{i}.png")
             plt.close()
-            np.save(mel_dir / f"sentence_{i}", outputs["mel_outputs_postnet"][0].numpy().T)
+            np.save(mel_dir / f"sentence_{i}",
+                    outputs["mel_outputs_postnet"][0].numpy().T)
             print(f"sentence_{i}")
 
-
     def setup_model(self):
-        frontend = AttrDict({"vocab_size": 70})
         config = self.config
-        # frontend = EnglishCharacter()
         model = Tacotron2(
-            frontend,
+            vocab_size=config.model.vocab_size,
+            n_tones=config.model.n_tones,
             d_mels=config.data.d_mels,
             d_encoder=config.model.d_encoder,
             encoder_conv_layers=config.model.encoder_conv_layers,
@@ -158,8 +167,7 @@ class Experiment(ExperimentBase):
             p_attention_dropout=config.model.p_attention_dropout,
             p_decoder_dropout=config.model.p_decoder_dropout,
             p_postnet_dropout=config.model.p_postnet_dropout,
-            n_tones=10,
-            speaker_embed_dim=256)
+            d_global_condition=config.model.d_global_condition)
 
         if self.parallel:
             model = paddle.DataParallel(model)
@@ -172,7 +180,7 @@ class Experiment(ExperimentBase):
             weight_decay=paddle.regularizer.L2Decay(
                 config.training.weight_decay),
             grad_clip=grad_clip)
-        criterion = Tacotron2Loss()
+        criterion = Tacotron2Loss(config.model.guided_attention_loss_sigma)
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
@@ -187,44 +195,41 @@ class Experiment(ExperimentBase):
         batch_fn = collate_aishell3_examples
 
         if not self.parallel:
-            self.train_loader = DataLoader(
-                train_set,
-                batch_size=config.data.batch_size,
-                shuffle=True,
-                drop_last=True,
-                collate_fn=batch_fn)
+            self.train_loader = DataLoader(train_set,
+                                           batch_size=config.data.batch_size,
+                                           shuffle=True,
+                                           drop_last=True,
+                                           collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
                 batch_size=config.data.batch_size,
                 shuffle=True,
                 drop_last=True)
-            self.train_loader = DataLoader(
-                train_set, batch_sampler=sampler, collate_fn=batch_fn)
+            self.train_loader = DataLoader(train_set,
+                                           batch_sampler=sampler,
+                                           collate_fn=batch_fn)
 
-        self.valid_loader = DataLoader(
-            valid_set,
-            batch_size=config.data.batch_size,
-            shuffle=False,
-            drop_last=False,
-            collate_fn=batch_fn)
+        self.valid_loader = DataLoader(valid_set,
+                                       batch_size=config.data.batch_size,
+                                       shuffle=False,
+                                       drop_last=False,
+                                       collate_fn=batch_fn)
 
-        test_set, _ = dataset.split(train_set, config.data.valid_size)
-        self.test_loader = DataLoader(
-            valid_set,
-            batch_size=1,
-            shuffle=False,
-            drop_last=False,
-            collate_fn=batch_fn)
+        self.test_loader = DataLoader(valid_set,
+                                      batch_size=1,
+                                      shuffle=False,
+                                      drop_last=False,
+                                      collate_fn=batch_fn)
 
 
 def main_sp(config, args):
     exp = Experiment(config, args)
     exp.setup()
+    exp.resume_or_load()
     if not args.test:
         exp.run()
     else:
-        exp.resume_or_load()
         exp.eval()
 
 
