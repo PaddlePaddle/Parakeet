@@ -13,35 +13,36 @@
 # limitations under the License.
 
 import time
+from pathlib import Path
 from collections import defaultdict
+
 import numpy as np
+from matplotlib import pyplot as plt
 
 import paddle
 from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
 
-import parakeet
 from parakeet.data import dataset
-from parakeet.frontend import EnglishCharacter
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils import display, mp_tools
 from parakeet.models.tacotron2 import Tacotron2, Tacotron2Loss
 
 from config import get_cfg_defaults
-from ljspeech import LJSpeech, LJSpeechCollector
+from aishell3 import AiShell3, collate_aishell3_examples
 
 
 class Experiment(ExperimentBase):
     def compute_losses(self, inputs, outputs):
-        _, mel_targets, plens, slens, stop_tokens = inputs
+        texts, tones, mel_targets, utterance_embeds, text_lens, output_lens, stop_tokens = inputs
 
         mel_outputs = outputs["mel_output"]
         mel_outputs_postnet = outputs["mel_outputs_postnet"]
-        attention_weight = outputs["alignments"]
+        alignments = outputs["alignments"]
 
         losses = self.criterion(mel_outputs, mel_outputs_postnet, mel_targets,
-                                attention_weight, slens, plens)
+                                alignments, output_lens, text_lens)
         return losses
 
     def train_batch(self):
@@ -51,8 +52,13 @@ class Experiment(ExperimentBase):
 
         self.optimizer.clear_grad()
         self.model.train()
-        texts, mels, text_lens, output_lens = batch
-        outputs = self.model(texts, mels, text_lens, output_lens)
+        texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
+        outputs = self.model(texts,
+                             text_lens,
+                             mels,
+                             output_lens,
+                             tones=tones,
+                             global_condition=utterance_embeds)
         losses = self.compute_losses(batch, outputs)
         loss = losses["loss"]
         loss.backward()
@@ -70,8 +76,8 @@ class Experiment(ExperimentBase):
         self.logger.info(msg)
 
         if dist.get_rank() == 0:
-            for k, v in losses_np.items():
-                self.visualizer.add_scalar(f"train_loss/{k}", v,
+            for key, value in losses_np.items():
+                self.visualizer.add_scalar(f"train_loss/{key}", value,
                                            self.iteration)
 
     @mp_tools.rank_zero_only
@@ -79,24 +85,29 @@ class Experiment(ExperimentBase):
     def valid(self):
         valid_losses = defaultdict(list)
         for i, batch in enumerate(self.valid_loader):
-            texts, mels, text_lens, output_lens = batch
-            outputs = self.model(texts, mels, text_lens, output_lens)
+            texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
+            outputs = self.model(texts,
+                                 text_lens,
+                                 mels,
+                                 output_lens,
+                                 tones=tones,
+                                 global_condition=utterance_embeds)
             losses = self.compute_losses(batch, outputs)
-            for k, v in losses.items():
-                valid_losses[k].append(float(v))
+            for key, value in losses.items():
+                valid_losses[key].append(float(value))
 
             attention_weights = outputs["alignments"]
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_alignments",
-                display.plot_alignment(attention_weights[0].numpy()),
+                display.plot_alignment(attention_weights[0].numpy().T),
                 self.iteration)
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_target_spectrogram",
-                display.plot_spectrogram(mels[0].numpy().T),
-                self.iteration)
+                display.plot_spectrogram(mels[0].numpy().T), self.iteration)
+            mel_pred = outputs['mel_outputs_postnet']
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_predicted_spectrogram",
-                display.plot_spectrogram(outputs['mel_outputs_postnet'][0].numpy().T),
+                display.plot_spectrogram(mel_pred[0].numpy().T),
                 self.iteration)
 
         # write visual log
@@ -109,14 +120,34 @@ class Experiment(ExperimentBase):
                          for k, v in valid_losses.items())
         self.logger.info(msg)
 
-        for k, v in valid_losses.items():
-            self.visualizer.add_scalar(f"valid/{k}", v, self.iteration)
+        for key, value in valid_losses.items():
+            self.visualizer.add_scalar(f"valid/{key}", value, self.iteration)
+
+    @mp_tools.rank_zero_only
+    @paddle.no_grad()
+    def eval(self):
+        """Evaluation of Tacotron2 in autoregressive manner."""
+        self.model.eval()
+        mel_dir = Path(self.output_dir / ("eval_{}".format(self.iteration)))
+        mel_dir.mkdir(parents=True, exist_ok=True)
+        for i, batch in enumerate(self.test_loader):
+            texts, tones, mels, utterance_embeds, *_ = batch
+            outputs = self.model.infer(texts,
+                                       tones=tones,
+                                       global_condition=utterance_embeds)
+
+            display.plot_alignment(outputs["alignments"][0].numpy().T)
+            plt.savefig(mel_dir / f"sentence_{i}.png")
+            plt.close()
+            np.save(mel_dir / f"sentence_{i}",
+                    outputs["mel_outputs_postnet"][0].numpy().T)
+            print(f"sentence_{i}")
 
     def setup_model(self):
         config = self.config
-        frontend = EnglishCharacter()
         model = Tacotron2(
-            frontend,
+            vocab_size=config.model.vocab_size,
+            n_tones=config.model.n_tones,
             d_mels=config.data.d_mels,
             d_encoder=config.model.d_encoder,
             encoder_conv_layers=config.model.encoder_conv_layers,
@@ -135,7 +166,8 @@ class Experiment(ExperimentBase):
             p_prenet_dropout=config.model.p_prenet_dropout,
             p_attention_dropout=config.model.p_attention_dropout,
             p_decoder_dropout=config.model.p_decoder_dropout,
-            p_postnet_dropout=config.model.p_postnet_dropout)
+            p_postnet_dropout=config.model.p_postnet_dropout,
+            d_global_condition=config.model.d_global_condition)
 
         if self.parallel:
             model = paddle.DataParallel(model)
@@ -148,7 +180,7 @@ class Experiment(ExperimentBase):
             weight_decay=paddle.regularizer.L2Decay(
                 config.training.weight_decay),
             grad_clip=grad_clip)
-        criterion = Tacotron2Loss(config.mode.guided_attn_loss_sigma)
+        criterion = Tacotron2Loss(config.model.guided_attention_loss_sigma)
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
@@ -156,11 +188,11 @@ class Experiment(ExperimentBase):
     def setup_dataloader(self):
         args = self.args
         config = self.config
-        ljspeech_dataset = LJSpeech(args.data)
+        ljspeech_dataset = AiShell3(args.data)
 
         valid_set, train_set = dataset.split(ljspeech_dataset,
                                              config.data.valid_size)
-        batch_fn = LJSpeechCollector(padding_idx=config.data.padding_idx)
+        batch_fn = collate_aishell3_examples
 
         if not self.parallel:
             self.train_loader = DataLoader(train_set,
@@ -184,11 +216,21 @@ class Experiment(ExperimentBase):
                                        drop_last=False,
                                        collate_fn=batch_fn)
 
+        self.test_loader = DataLoader(valid_set,
+                                      batch_size=1,
+                                      shuffle=False,
+                                      drop_last=False,
+                                      collate_fn=batch_fn)
+
 
 def main_sp(config, args):
     exp = Experiment(config, args)
     exp.setup()
-    exp.run()
+    exp.resume_or_load()
+    if not args.test:
+        exp.run()
+    else:
+        exp.eval()
 
 
 def main(config, args):
@@ -201,6 +243,7 @@ def main(config, args):
 if __name__ == "__main__":
     config = get_cfg_defaults()
     parser = default_argument_parser()
+    parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
     if args.config:
         config.merge_from_file(args.config)

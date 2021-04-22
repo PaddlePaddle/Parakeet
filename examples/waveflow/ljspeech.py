@@ -61,8 +61,8 @@ class LJSpeechCollector(object):
     def __call__(self, examples):
         mels = [example[0] for example in examples]
         wavs = [example[1] for example in examples]
-        mels = batch_spec(mels, pad_value=self.padding_value)
-        wavs = batch_wav(wavs, pad_value=self.padding_value)
+        mels, _ = batch_spec(mels, pad_value=self.padding_value)
+        wavs, _ = batch_wav(wavs, pad_value=self.padding_value)
         return mels, wavs
 
 

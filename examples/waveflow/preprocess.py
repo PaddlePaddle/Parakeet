@@ -30,12 +30,14 @@ from config import get_cfg_defaults
 
 
 class Transform(object):
-    def __init__(self, sample_rate, n_fft, win_length, hop_length, n_mels):
+    def __init__(self, sample_rate, n_fft, win_length, hop_length, n_mels, fmin, fmax):
         self.sample_rate = sample_rate
         self.n_fft = n_fft
         self.win_length = win_length
         self.hop_length = hop_length
         self.n_mels = n_mels
+        self.fmin = fmin
+        self.fmax = fmax
 
         self.spec_normalizer = LogMagnitude(min=1e-5)
 
@@ -47,6 +49,8 @@ class Transform(object):
         win_length = self.win_length
         hop_length = self.hop_length
         n_mels = self.n_mels
+        fmin = self.fmin
+        fmax = self.fmax
 
         wav, loaded_sr = librosa.load(wav_path, sr=None)
         assert loaded_sr == sr, "sample rate does not match, resampling applied"
@@ -78,7 +82,9 @@ class Transform(object):
         # Compute mel-spectrograms.
         mel_filter_bank = librosa.filters.mel(sr=sr,
                                               n_fft=n_fft,
-                                              n_mels=n_mels)
+                                              n_mels=n_mels,
+                                              fmin=fmin,
+                                              fmax=fmax)
         mel_spectrogram = np.dot(mel_filter_bank, spectrogram_magnitude)
         mel_spectrogram = mel_spectrogram
 
@@ -101,7 +107,7 @@ def create_dataset(config, input_dir, output_dir, verbose=True):
     output_dir.mkdir(exist_ok=True)
 
     transform = Transform(config.sample_rate, config.n_fft, config.win_length,
-                          config.hop_length, config.n_mels)
+                          config.hop_length, config.n_mels, config.fmin, config.fmax)
     file_names = []
 
     for example in tqdm.tqdm(dataset):
