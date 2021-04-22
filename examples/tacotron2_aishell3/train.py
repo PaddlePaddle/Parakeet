@@ -134,7 +134,7 @@ class Experiment(ExperimentBase):
             texts, tones, mels, utterance_embeds, *_ = batch
             outputs = self.model.infer(texts,
                                        tones=tones,
-                                       utterance_embeds=utterance_embeds)
+                                       global_condition=utterance_embeds)
 
             display.plot_alignment(outputs["alignments"][0].numpy().T)
             plt.savefig(mel_dir / f"sentence_{i}.png")
