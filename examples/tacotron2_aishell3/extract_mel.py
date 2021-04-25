@@ -1,17 +1,22 @@
-import numpy as np
-from pathlib import Path
-from parakeet.audio import AudioProcessor
-from parakeet.audio.spec_normalizer import LogMagnitude
+import argparse
 import multiprocessing as mp
 from functools import partial
-import tqdm
-from yacs.config import CfgNode
+from pathlib import Path
 
-def extract_mel(fname:Path, input_dir:Path, output_dir:Path, p, n):
+import numpy as np
+from parakeet.audio import AudioProcessor
+from parakeet.audio.spec_normalizer import NormalizerBase, LogMagnitude
+
+import tqdm
+
+from config import get_cfg_defaults
+
+
+def extract_mel(fname: Path, input_dir: Path, output_dir: Path,
+                p: AudioProcessor, n: NormalizerBase):
     relative_path = fname.relative_to(input_dir)
     out_path = (output_dir / relative_path).with_suffix(".npy")
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    # TODO: maybe we need to rescale the audio
     wav = p.read_wav(fname)
     mel = p.mel_spectrogram(wav)
     mel = n.transform(mel)
@@ -25,33 +30,54 @@ def extract_mel_multispeaker(config, input_dir, output_dir, extension=".wav"):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     p = AudioProcessor(config.sample_rate, config.n_fft, config.win_length,
-                    config.hop_length, config.n_mels, config.fmin,
-                    config.fmax)
+                       config.hop_length, config.n_mels, config.fmin,
+                       config.fmax)
     n = LogMagnitude(1e-5)
 
     func = partial(extract_mel,
-                input_dir=input_dir,
-                output_dir=output_dir,
-                p=p,
-                n=n)
+                   input_dir=input_dir,
+                   output_dir=output_dir,
+                   p=p,
+                   n=n)
 
     with mp.Pool(16) as pool:
         list(
             tqdm.tqdm(pool.imap(func, fnames),
-                    total=len(fnames),
-                    unit="utterance"))
-
+                      total=len(fnames),
+                      unit="utterance"))
 
 
 if __name__ == "__main__":
-    audio_config = {
-        "sample_rate": 22050,
-        "n_fft": 1024,
-        "win_length": 1024,
-        "hop_length": 256,
-        "n_mels": 80,
-        "fmin": 0,
-        "fmax": 8000}
-    audio_config = CfgNode(audio_config)
-    extract_mel_multispeaker(audio_config, "~/datasets/aishell3/train/normalized_wav", "~/datasets/aishell3/train/mel")
-    
+    parser = argparse.ArgumentParser(
+        description=
+        "Extract mel spectrogram from processed wav in AiShell3 training dataset."
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="yaml config file to overwrite the default config")
+    parser.add_argument("--input",
+                        type=str,
+                        default="~/datasets/aishell3/train/normalized_wav",
+                        help="path of the processed wav folder")
+    parser.add_argument("--output",
+                        type=str,
+                        default="~/datasets/aishell3/train/mel",
+                        help="path of the folder to save mel spectrograms")
+    parser.add_argument(
+        "--opts",
+        nargs=argparse.REMAINDER,
+        help=
+        "options to overwrite --config file and the default config, passing in KEY VALUE pairs"
+    )
+    default_config = get_cfg_defaults()
+
+    args = parser.parse_args()
+    if args.config:
+        default_config.merge_from_file(args.config)
+    if args.opts:
+        default_config.merge_from_list(args.opts)
+    default_config.freeze()
+    audio_config = default_config.data
+
+    extract_mel_multispeaker(audio_config, args.input, args.output)

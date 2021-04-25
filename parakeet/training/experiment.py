@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import sys
-from collections import defaultdict
 import logging
 from pathlib import Path
-import numpy as np
 
 import paddle
 from paddle import distributed as dist
 from paddle.io import DistributedBatchSampler
 from visualdl import LogWriter
 
-import parakeet
 from parakeet.utils import checkpoint, mp_tools
 
 __all__ = ["ExperimentBase"]
