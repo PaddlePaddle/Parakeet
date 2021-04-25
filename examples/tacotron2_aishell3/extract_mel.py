@@ -1,10 +1,12 @@
 import argparse
-import numpy as np
-from pathlib import Path
-from parakeet.audio import AudioProcessor
-from parakeet.audio.spec_normalizer import NormalizerBase, LogMagnitude
 import multiprocessing as mp
 from functools import partial
+from pathlib import Path
+
+import numpy as np
+from parakeet.audio import AudioProcessor
+from parakeet.audio.spec_normalizer import NormalizerBase, LogMagnitude
+
 import tqdm
 
 from config import get_cfg_defaults
