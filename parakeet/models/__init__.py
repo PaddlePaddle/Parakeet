@@ -15,6 +15,7 @@
 #from parakeet.models.clarinet import *
 from parakeet.models.waveflow import *
 from parakeet.models.wavenet import *
+from parakeet.models.wavernn import *
 
 from parakeet.models.transformer_tts import *
 #from parakeet.models.deepvoice3 import *
