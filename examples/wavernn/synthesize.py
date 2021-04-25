@@ -49,7 +49,7 @@ if __name__ == "__main__":
     config = get_cfg_defaults()
 
     parser = argparse.ArgumentParser(
-        description="generate mel spectrogram with TransformerTTS.")
+        description="generate mel spectrogram with WaveRNN.")
     parser.add_argument(
         "--config",
         type=str,
@@ -62,7 +62,8 @@ if __name__ == "__main__":
         type=str,
         help="path of directory containing mel spectrogram (in .npy format)")
     parser.add_argument("--output", type=str, help="path to save outputs")
-    parser.add_argument("--gen_display", type=bool, default=True, help="generate display or not")
+    # parser.add_argument("--gen_display", type=bool, default=True, help="generate display or not")
+    parser.add_argument("--gen_display", action="store_true", help="generate display or not")
     parser.add_argument(
         "--device", type=str, default="cpu", help="device type to use.")
     parser.add_argument(

@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+import sys
 import numpy as np
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
-from paddle.nn import initializer as IS
 
 from parakeet.utils import checkpoint
-from parakeet.modules import geometry as geo
 from parakeet.utils.distribution import sample_from_discretized_mix_logistic
 
 from utils.audio import decode_mu_law
-from pathlib import Path
-import time
-import sys
+
 
 
 __all__ = ["WaveRNN"]

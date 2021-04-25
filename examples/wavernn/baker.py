@@ -28,7 +28,7 @@ from config import get_cfg_defaults
 
 
 class Baker(Dataset):
-    """A simple dataset adaptor for the processed ljspeech dataset."""
+    """A simple dataset adaptor for the processed baker dataset."""
 
     def __init__(self, root):
         self.root = Path(root).expanduser()

@@ -33,7 +33,7 @@ def discretized_mix_logistic_loss(y_hat, y, num_classes=65536,
 
     # B x T x 1 -> B x T x num_mixtures
     y = y.expand_as(means)
-    centered_y = paddle.cast(y, 'float32') - means
+    centered_y = paddle.cast(y, dtype=paddle.get_default_dtype()) - means
     inv_stdv = paddle.exp(-log_scales)
     plus_in = inv_stdv * (centered_y + 1. / (num_classes - 1))
     cdf_plus = F.sigmoid(plus_in)
@@ -68,18 +68,25 @@ def discretized_mix_logistic_loss(y_hat, y, num_classes=65536,
     # TODO: cdf_delta <= 1e-5 actually can happen. How can we choose the value
     # for num_classes=65536 case? 1e-7? not sure..
     inner_inner_cond = cdf_delta > 1e-5
-    inner_inner_cond = paddle.cast(inner_inner_cond, dtype='float32')
 
-    inner_inner_out = inner_inner_cond * \
-                      paddle.log(paddle.clip(cdf_delta, min=1e-12)) + \
-                      (1. - inner_inner_cond) * (log_pdf_mid - np.log((num_classes - 1) / 2))
+    inner_inner_cond = paddle.cast(inner_inner_cond, dtype=paddle.get_default_dtype())
+
+    # inner_inner_out = inner_inner_cond * \
+    #                   paddle.log(paddle.clip(cdf_delta, min=1e-12)) + \
+    #                   (1. - inner_inner_cond) * (log_pdf_mid - np.log((num_classes - 1) / 2))
+    
+    inner_inner_out = inner_inner_cond 
+                      * paddle.log(paddle.clip(cdf_delta, min=1e-12)) 
+                      + (1. - inner_inner_cond) 
+                      * (log_pdf_mid - np.log((num_classes - 1) / 2))
 
     inner_cond = y > 0.999
-    inner_cond = paddle.cast(inner_cond, dtype='float32')
+
+    inner_cond = paddle.cast(inner_cond, dtype=paddle.get_default_dtype())
 
     inner_out = inner_cond * log_one_minus_cdf_min + (1. - inner_cond) * inner_inner_out
     cond = y < -0.999
-    cond = paddle.cast(cond, dtype='float32')
+    cond = paddle.cast(cond, dtype=paddle.get_default_dtype())
 
     log_probs = cond * log_cdf_plus + (1. - cond) * inner_out
     log_probs = log_probs + F.log_softmax(logit_probs, -1)
@@ -117,7 +124,7 @@ def sample_from_discretized_mix_logistic(y, log_scale_min=None):
 
     # (B, T) -> (B, T, nr_mix)
     one_hot = F.one_hot(argmax, nr_mix)
-    one_hot = paddle.cast(one_hot, dtype='float32')
+    one_hot = paddle.cast(one_hot, dtype=paddle.get_default_dtype())
 
     # select logistic parameters
     means = paddle.sum(y[:, :, nr_mix:2 * nr_mix] * one_hot, axis=-1)
@@ -127,7 +134,7 @@ def sample_from_discretized_mix_logistic(y, log_scale_min=None):
     # we don't actually round to the nearest 8bit value when sampling
     u = paddle.uniform(means.shape, min=1e-5, max=1.0 - 1e-5)
     x = means + paddle.exp(log_scales) * (paddle.log(u) - paddle.log(1. - u))
-    x = paddle.clip(paddle.clip(x, min=-1.), max=1.)
+    x = paddle.clip(x, min=-1., max=-1.)
 
     return x
 

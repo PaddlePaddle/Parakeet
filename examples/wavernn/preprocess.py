@@ -28,6 +28,7 @@ import pandas as pd
 from paddle.io import Dataset
 from parakeet.data import batch_spec, batch_wav
 from parakeet.datasets import LJSpeechMetaData
+from parakeet.datasets import BakerMetaData
 from parakeet.audio import AudioProcessor, LogMagnitude
 from config import get_cfg_defaults
 
@@ -88,12 +89,16 @@ class Transform(object):
         return base_name, mel.shape[-1], audio.shape[-1]
 
 
-def create_dataset(config, input_dir, output_dir, n_workers, verbose=True):
+def create_dataset(config, input_dir, output_dir, n_workers, verbose=True, dataset_type="ljspeech"):
     input_dir = Path(input_dir).expanduser()
     '''
         LJSpeechMetaData.records: [filename, normalized text, speaker name(ljspeech)]
+        BakerMetaData.records: [filename, normalized text, pinyin]
     '''
-    dataset = LJSpeechMetaData(input_dir)
+    if dataset_type == 'ljspeech':
+        dataset = LJSpeechMetaData(input_dir)
+    else :
+        dataset = BakerMetaData(input_dir)
     output_dir = Path(output_dir).expanduser()
     output_dir.mkdir(exist_ok=True)
 
@@ -140,6 +145,7 @@ if __name__ == "__main__":
         "-v", "--verbose", action="store_true", help="print msg")
     parser.add_argument(
         "--num_workers", type=int, default=cpu_count()//2, help="The number of worker threads to use for preprocessing")
+    parser.add_argument("--dataset", type=str, default="ljspeech", help="The dataset to preprocess, ljspeech or baker")
 
     config = get_cfg_defaults()
     # add config.data.mode, which equals config.model.mode
@@ -153,8 +159,10 @@ if __name__ == "__main__":
     if args.verbose:
         print(config.data)
         print(args)
+    if args.dataset != "ljspeech" and args.dataset != "baker":
+        raise RuntimeError('Unknown dataset - ', args.dataset)
 
-    create_dataset(config.data, args.input, args.output, args.num_workers, args.verbose)
+    create_dataset(config.data, args.input, args.output, args.num_workers, args.verbose, args.dataset)
 
 
 
