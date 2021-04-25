@@ -13,219 +13,19 @@
 # limitations under the License.
 
 import math
-
+import numpy as np
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
-from paddle.nn import initializer as I
-from paddle.fluid.layers import sequence_mask
-
+import parakeet
 from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules.attention import LocationSensitiveAttention
-from parakeet.modules.losses import guided_attention_loss
+from parakeet.modules import masking
+from parakeet.utils import checkpoint
 from tqdm import trange
+from parakeet.models.tacotron2 import DecoderPreNet, DecoderPostNet, Tacotron2Encoder, Tacotron2Decoder, Tacotron2Loss
 
 __all__ = ["Tacotron2", "Tacotron2Loss"]
-
-
-class DecoderPreNet(nn.Layer):
-    """Decoder prenet module for Tacotron2.
-
-    Parameters
-    ----------
-    d_input: int
-        The input feature size.
-
-    d_hidden: int
-        The hidden size.
-
-    d_output: int
-        The output feature size.
-
-    dropout_rate: float
-        The droput probability.
-
-    """
-
-    def __init__(self, d_input: int, d_hidden: int, d_output: int,
-                 dropout_rate: float):
-        super().__init__()
-
-        self.dropout_rate = dropout_rate
-        self.linear1 = nn.Linear(d_input, d_hidden, bias_attr=False)
-        self.linear2 = nn.Linear(d_hidden, d_output, bias_attr=False)
-
-    def forward(self, x):
-        """Calculate forward propagation.
-
-        Parameters
-        ----------
-        x: Tensor [shape=(B, T_mel, C)]
-            Batch of the sequences of padded mel spectrogram.
-
-        Returns
-        -------
-        output: Tensor [shape=(B, T_mel, C)]
-            Batch of the sequences of padded hidden state.
-
-        """
-
-        x = F.dropout(F.relu(self.linear1(x)),
-                      self.dropout_rate,
-                      training=True)
-        output = F.dropout(F.relu(self.linear2(x)),
-                           self.dropout_rate,
-                           training=True)
-        return output
-
-
-class DecoderPostNet(nn.Layer):
-    """Decoder postnet module for Tacotron2.
-
-    Parameters
-    ----------
-    d_mels: int
-        The number of mel bands.
-
-    d_hidden: int
-        The hidden size of postnet.
-
-    kernel_size: int
-        The kernel size of the conv layer in postnet.
-
-    num_layers: int
-        The number of conv layers in postnet.
-
-    dropout: float
-        The droput probability.
-
-    """
-
-    def __init__(self, d_mels: int, d_hidden: int, kernel_size: int,
-                 num_layers: int, dropout: float):
-        super().__init__()
-        self.dropout = dropout
-        self.num_layers = num_layers
-
-        padding = int((kernel_size - 1) / 2)
-
-        self.conv_batchnorms = nn.LayerList()
-        k = math.sqrt(1.0 / (d_mels * kernel_size))
-        self.conv_batchnorms.append(
-            Conv1dBatchNorm(d_mels,
-                            d_hidden,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            bias_attr=I.Uniform(-k, k),
-                            data_format='NLC'))
-
-        k = math.sqrt(1.0 / (d_hidden * kernel_size))
-        self.conv_batchnorms.extend([
-            Conv1dBatchNorm(d_hidden,
-                            d_hidden,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            bias_attr=I.Uniform(-k, k),
-                            data_format='NLC')
-            for i in range(1, num_layers - 1)
-        ])
-
-        self.conv_batchnorms.append(
-            Conv1dBatchNorm(d_hidden,
-                            d_mels,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            bias_attr=I.Uniform(-k, k),
-                            data_format='NLC'))
-
-    def forward(self, x):
-        """Calculate forward propagation.
-
-        Parameters
-        ----------
-        x: Tensor [shape=(B, T_mel, C)]
-            Output sequence of features from decoder.
-
-        Returns
-        -------
-        output: Tensor [shape=(B, T_mel, C)]
-            Output sequence of features after postnet.
-
-        """
-
-        for i in range(len(self.conv_batchnorms) - 1):
-            x = F.dropout(F.tanh(self.conv_batchnorms[i](x)),
-                          self.dropout,
-                          training=self.training)
-        output = F.dropout(self.conv_batchnorms[self.num_layers - 1](x),
-                           self.dropout,
-                           training=self.training)
-        return output
-
-
-class Tacotron2Encoder(nn.Layer):
-    """Tacotron2 encoder module for Tacotron2.
-
-    Parameters
-    ----------
-    d_hidden: int
-        The hidden size in encoder module.
-
-    conv_layers: int
-        The number of conv layers.
-
-    kernel_size: int
-        The kernel size of conv layers.
-
-    p_dropout: float
-        The droput probability.
-    """
-
-    def __init__(self, d_hidden: int, conv_layers: int, kernel_size: int,
-                 p_dropout: float):
-        super().__init__()
-
-        k = math.sqrt(1.0 / (d_hidden * kernel_size))
-        self.conv_batchnorms = paddle.nn.LayerList([
-            Conv1dBatchNorm(d_hidden,
-                            d_hidden,
-                            kernel_size,
-                            stride=1,
-                            padding=int((kernel_size - 1) / 2),
-                            bias_attr=I.Uniform(-k, k),
-                            data_format='NLC') for i in range(conv_layers)
-        ])
-        self.p_dropout = p_dropout
-
-        self.hidden_size = int(d_hidden / 2)
-        self.lstm = nn.LSTM(d_hidden,
-                            self.hidden_size,
-                            direction="bidirectional")
-
-    def forward(self, x, input_lens=None):
-        """Calculate forward propagation of tacotron2 encoder.
-
-        Parameters
-        ----------
-        x: Tensor [shape=(B, T)]
-            Batch of the sequencees of padded character ids.
-
-        text_lens: Tensor [shape=(B,)], optional
-            Batch of lengths of each text input batch. Defaults to None.
-
-        Returns
-        -------
-        output : Tensor [shape=(B, T, C)]
-            Batch of the sequences of padded hidden states.
-
-        """
-        for conv_batchnorm in self.conv_batchnorms:
-            x = F.dropout(F.relu(conv_batchnorm(x)),
-                          self.p_dropout,
-                          training=self.training)
-
-        output, _ = self.lstm(inputs=x, sequence_length=input_lens)
-        return output
 
 
 class Tacotron2Decoder(nn.Layer):
@@ -238,7 +38,7 @@ class Tacotron2Decoder(nn.Layer):
 
     reduction_factor: int
         The reduction factor of tacotron.
-
+    
     d_encoder: int
         The hidden size of encoder.
 
@@ -250,13 +50,13 @@ class Tacotron2Decoder(nn.Layer):
 
     d_decoder_rnn: int
         The decoder rnn layer hidden size.
-
+    
     d_attention: int
         The hidden size of the linear layer in location sensitive attention.
 
     attention_filters: int
         The filter size of the conv layer in location sensitive attention.
-
+            
     attention_kernel_size: int
         The kernel size of the conv layer in location sensitive attention.
 
@@ -289,40 +89,22 @@ class Tacotron2Decoder(nn.Layer):
                                     d_prenet,
                                     dropout_rate=p_prenet_dropout)
 
-        # attention_rnn takes attention's context vector has an
-        # auxiliary input
         self.attention_rnn = nn.LSTMCell(d_prenet + d_encoder, d_attention_rnn)
 
         self.attention_layer = LocationSensitiveAttention(
             d_attention_rnn, d_encoder, d_attention, attention_filters,
             attention_kernel_size)
-
-        # decoder_rnn takes prenet's output and attention_rnn's input
-        # as input
         self.decoder_rnn = nn.LSTMCell(d_attention_rnn + d_encoder,
                                        d_decoder_rnn)
         self.linear_projection = nn.Linear(d_decoder_rnn + d_encoder,
                                            d_mels * reduction_factor)
-
-        # states - temporary attributes
-        self.attention_hidden = None
-        self.attention_cell = None
-
-        self.decoder_hidden = None
-        self.decoder_cell = None
-
-        self.attention_weights = None
-        self.attention_weights_cum = None
-        self.attention_context = None
-
-        self.key = None
-        self.mask = None
-        self.processed_key = None
+        self.stop_layer = nn.Linear(d_decoder_rnn + d_encoder, 1)
 
     def _initialize_decoder_states(self, key):
         """init states be used in decoder
         """
-        batch_size, encoder_steps, _ = key.shape
+        batch_size = key.shape[0]
+        MAX_TIME = key.shape[1]
 
         self.attention_hidden = paddle.zeros(
             shape=[batch_size, self.d_attention_rnn], dtype=key.dtype)
@@ -334,15 +116,14 @@ class Tacotron2Decoder(nn.Layer):
         self.decoder_cell = paddle.zeros(
             shape=[batch_size, self.d_decoder_rnn], dtype=key.dtype)
 
-        self.attention_weights = paddle.zeros(
-            shape=[batch_size, encoder_steps], dtype=key.dtype)
-        self.attention_weights_cum = paddle.zeros(
-            shape=[batch_size, encoder_steps], dtype=key.dtype)
+        self.attention_weights = paddle.zeros(shape=[batch_size, MAX_TIME],
+                                              dtype=key.dtype)
+        self.attention_weights_cum = paddle.zeros(shape=[batch_size, MAX_TIME],
+                                                  dtype=key.dtype)
         self.attention_context = paddle.zeros(
             shape=[batch_size, self.d_encoder], dtype=key.dtype)
 
         self.key = key  # [B, T, C]
-        # pre-compute projected keys to improve efficiency
         self.processed_key = self.attention_layer.key_layer(key)  # [B, T, C]
 
     def _decode(self, query):
@@ -350,7 +131,7 @@ class Tacotron2Decoder(nn.Layer):
         """
         cell_input = paddle.concat([query, self.attention_context], axis=-1)
 
-        # The first lstm layer (or spec encoder lstm)
+        # The first lstm layer
         _, (self.attention_hidden, self.attention_cell) = self.attention_rnn(
             cell_input, (self.attention_hidden, self.attention_cell))
         self.attention_hidden = F.dropout(self.attention_hidden,
@@ -365,7 +146,7 @@ class Tacotron2Decoder(nn.Layer):
             attention_weights_cat, self.mask)
         self.attention_weights_cum += self.attention_weights
 
-        # The second lstm layer (or spec decoder lstm)
+        # The second lstm layer
         decoder_input = paddle.concat(
             [self.attention_hidden, self.attention_context], axis=-1)
         _, (self.decoder_hidden, self.decoder_cell) = self.decoder_rnn(
@@ -379,7 +160,8 @@ class Tacotron2Decoder(nn.Layer):
             [self.decoder_hidden, self.attention_context], axis=-1)
         decoder_output = self.linear_projection(
             decoder_hidden_attention_context)
-        return decoder_output, self.attention_weights
+        stop_logit = self.stop_layer(decoder_hidden_attention_context)
+        return decoder_output, stop_logit, self.attention_weights
 
     def forward(self, keys, querys, mask):
         """Calculate forward propagation of tacotron2 decoder.
@@ -388,87 +170,101 @@ class Tacotron2Decoder(nn.Layer):
         ----------
         keys: Tensor[shape=(B, T_key, C)]
             Batch of the sequences of padded output from encoder.
-
+        
         querys: Tensor[shape(B, T_query, C)]
             Batch of the sequences of padded mel spectrogram.
-
+        
         mask: Tensor
-            Mask generated with text length. Shape should be (B, T_key, 1).
-
+            Mask generated with text length. Shape should be (B, T_key, T_query) or broadcastable shape.
+        
         Returns
         -------
         mel_output: Tensor [shape=(B, T_query, C)]
             Output sequence of features.
 
+        stop_logits: Tensor [shape=(B, T_query)]
+            Output sequence of stop logits.
+
         alignments: Tensor [shape=(B, T_query, T_key)]
             Attention weights.
         """
-        self._initialize_decoder_states(keys)
-        self.mask = mask
-
         querys = paddle.reshape(
             querys,
             [querys.shape[0], querys.shape[1] // self.reduction_factor, -1])
-        start_step = paddle.zeros(shape=[querys.shape[0], 1, querys.shape[-1]],
-                                  dtype=querys.dtype)
-        querys = paddle.concat([start_step, querys], axis=1)
-
+        querys = paddle.concat([
+            paddle.zeros(shape=[querys.shape[0], 1, querys.shape[-1]],
+                         dtype=querys.dtype), querys
+        ],
+            axis=1)
         querys = self.prenet(querys)
 
-        mel_outputs, alignments = [], []
-        # Ignore the last time step
-        while len(mel_outputs) < querys.shape[1] - 1:
+        self._initialize_decoder_states(keys)
+        self.mask = mask
+
+        mel_outputs, stop_logits, alignments = [], [], []
+        while len(mel_outputs
+                  ) < querys.shape[1] - 1:  # Ignore the last time step
             query = querys[:, len(mel_outputs), :]
-            mel_output, attention_weights = self._decode(query)
-            mel_outputs.append(mel_output)
-            alignments.append(attention_weights)
+            mel_output, stop_logit, attention_weights = self._decode(query)
+            mel_outputs += [mel_output]
+            stop_logits += [stop_logit]
+            alignments += [attention_weights]
 
         alignments = paddle.stack(alignments, axis=1)
+        stop_logits = paddle.concat(stop_logits, axis=1)
         mel_outputs = paddle.stack(mel_outputs, axis=1)
 
-        return mel_outputs, alignments
+        return mel_outputs, stop_logits, alignments
 
-    def infer(self, key, max_decoder_steps=1000):
+    def infer(self, key, stop_threshold=0.5, max_decoder_steps=1000):
         """Calculate forward propagation of tacotron2 decoder.
 
         Parameters
         ----------
         keys: Tensor [shape=(B, T_key, C)]
             Batch of the sequences of padded output from encoder.
-
+        
+        stop_threshold: float, optional
+            Stop synthesize when stop logit is greater than this stop threshold. Defaults to 0.5.
+        
         max_decoder_steps: int, optional
             Number of max step when synthesize. Defaults to 1000.
-
+        
         Returns
         -------
         mel_output: Tensor [shape=(B, T_mel, C)]
             Output sequence of features.
 
+        stop_logits: Tensor [shape=(B, T_mel)]
+            Output sequence of stop logits.
+
         alignments: Tensor [shape=(B, T_mel, T_key)]
             Attention weights.
 
         """
-        self._initialize_decoder_states(key)
-        self.mask = None  # mask is not needed for single instance inference
-        encoder_steps = key.shape[1]
-
-        # [B, C]
-        start_step = paddle.zeros(
+        query = paddle.zeros(
             shape=[key.shape[0], self.d_mels * self.reduction_factor],
-            dtype=key.dtype)
-        query = start_step  # [B, C]
+            dtype=key.dtype)  # [B, C]
+
+        self._initialize_decoder_states(key)
+        T_enc = key.shape[1]
+        self.mask = None
         first_hit_end = None
 
-        mel_outputs, alignments = [], []
+        mel_outputs, stop_logits, alignments = [], [], []
         for i in trange(max_decoder_steps):
             query = self.prenet(query)
-            mel_output, alignment = self._decode(query)
+            mel_output, stop_logit, alignment = self._decode(query)
 
-            mel_outputs.append(mel_output)
-            alignments.append(alignment)  # (B=1, T)
+            mel_outputs += [mel_output]
+            stop_logits += [stop_logit]
+            alignments += [alignment]
 
-            if int(paddle.argmax(alignment[0])) == encoder_steps - 1:
-                if first_hit_end is None:
+            if F.sigmoid(stop_logit) > stop_threshold:
+                print("hits stop condition!")
+                break
+            if int(paddle.argmax(alignment[0])) == T_enc - 1:
+                if (first_hit_end is None):
                     first_hit_end = i
             if first_hit_end is not None and i > (first_hit_end + 10):
                 print("content exhausted!")
@@ -480,17 +276,18 @@ class Tacotron2Decoder(nn.Layer):
             query = mel_output
 
         alignments = paddle.stack(alignments, axis=1)
+        stop_logits = paddle.concat(stop_logits, axis=1)
         mel_outputs = paddle.stack(mel_outputs, axis=1)
 
-        return mel_outputs, alignments
+        return mel_outputs, stop_logits, alignments
 
 
 class Tacotron2(nn.Layer):
     """Tacotron2 model for end-to-end text-to-speech (E2E-TTS).
 
     This is a model of Spectrogram prediction network in Tacotron2 described
-    in `Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram
-    Predictions <https://arxiv.org/abs/1712.05884>`_,
+    in `Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions 
+    <https://arxiv.org/abs/1712.05884>`_,
     which converts the sequence of characters
     into the sequence of mel spectrogram.
 
@@ -501,10 +298,10 @@ class Tacotron2(nn.Layer):
 
     d_mels: int
         Number of mel bands.
-
+    
     d_encoder: int
         Hidden size in encoder module.
-
+    
     encoder_conv_layers: int
         Number of conv layers in encoder.
 
@@ -522,7 +319,7 @@ class Tacotron2(nn.Layer):
 
     attention_filters: int
         Filter size of the conv layer in location sensitive attention.
-
+            
     attention_kernel_size: int
         Kernel size of the conv layer in location sensitive attention.
 
@@ -559,8 +356,7 @@ class Tacotron2(nn.Layer):
     """
 
     def __init__(self,
-                 vocab_size,
-                 n_tones=None,
+                 frontend: parakeet.frontend.Phonetics,
                  d_mels: int = 80,
                  d_encoder: int = 512,
                  encoder_conv_layers: int = 3,
@@ -580,28 +376,31 @@ class Tacotron2(nn.Layer):
                  p_attention_dropout: float = 0.1,
                  p_decoder_dropout: float = 0.1,
                  p_postnet_dropout: float = 0.5,
-                 d_global_condition=None):
+                 n_tones=None,
+                 speaker_embed_dim=None):
         super().__init__()
 
-        std = math.sqrt(2.0 / (vocab_size + d_encoder))
+        self.frontend = frontend
+        std = math.sqrt(2.0 / (self.frontend.vocab_size + d_encoder))
         val = math.sqrt(3.0) * std  # uniform bounds for std
-        self.embedding = nn.Embedding(vocab_size,
-                                      d_encoder,
-                                      weight_attr=I.Uniform(-val, val))
+        self.embedding = nn.Embedding(
+            self.frontend.vocab_size,
+            d_encoder,
+            weight_attr=paddle.ParamAttr(
+                initializer=nn.initializer.Uniform(low=-val, high=val)))
         if n_tones:
-            self.embedding_tones = nn.Embedding(n_tones,
-                                                d_encoder,
-                                                padding_idx=0,
-                                                weight_attr=I.Uniform(
-                                                    -0.1 * val, 0.1 * val))
+            self.embedding_tones = nn.Embedding(
+                n_tones,
+                d_encoder,
+                padding_idx=0,
+                weight_attr=paddle.ParamAttr(
+                    initializer=nn.initializer.Uniform(low=-0.1 * val,
+                                                       high=0.1 * val)))
         self.toned = n_tones is not None
-
         self.encoder = Tacotron2Encoder(d_encoder, encoder_conv_layers,
                                         encoder_kernel_size, p_encoder_dropout)
-
-        # input augmentation scheme: concat global condition to the encoder output
-        if d_global_condition is not None:
-            d_encoder += d_global_condition
+        if speaker_embed_dim:
+            d_encoder += speaker_embed_dim
         self.decoder = Tacotron2Decoder(
             d_mels, reduction_factor, d_encoder, d_prenet, d_attention_rnn,
             d_decoder_rnn, d_attention, attention_filters,
@@ -615,31 +414,31 @@ class Tacotron2(nn.Layer):
 
     def forward(self,
                 text_inputs,
-                text_lens,
                 mels,
+                text_lens,
                 output_lens=None,
                 tones=None,
-                global_condition=None):
+                utterance_embeds=None):
         """Calculate forward propagation of tacotron2.
 
         Parameters
         ----------
         text_inputs: Tensor [shape=(B, T_text)]
             Batch of the sequencees of padded character ids.
-
+        
         mels: Tensor [shape(B, T_mel, C)]
             Batch of the sequences of padded mel spectrogram.
-
+        
         text_lens: Tensor [shape=(B,)]
             Batch of lengths of each text input batch.
-
+        
         output_lens: Tensor [shape=(B,)], optional
             Batch of lengths of each mels batch. Defaults to None.
-
+        
         Returns
         -------
         outputs : Dict[str, Tensor]
-
+            
             mel_output: output sequence of features (B, T_mel, C);
 
             mel_outputs_postnet: output sequence of features after postnet (B, T_mel, C);
@@ -651,34 +450,38 @@ class Tacotron2(nn.Layer):
         embedded_inputs = self.embedding(text_inputs)
         if self.toned:
             embedded_inputs += self.embedding_tones(tones)
-
+            # embedded_inputs = paddle.concat([embedded_inputs, self.embedding_tones(tones)], -1)
         encoder_outputs = self.encoder(embedded_inputs, text_lens)
-
-        if global_condition is not None:
-            global_condition = global_condition.unsqueeze(1)
-            global_condition = paddle.expand(
-                global_condition, [-1, encoder_outputs.shape[1], -1])
+        if utterance_embeds is not None:
+            utterance_embeds = paddle.unsqueeze(utterance_embeds, 1)
+            utterance_embeds = paddle.expand(
+                utterance_embeds, [-1, encoder_outputs.shape[1], -1])
             encoder_outputs = paddle.concat(
-                [encoder_outputs, global_condition], -1)
+                [encoder_outputs, utterance_embeds], -1)
 
-        # [B, T_enc, 1]
-        mask = sequence_mask(text_lens,
-                             dtype=encoder_outputs.dtype).unsqueeze(-1)
-        mel_outputs, alignments = self.decoder(encoder_outputs,
-                                               mels,
-                                               mask=mask)
+        mask = paddle.tensor.unsqueeze(
+            paddle.fluid.layers.sequence_mask(x=text_lens,
+                                              dtype=encoder_outputs.dtype),
+            [-1])
+        mel_outputs, stop_logits, alignments = self.decoder(encoder_outputs,
+                                                            mels,
+                                                            mask=mask)
 
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         if output_lens is not None:
-            # [B, T_dec, 1]
-            mask = sequence_mask(output_lens).unsqueeze(-1)
+            mask = paddle.tensor.unsqueeze(
+                paddle.fluid.layers.sequence_mask(x=output_lens),
+                [-1])  # [B, T, 1]
             mel_outputs = mel_outputs * mask  # [B, T, C]
             mel_outputs_postnet = mel_outputs_postnet * mask  # [B, T, C]
+            stop_logits = stop_logits * mask[:, :, 0] + (
+                1 - mask[:, :, 0]) * 1e3  # [B, T]
         outputs = {
             "mel_output": mel_outputs,
             "mel_outputs_postnet": mel_outputs_postnet,
+            "stop_logits": stop_logits,
             "alignments": alignments
         }
 
@@ -687,19 +490,23 @@ class Tacotron2(nn.Layer):
     @paddle.no_grad()
     def infer(self,
               text_inputs,
+              stop_threshold=0.5,
               max_decoder_steps=1000,
               tones=None,
-              global_condition=None):
+              utterance_embeds=None):
         """Generate the mel sepctrogram of features given the sequences of character ids.
 
         Parameters
         ----------
         text_inputs: Tensor [shape=(B, T_text)]
             Batch of the sequencees of padded character ids.
-
+        
+        stop_threshold: float, optional
+            Stop synthesize when stop logit is greater than this stop threshold. Defaults to 0.5.
+        
         max_decoder_steps: int, optional
             Number of max step when synthesize. Defaults to 1000.
-
+        
         Returns
         -------
         outputs : Dict[str, Tensor]
@@ -717,14 +524,17 @@ class Tacotron2(nn.Layer):
             embedded_inputs += self.embedding_tones(tones)
         encoder_outputs = self.encoder(embedded_inputs)
 
-        if global_condition is not None:
-            global_condition = global_condition.unsqueeze(1)
-            global_condition = paddle.expand(
-                global_condition, [-1, encoder_outputs.shape[1], -1])
+        if utterance_embeds is not None:
+            utterance_embeds = paddle.unsqueeze(utterance_embeds, 1)
+            utterance_embeds = paddle.expand(
+                utterance_embeds, [-1, encoder_outputs.shape[1], -1])
             encoder_outputs = paddle.concat(
-                [encoder_outputs, global_condition], -1)
-        mel_outputs, alignments = self.decoder.infer(
-            encoder_outputs, max_decoder_steps=max_decoder_steps)
+                [encoder_outputs, utterance_embeds], -1)
+
+        mel_outputs, stop_logits, alignments = self.decoder.infer(
+            encoder_outputs,
+            stop_threshold=stop_threshold,
+            max_decoder_steps=max_decoder_steps)
 
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
@@ -732,56 +542,8 @@ class Tacotron2(nn.Layer):
         outputs = {
             "mel_output": mel_outputs,
             "mel_outputs_postnet": mel_outputs_postnet,
+            "stop_logits": stop_logits,
             "alignments": alignments
         }
 
         return outputs
-
-
-class Tacotron2Loss(nn.Layer):
-    """ Tacotron2 Loss module
-    """
-
-    def __init__(self, sigma=0.2):
-        super().__init__()
-        self.spec_criterion = nn.MSELoss()
-        self.attn_criterion = guided_attention_loss
-        self.sigma = sigma
-
-    def forward(self, mel_outputs, mel_outputs_postnet, mel_targets,
-                attention_weights, slens, plens):
-        """Calculate tacotron2 loss.
-
-        Parameters
-        ----------
-        mel_outputs: Tensor [shape=(B, T_mel, C)]
-            Output mel spectrogram sequence.
-
-        mel_outputs_postnet: Tensor [shape(B, T_mel, C)]
-            Output mel spectrogram sequence after postnet.
-
-        mel_targets: Tensor [shape=(B, T_mel, C)]
-            Target mel spectrogram sequence.
-
-        Returns
-        -------
-        losses : Dict[str, Tensor]
-
-            loss: the sum of the other three losses;
-
-            mel_loss: MSE loss compute by mel_targets and mel_outputs;
-
-            post_mel_loss: MSE loss compute by mel_targets and mel_outputs_postnet;
-        """
-        mel_loss = self.spec_criterion(mel_outputs, mel_targets)
-        post_mel_loss = self.spec_criterion(mel_outputs_postnet, mel_targets)
-        gal_loss = self.attn_criterion(attention_weights, slens, plens,
-                                       self.sigma)
-        total_loss = mel_loss + post_mel_loss + gal_loss
-        losses = {
-            "loss": total_loss,
-            "mel_loss": mel_loss,
-            "post_mel_loss": post_mel_loss,
-            "guided_attn_loss": gal_loss
-        }
-        return losses

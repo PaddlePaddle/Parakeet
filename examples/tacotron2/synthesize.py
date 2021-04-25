@@ -29,7 +29,7 @@ def main(config, args):
 
     # model
     frontend = EnglishCharacter()
-    model = Tacotron2.from_pretrained(frontend, config, args.checkpoint_path)
+    model = Tacotron2.from_pretrained(config, args.checkpoint_path)
     model.eval()
 
     # inputs
@@ -44,8 +44,10 @@ def main(config, args):
     output_dir.mkdir(exist_ok=True)
 
     for i, sentence in enumerate(sentences):
+        sentence = paddle.to_tensor(frontend(sentence)).unsqueeze(0)
+        
         mel_output, _ = model.predict(sentence)
-        mel_output = mel_output.T
+        mel_output = mel_output["mel_outputs_postnet"][0].numpy().T
 
         np.save(str(output_dir / f"sentence_{i}"), mel_output)
         if args.verbose:

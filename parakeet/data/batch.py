@@ -65,7 +65,7 @@ def batch_text_id(minibatch, pad_id=0, dtype=np.int64):
                    mode='constant',
                    constant_values=pad_id))
 
-    return np.array(batch, dtype=dtype)
+    return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)
 
 
 class WavBatcher(object):
@@ -106,7 +106,7 @@ def batch_wav(minibatch, pad_value=0., dtype=np.float32):
             np.pad(example, [(0, pad_len)],
                    mode='constant',
                    constant_values=pad_value))
-    return np.array(batch, dtype=dtype)
+    return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)
 
 
 class SpecBatcher(object):
@@ -160,4 +160,4 @@ def batch_spec(minibatch, pad_value=0., time_major=False, dtype=np.float32):
                 np.pad(example, [(0, 0), (0, pad_len)],
                        mode='constant',
                        constant_values=pad_value))
-    return np.array(batch, dtype=dtype)
+    return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)

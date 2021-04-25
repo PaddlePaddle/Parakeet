@@ -23,7 +23,8 @@ _C.data = CN(
         n_fft=1024,  # fft frame size
         win_length=1024,  # window size
         hop_length=256,  # hop size between ajacent frame
-        f_max=8000,  # Hz, max frequency when converting to mel
+        fmin=0,
+        fmax=8000,  # Hz, max frequency when converting to mel
         n_mels=80,  # mel bands
         clip_frames=65,  # mel clip frames
     ))

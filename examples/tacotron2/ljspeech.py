@@ -86,21 +86,15 @@ class LJSpeechCollector(object):
             for i, _ in sorted(
                 zip(mel_lens, text_lens), key=lambda x: x[1], reverse=True)
         ]
+        mel_lens = np.array(mel_lens, dtype=np.int64)
 
-        stop_tokens = [
-            i
-            for i, _ in sorted(
-                zip(stop_tokens, text_lens), key=lambda x: x[1], reverse=True)
-        ]
 
-        text_lens = sorted(text_lens, reverse=True)
+        text_lens = np.array(sorted(text_lens, reverse=True), dtype=np.int64)
 
         # Pad sequence with largest len of the batch
-        texts = batch_text_id(texts, pad_id=self.padding_idx)
-        mels = np.transpose(
+        texts, _ = batch_text_id(texts, pad_id=self.padding_idx)
+        mels, _ = np.transpose(
             batch_spec(
                 mels, pad_value=self.padding_value), axes=(0, 2, 1))
-        stop_tokens = batch_text_id(
-            stop_tokens, pad_id=self.padding_stop_token, dtype=mels[0].dtype)
 
-        return (texts, mels, text_lens, mel_lens, stop_tokens)
+        return texts, mels, text_lens, mel_lens
