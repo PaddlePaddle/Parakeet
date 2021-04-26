@@ -34,14 +34,18 @@ from ljspeech import LJSpeech, LJSpeechCollector
 
 class Experiment(ExperimentBase):
     def compute_losses(self, inputs, outputs):
-        _, mel_targets, plens, slens, stop_tokens = inputs
+        texts, mel_targets, plens, slens = inputs
 
         mel_outputs = outputs["mel_output"]
         mel_outputs_postnet = outputs["mel_outputs_postnet"]
         attention_weight = outputs["alignments"]
+        if self.config.model.use_stop_token:
+            stop_logits = outputs["stop_logits"]
+        else:
+            stop_logits = None
 
         losses = self.criterion(mel_outputs, mel_outputs_postnet, mel_targets,
-                                attention_weight, slens, plens)
+                                attention_weight, slens, plens, stop_logits)
         return losses
 
     def train_batch(self):
@@ -52,7 +56,7 @@ class Experiment(ExperimentBase):
         self.optimizer.clear_grad()
         self.model.train()
         texts, mels, text_lens, output_lens = batch
-        outputs = self.model(texts, mels, text_lens, output_lens)
+        outputs = self.model(texts, text_lens, mels, output_lens)
         losses = self.compute_losses(batch, outputs)
         loss = losses["loss"]
         loss.backward()
@@ -80,7 +84,7 @@ class Experiment(ExperimentBase):
         valid_losses = defaultdict(list)
         for i, batch in enumerate(self.valid_loader):
             texts, mels, text_lens, output_lens = batch
-            outputs = self.model(texts, mels, text_lens, output_lens)
+            outputs = self.model(texts, text_lens, mels, output_lens)
             losses = self.compute_losses(batch, outputs)
             for k, v in losses.items():
                 valid_losses[k].append(float(v))
@@ -88,7 +92,7 @@ class Experiment(ExperimentBase):
             attention_weights = outputs["alignments"]
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_alignments",
-                display.plot_alignment(attention_weights[0].numpy()),
+                display.plot_alignment(attention_weights[0].numpy().T),
                 self.iteration)
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_target_spectrogram",
@@ -114,9 +118,8 @@ class Experiment(ExperimentBase):
 
     def setup_model(self):
         config = self.config
-        frontend = EnglishCharacter()
         model = Tacotron2(
-            frontend,
+            vocab_size=config.model.vocab_size,
             d_mels=config.data.d_mels,
             d_encoder=config.model.d_encoder,
             encoder_conv_layers=config.model.encoder_conv_layers,
@@ -135,7 +138,8 @@ class Experiment(ExperimentBase):
             p_prenet_dropout=config.model.p_prenet_dropout,
             p_attention_dropout=config.model.p_attention_dropout,
             p_decoder_dropout=config.model.p_decoder_dropout,
-            p_postnet_dropout=config.model.p_postnet_dropout)
+            p_postnet_dropout=config.model.p_postnet_dropout,
+            use_stop_token=config.model.use_stop_token)
 
         if self.parallel:
             model = paddle.DataParallel(model)
@@ -148,7 +152,10 @@ class Experiment(ExperimentBase):
             weight_decay=paddle.regularizer.L2Decay(
                 config.training.weight_decay),
             grad_clip=grad_clip)
-        criterion = Tacotron2Loss(config.mode.guided_attn_loss_sigma)
+        criterion = Tacotron2Loss(
+            use_stop_token_loss=config.model.use_stop_token,
+            use_guided_attention_loss=config.model.use_guided_attention_loss,
+            sigma=config.model.guided_attention_loss_sigma)
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion

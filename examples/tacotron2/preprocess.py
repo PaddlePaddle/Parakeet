@@ -39,8 +39,8 @@ def create_dataset(config, source_path, target_path, verbose=False):
                                n_mels=config.data.d_mels,
                                win_length=config.data.win_length,
                                hop_length=config.data.hop_length,
-                               f_max=config.data.f_max,
-                               f_min=config.data.f_min)
+                               f_max=config.data.fmax,
+                               f_min=config.data.fmin)
     normalizer = LogMagnitude()
 
     records = []

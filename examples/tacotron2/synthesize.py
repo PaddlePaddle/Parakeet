@@ -20,6 +20,8 @@ import paddle
 import parakeet
 from parakeet.frontend import EnglishCharacter
 from parakeet.models.tacotron2 import Tacotron2
+from parakeet.utils import display
+from matplotlib import pyplot as plt
 
 from config import get_cfg_defaults
 
@@ -46,10 +48,13 @@ def main(config, args):
     for i, sentence in enumerate(sentences):
         sentence = paddle.to_tensor(frontend(sentence)).unsqueeze(0)
         
-        mel_output, _ = model.predict(sentence)
-        mel_output = mel_output["mel_outputs_postnet"][0].numpy().T
+        outputs = model.infer(sentence)
+        mel_output = outputs["mel_outputs_postnet"][0].numpy().T
+        alignment = outputs["alignments"][0].numpy().T
 
         np.save(str(output_dir / f"sentence_{i}"), mel_output)
+        display.plot_alignment(alignment)
+        plt.savefig(str(output_dir / f"sentence_{i}.png"))
         if args.verbose:
             print("spectrogram saved at {}".format(output_dir /
                                                    f"sentence_{i}.npy"))

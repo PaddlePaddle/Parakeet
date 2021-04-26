@@ -23,8 +23,8 @@ _C.data = CN(
         n_fft=1024,  # fft frame size
         win_length=1024,  # window size
         hop_length=256,  # hop size between ajacent frame
-        f_max=8000,  # Hz, max frequency when converting to mel
-        f_min=0,  # Hz, min frequency when converting to mel
+        fmax=8000,  # Hz, max frequency when converting to mel
+        fmin=0,  # Hz, min frequency when converting to mel
         d_mels=80,  # mel bands
         padding_idx=0,  # text embedding's padding index
     ))
@@ -50,7 +50,9 @@ _C.model = CN(
         p_attention_dropout=0.1,  # droput probability of first rnn layer in decoder
         p_decoder_dropout=0.1,  # droput probability of second rnn layer in decoder
         p_postnet_dropout=0.5,  # droput probability in decoder postnet
-        guided_attn_loss_sigma=0.2  # sigma in guided attention loss
+        use_stop_token=True,  # wherther to use binary classifier to predict when to stop
+        use_guided_attention_loss=False, # whether to use guided attention loss
+        guided_attention_loss_sigma=0.2  # sigma in guided attention loss
     ))
 
 _C.training = CN(
