@@ -561,22 +561,6 @@ class TransformerTTS(nn.Layer):
         }
         return outputs
 
-    @paddle.no_grad()
-    def predict(self, input, max_length=1000, verbose=True):
-        if verbose:
-            print(input)
-            print(self.frontend.phoneticize(input))
-        text_ids = paddle.to_tensor(self.frontend(input))
-        input = paddle.unsqueeze(text_ids, 0)  # (1, T)
-        outputs = self.infer(input, max_length=max_length, verbose=verbose)
-        npy_outputs = {
-            "mel_output": outputs["mel_output"][0].numpy(),
-            "encoder_attention_weights": [item[0].numpy() for item in outputs["encoder_attention_weights"]],
-            "cross_attention_weights": [item[0].numpy() for item in outputs["cross_attention_weights"]],
-        }
-        
-        return npy_outputs
-
     def set_constants(self, reduction_factor, drop_n_heads):
         self.r = reduction_factor
         self.drop_n_heads = drop_n_heads

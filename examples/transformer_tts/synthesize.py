@@ -25,12 +25,12 @@ from parakeet.frontend import English
 from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.utils import scheduler
 from parakeet.training.cli import default_argument_parser
-# from parakeet.utils.display import add_attention_plots, pack_attention_images
+from parakeet.utils import display
 
 from config import get_cfg_defaults
 
 
-@paddle.fluid.dygraph.no_grad
+@paddle.no_grad()
 def main(config, args):
     paddle.set_device(args.device)
 
@@ -49,16 +49,20 @@ def main(config, args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for i, sentence in enumerate(sentences):
-        outputs = model.predict(sentence, verbose=args.verbose)
-        mel_output = outputs["mel_output"]
+        if args.verbose:
+            print("text: ", sentence)
+            print("phones: ", frontend.phoneticize(sentence))
+        text_ids = paddle.to_tensor(frontend(sentence))
+        input = paddle.unsqueeze(text_ids, 0)  # (1, T)
+
+        with paddle.no_grad():
+            outputs = model.infer(input, verbose=args.verbose)
+
+        mel_output = outputs["mel_output"][0].numpy()
         cross_attention_weights = outputs["cross_attention_weights"]
-        attns = [attn for attn in cross_attention_weights]
-        
-        fig = plt.figure(figsize=(40, 40))
-        for j, attn in enumerate(attns):
-            plt.subplot(1, 4, j+1)
-            plt.imshow(attn[0])
-        plt.tight_layout()
+        attns = np.stack([attn[0].numpy() for attn in cross_attention_weights])
+        attns = np.transpose(attns, [0, 1, 3, 2])
+        fig = display.plot_multilayer_multihead_alignments(attns)
         plt.savefig(str(output_dir / f"sentence_{i}.png"))
 
         mel_output = mel_output.T  #(C, T)

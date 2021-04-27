@@ -169,6 +169,7 @@ class Experiment(ExperimentBase):
     @mp_tools.rank_zero_only
     @paddle.no_grad()
     def valid(self):
+        self.model.eval()
         valid_losses = defaultdict(list)
         for i, batch in enumerate(self.valid_loader):
             text, mel, stop_label = batch
@@ -179,10 +180,13 @@ class Experiment(ExperimentBase):
 
             if i < 2:
                 attention_weights = outputs["cross_attention_weights"]
-                display.add_multi_attention_plots(
-                    self.visualizer,
+                attention_weights = [np.transpose(item[0].numpy(), [0, 2, 1]) for item in attention_weights]
+                attention_weights = np.stack(attention_weights)
+                self.visualizer.add_figure(
                     f"valid_sentence_{i}_cross_attention_weights",
-                    attention_weights, self.iteration)
+                    display.plot_multilayer_multihead_alignments(attention_weights),
+                    self.iteration)
+
 
         # write visual log
         valid_losses = {k: np.mean(v) for k, v in valid_losses.items()}
