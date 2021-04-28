@@ -14,14 +14,14 @@
 
 import argparse
 from pathlib import Path
-import numpy as np
 
 import paddle
-import parakeet
+import numpy as np
+from matplotlib import pyplot as plt
+
 from parakeet.frontend import EnglishCharacter
 from parakeet.models.tacotron2 import Tacotron2
 from parakeet.utils import display
-from matplotlib import pyplot as plt
 
 from config import get_cfg_defaults
 
@@ -47,7 +47,7 @@ def main(config, args):
 
     for i, sentence in enumerate(sentences):
         sentence = paddle.to_tensor(frontend(sentence)).unsqueeze(0)
-        
+
         outputs = model.infer(sentence)
         mel_output = outputs["mel_outputs_postnet"][0].numpy().T
         alignment = outputs["alignments"][0].numpy().T
@@ -65,24 +65,29 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="generate mel spectrogram with TransformerTTS.")
-    parser.add_argument(
-        "--config",
-        type=str,
-        metavar="FILE",
-        help="extra config to overwrite the default config")
-    parser.add_argument(
-        "--checkpoint_path", type=str, help="path of the checkpoint to load.")
+    parser.add_argument("--config",
+                        type=str,
+                        metavar="FILE",
+                        help="extra config to overwrite the default config")
+    parser.add_argument("--checkpoint_path",
+                        type=str,
+                        help="path of the checkpoint to load.")
     parser.add_argument("--input", type=str, help="path of the text sentences")
     parser.add_argument("--output", type=str, help="path to save outputs")
-    parser.add_argument(
-        "--device", type=str, default="cpu", help="device type to use.")
+    parser.add_argument("--device",
+                        type=str,
+                        default="cpu",
+                        help="device type to use.")
     parser.add_argument(
         "--opts",
         nargs=argparse.REMAINDER,
-        help="options to overwrite --config file and the default config, passing in KEY VALUE pairs"
+        help=
+        "options to overwrite --config file and the default config, passing in KEY VALUE pairs"
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="print msg")
+    parser.add_argument("-v",
+                        "--verbose",
+                        action="store_true",
+                        help="print msg")
 
     args = parser.parse_args()
     if args.config:

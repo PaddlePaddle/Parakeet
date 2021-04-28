@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+
 import numpy as np
 from paddle.io import Dataset
 from parakeet.frontend import Vocab
@@ -48,6 +49,7 @@ def collate_aishell3_examples(examples):
 
     text_lengths = np.array([item.shape[0] for item in phones], dtype=np.int64)
     spec_lengths = np.array([item.shape[1] for item in mel], dtype=np.int64)
+    T_dec = np.max(spec_lengths)
     stop_tokens = (np.arange(T_dec) >= np.expand_dims(spec_lengths,
                                                       -1)).astype(np.float32)
     phones, _ = batch_text_id(phones)

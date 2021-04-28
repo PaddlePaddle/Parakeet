@@ -1,10 +1,13 @@
-import numpy as np
-from pathlib import Path
-import multiprocessing as mp
-from audio_processor import SpeakerVerificationPreprocessor
-from tqdm import tqdm
 from functools import partial
 from typing import List
+from pathlib import Path
+import multiprocessing as mp
+
+import numpy as np
+from tqdm import tqdm
+
+from audio_processor import SpeakerVerificationPreprocessor
+
 
 def _process_utterance(path_pair, processor: SpeakerVerificationPreprocessor):
     # Load and preprocess the waveform
@@ -22,11 +25,11 @@ def _process_utterance(path_pair, processor: SpeakerVerificationPreprocessor):
 
 
 def _process_speaker(speaker_dir: Path,
-                     processor,
+                     processor: SpeakerVerificationPreprocessor,
                      datasets_root: Path,
                      output_dir: Path,
                      pattern: str,
-                     skip_existing:bool=False):
+                     skip_existing: bool = False):
     # datastes root: a reference path to compute speaker_name
     # we prepand dataset name to speaker_id becase we are mixing serveal
     # multispeaker datasets together
@@ -47,7 +50,8 @@ def _process_speaker(speaker_dir: Path,
 
     sources_file = sources_fpath.open("at" if skip_existing else "wt")
     for in_fpath in speaker_dir.rglob(pattern):
-        out_name = "_".join(in_fpath.relative_to(speaker_dir).with_suffix(".npy").parts)
+        out_name = "_".join(
+            in_fpath.relative_to(speaker_dir).with_suffix(".npy").parts)
         if skip_existing and out_name in existing_names:
             continue
         out_fpath = speaker_output_dir / out_name
@@ -57,14 +61,16 @@ def _process_speaker(speaker_dir: Path,
     sources_file.close()
 
 
-def _process_dataset(processor,
+def _process_dataset(processor: SpeakerVerificationPreprocessor,
                      datasets_root: Path,
                      speaker_dirs: List[Path],
                      dataset_name: str,
                      output_dir: Path,
                      pattern: str,
-                     skip_existing: bool =False):
-    print(f"{dataset_name}: Preprocessing data for {len(speaker_dirs)} speakers.")
+                     skip_existing: bool = False):
+    print(
+        f"{dataset_name}: Preprocessing data for {len(speaker_dirs)} speakers."
+    )
 
     _func = partial(_process_speaker,
                     processor=processor,
@@ -114,15 +120,14 @@ def process_voxceleb1(processor,
         if nationality.lower() in anglophone_nationalites
     ]
     print(
-        "VoxCeleb1: using samples from {} (presumed anglophone) speakers out of {}.".format(
-        len(keep_speaker_ids), len(nationalities)))
+        "VoxCeleb1: using samples from {} (presumed anglophone) speakers out of {}."
+        .format(len(keep_speaker_ids), len(nationalities)))
 
     speaker_dirs = list((dataset_root / "wav").glob("*"))
     speaker_dirs = [
         speaker_dir for speaker_dir in speaker_dirs
         if speaker_dir.name in keep_speaker_ids
     ]
-    # TODO: filter ansa
     _process_dataset(processor, datasets_root, speaker_dirs, dataset_name,
                      output_dir, "*.wav", skip_existing)
 
@@ -138,10 +143,11 @@ def process_voxceleb2(processor,
     _process_dataset(processor, datasets_root, speaker_dirs, dataset_name,
                      output_dir, "*.wav", skip_existing)
 
+
 def process_aidatatang_200zh(processor,
-                      datasets_root,
-                      output_dir,
-                      skip_existing=False):
+                             datasets_root,
+                             output_dir,
+                             skip_existing=False):
     dataset_name = "aidatatang_200zh/train"
     dataset_root = datasets_root / dataset_name
 

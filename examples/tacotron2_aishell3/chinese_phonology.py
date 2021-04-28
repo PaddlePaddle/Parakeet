@@ -8,12 +8,8 @@ import re
 # initials for mandarin chinese
 # zero initials are not included
 _initials = {
-    "b", "p", "m", "f",
-    "d", "t", "n", "l",
-    "g", "k", "h",
-    "j", "q", "x",
-    "zh", "ch", "sh", "r",
-    "z", "c", "s"
+    "b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "zh",
+    "ch", "sh", "r", "z", "c", "s"
 }
 
 # finals for mandarin chines
@@ -25,10 +21,46 @@ _initials = {
 # e,g, in -> ien, ong -> ueng, iong -> veng
 # üis  always replaced by v
 _finals = {
-    'ii', 'iii', 'a', 'o', 'e', 'ea', 'ai', 'ei', 'ao', 'ou', 'an', 'en', 'ang', 'eng', 'er',
-    'i', 'ia', 'io', 'ie', 'iai', 'iao', 'iou', 'ian', 'ien', 'iang', 'ieng',
-    'u', 'ua', 'uo', 'uai', 'uei', 'uan', 'uen', 'uang', 'ueng',
-    'v', 've', 'van', 'ven', 'veng',
+    'ii',
+    'iii',
+    'a',
+    'o',
+    'e',
+    'ea',
+    'ai',
+    'ei',
+    'ao',
+    'ou',
+    'an',
+    'en',
+    'ang',
+    'eng',
+    'er',
+    'i',
+    'ia',
+    'io',
+    'ie',
+    'iai',
+    'iao',
+    'iou',
+    'ian',
+    'ien',
+    'iang',
+    'ieng',
+    'u',
+    'ua',
+    'uo',
+    'uai',
+    'uei',
+    'uan',
+    'uen',
+    'uang',
+    'ueng',
+    'v',
+    've',
+    'van',
+    'ven',
+    'veng',
 }
 
 # Er hua symbol
@@ -36,7 +68,8 @@ _finals = {
 _ernized_symbol = {'&r'}
 
 _specials = {'<pad>', '<unk>'}
-_pauses = {"%", "$"} # for different dataset, maybe you have to change this set
+_pauses = {"%",
+           "$"}  # for different dataset, maybe you have to change this set
 
 _phones = _initials | _finals | _ernized_symbol | _specials | _pauses
 
@@ -47,11 +80,12 @@ _phones = _initials | _finals | _ernized_symbol | _specials | _pauses
 # <unk>: special token for unknown tone, though there will not be unknown tone
 _tones = {'<pad>', '<unk>', '0', '1', '2', '3', '4', '5'}
 
+
 def ernized(syllable):
     return syllable[:2] != "er" and syllable[-2] == 'r'
 
+
 def convert(syllable):
-    origin = syllable
     # expansion of o -> uo
     syllable = re.sub(r"([bpmf])o$", r"\1uo", syllable)
     # syllable = syllable.replace("bo", "buo").replace("po", "puo").replace("mo", "muo").replace("fo", "fuo")
@@ -60,15 +94,17 @@ def convert(syllable):
 
     # expansion for ing, in
     syllable = syllable.replace("ing", "ieng").replace("in", "ien")
-    
+
     # expansion for un, ui, iu
-    syllable = syllable.replace("un", "uen").replace("ui", "uei").replace("iu", "iou")
+    syllable = syllable.replace("un",
+                                "uen").replace("ui",
+                                               "uei").replace("iu", "iou")
 
     # rule for variants of i
     syllable = syllable.replace("zi", "zii").replace("ci", "cii").replace("si", "sii")\
         .replace("zhi", "zhiii").replace("chi", "chiii").replace("shi", "shiii")\
         .replace("ri", "riii")
-    
+
     # rule for y preceding i, u
     syllable = syllable.replace("yi", "i").replace("yu", "v").replace("y", "i")
 
@@ -76,11 +112,13 @@ def convert(syllable):
     syllable = syllable.replace("wu", "u").replace("w", "u")
 
     # rule for v following j, q, x
-    syllable = syllable.replace("ju", "jv").replace("qu", "qv").replace("xu", "xv")
-    
+    syllable = syllable.replace("ju", "jv").replace("qu",
+                                                    "qv").replace("xu", "xv")
+
     return syllable
 
-def split_syllable(syllable:str):
+
+def split_syllable(syllable: str):
     if syllable in _pauses:
         # phone, tone
         return [syllable], ['0']

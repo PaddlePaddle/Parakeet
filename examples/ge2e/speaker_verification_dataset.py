@@ -1,8 +1,9 @@
 import random
-import numpy as np
-import paddle
-from paddle.io import Dataset, BatchSampler
 from pathlib import Path
+
+import numpy as np
+from paddle.io import Dataset, BatchSampler
+
 from random_cycle import random_cycle
 
 
@@ -10,7 +11,7 @@ class MultiSpeakerMelDataset(Dataset):
     """A 2 layer directory thatn contains mel spectrograms in *.npy format.
     An Example file structure tree is shown below. We prefer to preprocess
     raw datasets and organized them like this.
-    
+
     dataset_root/
       speaker1/
         utterance1.npy
@@ -26,7 +27,7 @@ class MultiSpeakerMelDataset(Dataset):
         speaker_dirs = [f for f in self.root.glob("*") if f.is_dir()]
 
         speaker_utterances = {
-            speaker_dir: [f for f in speaker_dir.glob("*.npy")]
+            speaker_dir: list(speaker_dir.glob("*.npy"))
             for speaker_dir in speaker_dirs
         }
 
@@ -48,7 +49,7 @@ class MultiSpeakerMelDataset(Dataset):
         return np.load(fpath)
 
     def __len__(self):
-        return int(self.num_utterances())
+        return int(self.num_utterances)
 
 
 class MultiSpeakerSampler(BatchSampler):
@@ -56,10 +57,8 @@ class MultiSpeakerSampler(BatchSampler):
     First, N speakers from all speakers are sampled randomly. Then, for each
     speaker, randomly sample M utterances from their corresponding utterances.
     """
-    def __init__(self, 
-                 dataset: MultiSpeakerMelDataset, 
-                 speakers_per_batch: int,
-                 utterances_per_speaker: int):
+    def __init__(self, dataset: MultiSpeakerMelDataset,
+                 speakers_per_batch: int, utterances_per_speaker: int):
         self._speakers = list(dataset.speaker_dirs)
         self._speaker_to_utterances = dataset.speaker_to_utterances
 
@@ -101,12 +100,12 @@ class RandomClip(object):
 class Collate(object):
     def __init__(self, num_frames):
         self.random_crop = RandomClip(num_frames)
-    
+
     def __call__(self, examples):
         frame_clips = [self.random_crop(mel) for mel in examples]
         batced_clips = np.stack(frame_clips)
         return batced_clips
-    
+
 
 if __name__ == "__main__":
     mydataset = MultiSpeakerMelDataset(

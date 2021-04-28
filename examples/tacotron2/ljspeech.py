@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from pathlib import Path
 import pickle
+
 import numpy as np
-from paddle.io import Dataset, DataLoader
+from paddle.io import Dataset
 
 from parakeet.data.batch import batch_spec, batch_text_id
-from parakeet.data import dataset
 
 
 class LJSpeech(Dataset):
     """A simple dataset adaptor for the processed ljspeech dataset."""
-
     def __init__(self, root):
         self.root = Path(root).expanduser()
         records = []
@@ -46,8 +44,9 @@ class LJSpeech(Dataset):
 
 class LJSpeechCollector(object):
     """A simple callable to batch LJSpeech examples."""
-
-    def __init__(self, padding_idx=0, padding_value=0.,
+    def __init__(self,
+                 padding_idx=0,
+                 padding_value=0.,
                  padding_stop_token=1.0):
         self.padding_idx = padding_idx
         self.padding_value = padding_value
@@ -69,19 +68,16 @@ class LJSpeechCollector(object):
 
         # Sort by text_len in descending order
         texts = [
-            i
-            for i, _ in sorted(
+            i for i, _ in sorted(
                 zip(texts, text_lens), key=lambda x: x[1], reverse=True)
         ]
         mels = [
-            i
-            for i, _ in sorted(
+            i for i, _ in sorted(
                 zip(mels, text_lens), key=lambda x: x[1], reverse=True)
         ]
 
         mel_lens = [
-            i
-            for i, _ in sorted(
+            i for i, _ in sorted(
                 zip(mel_lens, text_lens), key=lambda x: x[1], reverse=True)
         ]
 

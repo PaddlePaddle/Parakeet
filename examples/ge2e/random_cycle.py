@@ -1,5 +1,6 @@
 import random
 
+
 def cycle(iterable):
     # cycle('ABCD') --> A B C D A B C D A B C D ...
     saved = []
@@ -9,6 +10,7 @@ def cycle(iterable):
     while saved:
         for element in saved:
             yield element
+
 
 def random_cycle(iterable):
     # cycle('ABCD') --> A B C D B C D A A D B C ...

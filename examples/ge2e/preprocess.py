@@ -2,7 +2,9 @@ import argparse
 from pathlib import Path
 from config import get_cfg_defaults
 from audio_processor import SpeakerVerificationPreprocessor
-from dataset_processors import process_librispeech, process_voxceleb1, process_voxceleb2, process_aidatatang_200zh, process_magicdata
+from dataset_processors import (process_librispeech, process_voxceleb1,
+                                process_voxceleb2, process_aidatatang_200zh,
+                                process_magicdata)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -43,36 +45,36 @@ if __name__ == "__main__":
         except:
             raise ModuleNotFoundError(
                 "Package 'webrtcvad' not found. This package enables "
-                "noise removal and is recommended. Please install and try again. If installation fails, "
+                "noise removal and is recommended. Please install and "
+                "try again. If installation fails, "
                 "use --no_trim to disable this error message.")
     del args.no_trim
 
     args.datasets = [item.strip() for item in args.dataset_names.split(",")]
     if not hasattr(args, "output_dir"):
         args.output_dir = args.dataset_root / "SV2TTS" / "encoder"
-        
+
     args.output_dir = args.output_dir.expanduser()
     args.datasets_root = args.datasets_root.expanduser()
     assert args.datasets_root.exists()
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
     config = get_cfg_defaults()
-    # TODO: nice print
     print(args)
 
     c = config.data
     processor = SpeakerVerificationPreprocessor(
-        sampling_rate=c.sampling_rate, 
-        audio_norm_target_dBFS=c.audio_norm_target_dBFS, 
+        sampling_rate=c.sampling_rate,
+        audio_norm_target_dBFS=c.audio_norm_target_dBFS,
         vad_window_length=c.vad_window_length,
-        vad_moving_average_width=c.vad_moving_average_width, 
+        vad_moving_average_width=c.vad_moving_average_width,
         vad_max_silence_length=c.vad_max_silence_length,
-        mel_window_length=c.mel_window_length, 
-        mel_window_step=c.mel_window_step, 
-        n_mels=c.n_mels, 
+        mel_window_length=c.mel_window_length,
+        mel_window_step=c.mel_window_step,
+        n_mels=c.n_mels,
         partial_n_frames=c.partial_n_frames,
         min_pad_coverage=c.min_pad_coverage,
-        partial_overlap_ratio=c.min_pad_coverage,  
+        partial_overlap_ratio=c.min_pad_coverage,
     )
 
     preprocess_func = {
@@ -85,6 +87,5 @@ if __name__ == "__main__":
 
     for dataset in args.datasets:
         print("Preprocessing %s" % dataset)
-        preprocess_func[dataset](processor, args.datasets_root, args.output_dir, args.skip_existing)
-
-
+        preprocess_func[dataset](processor, args.datasets_root,
+                                 args.output_dir, args.skip_existing)

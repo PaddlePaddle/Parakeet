@@ -200,7 +200,6 @@ class ExperimentBase(object):
         """The routine of the experiment after setup. This method is intended
         to be used by the user.
         """
-        self.resume_or_load()
         try:
             self.train()
         except KeyboardInterrupt as exception:

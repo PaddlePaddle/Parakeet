@@ -1,15 +1,14 @@
-from parakeet.models.lstm_speaker_encoder import LSTMSpeakerEncoder
-from audio_processor import SpeakerVerificationPreprocessor
-from matplotlib import cm
-from pathlib import Path
-import matplotlib.pyplot as plt
-import numpy as np
-from config import get_cfg_defaults
 import argparse
-import paddle
+from pathlib import Path
+
 import tqdm
-from functools import partial
-from multiprocessing import Pool
+import paddle
+import numpy as np
+
+from parakeet.models.lstm_speaker_encoder import LSTMSpeakerEncoder
+
+from audio_processor import SpeakerVerificationPreprocessor
+from config import get_cfg_defaults
 
 
 def embed_utterance(processor, model, fpath_or_wav):

@@ -1,14 +1,17 @@
-from parakeet.training import ExperimentBase, default_argument_parser
-from config import get_cfg_defaults
-from paddle import distributed as dist
 import time
-from paddle.nn.clip import ClipGradByGlobalNorm
 
-from parakeet.models.lstm_speaker_encoder import LSTMSpeakerEncoder
-from speaker_verification_dataset import MultiSpeakerMelDataset, MultiSpeakerSampler, Collate
+from paddle import distributed as dist
 from paddle.optimizer import Adam
 from paddle import DataParallel
 from paddle.io import DataLoader
+from paddle.nn.clip import ClipGradByGlobalNorm
+
+from parakeet.models.lstm_speaker_encoder import LSTMSpeakerEncoder
+from parakeet.training import ExperimentBase, default_argument_parser
+
+from speaker_verification_dataset import (MultiSpeakerMelDataset,
+                                          MultiSpeakerSampler, Collate)
+from config import get_cfg_defaults
 
 
 class Ge2eExperiment(ExperimentBase):
@@ -66,9 +69,9 @@ class Ge2eExperiment(ExperimentBase):
             self.visualizer.add_scalar("train/loss", loss_value,
                                        self.iteration)
             self.visualizer.add_scalar("train/eer", eer, self.iteration)
-            self.visualizer.add_scalar("param/w",
-                                       float(self.model_core.similarity_weight),
-                                       self.iteration)
+            self.visualizer.add_scalar(
+                "param/w", float(self.model_core.similarity_weight),
+                self.iteration)
             self.visualizer.add_scalar("param/b",
                                        float(self.model_core.similarity_bias),
                                        self.iteration)
@@ -80,6 +83,7 @@ class Ge2eExperiment(ExperimentBase):
 def main_sp(config, args):
     exp = Ge2eExperiment(config, args)
     exp.setup()
+    exp.resume_or_load()
     exp.run()
 
 

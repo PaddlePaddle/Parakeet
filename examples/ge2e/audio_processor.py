@@ -1,20 +1,19 @@
-from scipy.ndimage.morphology import binary_dilation
-from config import get_cfg_defaults
 from pathlib import Path
-from typing import Optional, Union
 from warnings import warn
+import struct
+
+from scipy.ndimage.morphology import binary_dilation
 import numpy as np
 import librosa
-import struct
 
 try:
     import webrtcvad
-except:
+except ModuleNotFoundError:
     warn("Unable to import 'webrtcvad'."
          "This package enables noise removal and is recommended.")
     webrtcvad = None
 
-int16_max = (2**15) - 1
+INT16_MAX = (2**15) - 1
 
 
 def normalize_volume(wav,
@@ -42,10 +41,10 @@ def trim_long_silences(wav, vad_window_length: int,
                        vad_moving_average_width: int,
                        vad_max_silence_length: int, sampling_rate: int):
     """
-    Ensures that segments without voice in the waveform remain no longer than a 
+    Ensures that segments without voice in the waveform remain no longer than a
     threshold determined by the VAD parameters in params.py.
 
-    :param wav: the raw waveform as a numpy array of floats 
+    :param wav: the raw waveform as a numpy array of floats
     :return: the same waveform with silences trimmed away (length <= original wav length)
     """
     # Compute the voice detection window size
@@ -56,7 +55,7 @@ def trim_long_silences(wav, vad_window_length: int,
 
     # Convert the float waveform to 16-bit mono PCM
     pcm_wave = struct.pack("%dh" % len(wav),
-                           *(np.round(wav * int16_max)).astype(np.int16))
+                           *(np.round(wav * INT16_MAX)).astype(np.int16))
 
     # Perform voice activation detection
     voice_flags = []
@@ -84,7 +83,7 @@ def trim_long_silences(wav, vad_window_length: int,
                                  np.ones(vad_max_silence_length + 1))
     audio_mask = np.repeat(audio_mask, samples_per_window)
 
-    return wav[audio_mask == True]
+    return wav[audio_mask]
 
 
 def compute_partial_slices(n_samples: int,
@@ -93,27 +92,27 @@ def compute_partial_slices(n_samples: int,
                            min_pad_coverage: float = 0.75,
                            overlap: float = 0.5):
     """
-    Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
-    partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 
-    spectrogram slices are returned, so as to make each partial utterance waveform correspond to 
-    its spectrogram. This function assumes that the mel spectrogram parameters used are those 
+    Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain
+    partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel
+    spectrogram slices are returned, so as to make each partial utterance waveform correspond to
+    its spectrogram. This function assumes that the mel spectrogram parameters used are those
     defined in params_data.py.
-    
-    The returned ranges may be indexing further than the length of the waveform. It is 
+
+    The returned ranges may be indexing further than the length of the waveform. It is
     recommended that you pad the waveform with zeros up to wave_slices[-1].stop.
-    
+
     :param n_samples: the number of samples in the waveform
-    :param partial_utterance_n_frames: the number of mel spectrogram frames in each partial 
+    :param partial_utterance_n_frames: the number of mel spectrogram frames in each partial
     utterance
-    :param min_pad_coverage: when reaching the last partial utterance, it may or may not have 
-    enough frames. If at least <min_pad_coverage> of <partial_utterance_n_frames> are present, 
-    then the last partial utterance will be considered, as if we padded the audio. Otherwise, 
-    it will be discarded, as if we trimmed the audio. If there aren't enough frames for 1 partial 
+    :param min_pad_coverage: when reaching the last partial utterance, it may or may not have
+    enough frames. If at least <min_pad_coverage> of <partial_utterance_n_frames> are present,
+    then the last partial utterance will be considered, as if we padded the audio. Otherwise,
+    it will be discarded, as if we trimmed the audio. If there aren't enough frames for 1 partial
     utterance, this parameter is ignored so that the function always returns at least 1 slice.
-    :param overlap: by how much the partial utterance should overlap. If set to 0, the partial 
-    utterances are entirely disjoint. 
-    :return: the waveform slices and mel spectrogram slices as lists of array slices. Index 
-    respectively the waveform and the mel spectrogram with these slices to obtain the partial 
+    :param overlap: by how much the partial utterance should overlap. If set to 0, the partial
+    utterances are entirely disjoint.
+    :return: the waveform slices and mel spectrogram slices as lists of array slices. Index
+    respectively the waveform and the mel spectrogram with these slices to obtain the partial
     utterances.
     """
     assert 0 <= overlap < 1
@@ -146,13 +145,13 @@ def compute_partial_slices(n_samples: int,
 
 
 class SpeakerVerificationPreprocessor(object):
-    def __init__(self, 
-                 sampling_rate: int, 
-                 audio_norm_target_dBFS:float,
-                 vad_window_length, 
+    def __init__(self,
+                 sampling_rate: int,
+                 audio_norm_target_dBFS: float,
+                 vad_window_length,
                  vad_moving_average_width,
-                 vad_max_silence_length, 
-                 mel_window_length, 
+                 vad_max_silence_length,
+                 mel_window_length,
                  mel_window_step,
                  n_mels,
                  partial_n_frames: int,
@@ -168,14 +167,14 @@ class SpeakerVerificationPreprocessor(object):
         self.n_fft = int(mel_window_length * sampling_rate / 1000)
         self.hop_length = int(mel_window_step * sampling_rate / 1000)
         self.n_mels = n_mels
-        
+
         self.partial_n_frames = partial_n_frames
         self.min_pad_coverage = min_pad_coverage
         self.partial_overlap_ratio = partial_overlap_ratio
 
     def preprocess_wav(self, fpath_or_wav, source_sr=None):
         # Load the wav from disk if needed
-        if isinstance(fpath_or_wav, str) or isinstance(fpath_or_wav, Path):
+        if isinstance(fpath_or_wav, (str, Path)):
             wav, source_sr = librosa.load(str(fpath_or_wav), sr=None)
         else:
             wav = fpath_or_wav
@@ -205,22 +204,18 @@ class SpeakerVerificationPreprocessor(object):
                                              n_mels=self.n_mels)
         mel = mel.astype(np.float32).T
         return mel
-    
+
     def extract_mel_partials(self, wav):
         wav_slices, mel_slices = compute_partial_slices(
-            len(wav),
-            self.partial_n_frames,
-            self.hop_length,
-            self.min_pad_coverage,
-            self.partial_overlap_ratio)
-        
+            len(wav), self.partial_n_frames, self.hop_length,
+            self.min_pad_coverage, self.partial_overlap_ratio)
+
         # pad audio if needed
         max_wave_length = wav_slices[-1].stop
         if max_wave_length >= len(wav):
             wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
-    
+
         # Split the utterance into partials
         frames = self.melspectrogram(wav)
-        frames_batch = np.array([frames[s] for s in mel_slices])   
-        return frames_batch # [B, T, C]
-        
+        frames_batch = np.array([frames[s] for s in mel_slices])
+        return frames_batch  # [B, T, C]

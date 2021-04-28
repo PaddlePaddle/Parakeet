@@ -13,18 +13,14 @@
 # limitations under the License.
 
 import argparse
-import time
 from pathlib import Path
+
 import numpy as np
 import paddle
-import matplotlib
 from matplotlib import pyplot as plt
 
-import parakeet
 from parakeet.frontend import English
 from parakeet.models.transformer_tts import TransformerTTS
-from parakeet.utils import scheduler
-from parakeet.training.cli import default_argument_parser
 from parakeet.utils import display
 
 from config import get_cfg_defaults
@@ -53,16 +49,16 @@ def main(config, args):
             print("text: ", sentence)
             print("phones: ", frontend.phoneticize(sentence))
         text_ids = paddle.to_tensor(frontend(sentence))
-        input = paddle.unsqueeze(text_ids, 0)  # (1, T)
+        text_ids = paddle.unsqueeze(text_ids, 0)  # (1, T)
 
         with paddle.no_grad():
-            outputs = model.infer(input, verbose=args.verbose)
+            outputs = model.infer(text_ids, verbose=args.verbose)
 
         mel_output = outputs["mel_output"][0].numpy()
         cross_attention_weights = outputs["cross_attention_weights"]
         attns = np.stack([attn[0].numpy() for attn in cross_attention_weights])
         attns = np.transpose(attns, [0, 1, 3, 2])
-        fig = display.plot_multilayer_multihead_alignments(attns)
+        display.plot_multilayer_multihead_alignments(attns)
         plt.savefig(str(output_dir / f"sentence_{i}.png"))
 
         mel_output = mel_output.T  #(C, T)
@@ -77,24 +73,29 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="generate mel spectrogram with TransformerTTS.")
-    parser.add_argument(
-        "--config",
-        type=str,
-        metavar="FILE",
-        help="extra config to overwrite the default config")
-    parser.add_argument(
-        "--checkpoint_path", type=str, help="path of the checkpoint to load.")
+    parser.add_argument("--config",
+                        type=str,
+                        metavar="FILE",
+                        help="extra config to overwrite the default config")
+    parser.add_argument("--checkpoint_path",
+                        type=str,
+                        help="path of the checkpoint to load.")
     parser.add_argument("--input", type=str, help="path of the text sentences")
     parser.add_argument("--output", type=str, help="path to save outputs")
-    parser.add_argument(
-        "--device", type=str, default="cpu", help="device type to use.")
+    parser.add_argument("--device",
+                        type=str,
+                        default="cpu",
+                        help="device type to use.")
     parser.add_argument(
         "--opts",
         nargs=argparse.REMAINDER,
-        help="options to overwrite --config file and the default config, passing in KEY VALUE pairs"
+        help=
+        "options to overwrite --config file and the default config, passing in KEY VALUE pairs"
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="print msg")
+    parser.add_argument("-v",
+                        "--verbose",
+                        action="store_true",
+                        help="print msg")
 
     args = parser.parse_args()
     if args.config:

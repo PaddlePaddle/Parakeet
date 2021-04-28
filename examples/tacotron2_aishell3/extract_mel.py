@@ -25,7 +25,7 @@ def extract_mel(fname: Path, input_dir: Path, output_dir: Path,
 
 def extract_mel_multispeaker(config, input_dir, output_dir, extension=".wav"):
     input_dir = Path(input_dir).expanduser()
-    fnames = list(input_dir.rglob("*.wav"))
+    fnames = list(input_dir.rglob(f"*{extension}"))
     output_dir = Path(output_dir).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
 

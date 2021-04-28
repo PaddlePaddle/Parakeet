@@ -1,5 +1,6 @@
-from pypinyin import lazy_pinyin, Style
 from typing import List
+
+from pypinyin import lazy_pinyin, Style
 
 
 def convert_to_pinyin(text: str) -> List[str]:

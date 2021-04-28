@@ -8,32 +8,32 @@ data_config = _C.data = CfgNode()
 data_config.audio_norm_target_dBFS = -30
 
 ## Audio sample rate
-data_config.sampling_rate = 16000   # Hz
+data_config.sampling_rate = 16000  # Hz
 
 ## Voice Activation Detection
 # Window size of the VAD. Must be either 10, 20 or 30 milliseconds.
 # This sets the granularity of the VAD. Should not need to be changed.
 data_config.vad_window_length = 30  # In milliseconds
 # Number of frames to average together when performing the moving average smoothing.
-# The larger this value, the larger the VAD variations must be to not get smoothed out. 
+# The larger this value, the larger the VAD variations must be to not get smoothed out.
 data_config.vad_moving_average_width = 8
 # Maximum number of consecutive silent frames a segment can have.
 data_config.vad_max_silence_length = 6
 
 ## Mel-filterbank
 data_config.mel_window_length = 25  # In milliseconds
-data_config.mel_window_step = 10    # In milliseconds
-data_config.n_mels = 40             # mel bands
+data_config.mel_window_step = 10  # In milliseconds
+data_config.n_mels = 40  # mel bands
 
 # Number of spectrogram frames in a partial utterance
-data_config.partial_n_frames = 160     # 1600 ms
-data_config.min_pad_coverage = 0.75     # at least 75% of the audio is valid in a partial
-data_config.partial_overlap_ratio = 0.5 # overlap ratio between ajancent partials
+data_config.partial_n_frames = 160  # 1600 ms
+data_config.min_pad_coverage = 0.75  # at least 75% of the audio is valid in a partial
+data_config.partial_overlap_ratio = 0.5  # overlap ratio between ajancent partials
 
 model_config = _C.model = CfgNode()
 model_config.num_layers = 3
 model_config.hidden_size = 256
-model_config.embedding_size = 256 # output size
+model_config.embedding_size = 256  # output size
 
 training_config = _C.training = CfgNode()
 training_config.learning_rate_init = 1e-4

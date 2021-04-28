@@ -20,9 +20,8 @@ import paddle
 from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
 
-import parakeet
 from parakeet.data import dataset
-from parakeet.frontend import EnglishCharacter
+from parakeet.frontend import EnglishCharacter  # pylint: disable=unused-import
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils import display, mp_tools
@@ -96,11 +95,11 @@ class Experiment(ExperimentBase):
                 self.iteration)
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_target_spectrogram",
-                display.plot_spectrogram(mels[0].numpy().T),
-                self.iteration)
+                display.plot_spectrogram(mels[0].numpy().T), self.iteration)
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_predicted_spectrogram",
-                display.plot_spectrogram(outputs['mel_outputs_postnet'][0].numpy().T),
+                display.plot_spectrogram(
+                    outputs['mel_outputs_postnet'][0].numpy().T),
                 self.iteration)
 
         # write visual log
@@ -120,7 +119,7 @@ class Experiment(ExperimentBase):
         config = self.config
         model = Tacotron2(
             vocab_size=config.model.vocab_size,
-            d_mels=config.data.d_mels,
+            d_mels=config.data.n_mels,
             d_encoder=config.model.d_encoder,
             encoder_conv_layers=config.model.encoder_conv_layers,
             encoder_kernel_size=config.model.encoder_kernel_size,
@@ -195,6 +194,7 @@ class Experiment(ExperimentBase):
 def main_sp(config, args):
     exp = Experiment(config, args)
     exp.setup()
+    exp.resume_or_load()
     exp.run()
 
 

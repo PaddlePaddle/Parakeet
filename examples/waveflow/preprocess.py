@@ -13,24 +13,23 @@
 # limitations under the License.
 
 import os
-import tqdm
-import csv
 import argparse
+from pathlib import Path
+
+import tqdm
 import numpy as np
 import librosa
-from pathlib import Path
 import pandas as pd
 
-from paddle.io import Dataset
-from parakeet.data import batch_spec, batch_wav
 from parakeet.datasets import LJSpeechMetaData
-from parakeet.audio import AudioProcessor, LogMagnitude
+from parakeet.audio import LogMagnitude
 
 from config import get_cfg_defaults
 
 
 class Transform(object):
-    def __init__(self, sample_rate, n_fft, win_length, hop_length, n_mels, fmin, fmax):
+    def __init__(self, sample_rate, n_fft, win_length, hop_length, n_mels,
+                 fmin, fmax):
         self.sample_rate = sample_rate
         self.n_fft = n_fft
         self.win_length = win_length
@@ -71,12 +70,11 @@ class Transform(object):
 
         # Compute mel-spectrogram.
         # Turn center to False to prevent internal padding.
-        spectrogram = librosa.core.stft(
-            wav,
-            hop_length=hop_length,
-            win_length=win_length,
-            n_fft=n_fft,
-            center=False)
+        spectrogram = librosa.core.stft(wav,
+                                        hop_length=hop_length,
+                                        win_length=win_length,
+                                        n_fft=n_fft,
+                                        center=False)
         spectrogram_magnitude = np.abs(spectrogram)
 
         # Compute mel-spectrograms.
@@ -86,7 +84,6 @@ class Transform(object):
                                               fmin=fmin,
                                               fmax=fmax)
         mel_spectrogram = np.dot(mel_filter_bank, spectrogram_magnitude)
-        mel_spectrogram = mel_spectrogram
 
         # log scale mel_spectrogram.
         mel_spectrogram = self.spec_normalizer.transform(mel_spectrogram)
@@ -99,7 +96,7 @@ class Transform(object):
         return audio, mel_spectrogram
 
 
-def create_dataset(config, input_dir, output_dir, verbose=True):
+def create_dataset(config, input_dir, output_dir):
     input_dir = Path(input_dir).expanduser()
     dataset = LJSpeechMetaData(input_dir)
 
@@ -107,7 +104,8 @@ def create_dataset(config, input_dir, output_dir, verbose=True):
     output_dir.mkdir(exist_ok=True)
 
     transform = Transform(config.sample_rate, config.n_fft, config.win_length,
-                          config.hop_length, config.n_mels, config.fmin, config.fmax)
+                          config.hop_length, config.n_mels, config.fmin,
+                          config.fmax)
     file_names = []
 
     for example in tqdm.tqdm(dataset):
@@ -125,8 +123,10 @@ def create_dataset(config, input_dir, output_dir, verbose=True):
         file_names.append((base_name, mel.shape[-1], audio.shape[-1]))
 
     meta_data = pd.DataFrame.from_records(file_names)
-    meta_data.to_csv(
-        str(output_dir / "metadata.csv"), sep="\t", index=None, header=None)
+    meta_data.to_csv(str(output_dir / "metadata.csv"),
+                     sep="\t",
+                     index=None,
+                     header=None)
     print("saved meta data in to {}".format(
         os.path.join(output_dir, "metadata.csv")))
 
@@ -135,22 +135,26 @@ def create_dataset(config, input_dir, output_dir, verbose=True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="create dataset")
-    parser.add_argument(
-        "--config",
-        type=str,
-        metavar="FILE",
-        help="extra config to overwrite the default config")
-    parser.add_argument(
-        "--input", type=str, help="path of the ljspeech dataset")
-    parser.add_argument(
-        "--output", type=str, help="path to save output dataset")
+    parser.add_argument("--config",
+                        type=str,
+                        metavar="FILE",
+                        help="extra config to overwrite the default config")
+    parser.add_argument("--input",
+                        type=str,
+                        help="path of the ljspeech dataset")
+    parser.add_argument("--output",
+                        type=str,
+                        help="path to save output dataset")
     parser.add_argument(
         "--opts",
         nargs=argparse.REMAINDER,
-        help="options to overwrite --config file and the default config, passing in KEY VALUE pairs"
+        help=
+        "options to overwrite --config file and the default config, passing in KEY VALUE pairs"
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="print msg")
+    parser.add_argument("-v",
+                        "--verbose",
+                        action="store_true",
+                        help="print msg")
 
     config = get_cfg_defaults()
     args = parser.parse_args()
@@ -163,4 +167,4 @@ if __name__ == "__main__":
         print(config.data)
         print(args)
 
-    create_dataset(config.data, args.input, args.output, args.verbose)
+    create_dataset(config.data, args.input, args.output)

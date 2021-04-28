@@ -47,7 +47,6 @@ class DecoderPreNet(nn.Layer):
         The droput probability.
 
     """
-
     def __init__(self, d_input: int, d_hidden: int, d_output: int,
                  dropout_rate: float):
         super().__init__()
@@ -101,7 +100,6 @@ class DecoderPostNet(nn.Layer):
         The droput probability.
 
     """
-
     def __init__(self, d_mels: int, d_hidden: int, kernel_size: int,
                  num_layers: int, dropout: float):
         super().__init__()
@@ -181,7 +179,6 @@ class Tacotron2Encoder(nn.Layer):
     p_dropout: float
         The droput probability.
     """
-
     def __init__(self, d_hidden: int, conv_layers: int, kernel_size: int,
                  p_dropout: float):
         super().__init__()
@@ -270,12 +267,20 @@ class Tacotron2Decoder(nn.Layer):
     p_decoder_dropout: float
         The droput probability in decoder.
     """
-
-    def __init__(self, d_mels: int, reduction_factor: int, d_encoder: int,
-                 d_prenet: int, d_attention_rnn: int, d_decoder_rnn: int,
-                 d_attention: int, attention_filters: int,
-                 attention_kernel_size: int, p_prenet_dropout: float,
-                 p_attention_dropout: float, p_decoder_dropout: float, use_stop_token: bool=False):
+    def __init__(self,
+                 d_mels: int,
+                 reduction_factor: int,
+                 d_encoder: int,
+                 d_prenet: int,
+                 d_attention_rnn: int,
+                 d_decoder_rnn: int,
+                 d_attention: int,
+                 attention_filters: int,
+                 attention_kernel_size: int,
+                 p_prenet_dropout: float,
+                 p_attention_dropout: float,
+                 p_decoder_dropout: float,
+                 use_stop_token: bool = False):
         super().__init__()
         self.d_mels = d_mels
         self.reduction_factor = reduction_factor
@@ -304,7 +309,7 @@ class Tacotron2Decoder(nn.Layer):
                                        d_decoder_rnn)
         self.linear_projection = nn.Linear(d_decoder_rnn + d_encoder,
                                            d_mels * reduction_factor)
-        
+
         self.use_stop_token = use_stop_token
         if use_stop_token:
             self.stop_layer = nn.Linear(d_decoder_rnn + d_encoder, 1)
@@ -586,7 +591,6 @@ class Tacotron2(nn.Layer):
         Droput probability in postnet.
 
     """
-
     def __init__(self,
                  vocab_size,
                  n_tones=None,
@@ -632,11 +636,19 @@ class Tacotron2(nn.Layer):
         # input augmentation scheme: concat global condition to the encoder output
         if d_global_condition is not None:
             d_encoder += d_global_condition
-        self.decoder = Tacotron2Decoder(
-            d_mels, reduction_factor, d_encoder, d_prenet, d_attention_rnn,
-            d_decoder_rnn, d_attention, attention_filters,
-            attention_kernel_size, p_prenet_dropout, p_attention_dropout,
-            p_decoder_dropout, use_stop_token=use_stop_token)
+        self.decoder = Tacotron2Decoder(d_mels,
+                                        reduction_factor,
+                                        d_encoder,
+                                        d_prenet,
+                                        d_attention_rnn,
+                                        d_decoder_rnn,
+                                        d_attention,
+                                        attention_filters,
+                                        attention_kernel_size,
+                                        p_prenet_dropout,
+                                        p_attention_dropout,
+                                        p_decoder_dropout,
+                                        use_stop_token=use_stop_token)
         self.postnet = DecoderPostNet(d_mels=d_mels * reduction_factor,
                                       d_hidden=d_postnet,
                                       kernel_size=postnet_kernel_size,
@@ -695,13 +707,12 @@ class Tacotron2(nn.Layer):
         mask = sequence_mask(text_lens,
                              dtype=encoder_outputs.dtype).unsqueeze(-1)
         if self.decoder.use_stop_token:
-            mel_outputs, alignments, stop_logits = self.decoder(encoder_outputs,
-                                                mels,
-                                                mask=mask)
+            mel_outputs, alignments, stop_logits = self.decoder(
+                encoder_outputs, mels, mask=mask)
         else:
             mel_outputs, alignments = self.decoder(encoder_outputs,
-                                                mels,
-                                                mask=mask)
+                                                   mels,
+                                                   mask=mask)
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
@@ -796,28 +807,27 @@ class Tacotron2(nn.Layer):
         ConditionalWaveFlow
             The model built from pretrained result.
         """
-        model = cls(
-            vocab_size=config.model.vocab_size,
-            d_mels=config.data.d_mels,
-            d_encoder=config.model.d_encoder,
-            encoder_conv_layers=config.model.encoder_conv_layers,
-            encoder_kernel_size=config.model.encoder_kernel_size,
-            d_prenet=config.model.d_prenet,
-            d_attention_rnn=config.model.d_attention_rnn,
-            d_decoder_rnn=config.model.d_decoder_rnn,
-            attention_filters=config.model.attention_filters,
-            attention_kernel_size=config.model.attention_kernel_size,
-            d_attention=config.model.d_attention,
-            d_postnet=config.model.d_postnet,
-            postnet_kernel_size=config.model.postnet_kernel_size,
-            postnet_conv_layers=config.model.postnet_conv_layers,
-            reduction_factor=config.model.reduction_factor,
-            p_encoder_dropout=config.model.p_encoder_dropout,
-            p_prenet_dropout=config.model.p_prenet_dropout,
-            p_attention_dropout=config.model.p_attention_dropout,
-            p_decoder_dropout=config.model.p_decoder_dropout,
-            p_postnet_dropout=config.model.p_postnet_dropout,
-            use_stop_token=config.model.use_stop_token)
+        model = cls(vocab_size=config.model.vocab_size,
+                    d_mels=config.data.n_mels,
+                    d_encoder=config.model.d_encoder,
+                    encoder_conv_layers=config.model.encoder_conv_layers,
+                    encoder_kernel_size=config.model.encoder_kernel_size,
+                    d_prenet=config.model.d_prenet,
+                    d_attention_rnn=config.model.d_attention_rnn,
+                    d_decoder_rnn=config.model.d_decoder_rnn,
+                    attention_filters=config.model.attention_filters,
+                    attention_kernel_size=config.model.attention_kernel_size,
+                    d_attention=config.model.d_attention,
+                    d_postnet=config.model.d_postnet,
+                    postnet_kernel_size=config.model.postnet_kernel_size,
+                    postnet_conv_layers=config.model.postnet_conv_layers,
+                    reduction_factor=config.model.reduction_factor,
+                    p_encoder_dropout=config.model.p_encoder_dropout,
+                    p_prenet_dropout=config.model.p_prenet_dropout,
+                    p_attention_dropout=config.model.p_attention_dropout,
+                    p_decoder_dropout=config.model.p_decoder_dropout,
+                    p_postnet_dropout=config.model.p_postnet_dropout,
+                    use_stop_token=config.model.use_stop_token)
         checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
         return model
 
@@ -825,10 +835,9 @@ class Tacotron2(nn.Layer):
 class Tacotron2Loss(nn.Layer):
     """ Tacotron2 Loss module
     """
-
-    def __init__(self, 
-                 use_stop_token_loss=True, 
-                 use_guided_attention_loss=False, 
+    def __init__(self,
+                 use_stop_token_loss=True,
+                 use_guided_attention_loss=False,
                  sigma=0.2):
         super().__init__()
         self.spec_criterion = nn.MSELoss()
@@ -838,8 +847,14 @@ class Tacotron2Loss(nn.Layer):
         self.stop_criterion = paddle.nn.BCEWithLogitsLoss()
         self.sigma = sigma
 
-    def forward(self, mel_outputs, mel_outputs_postnet, mel_targets,
-                attention_weights=None, slens=None, plens=None, stop_logits=None):
+    def forward(self,
+                mel_outputs,
+                mel_outputs_postnet,
+                mel_targets,
+                attention_weights=None,
+                slens=None,
+                plens=None,
+                stop_logits=None):
         """Calculate tacotron2 loss.
 
         Parameters
@@ -868,14 +883,14 @@ class Tacotron2Loss(nn.Layer):
         total_loss = mel_loss + post_mel_loss
         if self.use_guided_attention_loss:
             gal_loss = self.attn_criterion(attention_weights, slens, plens,
-                                       self.sigma)
+                                           self.sigma)
             total_loss += gal_loss
         if self.use_stop_token_loss:
             T_dec = mel_targets.shape[1]
             stop_labels = F.one_hot(slens - 1, num_classes=T_dec)
             stop_token_loss = self.stop_criterion(stop_logits, stop_labels)
             total_loss += stop_token_loss
-        
+
         losses = {
             "loss": total_loss,
             "mel_loss": mel_loss,
