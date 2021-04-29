@@ -614,7 +614,7 @@ class Tacotron2(nn.Layer):
                  p_decoder_dropout: float = 0.1,
                  p_postnet_dropout: float = 0.5,
                  d_global_condition=None,
-                 use_stop_token=True):
+                 use_stop_token=False):
         super().__init__()
 
         std = math.sqrt(2.0 / (vocab_size + d_encoder))

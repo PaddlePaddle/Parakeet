@@ -38,10 +38,10 @@ _C.model = CN(
         encoder_conv_layers=3,  # number of conv layer in tacotron2 encoder
         encoder_kernel_size=5,  # kernel size of conv layers in tacotron2 encoder
         d_prenet=256,  # hidden size of decoder prenet
-        d_attention_rnn=
-        1024,  # hidden size of the first rnn layer in tacotron2 decoder
-        d_decoder_rnn=
-        1024,  # hidden size of the second rnn layer in tacotron2 decoder
+        # hidden size of the first rnn layer in tacotron2 decoder
+        d_attention_rnn=1024,
+        # hidden size of the second rnn layer in tacotron2 decoder
+        d_decoder_rnn=1024,
         d_attention=128,  # hidden size of  decoder location linear layer
         attention_filters=32,  # number of filter in decoder location conv layer
         attention_kernel_size=31,  # kernel size of decoder location conv layer
@@ -50,13 +50,19 @@ _C.model = CN(
         postnet_conv_layers=5,  # number of conv layer in decoder postnet
         p_encoder_dropout=0.5,  # droput probability in encoder
         p_prenet_dropout=0.5,  # droput probability in decoder prenet
-        p_attention_dropout=
-        0.1,  # droput probability of first rnn layer in decoder
-        p_decoder_dropout=
-        0.1,  # droput probability of second rnn layer in decoder
+
+        # droput probability of first rnn layer in decoder
+        p_attention_dropout=0.1,
+        # droput probability of second rnn layer in decoder
+        p_decoder_dropout=0.1,
         p_postnet_dropout=0.5,  # droput probability in decoder postnet
         guided_attention_loss_sigma=0.2,
         d_global_condition=256,
+
+        # whether to use a classifier to predict stop probability
+        use_stop_token=False,
+        # whether to use guided attention loss in training
+        use_guided_attention_loss=True,
     ))
 
 _C.training = CN(

@@ -167,7 +167,9 @@ class Experiment(ExperimentBase):
             p_attention_dropout=config.model.p_attention_dropout,
             p_decoder_dropout=config.model.p_decoder_dropout,
             p_postnet_dropout=config.model.p_postnet_dropout,
-            d_global_condition=config.model.d_global_condition)
+            d_global_condition=config.model.d_global_condition,
+            use_stop_token=config.model.use_stop_token,
+        )
 
         if self.parallel:
             model = paddle.DataParallel(model)
@@ -180,7 +182,10 @@ class Experiment(ExperimentBase):
             weight_decay=paddle.regularizer.L2Decay(
                 config.training.weight_decay),
             grad_clip=grad_clip)
-        criterion = Tacotron2Loss(config.model.guided_attention_loss_sigma)
+        criterion = Tacotron2Loss(
+            use_stop_token_loss=True,
+            use_guided_attention_loss=False,
+            sigma=config.model.guided_attention_loss_sigma)
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
