@@ -28,23 +28,23 @@ Currently supported datasets are  Librispeech-other-500, VoxCeleb, VoxCeleb2,ai-
 
 1. Librispeech/train-other-500
 
-   An English multispeaker dataset，URL https://www.openslr.org/resources/12/train-other-500.tar.gz，only the `train-other-500` subset is used.
+   An English multispeaker dataset，[URL](https://www.openslr.org/resources/12/train-other-500.tar.gz)，only the `train-other-500` subset is used.
 
 1. VoxCeleb1
 
-   An English multispeaker dataset，URL https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html , Audio Files from Dev A to Dev D should be downloaded, combined and extracted.
+   An English multispeaker dataset，[URL](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html) , Audio Files from Dev A to Dev D should be downloaded, combined and extracted.
 
 2. VoxCeleb2
 
-   An English multispeaker dataset，URL https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html , Audio Files from Dev A to Dev H should be downloaded, combined and extracted.
+   An English multispeaker dataset，[URL](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html) , Audio Files from Dev A to Dev H should be downloaded, combined and extracted.
 
 3. Aidatatang-200zh
 
-   A Mandarin Chinese multispeaker dataset ，URL https://www.openslr.org/62/ .
+   A Mandarin Chinese multispeaker dataset ，[URL](https://www.openslr.org/62/) .
 
 4. magicdata
 
-   A Mandarin Chinese multispeaker dataset ，URL https://www.openslr.org/68/ .
+   A Mandarin Chinese multispeaker dataset ，[URL](https://www.openslr.org/68/) .
 
 If you want to use other datasets, you can also download and preprocess it as long as it meets the needs described below.
 

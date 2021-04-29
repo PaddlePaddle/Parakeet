@@ -27,23 +27,23 @@ ge2e
 
 1. Librispeech/train-other-500
 
-   英文多说话人数据集，下载链接 https://www.openslr.org/resources/12/train-other-500.tar.gz，我们的实验中仅用到了 train-other-500 这个子集。
+   英文多说话人数据集，[下载链接](https://www.openslr.org/resources/12/train-other-500.tar.gz)，我们的实验中仅用到了 train-other-500 这个子集。
 
 1. VoxCeleb1
 
-   英文多说话人数据集，下载链接 https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html，需要下载其中的 Audio Files 中的 Dev A 到 Dev D 四个压缩文件并合并解压。
+   英文多说话人数据集，[下载链接](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html)，需要下载其中的 Audio Files 中的 Dev A 到 Dev D 四个压缩文件并合并解压。
 
 2. VoxCeleb2
 
-   英文多说话人数据集，下载链接 https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox2.html，需要下载其中的 Audio Files 中的 Dev A 到 Dev H 八个压缩文件并合并解压。
+   英文多说话人数据集，[下载链接](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox2.html)，需要下载其中的 Audio Files 中的 Dev A 到 Dev H 八个压缩文件并合并解压。
 
 3. Aidatatang-200zh
 
-   中文多说话人数据集，下载链接 https://www.openslr.org/62/ .
+   中文多说话人数据集，[下载链接](https://www.openslr.org/62/) .
 
 4. magicdata
 
-   中文多说话人数据集，下载链接 https://www.openslr.org/68/ .
+   中文多说话人数据集，[下载链接](https://www.openslr.org/68/) .
 
 如果用户需要使用其他的数据集，也可以自行下载并进行数据处理，只要符合如下的要求。
 
