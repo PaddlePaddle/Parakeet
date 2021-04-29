@@ -808,6 +808,7 @@ class Tacotron2(nn.Layer):
             The model built from pretrained result.
         """
         model = cls(vocab_size=config.model.vocab_size,
+                    n_tones=config.model.n_tones,
                     d_mels=config.data.n_mels,
                     d_encoder=config.model.d_encoder,
                     encoder_conv_layers=config.model.encoder_conv_layers,
@@ -827,6 +828,7 @@ class Tacotron2(nn.Layer):
                     p_attention_dropout=config.model.p_attention_dropout,
                     p_decoder_dropout=config.model.p_decoder_dropout,
                     p_postnet_dropout=config.model.p_postnet_dropout,
+                    d_global_condition=config.model.d_global_condition,
                     use_stop_token=config.model.use_stop_token)
         checkpoint.load_parameters(model, checkpoint_path=checkpoint_path)
         return model

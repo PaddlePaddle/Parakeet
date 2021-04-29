@@ -12,7 +12,7 @@
 
 使用训练好的 speaker encoder 为 AiShell3 数据集中的每个句子生成对应的 utterance embedding. 以和音频文件夹同构的方式存储。存储格式是 `.npy` 文件。
 
-首先 cd 到 [ge2e](../ge2e) 文件夹。下载训练好的 [模型](https://paddlespeech.bj.bcebos.com/Parakeet/ge2e_checkpoint_0.3.zip)，然后运行脚本生成每个句子的 utterance embedding.
+首先 cd 到 [ge2e](../ge2e) 文件夹。下载训练好的 [模型](https://paddlespeech.bj.bcebos.com/Parakeet/ge2e_ckpt_0.3.zip)，然后运行脚本生成每个句子的 utterance embedding.
 
 ```bash
 python inference.py --input=<intput> --output=<output> --device="gpu" --checkpoint_path=<pretrained checkpoint>

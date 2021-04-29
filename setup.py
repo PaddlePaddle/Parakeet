@@ -20,9 +20,8 @@ from setuptools import setup, find_packages
 
 
 def read(*names, **kwargs):
-    with io.open(
-            os.path.join(os.path.dirname(__file__), *names),
-            encoding=kwargs.get("encoding", "utf8")) as fp:
+    with io.open(os.path.join(os.path.dirname(__file__), *names),
+                 encoding=kwargs.get("encoding", "utf8")) as fp:
         return fp.read()
 
 
@@ -37,7 +36,6 @@ def find_version(*file_paths):
 
 VERSION = find_version('parakeet', '__init__.py')
 long_description = read("README.md")
-
 
 setup_info = dict(
     # Metadata
@@ -57,9 +55,9 @@ setup_info = dict(
         'inflect',
         'librosa',
         'unidecode',
-        'numba==0.47.0',
-        'tqdm==4.19.8',
-        'llvmlite==0.31.0',
+        'numba',
+        'tqdm',
+        'llvmlite',
         'matplotlib',
         'visualdl>=2.0.1',
         'scipy',
@@ -68,11 +66,14 @@ setup_info = dict(
         # 'opencc',
         'soundfile',
         'g2p_en',
-        'g2pM',
         'yacs',
-        'tensorboardX',
+        'visualdl',
+        'pypinyin',
+        'webrtcvad'
     ],
-    extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
+    extras_require={
+        'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],
+    },
 
     # Package info
     packages=find_packages(exclude=('tests', 'tests.*')),
@@ -85,6 +86,7 @@ setup_info = dict(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-    ], )
+    ],
+)
 
 setup(**setup_info)
