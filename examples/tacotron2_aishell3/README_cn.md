@@ -1,16 +1,16 @@
-## Tacotron2 + AiShell3 数据集训练语音克隆模型
+## Tacotron2 + AISHELL-3 数据集训练语音克隆模型
 
-本实验的内容是利用 AiShell3 数据集和 Tacotron 2 模型进行语音克隆任务，使用的模型大体结构和论文 [Transfer Learning from Speaker Veriﬁcation to Multispeaker Text-To-Speech Synthesis](https://arxiv.org/pdf/1806.04558.pdf) 相同。大致步骤如下：
+本实验的内容是利用 AISHELL-3 数据集和 Tacotron 2 模型进行语音克隆任务，使用的模型大体结构和论文 [Transfer Learning from Speaker Veriﬁcation to Multispeaker Text-To-Speech Synthesis](https://arxiv.org/pdf/1806.04558.pdf) 相同。大致步骤如下：
 
 1. Speaker Encoder: 我们使用了一个 Speaker Verification 任务训练一个 speaker encoder。这部分任务所用的数据集和训练 Tacotron 2 的数据集不同，因为不需要 transcription 的缘故，我们使用了较多的训练数据，可以参考实现 [ge2e](../ge2e)。
-2. Synthesizer: 然后使用训练好的 speaker encoder 为 AiShell3 数据集中的每个句子生成对应的 utterance embedding. 这个 Embedding 作为 Tacotron 模型中的一个额外输入和 encoder outputs 拼接在一起。
+2. Synthesizer: 然后使用训练好的 speaker encoder 为 AISHELL-3 数据集中的每个句子生成对应的 utterance embedding. 这个 Embedding 作为 Tacotron 模型中的一个额外输入和 encoder outputs 拼接在一起。
 3. Vocoder: 我们使用的声码器是 WaveFlow，参考实验 [waveflow](../waveflow).
 
 ## 数据处理
 
 ### utterance embedding 的生成
 
-使用训练好的 speaker encoder 为 AiShell3 数据集中的每个句子生成对应的 utterance embedding. 以和音频文件夹同构的方式存储。存储格式是 `.npy` 文件。
+使用训练好的 speaker encoder 为 AISHELL-3 数据集中的每个句子生成对应的 utterance embedding. 以和音频文件夹同构的方式存储。存储格式是 `.npy` 文件。
 
 首先 cd 到 [ge2e](../ge2e) 文件夹。下载训练好的 [模型](https://paddlespeech.bj.bcebos.com/Parakeet/ge2e_ckpt_0.3.zip)，然后运行脚本生成每个句子的 utterance embedding.
 
@@ -24,7 +24,7 @@ utterance embedding 的计算可能会用几个小时的时间，请耐心等待
 
 ### 音频处理
 
-因为 aishell3 数据集前后有一些空白，静音片段，而且语音幅值很小，所以我们需要进行空白移除和音量规范化。空白移除可以简单的使用基于音量或者能量的方法，但是效果不是很好，对于不同的句子很难取到一个一致的阈值。我们使用的是先利用 Force Aligner 进行文本和语音的对齐。然后根据对齐结果截除空白。
+因为 AISHELL-3 数据集前后有一些空白，静音片段，而且语音幅值很小，所以我们需要进行空白移除和音量规范化。空白移除可以简单的使用基于音量或者能量的方法，但是效果不是很好，对于不同的句子很难取到一个一致的阈值。我们使用的是先利用 Force Aligner 进行文本和语音的对齐。然后根据对齐结果截除空白。
 
 我们使用的工具是 Montreal Force Aligner 1.0. 因为 aishell 的标注包含拼音标注，所以我们提供给 Montreal Force Aligner 的是拼音 transcription 而不是汉字 transcription. 而且需要把其中的韵律标记(`$` 和 `%`)去除，并且处理成 Montreal Force Alinger 所需要的文件形式。和音频同名的文本文件，扩展名为 `.lab`.
 
@@ -95,14 +95,14 @@ visualdl --logdir=<output> --host=$HOSTNAME
 
 示例 training loss / validation loss 曲线如下。
 
-![image-20210423155450095](/Users/chenfeiyu/Library/Application Support/typora-user-images/image-20210423155450095.png)
+![train](./images/train.png)
 
-![image-20210423155515799](/Users/chenfeiyu/Library/Application Support/typora-user-images/image-20210423155515799.png)
+![valid](./images/valid.png)
 
-<img src="/Users/chenfeiyu/Library/Application Support/typora-user-images/image-20210423165535601.png" alt="image-20210423165535601" style="zoom:50%;" />
+<img src="images/alignment-step2000.png" alt="alignment-step2000" style="zoom:50%;" />
 
 大约从训练 2000 步左右就从 validation 过程中产出的 alignement 中可以观察到模糊的对角线。随着训练步数增加，对角线会更加清晰。但因为 validation 也是以 teacher forcing 的方式进行的，所以要在真正的 auto regressive 合成中产出的 alignment 中观察到对角线，需要更长的时间。
 
 ## 使用
 
-参考 notebook 上的使用说明.
+本实验包含了一个简单的使用示例，用户可以替换作为参考的声音以及文本，用训练好的模型来合成语音。使用方式参考 [notebook](./voice_cloning.ipynb) 上的使用说明。
