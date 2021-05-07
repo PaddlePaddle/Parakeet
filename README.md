@@ -18,14 +18,14 @@ In order to facilitate exploiting the existing TTS models directly and developin
 
 - Vocoders
   - [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219)
-  - [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499)
 
 - TTS models
   - [Neural Speech Synthesis with Transformer Network (Transformer TTS)](https://arxiv.org/abs/1809.08895)
   - [Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions](arxiv.org/abs/1712.05884)
 
+## Updates
 
-And more will be added in the future.
+May-07-2021, Add an example for voice cloning in Chinese. Check [examples/tacotron2_aishell3](./examples/tacotron2_aishell3).
 
 
 ## Setup
