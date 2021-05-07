@@ -71,6 +71,25 @@ Entries to the introduction, and the launch of training and synthsis for differe
 
 Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) for audio sampels.
 
+
+## Checkpoints
+
+### Tacotron2
+1. [tacotron2_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3.zip)
+2. [tacotron2_ljspeech_ckpt_0.3_alternative.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3_alternative.zip)
+
+### Tacotron2_AISHELL3
+1. [tacotron2_aishell3_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_aishell3_ckpt_0.3.zip)
+
+### TransformerTTS
+1. [transformer_tts_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.3.zip)
+
+### WaveFlow
+1. [waveflow_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_ljspeech_ckpt_0.3.zip)
+
+### GE2E
+1. [ge2e_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/ge2e_ckpt_0.3.zip)
+
 ## Copyright and License
 
 Parakeet is provided under the [Apache-2.0 license](LICENSE).
