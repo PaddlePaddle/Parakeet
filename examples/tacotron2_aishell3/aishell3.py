@@ -11,7 +11,7 @@ from preprocess_transcription import _phones, _tones
 voc_phones = Vocab(sorted(list(_phones)))
 print("vocab_phones:\n", voc_phones)
 voc_tones = Vocab(sorted(list(_tones)))
-print("vocab+tones:\n", voc_tones)
+print("vocab_tones:\n", voc_tones)
 
 
 class AiShell3(Dataset):

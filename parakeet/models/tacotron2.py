@@ -205,8 +205,8 @@ class Tacotron2Encoder(nn.Layer):
 
         Parameters
         ----------
-        x: Tensor [shape=(B, T)]
-            Batch of the sequencees of padded character ids.
+        x: Tensor [shape=(B, T, C)]
+            Input embeddings.
 
         text_lens: Tensor [shape=(B,)], optional
             Batch of lengths of each text input batch. Defaults to None.
@@ -502,7 +502,7 @@ class Tacotron2Decoder(nn.Layer):
                 if int(paddle.argmax(alignment[0])) == encoder_steps - 1:
                     if first_hit_end is None:
                         first_hit_end = i
-                    elif i > (first_hit_end + 10):
+                    elif i > (first_hit_end + 20):
                         print("content exhausted!")
                         break
             if len(mel_outputs) == max_decoder_steps:

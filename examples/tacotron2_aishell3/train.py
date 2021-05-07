@@ -183,8 +183,8 @@ class Experiment(ExperimentBase):
                 config.training.weight_decay),
             grad_clip=grad_clip)
         criterion = Tacotron2Loss(
-            use_stop_token_loss=True,
-            use_guided_attention_loss=False,
+            use_stop_token_loss=config.model.use_stop_token,
+            use_guided_attention_loss=config.model.use_guided_attention_loss,
             sigma=config.model.guided_attention_loss_sigma)
         self.model = model
         self.optimizer = optimizer
