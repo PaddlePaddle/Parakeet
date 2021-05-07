@@ -13,22 +13,17 @@
 # limitations under the License.
 
 import time
-from pathlib import Path
+
 import numpy as np
 import paddle
 from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
-from tensorboardX import SummaryWriter
-from collections import defaultdict
 
-import parakeet
 from parakeet.data import dataset
-from parakeet.models.waveflow import UpsampleNet, WaveFlow, ConditionalWaveFlow, WaveFlowLoss
-from parakeet.audio import AudioProcessor
-from parakeet.utils import scheduler, mp_tools
+from parakeet.models.waveflow import ConditionalWaveFlow, WaveFlowLoss
+from parakeet.utils import mp_tools
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
-from parakeet.utils.mp_tools import rank_zero_only
 
 from config import get_cfg_defaults
 from ljspeech import LJSpeech, LJSpeechClipCollector, LJSpeechCollector
@@ -48,8 +43,8 @@ class Experiment(ExperimentBase):
 
         if self.parallel:
             model = paddle.DataParallel(model)
-        optimizer = paddle.optimizer.Adam(
-            config.training.lr, parameters=model.parameters())
+        optimizer = paddle.optimizer.Adam(config.training.lr,
+                                          parameters=model.parameters())
         criterion = WaveFlowLoss(sigma=config.model.sigma)
 
         self.model = model
@@ -68,12 +63,11 @@ class Experiment(ExperimentBase):
                                          config.data.hop_length)
 
         if not self.parallel:
-            train_loader = DataLoader(
-                train_set,
-                batch_size=config.data.batch_size,
-                shuffle=True,
-                drop_last=True,
-                collate_fn=batch_fn)
+            train_loader = DataLoader(train_set,
+                                      batch_size=config.data.batch_size,
+                                      shuffle=True,
+                                      drop_last=True,
+                                      collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
@@ -82,12 +76,14 @@ class Experiment(ExperimentBase):
                 rank=dist.get_rank(),
                 shuffle=True,
                 drop_last=True)
-            train_loader = DataLoader(
-                train_set, batch_sampler=sampler, collate_fn=batch_fn)
+            train_loader = DataLoader(train_set,
+                                      batch_sampler=sampler,
+                                      collate_fn=batch_fn)
 
         valid_batch_fn = LJSpeechCollector()
-        valid_loader = DataLoader(
-            valid_set, batch_size=1, collate_fn=valid_batch_fn)
+        valid_loader = DataLoader(valid_set,
+                                  batch_size=1,
+                                  collate_fn=valid_batch_fn)
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader
@@ -119,8 +115,8 @@ class Experiment(ExperimentBase):
         msg += "loss: {:>.6f}".format(loss_value)
         self.logger.info(msg)
         if dist.get_rank() == 0:
-            self.visualizer.add_scalar(
-                "train/loss", loss_value, global_step=self.iteration)
+            self.visualizer.add_scalar("train/loss", loss_value,
+                                       self.iteration)
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()
@@ -132,13 +128,13 @@ class Experiment(ExperimentBase):
         loss = self.criterion(z, log_det_jocobian)
         valid_losses.append(float(loss))
         valid_loss = np.mean(valid_losses)
-        self.visualizer.add_scalar(
-            "valid/loss", valid_loss, global_step=self.iteration)
+        self.visualizer.add_scalar("valid/loss", valid_loss, self.iteration)
 
 
 def main_sp(config, args):
     exp = Experiment(config, args)
     exp.setup()
+    exp.resume_or_load()
     exp.run()
 
 

@@ -28,13 +28,6 @@ parakeet.models.waveflow module
    :undoc-members:
    :show-inheritance:
 
-parakeet.models.wavenet module
-------------------------------
-
-.. automodule:: parakeet.models.wavenet
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 Module contents
 ---------------

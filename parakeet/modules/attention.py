@@ -143,9 +143,9 @@ class MonoheadAttention(nn.Layer):
 
     def __init__(self,
                  model_dim: int,
-                 dropout: float=0.0,
-                 k_dim: int=None,
-                 v_dim: int=None):
+                 dropout: float = 0.0,
+                 k_dim: int = None,
+                 v_dim: int = None):
         super(MonoheadAttention, self).__init__()
         k_dim = k_dim or model_dim
         v_dim = v_dim or model_dim
@@ -225,9 +225,9 @@ class MultiheadAttention(nn.Layer):
     def __init__(self,
                  model_dim: int,
                  num_heads: int,
-                 dropout: float=0.0,
-                 k_dim: int=None,
-                 v_dim: int=None):
+                 dropout: float = 0.0,
+                 k_dim: int = None,
+                 v_dim: int = None):
         super(MultiheadAttention, self).__init__()
         if model_dim % num_heads != 0:
             raise ValueError("model_dim must be divisible by num_heads")
@@ -316,14 +316,11 @@ class LocationSensitiveAttention(nn.Layer):
         self.key_layer = nn.Linear(d_key, d_attention, bias_attr=False)
         self.value = nn.Linear(d_attention, 1, bias_attr=False)
 
-        #Location Layer
+        # Location Layer
         self.location_conv = nn.Conv1D(
-            2,
-            location_filters,
-            location_kernel_size,
-            1,
-            int((location_kernel_size - 1) / 2),
-            1,
+            2, location_filters,
+            kernel_size=location_kernel_size,
+            padding=int((location_kernel_size - 1) / 2),
             bias_attr=False,
             data_format='NLC')
         self.location_layer = nn.Linear(
@@ -352,21 +349,22 @@ class LocationSensitiveAttention(nn.Layer):
             Attention weights concat.
             
         mask : Tensor, optional
-            The mask. Shape should be (batch_size, times_steps_q, time_steps_k) or broadcastable shape.
+            The mask. Shape should be (batch_size, times_steps_k, 1).
             Defaults to None.
 
         Returns
         ----------
-        attention_context : Tensor [shape=(batch_size, time_steps_q, d_attention)] 
+        attention_context : Tensor [shape=(batch_size, d_attention)] 
             The context vector.
             
-        attention_weights : Tensor [shape=(batch_size, times_steps_q, time_steps_k)]
+        attention_weights : Tensor [shape=(batch_size, time_steps_k)]
             The attention weights.
         """
 
         processed_query = self.query_layer(paddle.unsqueeze(query, axis=[1]))
         processed_attention_weights = self.location_layer(
             self.location_conv(attention_weights_cat))
+        # (B, T_enc, 1)
         alignment = self.value(
             paddle.tanh(processed_attention_weights + processed_key +
                         processed_query))
@@ -378,7 +376,7 @@ class LocationSensitiveAttention(nn.Layer):
         attention_context = paddle.matmul(
             attention_weights, value, transpose_x=True)
 
-        attention_weights = paddle.squeeze(attention_weights, axis=[-1])
-        attention_context = paddle.squeeze(attention_context, axis=[1])
+        attention_weights = paddle.squeeze(attention_weights, axis=-1)
+        attention_context = paddle.squeeze(attention_context, axis=1)
 
         return attention_context, attention_weights

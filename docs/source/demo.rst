@@ -140,4 +140,48 @@ Vocoder audio samples
 
 Audio samples generated from ground-truth spectrograms with a vocoder.
 
+.. raw:: html
+
+    <embed>
+    <table>
+        <tr>
+            <th  align="left"> WaveFlow res 128</th>
+        </tr>
+        <tr>
+            <td>
+                <audio controls="controls">
+                    <source
+                        src="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_0.wav"
+                        type="audio/wav">
+                    Your browser does not support the <code>audio</code> element.
+                </audio>
+                <audio controls="controls">
+                    <source
+                        src="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_1.wav"
+                        type="audio/wav">
+                    Your browser does not support the <code>audio</code> element.
+                </audio>
+                <audio controls="controls">
+                    <source
+                        src="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_2.wav"
+                        type="audio/wav">
+                    Your browser does not support the <code>audio</code> element.
+                </audio>
+                <audio controls="controls">
+                    <source
+                        src="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_3.wav"
+                        type="audio/wav">
+                    Your browser does not support the <code>audio</code> element.
+                </audio>
+                <audio controls="controls">
+                    <source
+                        src="https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_res128_ljspeech_samples_1.0/step_2000k_sentence_4.wav"
+                        type="audio/wav">
+                    Your browser does not support the <code>audio</code> element.
+                </audio>
+            </td>
+        </tr>
+        </tabel>
+    </table>
+    </embed>
 

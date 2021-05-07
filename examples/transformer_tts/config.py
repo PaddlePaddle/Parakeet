@@ -23,8 +23,9 @@ _C.data = CN(
         n_fft=1024,  # fft frame size
         win_length=1024,  # window size
         hop_length=256,  # hop size between ajacent frame
-        f_max=8000,  # Hz, max frequency when converting to mel
-        d_mel=80,  # mel bands
+        fmin=0,  # Hz, min frequency when converting to mel
+        fmax=8000,  # Hz, max frequency when converting to mel
+        n_mels=80,  # mel bands
         padding_idx=0,  # text embedding's padding index
         mel_start_value=0.5,  # value for starting frame
         mel_end_value=-0.5,  # # value for ending frame
@@ -56,7 +57,7 @@ _C.training = CN(
         plot_interval=1000,  # plot attention and spectrogram
         valid_interval=1000,  # validation
         save_interval=10000,  # checkpoint
-        max_iteration=900000,  # max iteration to train
+        max_iteration=500000,  # max iteration to train
     ))
 
 
