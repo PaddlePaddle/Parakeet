@@ -46,3 +46,7 @@ Synthesize waveform. We assume the `--input` is a directory containing several m
 ```bash
 python synthesize.py --input=mels/ --output=wavs/ --checkpoint_path='step-2000000' --device="gpu" --verbose
 ```
+
+## Pretrained Model
+
+Pretrained Model with residual channel equals 128 can be downloaded here. [waveflow_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_ljspeech_ckpt_0.3.zip).

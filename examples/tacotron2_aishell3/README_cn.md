@@ -103,6 +103,10 @@ visualdl --logdir=<output> --host=$HOSTNAME
 
 大约从训练 2000 步左右就从 validation 过程中产出的 alignement 中可以观察到模糊的对角线。随着训练步数增加，对角线会更加清晰。但因为 validation 也是以 teacher forcing 的方式进行的，所以要在真正的 auto regressive 合成中产出的 alignment 中观察到对角线，需要更长的时间。
 
+## 预训练模型
+
+预训练模型下载链接。[tacotron2_aishell3_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_aishell3_ckpt_0.3.zip).
+
 ## 使用
 
 本实验包含了一个简单的使用示例，用户可以替换作为参考的声音以及文本，用训练好的模型来合成语音。使用方式参考 [notebook](./voice_cloning.ipynb) 上的使用说明。
