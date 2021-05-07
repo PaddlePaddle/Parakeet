@@ -69,7 +69,8 @@ setup_info = dict(
         'yacs',
         'visualdl',
         'pypinyin',
-        'webrtcvad'
+        'webrtcvad',
+        'g2pM'
     ],
     extras_require={
         'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],
