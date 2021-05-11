@@ -55,7 +55,7 @@ python process_wav.py --input=<input> --output=<output> --alignment=<alignment>
 
 ### 转录文本处理
 
-把文本转换称为 phone 和 tone 的形式，并存储起来。值得注意的是，这里我们的处理和用于 montreal force aligner 的不一样。我们把声调分了出来。这是一个处理方式，当然也可以只做声母和韵母的切分。
+把文本转换成为 phone 和 tone 的形式，并存储起来。值得注意的是，这里我们的处理和用于 montreal force aligner 的不一样。我们把声调分了出来。这是一个处理方式，当然也可以只做声母和韵母的切分。
 
 运行脚本处理转录文本。
 

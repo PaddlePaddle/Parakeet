@@ -7,10 +7,12 @@ from paddle.io import DataLoader
 from paddle.nn.clip import ClipGradByGlobalNorm
 
 from parakeet.models.lstm_speaker_encoder import LSTMSpeakerEncoder
-from parakeet.training import ExperimentBase, default_argument_parser
+from parakeet.training import ExperimentBase
+from parakeet.training import default_argument_parser
 
-from speaker_verification_dataset import (MultiSpeakerMelDataset,
-                                          MultiSpeakerSampler, Collate)
+from speaker_verification_dataset import MultiSpeakerMelDataset
+from speaker_verification_dataset import MultiSpeakerSampler
+from speaker_verification_dataset import Collate
 from config import get_cfg_defaults
 
 
