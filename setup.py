@@ -70,7 +70,8 @@ setup_info = dict(
         'visualdl',
         'pypinyin',
         'webrtcvad',
-        'g2pM'
+        'g2pM',
+        'praatio',
     ],
     extras_require={
         'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],
