@@ -98,9 +98,8 @@ class Experiment(ExperimentBase):
                 display.plot_spectrogram(mels[0].numpy().T), self.iteration)
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_predicted_spectrogram",
-                display.plot_spectrogram(
-                    outputs['mel_outputs_postnet'][0].numpy().T),
-                self.iteration)
+                display.plot_spectrogram(outputs['mel_outputs_postnet'][0]
+                                         .numpy().T), self.iteration)
 
         # write visual log
         valid_losses = {k: np.mean(v) for k, v in valid_losses.items()}
@@ -169,26 +168,27 @@ class Experiment(ExperimentBase):
         batch_fn = LJSpeechCollector(padding_idx=config.data.padding_idx)
 
         if not self.parallel:
-            self.train_loader = DataLoader(train_set,
-                                           batch_size=config.data.batch_size,
-                                           shuffle=True,
-                                           drop_last=True,
-                                           collate_fn=batch_fn)
+            self.train_loader = DataLoader(
+                train_set,
+                batch_size=config.data.batch_size,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
                 batch_size=config.data.batch_size,
                 shuffle=True,
                 drop_last=True)
-            self.train_loader = DataLoader(train_set,
-                                           batch_sampler=sampler,
-                                           collate_fn=batch_fn)
+            self.train_loader = DataLoader(
+                train_set, batch_sampler=sampler, collate_fn=batch_fn)
 
-        self.valid_loader = DataLoader(valid_set,
-                                       batch_size=config.data.batch_size,
-                                       shuffle=False,
-                                       drop_last=False,
-                                       collate_fn=batch_fn)
+        self.valid_loader = DataLoader(
+            valid_set,
+            batch_size=config.data.batch_size,
+            shuffle=False,
+            drop_last=False,
+            collate_fn=batch_fn)
 
 
 def main_sp(config, args):

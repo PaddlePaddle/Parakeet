@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from functools import partial
 from typing import List
 from pathlib import Path
@@ -29,7 +43,7 @@ def _process_speaker(speaker_dir: Path,
                      datasets_root: Path,
                      output_dir: Path,
                      pattern: str,
-                     skip_existing: bool = False):
+                     skip_existing: bool=False):
     # datastes root: a reference path to compute speaker_name
     # we prepand dataset name to speaker_id becase we are mixing serveal
     # multispeaker datasets together
@@ -67,24 +81,25 @@ def _process_dataset(processor: SpeakerVerificationPreprocessor,
                      dataset_name: str,
                      output_dir: Path,
                      pattern: str,
-                     skip_existing: bool = False):
+                     skip_existing: bool=False):
     print(
-        f"{dataset_name}: Preprocessing data for {len(speaker_dirs)} speakers."
-    )
+        f"{dataset_name}: Preprocessing data for {len(speaker_dirs)} speakers.")
 
-    _func = partial(_process_speaker,
-                    processor=processor,
-                    datasets_root=datasets_root,
-                    output_dir=output_dir,
-                    pattern=pattern,
-                    skip_existing=skip_existing)
+    _func = partial(
+        _process_speaker,
+        processor=processor,
+        datasets_root=datasets_root,
+        output_dir=output_dir,
+        pattern=pattern,
+        skip_existing=skip_existing)
 
     with mp.Pool(16) as pool:
         list(
-            tqdm(pool.imap(_func, speaker_dirs),
-                 dataset_name,
-                 len(speaker_dirs),
-                 unit="speakers"))
+            tqdm(
+                pool.imap(_func, speaker_dirs),
+                dataset_name,
+                len(speaker_dirs),
+                unit="speakers"))
     print(f"Done preprocessing {dataset_name}.")
 
 

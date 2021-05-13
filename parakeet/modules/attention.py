@@ -143,9 +143,9 @@ class MonoheadAttention(nn.Layer):
 
     def __init__(self,
                  model_dim: int,
-                 dropout: float = 0.0,
-                 k_dim: int = None,
-                 v_dim: int = None):
+                 dropout: float=0.0,
+                 k_dim: int=None,
+                 v_dim: int=None):
         super(MonoheadAttention, self).__init__()
         k_dim = k_dim or model_dim
         v_dim = v_dim or model_dim
@@ -225,9 +225,9 @@ class MultiheadAttention(nn.Layer):
     def __init__(self,
                  model_dim: int,
                  num_heads: int,
-                 dropout: float = 0.0,
-                 k_dim: int = None,
-                 v_dim: int = None):
+                 dropout: float=0.0,
+                 k_dim: int=None,
+                 v_dim: int=None):
         super(MultiheadAttention, self).__init__()
         if model_dim % num_heads != 0:
             raise ValueError("model_dim must be divisible by num_heads")
@@ -318,7 +318,8 @@ class LocationSensitiveAttention(nn.Layer):
 
         # Location Layer
         self.location_conv = nn.Conv1D(
-            2, location_filters,
+            2,
+            location_filters,
             kernel_size=location_kernel_size,
             padding=int((location_kernel_size - 1) / 2),
             bias_attr=False,

@@ -23,6 +23,7 @@ from parakeet.data.batch import batch_spec, batch_text_id
 
 class LJSpeech(Dataset):
     """A simple dataset adaptor for the processed ljspeech dataset."""
+
     def __init__(self, root):
         self.root = Path(root).expanduser()
         records = []
@@ -64,6 +65,7 @@ class Transform(object):
 
 class LJSpeechCollector(object):
     """A simple callable to batch LJSpeech examples."""
+
     def __init__(self, padding_idx=0, padding_value=0.):
         self.padding_idx = padding_idx
         self.padding_value = padding_value

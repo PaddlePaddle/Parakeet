@@ -14,7 +14,7 @@ wget https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
 tar xjvf LJSpeech-1.1.tar.bz2
 ```
 
-### Preprocess the dataset. 
+### Preprocess the dataset.
 
 Assume the path to save the preprocessed dataset is `ljspeech_waveflow`. Run the command below to preprocess the dataset.
 

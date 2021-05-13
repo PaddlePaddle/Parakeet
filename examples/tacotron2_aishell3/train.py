@@ -53,12 +53,13 @@ class Experiment(ExperimentBase):
         self.optimizer.clear_grad()
         self.model.train()
         texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
-        outputs = self.model(texts,
-                             text_lens,
-                             mels,
-                             output_lens,
-                             tones=tones,
-                             global_condition=utterance_embeds)
+        outputs = self.model(
+            texts,
+            text_lens,
+            mels,
+            output_lens,
+            tones=tones,
+            global_condition=utterance_embeds)
         losses = self.compute_losses(batch, outputs)
         loss = losses["loss"]
         loss.backward()
@@ -86,12 +87,13 @@ class Experiment(ExperimentBase):
         valid_losses = defaultdict(list)
         for i, batch in enumerate(self.valid_loader):
             texts, tones, mels, utterance_embeds, text_lens, output_lens, stop_tokens = batch
-            outputs = self.model(texts,
-                                 text_lens,
-                                 mels,
-                                 output_lens,
-                                 tones=tones,
-                                 global_condition=utterance_embeds)
+            outputs = self.model(
+                texts,
+                text_lens,
+                mels,
+                output_lens,
+                tones=tones,
+                global_condition=utterance_embeds)
             losses = self.compute_losses(batch, outputs)
             for key, value in losses.items():
                 valid_losses[key].append(float(value))
@@ -132,9 +134,8 @@ class Experiment(ExperimentBase):
         mel_dir.mkdir(parents=True, exist_ok=True)
         for i, batch in enumerate(self.test_loader):
             texts, tones, mels, utterance_embeds, *_ = batch
-            outputs = self.model.infer(texts,
-                                       tones=tones,
-                                       global_condition=utterance_embeds)
+            outputs = self.model.infer(
+                texts, tones=tones, global_condition=utterance_embeds)
 
             display.plot_alignment(outputs["alignments"][0].numpy().T)
             plt.savefig(mel_dir / f"sentence_{i}.png")
@@ -168,8 +169,7 @@ class Experiment(ExperimentBase):
             p_decoder_dropout=config.model.p_decoder_dropout,
             p_postnet_dropout=config.model.p_postnet_dropout,
             d_global_condition=config.model.d_global_condition,
-            use_stop_token=config.model.use_stop_token,
-        )
+            use_stop_token=config.model.use_stop_token, )
 
         if self.parallel:
             model = paddle.DataParallel(model)
@@ -200,32 +200,34 @@ class Experiment(ExperimentBase):
         batch_fn = collate_aishell3_examples
 
         if not self.parallel:
-            self.train_loader = DataLoader(train_set,
-                                           batch_size=config.data.batch_size,
-                                           shuffle=True,
-                                           drop_last=True,
-                                           collate_fn=batch_fn)
+            self.train_loader = DataLoader(
+                train_set,
+                batch_size=config.data.batch_size,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
                 batch_size=config.data.batch_size,
                 shuffle=True,
                 drop_last=True)
-            self.train_loader = DataLoader(train_set,
-                                           batch_sampler=sampler,
-                                           collate_fn=batch_fn)
+            self.train_loader = DataLoader(
+                train_set, batch_sampler=sampler, collate_fn=batch_fn)
 
-        self.valid_loader = DataLoader(valid_set,
-                                       batch_size=config.data.batch_size,
-                                       shuffle=False,
-                                       drop_last=False,
-                                       collate_fn=batch_fn)
+        self.valid_loader = DataLoader(
+            valid_set,
+            batch_size=config.data.batch_size,
+            shuffle=False,
+            drop_last=False,
+            collate_fn=batch_fn)
 
-        self.test_loader = DataLoader(valid_set,
-                                      batch_size=1,
-                                      shuffle=False,
-                                      drop_last=False,
-                                      collate_fn=batch_fn)
+        self.test_loader = DataLoader(
+            valid_set,
+            batch_size=1,
+            shuffle=False,
+            drop_last=False,
+            collate_fn=batch_fn)
 
 
 def main_sp(config, args):

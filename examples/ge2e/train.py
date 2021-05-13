@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import time
 
 from paddle import distributed as dist
@@ -22,9 +36,10 @@ class Ge2eExperiment(ExperimentBase):
         model = LSTMSpeakerEncoder(config.data.n_mels, config.model.num_layers,
                                    config.model.hidden_size,
                                    config.model.embedding_size)
-        optimizer = Adam(config.training.learning_rate_init,
-                         parameters=model.parameters(),
-                         grad_clip=ClipGradByGlobalNorm(3))
+        optimizer = Adam(
+            config.training.learning_rate_init,
+            parameters=model.parameters(),
+            grad_clip=ClipGradByGlobalNorm(3))
         self.model = DataParallel(model) if self.parallel else model
         self.model_core = model
         self.optimizer = optimizer
@@ -35,11 +50,11 @@ class Ge2eExperiment(ExperimentBase):
         sampler = MultiSpeakerSampler(train_dataset,
                                       config.training.speakers_per_batch,
                                       config.training.utterances_per_speaker)
-        train_loader = DataLoader(train_dataset,
-                                  batch_sampler=sampler,
-                                  collate_fn=Collate(
-                                      config.data.partial_n_frames),
-                                  num_workers=16)
+        train_loader = DataLoader(
+            train_dataset,
+            batch_sampler=sampler,
+            collate_fn=Collate(config.data.partial_n_frames),
+            num_workers=16)
 
         self.train_dataset = train_dataset
         self.train_loader = train_loader
@@ -72,8 +87,8 @@ class Ge2eExperiment(ExperimentBase):
                                        self.iteration)
             self.visualizer.add_scalar("train/eer", eer, self.iteration)
             self.visualizer.add_scalar(
-                "param/w", float(self.model_core.similarity_weight),
-                self.iteration)
+                "param/w",
+                float(self.model_core.similarity_weight), self.iteration)
             self.visualizer.add_scalar("param/b",
                                        float(self.model_core.similarity_bias),
                                        self.iteration)

@@ -53,11 +53,12 @@ class TransformerTTSExperiment(ExperimentBase):
             dropout=config.model.dropout)
         if self.parallel:
             model = paddle.DataParallel(model)
-        optimizer = paddle.optimizer.Adam(learning_rate=config.training.lr,
-                                          beta1=0.9,
-                                          beta2=0.98,
-                                          epsilon=1e-9,
-                                          parameters=model.parameters())
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=config.training.lr,
+            beta1=0.9,
+            beta2=0.98,
+            epsilon=1e-9,
+            parameters=model.parameters())
         criterion = TransformerTTSLoss(config.model.stop_loss_scale)
         drop_n_heads = scheduler.StepWise(config.training.drop_n_heads)
         reduction_factor = scheduler.StepWise(config.training.reduction_factor)
@@ -82,11 +83,12 @@ class TransformerTTSExperiment(ExperimentBase):
         batch_fn = LJSpeechCollector(padding_idx=config.data.padding_idx)
 
         if not self.parallel:
-            train_loader = DataLoader(train_set,
-                                      batch_size=config.data.batch_size,
-                                      shuffle=True,
-                                      drop_last=True,
-                                      collate_fn=batch_fn)
+            train_loader = DataLoader(
+                train_set,
+                batch_size=config.data.batch_size,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
@@ -95,21 +97,20 @@ class TransformerTTSExperiment(ExperimentBase):
                 rank=dist.get_rank(),
                 shuffle=True,
                 drop_last=True)
-            train_loader = DataLoader(train_set,
-                                      batch_sampler=sampler,
-                                      collate_fn=batch_fn)
+            train_loader = DataLoader(
+                train_set, batch_sampler=sampler, collate_fn=batch_fn)
 
-        valid_loader = DataLoader(valid_set,
-                                  batch_size=config.data.batch_size,
-                                  collate_fn=batch_fn)
+        valid_loader = DataLoader(
+            valid_set, batch_size=config.data.batch_size, collate_fn=batch_fn)
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader
 
     def compute_outputs(self, text, mel):
         model_core = self.model._layers if self.parallel else self.model
-        model_core.set_constants(self.reduction_factor(self.iteration),
-                                 self.drop_n_heads(self.iteration))
+        model_core.set_constants(
+            self.reduction_factor(self.iteration),
+            self.drop_n_heads(self.iteration))
 
         mel_input = mel[:, :-1, :]
         reduced_mel_input = mel_input[:, ::model_core.r, :]
@@ -126,10 +127,9 @@ class TransformerTTSExperiment(ExperimentBase):
         stop_logits = outputs["stop_logits"]
 
         time_steps = mel_target.shape[1]
-        losses = self.criterion(mel_output[:, :time_steps, :],
-                                mel_intermediate[:, :time_steps, :],
-                                mel_target, stop_logits[:, :time_steps, :],
-                                stop_label_target)
+        losses = self.criterion(
+            mel_output[:, :time_steps, :], mel_intermediate[:, :time_steps, :],
+            mel_target, stop_logits[:, :time_steps, :], stop_label_target)
         return losses
 
     def train_batch(self):

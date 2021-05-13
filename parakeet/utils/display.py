@@ -31,10 +31,8 @@ __all__ = [
 def plot_alignment(alignment, title=None):
     # alignment: [encoder_steps, decoder_steps)
     fig, ax = plt.subplots(figsize=(6, 4))
-    im = ax.imshow(alignment,
-                   aspect='auto',
-                   origin='lower',
-                   interpolation='none')
+    im = ax.imshow(
+        alignment, aspect='auto', origin='lower', interpolation='none')
     fig.colorbar(im, ax=ax)
     xlabel = 'Decoder timestep'
     if title is not None:
@@ -49,15 +47,14 @@ def plot_multihead_alignments(alignments, title=None):
     # alignments: [N, encoder_steps, decoder_steps)
     num_subplots = alignments.shape[0]
 
-    fig, axes = plt.subplots(figsize=(6 * num_subplots, 4),
-                             ncols=num_subplots,
-                             sharey=True,
-                             squeeze=True)
+    fig, axes = plt.subplots(
+        figsize=(6 * num_subplots, 4),
+        ncols=num_subplots,
+        sharey=True,
+        squeeze=True)
     for i, ax in enumerate(axes):
-        im = ax.imshow(alignments[i],
-                       aspect='auto',
-                       origin='lower',
-                       interpolation='none')
+        im = ax.imshow(
+            alignments[i], aspect='auto', origin='lower', interpolation='none')
         fig.colorbar(im, ax=ax)
         xlabel = 'Decoder timestep'
         if title is not None:
@@ -73,18 +70,20 @@ def plot_multilayer_multihead_alignments(alignments, title=None):
     # alignments: [num_layers, num_heads, encoder_steps, decoder_steps)
     num_layers, num_heads, *_ = alignments.shape
 
-    fig, axes = plt.subplots(figsize=(6 * num_heads, 4 * num_layers),
-                             nrows=num_layers,
-                             ncols=num_heads,
-                             sharex=True,
-                             sharey=True,
-                             squeeze=True)
+    fig, axes = plt.subplots(
+        figsize=(6 * num_heads, 4 * num_layers),
+        nrows=num_layers,
+        ncols=num_heads,
+        sharex=True,
+        sharey=True,
+        squeeze=True)
     for i, row in enumerate(axes):
         for j, ax in enumerate(row):
-            im = ax.imshow(alignments[i, j],
-                           aspect='auto',
-                           origin='lower',
-                           interpolation='none')
+            im = ax.imshow(
+                alignments[i, j],
+                aspect='auto',
+                origin='lower',
+                interpolation='none')
             fig.colorbar(im, ax=ax)
             xlabel = 'Decoder timestep'
             if title is not None:

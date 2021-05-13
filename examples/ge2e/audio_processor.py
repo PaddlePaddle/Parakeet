@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from pathlib import Path
 from warnings import warn
 import struct
@@ -30,16 +44,18 @@ def normalize_volume(wav,
     if increase_only and decrease_only:
         raise ValueError("Both increase only and decrease only are set")
     dBFS_change = target_dBFS - 10 * np.log10(np.mean(wav**2))
-    if ((dBFS_change < 0 and increase_only)
-            or (dBFS_change > 0 and decrease_only)):
+    if ((dBFS_change < 0 and increase_only) or
+        (dBFS_change > 0 and decrease_only)):
         return wav
     gain = 10**(dBFS_change / 20)
     return wav * gain
 
 
-def trim_long_silences(wav, vad_window_length: int,
+def trim_long_silences(wav,
+                       vad_window_length: int,
                        vad_moving_average_width: int,
-                       vad_max_silence_length: int, sampling_rate: int):
+                       vad_max_silence_length: int,
+                       sampling_rate: int):
     """
     Ensures that segments without voice in the waveform remain no longer than a
     threshold determined by the VAD parameters in params.py.
@@ -63,14 +79,15 @@ def trim_long_silences(wav, vad_window_length: int,
     for window_start in range(0, len(wav), samples_per_window):
         window_end = window_start + samples_per_window
         voice_flags.append(
-            vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
-                          sample_rate=sampling_rate))
+            vad.is_speech(
+                pcm_wave[window_start * 2:window_end * 2],
+                sample_rate=sampling_rate))
     voice_flags = np.array(voice_flags)
 
     # Smooth the voice detection with a moving average
     def moving_average(array, width):
-        array_padded = np.concatenate((np.zeros(
-            (width - 1) // 2), array, np.zeros(width // 2)))
+        array_padded = np.concatenate((np.zeros((width - 1) // 2), array,
+                                       np.zeros(width // 2)))
         ret = np.cumsum(array_padded, dtype=float)
         ret[width:] = ret[width:] - ret[:-width]
         return ret[width - 1:] / width
@@ -89,8 +106,8 @@ def trim_long_silences(wav, vad_window_length: int,
 def compute_partial_slices(n_samples: int,
                            partial_utterance_n_frames: int,
                            hop_length: int,
-                           min_pad_coverage: float = 0.75,
-                           overlap: float = 0.5):
+                           min_pad_coverage: float=0.75,
+                           overlap: float=0.5):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel
@@ -121,8 +138,8 @@ def compute_partial_slices(n_samples: int,
     # librosa's function to compute num_frames from num_samples
     n_frames = int(np.ceil((n_samples + 1) / hop_length))
     # frame shift between ajacent partials
-    frame_step = max(1,
-                     int(np.round(partial_utterance_n_frames * (1 - overlap))))
+    frame_step = max(
+        1, int(np.round(partial_utterance_n_frames * (1 - overlap))))
 
     # Compute the slices
     wav_slices, mel_slices = [], []
@@ -135,8 +152,8 @@ def compute_partial_slices(n_samples: int,
 
     # Evaluate whether extra padding is warranted or not
     last_wav_range = wav_slices[-1]
-    coverage = (n_samples - last_wav_range.start) / (last_wav_range.stop -
-                                                     last_wav_range.start)
+    coverage = (n_samples - last_wav_range.start) / (
+        last_wav_range.stop - last_wav_range.start)
     if coverage < min_pad_coverage and len(mel_slices) > 1:
         mel_slices = mel_slices[:-1]
         wav_slices = wav_slices[:-1]
@@ -155,8 +172,8 @@ class SpeakerVerificationPreprocessor(object):
                  mel_window_step,
                  n_mels,
                  partial_n_frames: int,
-                 min_pad_coverage: float = 0.75,
-                 partial_overlap_ratio: float = 0.5):
+                 min_pad_coverage: float=0.75,
+                 partial_overlap_ratio: float=0.5):
         self.sampling_rate = sampling_rate
         self.audio_norm_target_dBFS = audio_norm_target_dBFS
 
@@ -184,24 +201,23 @@ class SpeakerVerificationPreprocessor(object):
             wav = librosa.resample(wav, source_sr, self.sampling_rate)
 
         # loudness normalization
-        wav = normalize_volume(wav,
-                               self.audio_norm_target_dBFS,
-                               increase_only=True)
+        wav = normalize_volume(
+            wav, self.audio_norm_target_dBFS, increase_only=True)
 
         # trim long silence
         if webrtcvad:
-            wav = trim_long_silences(wav, self.vad_window_length,
-                                     self.vad_moving_average_width,
-                                     self.vad_max_silence_length,
-                                     self.sampling_rate)
+            wav = trim_long_silences(
+                wav, self.vad_window_length, self.vad_moving_average_width,
+                self.vad_max_silence_length, self.sampling_rate)
         return wav
 
     def melspectrogram(self, wav):
-        mel = librosa.feature.melspectrogram(wav,
-                                             sr=self.sampling_rate,
-                                             n_fft=self.n_fft,
-                                             hop_length=self.hop_length,
-                                             n_mels=self.n_mels)
+        mel = librosa.feature.melspectrogram(
+            wav,
+            sr=self.sampling_rate,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            n_mels=self.n_mels)
         mel = mel.astype(np.float32).T
         return mel
 

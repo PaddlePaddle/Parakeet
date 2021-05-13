@@ -116,16 +116,22 @@ class STFT(nn.Layer):
     
     """
 
-    def __init__(self, n_fft, hop_length=None, win_length=None, window="hanning", center=True, pad_mode="reflect"):
+    def __init__(self,
+                 n_fft,
+                 hop_length=None,
+                 win_length=None,
+                 window="hanning",
+                 center=True,
+                 pad_mode="reflect"):
         super().__init__()
         # By default, use the entire frame
         if win_length is None:
             win_length = n_fft
-    
+
         # Set the default hop, if it's not already specified
         if hop_length is None:
             hop_length = int(win_length // 4)
-            
+
         self.hop_length = hop_length
         self.n_bin = 1 + n_fft // 2
         self.n_fft = n_fft
@@ -134,7 +140,7 @@ class STFT(nn.Layer):
 
         # calculate window
         window = signal.get_window(window, win_length, fftbins=True)
-        
+
         # pad window to n_fft size
         if n_fft != win_length:
             window = pad_center(window, n_fft, mode="constant")
@@ -146,11 +152,11 @@ class STFT(nn.Layer):
         #r = np.arange(0, n_fft)
         #M = np.expand_dims(r, -1) * np.expand_dims(r, 0)
         #w_real = np.reshape(window *
-                            #np.cos(2 * np.pi * M / n_fft)[:self.n_bin],
-                            #(self.n_bin, 1, self.n_fft))
+        #np.cos(2 * np.pi * M / n_fft)[:self.n_bin],
+        #(self.n_bin, 1, self.n_fft))
         #w_imag = np.reshape(window *
-                            #np.sin(-2 * np.pi * M / n_fft)[:self.n_bin],
-                            #(self.n_bin, 1, self.n_fft))
+        #np.sin(-2 * np.pi * M / n_fft)[:self.n_bin],
+        #(self.n_bin, 1, self.n_fft))
         weight = np.fft.fft(np.eye(n_fft))[:self.n_bin]
         w_real = weight.real
         w_imag = weight.imag
@@ -178,8 +184,9 @@ class STFT(nn.Layer):
         """
         x = paddle.unsqueeze(x, axis=1)
         if self.center:
-            x = F.pad(x, [self.n_fft // 2, self.n_fft // 2], 
-                      data_format='NCL', mode=self.pad_mode)
+            x = F.pad(x, [self.n_fft // 2, self.n_fft // 2],
+                      data_format='NCL',
+                      mode=self.pad_mode)
 
         # to BCT, C=1
         out = F.conv1d(x, self.weight, stride=self.hop_length)
@@ -226,7 +233,7 @@ class MelScale(nn.Layer):
         super().__init__()
         mel_basis = librosa.filters.mel(sr, n_fft, n_mels, fmin, fmax)
         self.weight = paddle.to_tensor(mel_basis)
-        
+
     def forward(self, spec):
         # (n_mels, n_freq) * (batch_size, n_freq, n_frames)
         mel = paddle.matmul(self.weight, spec)

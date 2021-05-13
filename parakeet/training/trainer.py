@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from pathlib import Path
 import tqdm
 from dataclasses import dataclass
@@ -25,7 +39,7 @@ class Trainer(object):
         self.stop_trigger = get_trigger(stop_trigger)
         self.out = Path(out)
         self.observation = {}
-        
+
     def setup(self):
         pass
 
@@ -38,8 +52,8 @@ class Trainer(object):
             ordinal += 1
             modified_name = f"{name}_{ordinal}"
 
-        self.extensions[modified_name] = ExtensionEntry(
-            extension, trigger, priority)
+        self.extensions[modified_name] = ExtensionEntry(extension, trigger,
+                                                        priority)
 
     def run(self):
         # sort extensions by priorities once
@@ -61,7 +75,7 @@ class Trainer(object):
                 max_epoch = self.stop_trigger.period
             else:
                 max_iteration = self.stop_trigger.period
-        
+
         while not stop_trigger(self):
             self.observation = {}
             # set observation as the report target
@@ -75,4 +89,3 @@ class Trainer(object):
             for name, entry in extensions:
                 if entry.trigger(self):
                     entry.extension(self)
-                    

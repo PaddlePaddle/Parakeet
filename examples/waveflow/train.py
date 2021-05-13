@@ -43,8 +43,8 @@ class Experiment(ExperimentBase):
 
         if self.parallel:
             model = paddle.DataParallel(model)
-        optimizer = paddle.optimizer.Adam(config.training.lr,
-                                          parameters=model.parameters())
+        optimizer = paddle.optimizer.Adam(
+            config.training.lr, parameters=model.parameters())
         criterion = WaveFlowLoss(sigma=config.model.sigma)
 
         self.model = model
@@ -63,11 +63,12 @@ class Experiment(ExperimentBase):
                                          config.data.hop_length)
 
         if not self.parallel:
-            train_loader = DataLoader(train_set,
-                                      batch_size=config.data.batch_size,
-                                      shuffle=True,
-                                      drop_last=True,
-                                      collate_fn=batch_fn)
+            train_loader = DataLoader(
+                train_set,
+                batch_size=config.data.batch_size,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=batch_fn)
         else:
             sampler = DistributedBatchSampler(
                 train_set,
@@ -76,14 +77,12 @@ class Experiment(ExperimentBase):
                 rank=dist.get_rank(),
                 shuffle=True,
                 drop_last=True)
-            train_loader = DataLoader(train_set,
-                                      batch_sampler=sampler,
-                                      collate_fn=batch_fn)
+            train_loader = DataLoader(
+                train_set, batch_sampler=sampler, collate_fn=batch_fn)
 
         valid_batch_fn = LJSpeechCollector()
-        valid_loader = DataLoader(valid_set,
-                                  batch_size=1,
-                                  collate_fn=valid_batch_fn)
+        valid_loader = DataLoader(
+            valid_set, batch_size=1, collate_fn=valid_batch_fn)
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader

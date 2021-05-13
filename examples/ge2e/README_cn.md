@@ -4,7 +4,7 @@
 
 ## 模型
 
-本实验使用的模型是 [GENERALIZED END-TO-END LOSS FOR SPEAKER VERIFICATION](https://arxiv.org/pdf/1710.10467.pdf) 中的 speaker encoder text independent 模型。使用的是 GE2E softmax 损失函数。	
+本实验使用的模型是 [GENERALIZED END-TO-END LOSS FOR SPEAKER VERIFICATION](https://arxiv.org/pdf/1710.10467.pdf) 中的 speaker encoder text independent 模型。使用的是 GE2E softmax 损失函数。
 
 ## 目录结构
 
@@ -122,6 +122,3 @@ python inference.py --input=<input> --output=<output> --checkpoint_path=<checkpo
 
 1. [GENERALIZED END-TO-END LOSS FOR SPEAKER VERIFICATION](https://arxiv.org/pdf/1710.10467.pdf)
 2. [Transfer Learning from Speaker Verification toMultispeaker Text-To-Speech Synthesis](https://arxiv.org/pdf/1806.04558.pdf)
-
-
-

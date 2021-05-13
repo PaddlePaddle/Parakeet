@@ -78,6 +78,7 @@ class UpsampleNet(nn.LayerList):
     ---------
     ``librosa.core.stft``
     """
+
     def __init__(self, upsample_factors):
         super().__init__()
         for factor in upsample_factors:
@@ -85,12 +86,13 @@ class UpsampleNet(nn.LayerList):
             init = I.Uniform(-std, std)
             self.append(
                 nn.utils.weight_norm(
-                    nn.Conv2DTranspose(1,
-                                       1, (3, 2 * factor),
-                                       padding=(1, factor // 2),
-                                       stride=(1, factor),
-                                       weight_attr=init,
-                                       bias_attr=init)))
+                    nn.Conv2DTranspose(
+                        1,
+                        1, (3, 2 * factor),
+                        padding=(1, factor // 2),
+                        stride=(1, factor),
+                        weight_attr=init,
+                        bias_attr=init)))
 
         # upsample factors
         self.upsample_factor = np.prod(upsample_factors)
@@ -149,6 +151,7 @@ class ResidualBlock(nn.Layer):
     dilations : int
         Dilations of the Convolution2d applied to the input.
     """
+
     def __init__(self, channels, cond_channels, kernel_size, dilations):
         super().__init__()
         # input conv
@@ -159,13 +162,14 @@ class ResidualBlock(nn.Layer):
         ]
         rh, rw = receptive_field
         paddings = [rh - 1, 0, rw // 2, (rw - 1) // 2]  # causal & same
-        conv = nn.Conv2D(channels,
-                         2 * channels,
-                         kernel_size,
-                         padding=paddings,
-                         dilation=dilations,
-                         weight_attr=init,
-                         bias_attr=init)
+        conv = nn.Conv2D(
+            channels,
+            2 * channels,
+            kernel_size,
+            padding=paddings,
+            dilation=dilations,
+            weight_attr=init,
+            bias_attr=init)
         self.conv = nn.utils.weight_norm(conv)
         self.rh = rh
         self.rw = rw
@@ -174,19 +178,18 @@ class ResidualBlock(nn.Layer):
         # condition projection
         std = math.sqrt(1 / cond_channels)
         init = I.Uniform(-std, std)
-        condition_proj = nn.Conv2D(cond_channels,
-                                   2 * channels, (1, 1),
-                                   weight_attr=init,
-                                   bias_attr=init)
+        condition_proj = nn.Conv2D(
+            cond_channels,
+            2 * channels, (1, 1),
+            weight_attr=init,
+            bias_attr=init)
         self.condition_proj = nn.utils.weight_norm(condition_proj)
 
         # parametric residual & skip connection
         std = math.sqrt(1 / channels)
         init = I.Uniform(-std, std)
-        out_proj = nn.Conv2D(channels,
-                             2 * channels, (1, 1),
-                             weight_attr=init,
-                             bias_attr=init)
+        out_proj = nn.Conv2D(
+            channels, 2 * channels, (1, 1), weight_attr=init, bias_attr=init)
         self.out_proj = nn.utils.weight_norm(out_proj)
 
     def forward(self, x, condition):
@@ -265,11 +268,12 @@ class ResidualBlock(nn.Layer):
         self._update_buffer(x_row)
 
         rw = self.rw
-        x_row = F.conv2d(self._conv_buffer,
-                         self.conv.weight,
-                         self.conv.bias,
-                         padding=[0, 0, rw // 2, (rw - 1) // 2],
-                         dilation=self.dilations)
+        x_row = F.conv2d(
+            self._conv_buffer,
+            self.conv.weight,
+            self.conv.bias,
+            padding=[0, 0, rw // 2, (rw - 1) // 2],
+            dilation=self.dilations)
         x_row += self.condition_proj(condition_row)
 
         content, gate = paddle.chunk(x_row, 2, axis=1)
@@ -315,8 +319,12 @@ class ResidualNet(nn.LayerList):
     ValueError
         If the length of dilations_h does not equals n_layers.
     """
-    def __init__(self, n_layer: int, residual_channels: int,
-                 condition_channels: int, kernel_size: Tuple[int],
+
+    def __init__(self,
+                 n_layer: int,
+                 residual_channels: int,
+                 condition_channels: int,
+                 kernel_size: Tuple[int],
                  dilations_h: List[int]):
         if len(dilations_h) != n_layer:
             raise ValueError(
@@ -421,20 +429,22 @@ class Flow(nn.Layer):
         super().__init__()
         # input projection
         self.input_proj = nn.utils.weight_norm(
-            nn.Conv2D(1,
-                      channels, (1, 1),
-                      weight_attr=I.Uniform(-1., 1.),
-                      bias_attr=I.Uniform(-1., 1.)))
+            nn.Conv2D(
+                1,
+                channels, (1, 1),
+                weight_attr=I.Uniform(-1., 1.),
+                bias_attr=I.Uniform(-1., 1.)))
 
         # residual net
         self.resnet = ResidualNet(n_layers, channels, mel_bands, kernel_size,
                                   self.dilations_dict[n_group])
 
         # output projection
-        self.output_proj = nn.Conv2D(channels,
-                                     2, (1, 1),
-                                     weight_attr=I.Constant(0.),
-                                     bias_attr=I.Constant(0.))
+        self.output_proj = nn.Conv2D(
+            channels,
+            2, (1, 1),
+            weight_attr=I.Constant(0.),
+            bias_attr=I.Constant(0.))
 
         # specs
         self.n_group = n_group
@@ -478,8 +488,8 @@ class Flow(nn.Layer):
             transformation from x to z.
         """
         # (B, C, H-1, W)
-        logs, b = self._predict_parameters(x[:, :, :-1, :], condition[:, :,
-                                                                      1:, :])
+        logs, b = self._predict_parameters(x[:, :, :-1, :],
+                                           condition[:, :, 1:, :])
         z = self._transform(x, logs, b)
         return z, (logs, b)
 
@@ -576,6 +586,7 @@ class WaveFlow(nn.LayerList):
     kernel_size : Union[int, List[int]]
         Kernel size of the convolution layer in each ResidualBlock.
     """
+
     def __init__(self, n_flows, n_layers, n_group, channels, mel_bands,
                  kernel_size):
         if n_group % 2 or n_flows % 2:
@@ -645,8 +656,8 @@ class WaveFlow(nn.LayerList):
         # to (B, C, h, T//h) layout
         x = paddle.unsqueeze(
             paddle.transpose(fold(x, self.n_group), [0, 2, 1]), 1)
-        condition = paddle.transpose(fold(condition, self.n_group),
-                                     [0, 1, 3, 2])
+        condition = paddle.transpose(
+            fold(condition, self.n_group), [0, 1, 3, 2])
 
         # flows
         logs_list = []
@@ -689,8 +700,8 @@ class WaveFlow(nn.LayerList):
         # to (B, C, h, T//h) layout
         z = paddle.unsqueeze(
             paddle.transpose(fold(z, self.n_group), [0, 2, 1]), 1)
-        condition = paddle.transpose(fold(condition, self.n_group),
-                                     [0, 1, 3, 2])
+        condition = paddle.transpose(
+            fold(condition, self.n_group), [0, 1, 3, 2])
 
         # reverse it flow by flow
         for i in reversed(range(self.n_flows)):
@@ -730,17 +741,24 @@ class ConditionalWaveFlow(nn.LayerList):
     kernel_size : Union[int, List[int]]
         Kernel size of the convolution layer in each ResidualBlock.
     """
-    def __init__(self, upsample_factors: List[int], n_flows: int,
-                 n_layers: int, n_group: int, channels: int, n_mels: int,
+
+    def __init__(self,
+                 upsample_factors: List[int],
+                 n_flows: int,
+                 n_layers: int,
+                 n_group: int,
+                 channels: int,
+                 n_mels: int,
                  kernel_size: Union[int, List[int]]):
         super().__init__()
         self.encoder = UpsampleNet(upsample_factors)
-        self.decoder = WaveFlow(n_flows=n_flows,
-                                n_layers=n_layers,
-                                n_group=n_group,
-                                channels=channels,
-                                mel_bands=n_mels,
-                                kernel_size=kernel_size)
+        self.decoder = WaveFlow(
+            n_flows=n_flows,
+            n_layers=n_layers,
+            n_group=n_group,
+            channels=channels,
+            mel_bands=n_mels,
+            kernel_size=kernel_size)
 
     def forward(self, audio, mel):
         """Compute the transformed random variable z (x to z) and the log of
@@ -847,6 +865,7 @@ class WaveFlowLoss(nn.Layer):
         The standard deviation of the gaussian noise used in WaveFlow, by
         default 1.0.
     """
+
     def __init__(self, sigma=1.0):
         super().__init__()
         self.sigma = sigma
@@ -870,7 +889,7 @@ class WaveFlowLoss(nn.Layer):
         Tensor [shape=(1,)]
             The loss.
         """
-        loss = paddle.sum(
-            z * z) / (2 * self.sigma * self.sigma) - log_det_jacobian
+        loss = paddle.sum(z * z) / (2 * self.sigma * self.sigma
+                                    ) - log_det_jacobian
         loss = loss / np.prod(z.shape)
         return loss + self.const

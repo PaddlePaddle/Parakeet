@@ -321,10 +321,8 @@ class MLPPreNet(nn.Layer):
         self.dropout = dropout
 
     def forward(self, x, dropout):
-        l1 = F.dropout(
-            F.relu(self.lin1(x)), self.dropout, training=True)
-        l2 = F.dropout(
-            F.relu(self.lin2(l1)), self.dropout, training=True)
+        l1 = F.dropout(F.relu(self.lin1(x)), self.dropout, training=True)
+        l2 = F.dropout(F.relu(self.lin2(l1)), self.dropout, training=True)
         l3 = self.lin3(l2)
         return l3
 
@@ -403,7 +401,7 @@ class TransformerTTS(nn.Layer):
                 padding_idx=0,
                 weight_attr=I.Uniform(-0.005, 0.005))
         else:
-            self.toned = False  
+            self.toned = False
         # position encoding matrix may be extended later
         self.encoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_encoder)
         self.encoder_pe_scalar = self.create_parameter(
@@ -449,7 +447,8 @@ class TransformerTTS(nn.Layer):
         self.drop_n_heads = 0
 
     def forward(self, text, mel, tones=None):
-        encoded, encoder_attention_weights, encoder_mask = self.encode(text, tones=tones)
+        encoded, encoder_attention_weights, encoder_mask = self.encode(
+            text, tones=tones)
         mel_output, mel_intermediate, cross_attention_weights, stop_logits = self.decode(
             encoded, mel, encoder_mask)
         outputs = {
@@ -489,7 +488,8 @@ class TransformerTTS(nn.Layer):
         # twice its length if needed
         if x.shape[1] * self.r > self.decoder_pe.shape[0]:
             new_T = max(x.shape[1] * self.r, self.decoder_pe.shape[0] * 2)
-            self.decoder_pe = pe.sinusoid_positional_encoding(0, new_T, self.d_decoder)
+            self.decoder_pe = pe.sinusoid_positional_encoding(0, new_T,
+                                                              self.d_decoder)
         pos_enc = self.decoder_pe[:T_dec * self.r:self.r, :]
         x = x.scale(math.sqrt(
             self.d_decoder)) + pos_enc * self.decoder_pe_scalar

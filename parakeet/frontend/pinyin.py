@@ -1,3 +1,16 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 A Simple Chinese Phonology using pinyin symbols. 
 The G2P conversion converts pinyin string to symbols. Also it can handle string
@@ -32,6 +45,7 @@ _tones = ['0', '1', '2', '3', '4', '5']
 _toned_finals = [final + tone for final, tone in product(_finals, _tones[1:])]
 _toned_phonems = _initials + _toned_finals + _ernized_symbol + _punctuations
 
+
 class ParakeetConverter(NeutralToneWith5Mixin, DefaultConverter):
     pass
 
@@ -41,7 +55,7 @@ class ParakeetPinyin(Phonetics):
         self.vocab_phonemes = Vocab(_phones)
         self.vocab_tones = Vocab(_tones)
         self.pinyin_backend = Pinyin(ParakeetConverter())
-        
+
     def convert_pypinyin_tone3(self, syllables, add_start_end=False):
         phonemes, tones = _convert_to_parakeet_style_pinyin(syllables)
 
@@ -58,8 +72,7 @@ class ParakeetPinyin(Phonetics):
             item for item in phonemes if item in self.vocab_phonemes.stoi
         ]
         tones = [item for item in tones if item in self.vocab_tones.stoi]
-        return phonemes, tones        
-        
+        return phonemes, tones
 
     def phoneticize(self, sentence, add_start_end=False):
         """ Normalize the input text sequence and convert it into pronunciation sequence.
@@ -74,10 +87,10 @@ class ParakeetPinyin(Phonetics):
         List[str]
             The list of pronunciation sequence.
         """
-        syllables = self.pinyin_backend.lazy_pinyin(sentence,
-                                                    style=Style.TONE3,
-                                                    strict=True)
-        phonemes, tones = self.convert_pypinyin_tone3(syllables, add_start_end=add_start_end)
+        syllables = self.pinyin_backend.lazy_pinyin(
+            sentence, style=Style.TONE3, strict=True)
+        phonemes, tones = self.convert_pypinyin_tone3(
+            syllables, add_start_end=add_start_end)
         return phonemes, tones
 
     def numericalize(self, phonemes, tones):
@@ -110,8 +123,8 @@ class ParakeetPinyin(Phonetics):
         List[str]
             The list of pronunciation id sequence.
         """
-        phonemes, tones = self.phoneticize(sentence,
-                                           add_start_end=add_start_end)
+        phonemes, tones = self.phoneticize(
+            sentence, add_start_end=add_start_end)
         phoneme_ids, tone_ids = self.numericalize(phonemes, tones)
         return phoneme_ids, tone_ids
 
@@ -128,12 +141,11 @@ class ParakeetPinyin(Phonetics):
         return len(self.vocab_tones)
 
 
-
 class ParakeetPinyinWithTone(Phonetics):
     def __init__(self):
         self.vocab = Vocab(_toned_phonems)
         self.pinyin_backend = Pinyin(ParakeetConverter())
-        
+
     def convert_pypinyin_tone3(self, syllables, add_start_end=False):
         phonemes = _convert_to_parakeet_style_pinyin_with_tone(syllables)
 
@@ -142,11 +154,9 @@ class ParakeetPinyinWithTone(Phonetics):
             end = self.vocab_phonemes.end_symbol
             phonemes = [start] + phonemes + [end]
 
-        phonemes = [
-            item for item in phonemes if item in self.vocab.stoi
-        ]
+        phonemes = [item for item in phonemes if item in self.vocab.stoi]
         return phonemes
-    
+
     def phoneticize(self, sentence, add_start_end=False):
         """ Normalize the input text sequence and convert it into pronunciation sequence.
     
@@ -160,10 +170,10 @@ class ParakeetPinyinWithTone(Phonetics):
         List[str]
             The list of pronunciation sequence.
         """
-        syllables = self.pinyin_backend.lazy_pinyin(sentence,
-                                                    style=Style.TONE3,
-                                                    strict=True)
-        phonemes = self.convert_pypinyin_tone3(syllables, add_start_end=add_start_end)
+        syllables = self.pinyin_backend.lazy_pinyin(
+            sentence, style=Style.TONE3, strict=True)
+        phonemes = self.convert_pypinyin_tone3(
+            syllables, add_start_end=add_start_end)
         return phonemes
 
     def numericalize(self, phonemes):
@@ -289,6 +299,7 @@ def _convert_to_parakeet_style_pinyin(syllables):
         tones.extend(t)
     return phones, tones
 
+
 def _split_syllable_with_tone(syllable: str):
     global _punctuations
 
@@ -311,10 +322,10 @@ def _split_syllable_with_tone(syllable: str):
         phones.append(syllable)
     return phones
 
+
 def _convert_to_parakeet_style_pinyin_with_tone(syllables):
     phones = []
     for syllable in syllables:
         p = _split_syllable_with_tone(syllable)
         phones.extend(p)
     return phones
-

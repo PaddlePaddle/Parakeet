@@ -87,7 +87,6 @@ Pretrained Models can be downloaded from links below. We provide 2 models with d
 2. This model does not have a stop token predictor. It uses the attention peak position to decided whether all the contents have been uttered. Also guided attention loss is used to speed up training. This model is trained with `configs/alternative.yaml`.[tacotron2_ljspeech_ckpt_0.3_alternative.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3_alternative.zip)
 
 
-## Notebook: End-to-end TTS 
+## Notebook: End-to-end TTS
 
 See [synthesize.ipynb](./synthesize.ipynb) for details about end-to-end TTS with tacotron2 and waveflow.
-

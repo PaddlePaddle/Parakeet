@@ -62,8 +62,7 @@ _C.model = CN(
         # whether to use a classifier to predict stop probability
         use_stop_token=False,
         # whether to use guided attention loss in training
-        use_guided_attention_loss=True,
-    ))
+        use_guided_attention_loss=True, ))
 
 _C.training = CN(
     dict(

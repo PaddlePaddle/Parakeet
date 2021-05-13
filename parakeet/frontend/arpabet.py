@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from parakeet.frontend.phonectic import Phonetics
 """
 A phonology system with ARPABET symbols and limited punctuations. The G2P 
@@ -8,7 +22,6 @@ sentence is first normalized.
 """
 from parakeet.frontend.vocab import Vocab
 from g2p_en import G2p
-
 
 
 class ARPABET(Phonetics):
@@ -132,7 +145,9 @@ class ARPABET(Phonetics):
         List[str]
             The list of pronunciation sequence.
         """
-        phonemes = [self._remove_vowels(item) for item in self.backend(sentence)]
+        phonemes = [
+            self._remove_vowels(item) for item in self.backend(sentence)
+        ]
         if add_start_end:
             start = self.vocab.start_symbol
             end = self.vocab.end_symbol
@@ -184,7 +199,9 @@ class ARPABET(Phonetics):
         List[str]
             The list of pronunciation id sequence.
         """
-        return self.numericalize(self.phoneticize(sentence, add_start_end=add_start_end))
+        return self.numericalize(
+            self.phoneticize(
+                sentence, add_start_end=add_start_end))
 
     @property
     def vocab_size(self):
@@ -206,7 +223,7 @@ class ARPABETWithStress(Phonetics):
     ]
     punctuations = [',', '.', '?', '!']
     symbols = phonemes + punctuations
-    
+
     def __init__(self):
         self.backend = G2p()
         self.vocab = Vocab(self.phonemes + self.punctuations)
@@ -276,11 +293,13 @@ class ARPABETWithStress(Phonetics):
         List[str]
             The list of pronunciation id sequence.
         """
-        return self.numericalize(self.phoneticize(sentence, add_start_end=add_start_end))
+        return self.numericalize(
+            self.phoneticize(
+                sentence, add_start_end=add_start_end))
 
     @property
     def vocab_size(self):
         """ Vocab size.
         """
         # 77 = 69 phones + 4 punctuations + 4 special tokens
-        return len(self.vocab)    
+        return len(self.vocab)

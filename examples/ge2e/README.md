@@ -127,6 +127,3 @@ python inference.py --input=<input> --output=<output> --checkpoint_path=<checkpo
 
 1. [Generalized End-to-end Loss for Speaker Verification](https://arxiv.org/pdf/1710.10467.pdf)
 2. [Transfer Learning from Speaker Verification to Multispeaker Text-To-Speech Synthesis](https://arxiv.org/pdf/1806.04558.pdf)
-
-
-

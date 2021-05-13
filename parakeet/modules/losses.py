@@ -35,12 +35,12 @@ def attention_guide(dec_lens, enc_lens, N, T, g, dtype=None):
     Tachibana, Hideyuki, Katsuya Uenoyama, and Shunsuke Aihara. 2017. “Efficiently Trainable Text-to-Speech System Based on Deep Convolutional Networks with Guided Attention.” ArXiv:1710.08969 [Cs, Eess], October. http://arxiv.org/abs/1710.08969.
     """
     dtype = dtype or paddle.get_default_dtype()
-    dec_pos = paddle.arange(0, N).astype(
-        dtype) / dec_lens.unsqueeze(-1)  # n/N # shape(B, T_dec)
-    enc_pos = paddle.arange(0, T).astype(
-        dtype) / enc_lens.unsqueeze(-1)  # t/T # shape(B, T_enc)
-    W = 1 - paddle.exp(-(dec_pos.unsqueeze(-1) -
-                         enc_pos.unsqueeze(1))**2 / (2 * g ** 2))
+    dec_pos = paddle.arange(0, N).astype(dtype) / dec_lens.unsqueeze(
+        -1)  # n/N # shape(B, T_dec)
+    enc_pos = paddle.arange(0, T).astype(dtype) / enc_lens.unsqueeze(
+        -1)  # t/T # shape(B, T_enc)
+    W = 1 - paddle.exp(-(dec_pos.unsqueeze(-1) - enc_pos.unsqueeze(1))**2 /
+                       (2 * g**2))
 
     dec_mask = sequence_mask(dec_lens, maxlen=N)
     enc_mask = sequence_mask(enc_lens, maxlen=T)
@@ -57,8 +57,7 @@ def guided_attention_loss(attention_weight, dec_lens, enc_lens, g):
     W = attention_guide(dec_lens, enc_lens, N, T, g, attention_weight.dtype)
 
     total_tokens = (dec_lens * enc_lens).astype(W.dtype)
-    loss = paddle.mean(paddle.sum(
-        W * attention_weight, [1, 2]) / total_tokens)
+    loss = paddle.mean(paddle.sum(W * attention_weight, [1, 2]) / total_tokens)
     return loss
 
 

@@ -26,7 +26,11 @@ class AudioSegmentDataset(Dataset):
     """A simple dataset adaptor for audio files to train vocoders.
     Read -> trim silence -> normalize -> extract a segment
     """
-    def __init__(self, file_paths: List[Path], sample_rate: int, length: int,
+
+    def __init__(self,
+                 file_paths: List[Path],
+                 sample_rate: int,
+                 length: int,
                  top_db: float):
         self.file_paths = file_paths
         self.sr = sample_rate
@@ -56,10 +60,11 @@ class AudioDataset(Dataset):
     """A simple dataset adaptor for the audio files. 
     Read -> trim silence -> normalize
     """
+
     def __init__(self,
                  file_paths: List[Path],
                  sample_rate: int,
-                 top_db: float = 60):
+                 top_db: float=60):
         self.file_paths = file_paths
         self.sr = sample_rate
         self.top_db = top_db
@@ -78,12 +83,11 @@ class AudioDataset(Dataset):
 
 class AudioFolderDataset(AudioDataset):
     def __init__(
-        self,
-        root,
-        sample_rate,
-        top_db=60,
-        extension=".wav",
-    ):
+            self,
+            root,
+            sample_rate,
+            top_db=60,
+            extension=".wav", ):
         root = Path(root).expanduser()
         file_paths = sorted(list(root.rglob("*{}".format(extension))))
         super().__init__(file_paths, sample_rate, top_db)

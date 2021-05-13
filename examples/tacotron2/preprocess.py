@@ -35,13 +35,14 @@ def create_dataset(config, source_path, target_path, verbose=False):
 
     meta_data = LJSpeechMetaData(source_path)
     frontend = EnglishCharacter()
-    processor = AudioProcessor(sample_rate=config.data.sample_rate,
-                               n_fft=config.data.n_fft,
-                               n_mels=config.data.n_mels,
-                               win_length=config.data.win_length,
-                               hop_length=config.data.hop_length,
-                               fmax=config.data.fmax,
-                               fmin=config.data.fmin)
+    processor = AudioProcessor(
+        sample_rate=config.data.sample_rate,
+        n_fft=config.data.n_fft,
+        n_mels=config.data.n_mels,
+        win_length=config.data.win_length,
+        hop_length=config.data.hop_length,
+        fmax=config.data.fmax,
+        fmin=config.data.fmin)
     normalizer = LogMagnitude()
 
     records = []
@@ -70,26 +71,22 @@ def create_dataset(config, source_path, target_path, verbose=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="create dataset")
-    parser.add_argument("--config",
-                        type=str,
-                        metavar="FILE",
-                        help="extra config to overwrite the default config")
-    parser.add_argument("--input",
-                        type=str,
-                        help="path of the ljspeech dataset")
-    parser.add_argument("--output",
-                        type=str,
-                        help="path to save output dataset")
+    parser.add_argument(
+        "--config",
+        type=str,
+        metavar="FILE",
+        help="extra config to overwrite the default config")
+    parser.add_argument(
+        "--input", type=str, help="path of the ljspeech dataset")
+    parser.add_argument(
+        "--output", type=str, help="path to save output dataset")
     parser.add_argument(
         "--opts",
         nargs=argparse.REMAINDER,
-        help=
-        "options to overwrite --config file and the default config, passing in KEY VALUE pairs"
+        help="options to overwrite --config file and the default config, passing in KEY VALUE pairs"
     )
-    parser.add_argument("-v",
-                        "--verbose",
-                        action="store_true",
-                        help="print msg")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="print msg")
 
     config = get_cfg_defaults()
     args = parser.parse_args()

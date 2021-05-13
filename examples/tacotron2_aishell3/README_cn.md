@@ -80,7 +80,7 @@ input 是处理后的音频所在的文件夹，output 是输出频谱的文件�
 运行脚本训练。
 
 ```python
-python train.py --data=<data> --output=<output> --device="gpu" 
+python train.py --data=<data> --output=<output> --device="gpu"
 ```
 
 我们的模型去掉了 tacotron2 模型中的 stop token prediction。因为实践中由于 stop token prediction 是一个正负样例比例极不平衡的问题，每个句子可能有几百帧对应负样例，只有一帧正样例，而且这个 stop token prediction 对音频静音的裁切十分敏感。我们转用 attention 的最高点到达 encoder 侧的最后一个符号为终止条件。
@@ -90,7 +90,7 @@ python train.py --data=<data> --output=<output> --device="gpu"
 可以使用 visualdl 查看训练过程的 log。
 
 ```bash
-visualdl --logdir=<output> --host=$HOSTNAME 
+visualdl --logdir=<output> --host=$HOSTNAME
 ```
 
 示例 training loss / validation loss 曲线如下。

@@ -20,8 +20,9 @@ from setuptools import setup, find_packages
 
 
 def read(*names, **kwargs):
-    with io.open(os.path.join(os.path.dirname(__file__), *names),
-                 encoding=kwargs.get("encoding", "utf8")) as fp:
+    with io.open(
+            os.path.join(os.path.dirname(__file__), *names),
+            encoding=kwargs.get("encoding", "utf8")) as fp:
         return fp.read()
 
 
@@ -73,9 +74,7 @@ setup_info = dict(
         'g2pM',
         'praatio',
     ],
-    extras_require={
-        'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],
-    },
+    extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 
     # Package info
     packages=find_packages(exclude=('tests', 'tests.*')),
@@ -88,7 +87,6 @@ setup_info = dict(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-    ],
-)
+    ], )
 
 setup(**setup_info)

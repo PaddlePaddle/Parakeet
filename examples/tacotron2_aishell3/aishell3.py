@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import pickle
 from pathlib import Path
 
@@ -16,6 +30,7 @@ print("vocab_tones:\n", voc_tones)
 
 class AiShell3(Dataset):
     """Processed AiShell3 dataset."""
+
     def __init__(self, root):
         super().__init__()
         self.root = Path(root).expanduser()
@@ -31,10 +46,10 @@ class AiShell3(Dataset):
         speaker_id = sentence_id[:7]
         phones = metadatum["phones"]
         tones = metadatum["tones"]
-        phones = np.array([voc_phones.lookup(item) for item in phones],
-                          dtype=np.int64)
-        tones = np.array([voc_tones.lookup(item) for item in tones],
-                         dtype=np.int64)
+        phones = np.array(
+            [voc_phones.lookup(item) for item in phones], dtype=np.int64)
+        tones = np.array(
+            [voc_tones.lookup(item) for item in tones], dtype=np.int64)
         mel = np.load(str(self.mel_dir / speaker_id / (sentence_id + ".npy")))
         embed = np.load(
             str(self.embed_dir / speaker_id / (sentence_id + ".npy")))
@@ -50,8 +65,8 @@ def collate_aishell3_examples(examples):
     text_lengths = np.array([item.shape[0] for item in phones], dtype=np.int64)
     spec_lengths = np.array([item.shape[1] for item in mel], dtype=np.int64)
     T_dec = np.max(spec_lengths)
-    stop_tokens = (np.arange(T_dec) >= np.expand_dims(spec_lengths,
-                                                      -1)).astype(np.float32)
+    stop_tokens = (np.arange(T_dec) >= np.expand_dims(spec_lengths, -1)
+                   ).astype(np.float32)
     phones, _ = batch_text_id(phones)
     tones, _ = batch_text_id(tones)
     mel, _ = batch_spec(mel)

@@ -45,7 +45,7 @@ See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. T
 pip install -U paddle-parakeet
 ```
 
-or 
+or
 ```bash
 git clone https://github.com/PaddlePaddle/Parakeet
 cd Parakeet
