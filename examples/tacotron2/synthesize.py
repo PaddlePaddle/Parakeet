@@ -14,12 +14,14 @@
 
 import argparse
 from pathlib import Path
-import numpy as np
 
 import paddle
-import parakeet
+import numpy as np
+from matplotlib import pyplot as plt
+
 from parakeet.frontend import EnglishCharacter
 from parakeet.models.tacotron2 import Tacotron2
+from parakeet.utils import display
 
 from config import get_cfg_defaults
 
@@ -29,7 +31,7 @@ def main(config, args):
 
     # model
     frontend = EnglishCharacter()
-    model = Tacotron2.from_pretrained(frontend, config, args.checkpoint_path)
+    model = Tacotron2.from_pretrained(config, args.checkpoint_path)
     model.eval()
 
     # inputs
@@ -44,10 +46,15 @@ def main(config, args):
     output_dir.mkdir(exist_ok=True)
 
     for i, sentence in enumerate(sentences):
-        mel_output, _ = model.predict(sentence)
-        mel_output = mel_output.T
+        sentence = paddle.to_tensor(frontend(sentence)).unsqueeze(0)
+
+        outputs = model.infer(sentence)
+        mel_output = outputs["mel_outputs_postnet"][0].numpy().T
+        alignment = outputs["alignments"][0].numpy().T
 
         np.save(str(output_dir / f"sentence_{i}"), mel_output)
+        display.plot_alignment(alignment)
+        plt.savefig(str(output_dir / f"sentence_{i}.png"))
         if args.verbose:
             print("spectrogram saved at {}".format(output_dir /
                                                    f"sentence_{i}.npy"))

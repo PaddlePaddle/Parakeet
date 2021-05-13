@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from pathlib import Path
 import pickle
+
 import numpy as np
-from paddle.io import Dataset, DataLoader
+from paddle.io import Dataset
 
 from parakeet.data.batch import batch_spec, batch_text_id
-from parakeet.data import dataset
 
 
 class LJSpeech(Dataset):
@@ -54,10 +53,10 @@ class Transform(object):
         ids, mel = example  # ids already have <s> and </s>
         ids = np.array(ids, dtype=np.int64)
         # add start and end frame
-        mel = np.pad(
-            mel, [(0, 0), (1, 1)],
-            mode='constant',
-            constant_values=[(0, 0), (self.start_value, self.end_value)])
+        mel = np.pad(mel, [(0, 0), (1, 1)],
+                     mode='constant',
+                     constant_values=[(0, 0),
+                                      (self.start_value, self.end_value)])
         stop_labels = np.ones([mel.shape[1]], dtype=np.int64)
         stop_labels[-1] = 2
         # actually this thing can also be done within the model
@@ -76,30 +75,7 @@ class LJSpeechCollector(object):
         mels = [example[1] for example in examples]
         stop_probs = [example[2] for example in examples]
 
-        ids = batch_text_id(ids, pad_id=self.padding_idx)
-        mels = batch_spec(mels, pad_value=self.padding_value)
-        stop_probs = batch_text_id(stop_probs, pad_id=self.padding_idx)
+        ids, _ = batch_text_id(ids, pad_id=self.padding_idx)
+        mels, _ = batch_spec(mels, pad_value=self.padding_value)
+        stop_probs, _ = batch_text_id(stop_probs, pad_id=self.padding_idx)
         return ids, np.transpose(mels, [0, 2, 1]), stop_probs
-
-
-def create_dataloader(config, source_path):
-    lj = LJSpeech(source_path)
-    transform = Transform(config.data.mel_start_value,
-                          config.data.mel_end_value)
-    lj = dataset.TransformDataset(lj, transform)
-
-    valid_set, train_set = dataset.split(lj, config.data.valid_size)
-    data_collator = LJSpeechCollector(padding_idx=config.data.padding_idx)
-    train_loader = DataLoader(
-        train_set,
-        batch_size=config.data.batch_size,
-        shuffle=True,
-        drop_last=True,
-        collate_fn=data_collator)
-    valid_loader = DataLoader(
-        valid_set,
-        batch_size=config.data.batch_size,
-        shuffle=False,
-        drop_last=False,
-        collate_fn=data_collator)
-    return train_loader, valid_loader

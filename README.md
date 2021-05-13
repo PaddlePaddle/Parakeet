@@ -18,14 +18,14 @@ In order to facilitate exploiting the existing TTS models directly and developin
 
 - Vocoders
   - [WaveFlow: A Compact Flow-based Model for Raw Audio](https://arxiv.org/abs/1912.01219)
-  - [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499)
 
 - TTS models
   - [Neural Speech Synthesis with Transformer Network (Transformer TTS)](https://arxiv.org/abs/1809.08895)
   - [Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions](arxiv.org/abs/1712.05884)
 
+## Updates
 
-And more will be added in the future.
+May-07-2021, Add an example for voice cloning in Chinese. Check [examples/tacotron2_aishell3](./examples/tacotron2_aishell3).
 
 
 ## Setup
@@ -45,7 +45,7 @@ See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. T
 pip install -U paddle-parakeet
 ```
 
-or 
+or
 ```bash
 git clone https://github.com/PaddlePaddle/Parakeet
 cd Parakeet
@@ -59,9 +59,10 @@ See [install](https://paddle-parakeet.readthedocs.io/en/latest/install.html) for
 Entries to the introduction, and the launch of training and synthsis for different example models:
 
 - [>>> WaveFlow](./examples/waveflow)
-- [>>> WaveNet](./examples/wavenet)
 - [>>> Transformer TTS](./examples/transformer_tts)
 - [>>> Tacotron2](./examples/tacotron2)
+- [>>> Tacotron2_AISHELL3](./examples/tacotron2_aishell3)
+- [>>> GE2E](./examples/ge2e)
 
 
 ## Audio samples
@@ -69,6 +70,25 @@ Entries to the introduction, and the launch of training and synthsis for differe
 ### TTS models (Acoustic Model + Neural Vocoder)
 
 Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) for audio sampels.
+
+
+## Checkpoints
+
+### Tacotron2
+1. [tacotron2_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3.zip)
+2. [tacotron2_ljspeech_ckpt_0.3_alternative.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3_alternative.zip)
+
+### Tacotron2_AISHELL3
+1. [tacotron2_aishell3_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_aishell3_ckpt_0.3.zip)
+
+### TransformerTTS
+1. [transformer_tts_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.3.zip)
+
+### WaveFlow
+1. [waveflow_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_ljspeech_ckpt_0.3.zip)
+
+### GE2E
+1. [ge2e_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/ge2e_ckpt_0.3.zip)
 
 ## Copyright and License
 

@@ -14,7 +14,7 @@ wget https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
 tar xjvf LJSpeech-1.1.tar.bz2
 ```
 
-### Preprocess the dataset. 
+### Preprocess the dataset.
 
 Assume the path to save the preprocessed dataset is `ljspeech_waveflow`. Run the command below to preprocess the dataset.
 
@@ -46,3 +46,7 @@ Synthesize waveform. We assume the `--input` is a directory containing several m
 ```bash
 python synthesize.py --input=mels/ --output=wavs/ --checkpoint_path='step-2000000' --device="gpu" --verbose
 ```
+
+## Pretrained Model
+
+Pretrained Model with residual channel equals 128 can be downloaded here. [waveflow_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_ljspeech_ckpt_0.3.zip).

@@ -38,7 +38,6 @@ def find_version(*file_paths):
 VERSION = find_version('parakeet', '__init__.py')
 long_description = read("README.md")
 
-
 setup_info = dict(
     # Metadata
     name='paddle-parakeet',
@@ -57,9 +56,9 @@ setup_info = dict(
         'inflect',
         'librosa',
         'unidecode',
-        'numba==0.47.0',
-        'tqdm==4.19.8',
-        'llvmlite==0.31.0',
+        'numba',
+        'tqdm',
+        'llvmlite',
         'matplotlib',
         'visualdl>=2.0.1',
         'scipy',
@@ -68,9 +67,12 @@ setup_info = dict(
         # 'opencc',
         'soundfile',
         'g2p_en',
-        'g2pM',
         'yacs',
-        'tensorboardX',
+        'visualdl',
+        'pypinyin',
+        'webrtcvad',
+        'g2pM',
+        'praatio',
     ],
     extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 

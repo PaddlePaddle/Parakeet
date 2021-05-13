@@ -13,22 +13,19 @@
 # limitations under the License.
 
 import argparse
-import time
 from pathlib import Path
+
 import numpy as np
 import paddle
+from matplotlib import pyplot as plt
 
-import parakeet
 from parakeet.frontend import English
 from parakeet.models.transformer_tts import TransformerTTS
-from parakeet.utils import scheduler
-from parakeet.training.cli import default_argument_parser
-from parakeet.utils.display import add_attention_plots
+from parakeet.utils import display
 
 from config import get_cfg_defaults
 
 
-@paddle.fluid.dygraph.no_grad
 def main(config, args):
     paddle.set_device(args.device)
 
@@ -47,9 +44,22 @@ def main(config, args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for i, sentence in enumerate(sentences):
-        outputs = model.predict(sentence, verbose=args.verbose)
-        mel_output = outputs["mel_output"]
-        # cross_attention_weights = outputs["cross_attention_weights"]
+        if args.verbose:
+            print("text: ", sentence)
+            print("phones: ", frontend.phoneticize(sentence))
+        text_ids = paddle.to_tensor(frontend(sentence))
+        text_ids = paddle.unsqueeze(text_ids, 0)  # (1, T)
+
+        with paddle.no_grad():
+            outputs = model.infer(text_ids, verbose=args.verbose)
+
+        mel_output = outputs["mel_output"][0].numpy()
+        cross_attention_weights = outputs["cross_attention_weights"]
+        attns = np.stack([attn[0].numpy() for attn in cross_attention_weights])
+        attns = np.transpose(attns, [0, 1, 3, 2])
+        display.plot_multilayer_multihead_alignments(attns)
+        plt.savefig(str(output_dir / f"sentence_{i}.png"))
+
         mel_output = mel_output.T  #(C, T)
         np.save(str(output_dir / f"sentence_{i}"), mel_output)
         if args.verbose:

@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import argparse
+from pathlib import Path
+
 import numpy as np
 import soundfile as sf
-import os
-from pathlib import Path
 import paddle
-import parakeet
-from parakeet.models.waveflow import UpsampleNet, WaveFlow, ConditionalWaveFlow
-from parakeet.utils import layer_tools, checkpoint
+
+from parakeet.models.waveflow import ConditionalWaveFlow
+from parakeet.utils import layer_tools
 
 from config import get_cfg_defaults
 
@@ -34,9 +35,10 @@ def main(config, args):
     mel_dir = Path(args.input).expanduser()
     output_dir = Path(args.output).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
-    for file_path in mel_dir.iterdir():
+    for file_path in mel_dir.glob("*.npy"):
         mel = np.load(str(file_path))
-        audio = model.predict(mel)
+        with paddle.amp.auto_cast():
+            audio = model.predict(mel)
         audio_path = output_dir / (
             os.path.splitext(file_path.name)[0] + ".wav")
         sf.write(audio_path, audio, config.data.sample_rate)

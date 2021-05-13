@@ -67,6 +67,7 @@ class English(Phonetics):
         phonemes = ([] if start is None else [start]) \
                  + self.backend(sentence) \
                  + ([] if end is None else [end])
+        phonemes = [item for item in phonemes if item in self.vocab.stoi]
         return phonemes
 
     def numericalize(self, phonemes):

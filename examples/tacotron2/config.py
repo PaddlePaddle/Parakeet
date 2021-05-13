@@ -23,23 +23,25 @@ _C.data = CN(
         n_fft=1024,  # fft frame size
         win_length=1024,  # window size
         hop_length=256,  # hop size between ajacent frame
-        f_max=8000,  # Hz, max frequency when converting to mel
-        f_min=0,  # Hz, min frequency when converting to mel
-        d_mels=80,  # mel bands
+        fmax=8000,  # Hz, max frequency when converting to mel
+        fmin=0,  # Hz, min frequency when converting to mel
+        n_mels=80,  # mel bands
         padding_idx=0,  # text embedding's padding index
     ))
 
 _C.model = CN(
     dict(
+        vocab_size=37,  # set this according to the frontend's vocab size
+        n_tones=None,
         reduction_factor=1,  # reduction factor
         d_encoder=512,  # embedding & encoder's internal size
         encoder_conv_layers=3,  # number of conv layer in tacotron2 encoder
         encoder_kernel_size=5,  # kernel size of conv layers in tacotron2 encoder
         d_prenet=256,  # hidden size of decoder prenet
         d_attention_rnn=1024,  # hidden size of the first rnn layer in tacotron2 decoder
-        d_decoder_rnn=1024,  #hidden size of the second rnn layer in tacotron2 decoder
+        d_decoder_rnn=1024,  # hidden size of the second rnn layer in tacotron2 decoder
         d_attention=128,  # hidden size of  decoder location linear layer
-        attention_filters=32,  # number of filter in decoder location conv layer 
+        attention_filters=32,  # number of filter in decoder location conv layer
         attention_kernel_size=31,  # kernel size of decoder location conv layer
         d_postnet=512,  # hidden size of decoder postnet
         postnet_kernel_size=5,  # kernel size of conv layers in postnet
@@ -48,7 +50,11 @@ _C.model = CN(
         p_prenet_dropout=0.5,  # droput probability in decoder prenet
         p_attention_dropout=0.1,  # droput probability of first rnn layer in decoder
         p_decoder_dropout=0.1,  # droput probability of second rnn layer in decoder
-        p_postnet_dropout=0.5,  #droput probability in decoder postnet
+        p_postnet_dropout=0.5,  # droput probability in decoder postnet
+        d_global_condition=None,
+        use_stop_token=True,  # wherther to use binary classifier to predict when to stop
+        use_guided_attention_loss=False,  # whether to use guided attention loss
+        guided_attention_loss_sigma=0.2  # sigma in guided attention loss
     ))
 
 _C.training = CN(

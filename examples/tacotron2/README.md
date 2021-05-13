@@ -8,8 +8,9 @@ PaddlePaddle dynamic graph implementation of Tacotron2, a neural network archite
 ├── config.py              # default configuration file
 ├── ljspeech.py            # dataset and dataloader settings for LJSpeech
 ├── preprocess.py          # script to preprocess LJSpeech dataset
-├── synthesis.py           # script to synthesize spectrogram from text
+├── synthesize.py          # script to synthesize spectrogram from text
 ├── train.py               # script for tacotron2 model training
+├── synthesize.ipynb       # notebook example for end-to-end TTS
 ```
 
 ## Dataset
@@ -75,3 +76,17 @@ For more help on arguments
 ``python synthesis.py --help``.
 
 Then you can find the spectrogram files in ``${OUTPUTPATH}``, and then they can be the input of vocoder like [waveflow](../waveflow/README.md#Synthesis) to get audio files.
+
+
+## Pretrained Models
+
+Pretrained Models can be downloaded from links below. We provide 2 models with different configurations.
+
+1. This model use a binary classifier to predict the stop token. [tacotron2_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3.zip)
+
+2. This model does not have a stop token predictor. It uses the attention peak position to decided whether all the contents have been uttered. Also guided attention loss is used to speed up training. This model is trained with `configs/alternative.yaml`.[tacotron2_ljspeech_ckpt_0.3_alternative.zip](https://paddlespeech.bj.bcebos.com/Parakeet/tacotron2_ljspeech_ckpt_0.3_alternative.zip)
+
+
+## Notebook: End-to-end TTS
+
+See [synthesize.ipynb](./synthesize.ipynb) for details about end-to-end TTS with tacotron2 and waveflow.

@@ -321,10 +321,8 @@ class MLPPreNet(nn.Layer):
         self.dropout = dropout
 
     def forward(self, x, dropout):
-        l1 = F.dropout(
-            F.relu(self.lin1(x)), self.dropout, training=True)
-        l2 = F.dropout(
-            F.relu(self.lin2(l1)), self.dropout, training=True)
+        l1 = F.dropout(F.relu(self.lin1(x)), self.dropout, training=True)
+        l2 = F.dropout(F.relu(self.lin2(l1)), self.dropout, training=True)
         l3 = self.lin3(l2)
         return l3
 
@@ -345,8 +343,10 @@ class CNNPostNet(nn.Layer):
                     c_out,
                     kernel_size,
                     weight_attr=I.XavierUniform(),
-                    padding=padding))
-        self.last_bn = nn.BatchNorm1D(d_output)
+                    padding=padding,
+                    momentum=0.99,
+                    epsilon=1e-03))
+        self.last_bn = nn.BatchNorm1D(d_output, momentum=0.99, epsilon=1e-3)
         # for a layer that ends with a normalization layer that is targeted to
         # output a non zero-central output, it may take a long time to 
         # train the scale and bias
@@ -358,6 +358,8 @@ class CNNPostNet(nn.Layer):
             x = layer(x)
             if i != (len(self.convs) - 1):
                 x = F.tanh(x)
+        # TODO: check it
+        # x = x_in + x
         x = self.last_bn(x_in + x)
         return x
 
@@ -378,7 +380,8 @@ class TransformerTTS(nn.Layer):
                  postnet_kernel_size: int,
                  max_reduction_factor: int,
                  decoder_prenet_dropout: float,
-                 dropout: float):
+                 dropout: float,
+                 n_tones=None):
         super(TransformerTTS, self).__init__()
 
         # text frontend (text normalization and g2p)
@@ -390,6 +393,15 @@ class TransformerTTS(nn.Layer):
             d_encoder,
             padding_idx=frontend.vocab.padding_index,
             weight_attr=I.Uniform(-0.05, 0.05))
+        if n_tones:
+            self.toned = True
+            self.tone_embed = nn.Embedding(
+                n_tones,
+                d_encoder,
+                padding_idx=0,
+                weight_attr=I.Uniform(-0.005, 0.005))
+        else:
+            self.toned = False
         # position encoding matrix may be extended later
         self.encoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_encoder)
         self.encoder_pe_scalar = self.create_parameter(
@@ -434,8 +446,9 @@ class TransformerTTS(nn.Layer):
         self.r = max_reduction_factor  # set it every call
         self.drop_n_heads = 0
 
-    def forward(self, text, mel):
-        encoded, encoder_attention_weights, encoder_mask = self.encode(text)
+    def forward(self, text, mel, tones=None):
+        encoded, encoder_attention_weights, encoder_mask = self.encode(
+            text, tones=tones)
         mel_output, mel_intermediate, cross_attention_weights, stop_logits = self.decode(
             encoded, mel, encoder_mask)
         outputs = {
@@ -447,9 +460,11 @@ class TransformerTTS(nn.Layer):
         }
         return outputs
 
-    def encode(self, text):
+    def encode(self, text, tones=None):
         T_enc = text.shape[-1]
         embed = self.encoder_prenet(text)
+        if self.toned:
+            embed += self.tone_embed(tones)
         if embed.shape[1] > self.encoder_pe.shape[0]:
             new_T = max(embed.shape[1], self.encoder_pe.shape[0] * 2)
             self.encoder_pe = pe.positional_encoding(0, new_T, self.d_encoder)
@@ -473,7 +488,8 @@ class TransformerTTS(nn.Layer):
         # twice its length if needed
         if x.shape[1] * self.r > self.decoder_pe.shape[0]:
             new_T = max(x.shape[1] * self.r, self.decoder_pe.shape[0] * 2)
-            self.decoder_pe = pe.sinusoid_positional_encoding(0, new_T, self.d_decoder)
+            self.decoder_pe = pe.sinusoid_positional_encoding(0, new_T,
+                                                              self.d_decoder)
         pos_enc = self.decoder_pe[:T_dec * self.r:self.r, :]
         x = x.scale(math.sqrt(
             self.d_decoder)) + pos_enc * self.decoder_pe_scalar
@@ -483,7 +499,7 @@ class TransformerTTS(nn.Layer):
         decoder_padding_mask = masking.feature_mask(
             input, axis=-1, dtype=input.dtype)
         decoder_mask = masking.combine_mask(
-            decoder_padding_mask.unsqueeze(-1), no_future_mask)
+            decoder_padding_mask.unsqueeze(1), no_future_mask)
         decoder_output, _, cross_attention_weights = self.decoder(
             x, encoder_output, encoder_output, encoder_padding_mask,
             decoder_mask, self.drop_n_heads)
@@ -502,7 +518,7 @@ class TransformerTTS(nn.Layer):
         return mel_output, mel_intermediate, cross_attention_weights, stop_logits
 
     @paddle.no_grad()
-    def infer(self, input, max_length=1000, verbose=True):
+    def infer(self, input, max_length=1000, verbose=True, tones=None):
         """Predict log scale magnitude mel spectrogram from text input.
 
         Args:
@@ -515,7 +531,7 @@ class TransformerTTS(nn.Layer):
 
         # encoder the text sequence
         encoder_output, encoder_attentions, encoder_padding_mask = self.encode(
-            input)
+            input, tones=tones)
         for _ in trange(int(max_length // self.r) + 1):
             mel_output, _, cross_attention_weights, stop_logits = self.decode(
                 encoder_output, decoder_input, encoder_padding_mask)
@@ -528,6 +544,7 @@ class TransformerTTS(nn.Layer):
                 [decoder_output, mel_output[:, -self.r:, :]], 1)
 
             # stop condition: (if any ouput frame of the output multiframes hits the stop condition)
+            # import pdb; pdb.set_trace()
             if paddle.any(
                     paddle.argmax(
                         stop_logits[0, -self.r:, :], axis=-1) ==
@@ -542,14 +559,6 @@ class TransformerTTS(nn.Layer):
             "encoder_attention_weights": encoder_attentions,
             "cross_attention_weights": cross_attention_weights,
         }
-        return outputs
-
-    @paddle.no_grad()
-    def predict(self, input, max_length=1000, verbose=True):
-        text_ids = paddle.to_tensor(self.frontend(input))
-        input = paddle.unsqueeze(text_ids, 0)  # (1, T)
-        outputs = self.infer(input, max_length=max_length, verbose=verbose)
-        outputs = {k: v[0].numpy() for k, v in outputs.items()}
         return outputs
 
     def set_constants(self, reduction_factor, drop_n_heads):

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 This modules contains normalizers for spectrogram magnitude.
 Normalizers are invertible transformations. They can be used to process 
@@ -42,7 +41,7 @@ class LogMagnitude(NormalizerBase):
     This is a simple normalizer used in Waveglow, Waveflow, tacotron2...
     """
 
-    def __init__(self, min=1e-7):
+    def __init__(self, min=1e-5):
         self.min = min
 
     def transform(self, x):

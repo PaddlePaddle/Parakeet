@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from pathlib import Path
-import pickle
+
 import numpy as np
 import pandas
-from paddle.io import Dataset, DataLoader
+from paddle.io import Dataset
 
 from parakeet.data.batch import batch_spec, batch_wav
-from parakeet.data import dataset
-from parakeet.audio import AudioProcessor
 
 
 class LJSpeech(Dataset):
@@ -61,8 +58,8 @@ class LJSpeechCollector(object):
     def __call__(self, examples):
         mels = [example[0] for example in examples]
         wavs = [example[1] for example in examples]
-        mels = batch_spec(mels, pad_value=self.padding_value)
-        wavs = batch_wav(wavs, pad_value=self.padding_value)
+        mels, _ = batch_spec(mels, pad_value=self.padding_value)
+        wavs, _ = batch_wav(wavs, pad_value=self.padding_value)
         return mels, wavs
 
 

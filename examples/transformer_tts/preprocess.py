@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
-import tqdm
 import pickle
 import argparse
-import numpy as np
 from pathlib import Path
+
+import tqdm
+import numpy as np
 
 from parakeet.datasets import LJSpeechMetaData
 from parakeet.audio import AudioProcessor, LogMagnitude
@@ -40,7 +41,8 @@ def create_dataset(config, source_path, target_path, verbose=False):
         n_mels=config.data.d_mel,
         win_length=config.data.win_length,
         hop_length=config.data.hop_length,
-        f_max=config.data.f_max)
+        fmax=config.data.fmax,
+        fmin=config.data.fmin)
     normalizer = LogMagnitude()
 
     records = []

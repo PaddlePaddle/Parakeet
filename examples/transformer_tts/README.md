@@ -14,7 +14,7 @@ wget https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
 tar xjvf LJSpeech-1.1.tar.bz2
 ```
 
-### Preprocess the dataset. 
+### Preprocess the dataset.
 
 Assume the path to save the preprocessed dataset is `ljspeech_transformer_tts`. Run the command below to preprocess the dataset.
 
@@ -46,3 +46,7 @@ Synthesize waveform. We assume the `--input` is a text file, one sentence per li
 ```bash
 python synthesize.py --input=sentence.txt --output=mels/ --checkpoint_path='step-310000' --device="gpu" --verbose
 ```
+
+## Pretrained Model
+
+Pretrained model can be downloaded here. [transformer_tts_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.3.zip).
