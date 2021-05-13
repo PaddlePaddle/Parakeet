@@ -26,7 +26,6 @@ from parakeet.utils import display
 from config import get_cfg_defaults
 
 
-@paddle.no_grad()
 def main(config, args):
     paddle.set_device(args.device)
 
