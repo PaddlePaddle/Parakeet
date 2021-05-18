@@ -571,7 +571,7 @@ class TransformerTTS(nn.Layer):
             frontend,
             d_encoder=config.model.d_encoder,
             d_decoder=config.model.d_decoder,
-            d_mel=config.data.d_mel,
+            d_mel=config.data.n_mels,
             n_heads=config.model.n_heads,
             d_ffn=config.model.d_ffn,
             encoder_layers=config.model.encoder_layers,

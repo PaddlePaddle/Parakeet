@@ -39,7 +39,7 @@ _C.model = CN(
         d_ffn=1024,  # encoder_d_ffn & decoder_d_ffn
         encoder_layers=4,  # number of transformer encoder layer
         decoder_layers=4,  # number of transformer decoder layer
-        d_prenet=256,  # decprenet's hidden size (d_mel=>d_prenet=>d_decoder)
+        d_prenet=256,  # decoder prenet's hidden size (n_mels=>d_prenet=>d_decoder)
         d_postnet=256,  # decoder postnet(cnn)'s internal channel
         postnet_layers=5,  # decoder postnet(cnn)'s layer
         postnet_kernel_size=5,  # decoder postnet(cnn)'s kernel size
