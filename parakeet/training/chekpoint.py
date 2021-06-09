@@ -28,7 +28,7 @@ class KBest(object):
     about the model or the optimizer, etc. 
     
     It is basically a dynamically mantained K-bset Mapping. When a new item is 
-    added to the map, save_fn is called. And when an item is remove from the 
+    added to the map, save_fn is called. And when an item is removed from the 
     map, del_fn is called. `save_fn` and `del_fn` takes a Path object as input 
     and returns nothing.
 
