@@ -88,7 +88,7 @@ class KBest(object):
             worst_record_path = max(self.best_records,
                                     key=self.best_records.get)
             self.best_records.pop(worst_record_path)
-            self.del_fn(path)
+            self.del_fn(worst_record_path)
 
         # add the new one
         self.save_fn(path)
