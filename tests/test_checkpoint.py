@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.checkpoint import KBest
-import numpy as np
 from pathlib import Path
 import shutil
+
+import numpy as np
+from parakeet.training.checkpoint import KBest, KLatest
 
 
 def test_kbest():
@@ -32,4 +33,20 @@ def test_kbest():
     for i, score in enumerate(a):
         path = checkpoint_dir / f"step_{i}"
         kbest_manager.add_checkpoint(score, path)
+    assert len(list(checkpoint_dir.glob("step_*"))) == K
+
+
+def test_klatest():
+    def save_fn(path):
+        with open(path, 'wt') as f:
+            f.write(f"My path is {str(path)}\n")
+
+    K = 5
+    klatest_manager = KLatest(max_size=K, save_fn=save_fn)
+    checkpoint_dir = Path("checkpoints")
+    shutil.rmtree(checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True)
+    for i in range(20):
+        path = checkpoint_dir / f"step_{i}"
+        klatest_manager.add_checkpoint(path)
     assert len(list(checkpoint_dir.glob("step_*"))) == K
