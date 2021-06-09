@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.chekpoint import KBest
+from parakeet.training.checkpoint import KBest
 import numpy as np
 from pathlib import Path
 import shutil

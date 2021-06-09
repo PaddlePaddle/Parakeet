@@ -58,8 +58,8 @@ class KBest(object):
 
     def __init__(self,
                  max_size: int=5,
-                 save_fn: Callable=None,
-                 del_fn: Callable=lambda f: f.unlink()):
+                 save_fn: Callable[[Path], None]=None,
+                 del_fn: Callable[[Path], None]=lambda f: f.unlink()):
         self.best_records: Mapping[Path, float] = {}
         self.save_fn = save_fn
         self.del_fn = del_fn
