@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
-from queue import PriorityQueue
 from typing import Callable, Mapping
 from pathlib import Path
 
@@ -42,7 +40,7 @@ class KBest(object):
     >>> import shutil
     >>> import paddle
     >>> from paddle import nn
-     
+    
     >>> model = nn.Linear(2, 3)
     >>> def save_model(path):
     ...     paddle.save(model.state_dict())
