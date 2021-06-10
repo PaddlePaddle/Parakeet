@@ -27,13 +27,15 @@ def test_kbest():
     K = 1
     kbest_manager = KBest(max_size=K, save_fn=save_fn)
     checkpoint_dir = Path("checkpoints")
-    shutil.rmtree(checkpoint_dir)
+    if checkpoint_dir.exists():
+        shutil.rmtree(checkpoint_dir)
     checkpoint_dir.mkdir(parents=True)
     a = np.random.rand(20)
     for i, score in enumerate(a):
         path = checkpoint_dir / f"step_{i}"
         kbest_manager.add_checkpoint(score, path)
     assert len(list(checkpoint_dir.glob("step_*"))) == K
+    shutil.rmtree(checkpoint_dir)
 
 
 def test_klatest():
@@ -44,9 +46,11 @@ def test_klatest():
     K = 5
     klatest_manager = KLatest(max_size=K, save_fn=save_fn)
     checkpoint_dir = Path("checkpoints")
-    shutil.rmtree(checkpoint_dir)
+    if checkpoint_dir.exists():
+        shutil.rmtree(checkpoint_dir)
     checkpoint_dir.mkdir(parents=True)
     for i in range(20):
         path = checkpoint_dir / f"step_{i}"
         klatest_manager.add_checkpoint(path)
     assert len(list(checkpoint_dir.glob("step_*"))) == K
+    shutil.rmtree(checkpoint_dir)

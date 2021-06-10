@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Mapping, List
+from typing import Callable, Mapping, List, Union
+import os
 from pathlib import Path
 
 
@@ -58,8 +59,8 @@ class KBest(object):
 
     def __init__(self,
                  max_size: int=5,
-                 save_fn: Callable[[Path], None]=None,
-                 del_fn: Callable[[Path], None]=lambda f: f.unlink()):
+                 save_fn: Callable[[Union[Path, str]], None]=None,
+                 del_fn: Callable[[Union[Path, str]], None]=os.remove):
         self.best_records: Mapping[Path, float] = {}
         self.save_fn = save_fn
         self.del_fn = del_fn
