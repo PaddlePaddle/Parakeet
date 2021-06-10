@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import math
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any, Union, Optional, Tuple
 
 import numpy as np
 import paddle
