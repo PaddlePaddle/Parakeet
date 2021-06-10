@@ -21,33 +21,34 @@ from paddle.io import Dataset
 
 
 class DataTable(Dataset):
+    """Dataset to load and convert data for general purpose.
+
+    Parameters
+    ----------
+    data : List[Dict[str, Any]]
+        Metadata, a list of meta datum, each of which is composed of 
+        several fields
+    fields : List[str], optional
+        Fields to use, if not specified, all the fields in the data are 
+        used, by default None
+    converters : Dict[str, Callable], optional
+        Converters used to process each field, by default None
+    use_cache : bool, optional
+        Whether to use cache, by default False
+
+    Raises
+    ------
+    ValueError
+        If there is some field that does not exist in data. 
+    ValueError
+        If there is some field in converters that does not exist in fields.
+    """
+
     def __init__(self,
                  data: List[Dict[str, Any]],
                  fields: List[str]=None,
                  converters: Dict[str, Callable]=None,
                  use_cache: bool=False):
-        """Dataset to load and convert data for general purpose.
-
-        Parameters
-        ----------
-        data : List[Dict[str, Any]]
-            Metadata, a list of meta datum, each of which is composed of 
-            several fields
-        fields : List[str], optional
-            Fields to use, if not specified, all the fields in the data are 
-            used, by default None
-        converters : Dict[str, Callable], optional
-            Converters used to process each field, by default None
-        use_cache : bool, optional
-            Whether to use cache, by default False
-
-        Raises
-        ------
-        ValueError
-            If there is some field that does not exist in data. 
-        ValueError
-            If there is some field in converters that does not exist in fields.
-        """
         # metadata
         self.data = data
         assert len(data) > 0, "This dataset has no examples"
