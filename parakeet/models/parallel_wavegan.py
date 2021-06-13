@@ -109,10 +109,11 @@ class UpsampleNet(nn.Layer):
                 padding = (freq_axis_padding, scale)
             conv = nn.Conv2D(
                 1, 1, kernel_size, padding=padding, bias_attr=False)
+            self.up_layers.extend([stretch, conv])
             if nonlinear_activation is not None:
                 nonlinear = getattr(
                     nn, nonlinear_activation)(**nonlinear_activation_params)
-            self.up_layers.extend([stretch, conv, nonlinear])
+                self.up_layers.append(nonlinear)
 
     def forward(self, c: Tensor) -> Tensor:
         """
