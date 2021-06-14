@@ -57,7 +57,8 @@ class UpdaterBase(object):
     """
 
     def update(self):
-        pass
+        self.state.iteration += 1
+        self.update_core()
 
     def update_core(self):
         pass

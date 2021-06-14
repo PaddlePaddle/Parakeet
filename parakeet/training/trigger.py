@@ -23,9 +23,9 @@ class IntervalTrigger(object):
     def __call__(self, trainer):
         state = trainer.updater.state
         if self.unit == "epoch":
-            fire = not (state.epoch % self.period)
+            fire = state.epoch % self.period == 0
         else:
-            fire = not (state.iteration % self.iteration)
+            fire = state.iteration % self.period == 0
         return fire
 
 

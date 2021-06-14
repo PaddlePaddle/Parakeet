@@ -41,7 +41,9 @@ from parakeet.training.checkpoint import KBest, KLatest
 from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator
 from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
 
+from batch_fn import Clip
 from config import get_cfg_default
+from pwg_updater import PWGUpdater
 
 
 def train_sp(args, config):
@@ -90,25 +92,35 @@ def train_sp(args, config):
         batch_size=config.batch_size,
         shuffle=False,
         drop_last=False)
+    print("samplers done!")
 
+    train_batch_fn = Clip(
+        batch_max_steps=config.batch_max_steps,
+        hop_size=config.hop_length,
+        aux_context_window=config.generator_params.aux_context_window)
     train_dataloader = DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
-        collate_fn=None,  # TODO(defaine collate fn)
-        num_workers=4)
+        collate_fn=train_batch_fn,  # TODO(defaine collate fn)
+        num_workers=config.num_workers)
     dev_dataloader = DataLoader(
         dev_dataset,
         batch_sampler=dev_sampler,
-        collate_fn=None,  # TODO(defaine collate fn)
-        num_workers=4)
+        collate_fn=train_batch_fn,  # TODO(defaine collate fn)
+        num_workers=config.num_workers)
+    print("dataloaders done!")
 
     generator = PWGGenerator(**config["generator_params"])
     discriminator = PWGDiscriminator(**config["discriminator_params"])
     if world_size > 1:
         generator = DataParallel(generator)
         discriminator = DataParallel(discriminator)
+    print("models done!")
+
     criterion_stft = MultiResolutionSTFTLoss(**config["stft_loss_params"])
     criterion_mse = nn.MSELoss()
+    print("criterions done!")
+
     lr_schedule_g = StepDecay(**config["generator_scheduler_params"])
     optimizer_g = Adam(
         lr_schedule_g,
@@ -119,14 +131,43 @@ def train_sp(args, config):
         lr_schedule_d,
         parameters=discriminator.parameters(),
         **config["discriminator_optimizer_params"])
+    print("optimizers done!")
 
     output_dir = Path(args.output_dir)
     log_writer = None
     if dist.get_rank() == 0:
         output_dir.mkdir(parents=True, exist_ok=True)
-        log_writer = LogWriter(output_dir)
+        log_writer = LogWriter(str(output_dir))
 
-    # training loop
+    updater = PWGUpdater(
+        models={
+            "generator": generator,
+            "discriminator": discriminator,
+        },
+        optimizers={
+            "generator": optimizer_g,
+            "discriminator": optimizer_d,
+        },
+        criterions={
+            "stft": criterion_stft,
+            "mse": criterion_mse,
+        },
+        schedulers={
+            "generator": lr_schedule_g,
+            "discriminator": lr_schedule_d,
+        },
+        dataloaders={
+            "train": train_dataloader,
+            "dev": dev_dataloader,
+        },
+        discriminator_train_start_steps=config.discriminator_train_start_steps,
+        lambda_adv=config.lambda_adv, )
+
+    trainer = Trainer(
+        updater,
+        stop_trigger=(config.train_max_steps, "iteration"),
+        out=output_dir, )
+    trainer.run()
 
 
 def main():

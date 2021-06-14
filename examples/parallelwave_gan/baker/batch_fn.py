@@ -60,13 +60,13 @@ class Clip(object):
         """
         # check length
         examples = [
-            self._adjust_length(*b) for b in examples
-            if len(b[1]) > self.mel_threshold
+            self._adjust_length(b['wave_path'], b['feats_path'])
+            for b in examples if b['feats_path'].shape[1] > self.mel_threshold
         ]
         xs, cs = [b[0] for b in examples], [b[1] for b in examples]
 
         # make batch with random cut
-        c_lengths = [len(c) for c in cs]
+        c_lengths = [c.shape[1] for c in cs]
         start_frames = np.array([
             np.random.randint(self.start_offset, cl + self.end_offset)
             for cl in c_lengths
@@ -76,16 +76,17 @@ class Clip(object):
 
         c_starts = start_frames - self.aux_context_window
         c_ends = start_frames + self.batch_max_frames + self.aux_context_window
-        y_batch = [x[start:end] for x, start, end in zip(xs, x_starts, x_ends)]
-        c_batch = [c[start:end] for c, start, end in zip(cs, c_starts, c_ends)]
+        y_batch = np.stack(
+            [x[start:end] for x, start, end in zip(xs, x_starts, x_ends)])
+        c_batch = np.stack(
+            [c[:, start:end] for c, start, end in zip(cs, c_starts, c_ends)])
 
         # convert each batch to tensor, asuume that each item in batch has the same length
         y_batch = paddle.to_tensor(
             y_batch, dtype=paddle.float32).unsqueeze(1)  # (B, 1, T)
-        c_batch = paddle.to_tensor(
-            c_batch, dtype=paddle.float32).transpose([0, 2, 1])  # (B, C, T')
+        c_batch = paddle.to_tensor(c_batch, dtype=paddle.float32)  # (B, C, T')
 
-        return (c_batch, ), y_batch
+        return y_batch, c_batch
 
     def _adjust_length(self, x, c):
         """Adjust the audio and feature lengths.
@@ -96,10 +97,12 @@ class Clip(object):
             features, this process will be needed.
 
         """
-        if len(x) < len(c) * self.hop_size:
-            x = np.pad(x, (0, len(c) * self.hop_size - len(x)), mode="edge")
+        if len(x) < c.shape[1] * self.hop_size:
+            x = np.pad(x, (0, c.shape[1] * self.hop_size - len(x)),
+                       mode="edge")
 
         # check the legnth is valid
-        assert len(x) == len(c) * self.hop_size
+        assert len(x) == c.shape[
+            1] * self.hop_size, f"wave length: ({len(x)}), mel length: ({c.shape[1]})"
 
         return x, c

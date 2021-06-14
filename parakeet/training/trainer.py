@@ -76,7 +76,7 @@ class Trainer(object):
             else:
                 max_iteration = self.stop_trigger.period
 
-        while not stop_trigger(self):
+        while True:
             self.observation = {}
             # set observation as the report target
             # you can use report freely in Updater.update()
@@ -84,8 +84,13 @@ class Trainer(object):
             # updating parameters and state
             with scope(self.observation):
                 update()
+            print(self.observation)
 
             # execute extension when necessary
             for name, entry in extensions:
                 if entry.trigger(self):
                     entry.extension(self)
+
+            if stop_trigger(self):
+                print("Training Done!")
+                break
