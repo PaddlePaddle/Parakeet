@@ -76,6 +76,8 @@ class Trainer(object):
             else:
                 max_iteration = self.stop_trigger.period
 
+        p = tqdm.tqdm()
+
         while True:
             self.observation = {}
             # set observation as the report target
@@ -84,12 +86,13 @@ class Trainer(object):
             # updating parameters and state
             with scope(self.observation):
                 update()
-            print(self.observation)
+                p.update()
+                print(self.observation)
 
-            # execute extension when necessary
-            for name, entry in extensions:
-                if entry.trigger(self):
-                    entry.extension(self)
+                # execute extension when necessary
+                for name, entry in extensions:
+                    if entry.trigger(self):
+                        entry.extension(self)
 
             if stop_trigger(self):
                 print("Training Done!")
