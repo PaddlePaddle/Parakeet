@@ -122,13 +122,18 @@ def train_sp(args, config):
     print("criterions done!")
 
     lr_schedule_g = StepDecay(**config["generator_scheduler_params"])
+    gradient_clip_g = nn.ClipGradByGlobalNorm(config["generator_grad_norm"])
     optimizer_g = Adam(
-        lr_schedule_g,
+        learning_rate=lr_schedule_g,
+        grad_clip=gradient_clip_g,
         parameters=generator.parameters(),
         **config["generator_optimizer_params"])
     lr_schedule_d = StepDecay(**config["discriminator_scheduler_params"])
+    gradient_clip_d = nn.ClipGradByGlobalNorm(config[
+        "discriminator_grad_norm"])
     optimizer_d = Adam(
-        lr_schedule_d,
+        learning_rate=lr_schedule_d,
+        grad_clip=gradient_clip_d,
         parameters=discriminator.parameters(),
         **config["discriminator_optimizer_params"])
     print("optimizers done!")
@@ -165,9 +170,11 @@ def train_sp(args, config):
 
     trainer = Trainer(
         updater,
-        stop_trigger=(config.train_max_steps, "iteration"),
+        stop_trigger=(10, "iteration"),  # PROFILING
         out=output_dir, )
-    trainer.run()
+    with paddle.fluid.profiler.cuda_profiler(
+            str(output_dir / "profiler.log")) as prof:
+        trainer.run()
 
 
 def main():
