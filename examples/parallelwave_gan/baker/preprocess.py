@@ -16,12 +16,9 @@ from typing import List, Dict, Any
 import soundfile as sf
 import librosa
 import numpy as np
-from config import get_cfg_default
 import argparse
 import yaml
 import json
-import dacite
-import dataclasses
 import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
@@ -29,6 +26,8 @@ import tqdm
 from operator import itemgetter
 from praatio import tgio
 import logging
+
+from config import get_cfg_default
 
 
 def logmelfilterbank(audio,
@@ -229,7 +228,7 @@ def main():
 
     if args.verbose > 1:
         print(vars(args))
-        print(yaml.dump(dataclasses.asdict(C)))
+        print(C)
 
     root_dir = Path(args.rootdir)
     dumpdir = Path(args.dumpdir)

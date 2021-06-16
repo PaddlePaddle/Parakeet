@@ -64,7 +64,6 @@ setup_info = dict(
         'scipy',
         'pandas',
         'sox',
-        # 'opencc',
         'soundfile',
         'g2p_en',
         'yacs',

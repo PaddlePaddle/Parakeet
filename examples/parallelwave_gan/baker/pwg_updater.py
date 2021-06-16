@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid.core import _cuda_synchronize
 from timer import timer
 
 from parakeet.datasets.data_table import DataTable
@@ -61,12 +62,15 @@ class PWGUpdater(UpdaterBase):
         self.train_iterator = iter(self.train_dataloader)
 
     def update_core(self):
+        place = paddle.fluid.framework._current_expected_place()
         with timer() as t:
+            _cuda_synchronize(place)
             try:
                 batch = next(self.train_iterator)
             except StopIteration:
                 self.train_iterator = iter(self.train_dataloader)
                 batch = next(self.train_iterator)
+            _cuda_synchronize(place)
             print(f"Loading a batch takes {t.elapse}s")
 
         wav, mel = batch
@@ -75,13 +79,17 @@ class PWGUpdater(UpdaterBase):
         noise = paddle.randn(wav.shape)
 
         with timer() as t:
+            _cuda_synchronize(place)
             wav_ = self.generator(noise, mel)
+            _cuda_synchronize(place)
             print(f"Generator takes {t.elapse}s")
 
         ## Multi-resolution stft loss
         with timer() as t:
+            _cuda_synchronize(place)
             sc_loss, mag_loss = self.criterion_stft(
                 wav_.squeeze(1), wav.squeeze(1))
+            _cuda_synchronize(place)
             print(f"Multi-resolution STFT loss takes {t.elapse}s")
 
         report("train/spectral_convergence_loss", float(sc_loss))
@@ -91,24 +99,30 @@ class PWGUpdater(UpdaterBase):
         ## Adversarial loss
         if self.state.iteration > self.discriminator_train_start_steps:
             with timer() as t:
+                _cuda_synchronize(place)
                 p_ = self.discriminator(wav_)
                 adv_loss = self.criterion_mse(p_, paddle.ones_like(p_))
+                _cuda_synchronize(place)
                 print(f"Discriminator and adversarial loss takes {t.elapse}s")
             report("train/adversarial_loss", float(adv_loss))
             gen_loss += self.lambda_adv * adv_loss
 
         report("train/generator_loss", float(gen_loss))
         with timer() as t:
+            _cuda_synchronize(place)
             self.optimizer_g.clear_grad()
             gen_loss.backward()
+            _cuda_synchronize(place)
             print(f"Backward takes {t.elapse}s.")
 
         with timer() as t:
+            _cuda_synchronize(place)
             self.optimizer_g.step()
             self.scheduler_g.step()
+            _cuda_synchronize(place)
             print(f"Update takes {t.elapse}s.")
 
-# Disctiminator
+        # Disctiminator
         if self.state.iteration > self.discriminator_train_start_steps:
             with paddle.no_grad():
                 wav_ = self.generator(noise, mel)

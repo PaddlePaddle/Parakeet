@@ -20,7 +20,6 @@ import dataclasses
 from pathlib import Path
 
 import yaml
-import dacite
 import json
 import paddle
 import numpy as np

@@ -64,7 +64,7 @@ class STFTLoss(nn.Layer):
                  fft_size=1024,
                  shift_size=120,
                  win_length=600,
-                 window="hann_window"):
+                 window="hann"):
         """Initialize STFT loss module."""
         super().__init__()
         self.fft_size = fft_size
