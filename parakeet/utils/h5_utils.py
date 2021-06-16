@@ -48,7 +48,8 @@ def read_hdf5(filename: Union[Path, str], dataset_name: str) -> Any:
             f"There is no such a data in hdf5 file. ({dataset_name})")
         sys.exit(1)
 
-    hdf5_data = hdf5_file[dataset_name][()]  # a special syntax of h5py
+    # [()]: a special syntax of h5py to get the dataset as-is
+    hdf5_data = hdf5_file[dataset_name][()]
     hdf5_file.close()
 
     return hdf5_data

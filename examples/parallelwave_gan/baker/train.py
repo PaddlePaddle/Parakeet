@@ -171,8 +171,9 @@ def train_sp(args, config):
         updater,
         stop_trigger=(10, "iteration"),  # PROFILING
         out=output_dir, )
-    with paddle.fluid.profiler.cuda_profiler(
-            str(output_dir / "profiler.log")) as prof:
+    with paddle.fluid.profiler.profiler('All', 'total',
+                                        str(output_dir / "profiler.log"),
+                                        'Default') as prof:
         trainer.run()
 
 
