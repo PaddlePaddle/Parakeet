@@ -57,7 +57,7 @@ def read_hdf5(filename: Union[Path, str], dataset_name: str) -> Any:
 
 def write_hdf5(filename: Union[Path, str],
                dataset_name: str,
-               write_data: np.ndarrays,
+               write_data: np.ndarray,
                is_overwrite: bool=True) -> None:
     """Write dataset to HDF5 file.
 

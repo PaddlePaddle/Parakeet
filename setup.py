@@ -72,6 +72,8 @@ setup_info = dict(
         'webrtcvad',
         'g2pM',
         'praatio',
+        "h5py",
+        "timer",
     ],
     extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 
