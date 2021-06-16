@@ -14,12 +14,17 @@
 
 import paddle
 import torch
+from timer import timer
 from parallel_wavegan.layers import upsample, residual_block
 from parallel_wavegan.models import parallel_wavegan as pwgan
 from parakeet.utils.layer_tools import summary
+from parakeet.utils.profile import synchronize
 
 from parakeet.models.parallel_wavegan import ConvInUpsampleNet, ResidualBlock
 from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator, ResidualPWGDiscriminator
+
+paddle.set_device("gpu:0")
+device = torch.device("cuda:0")
 
 
 def test_convin_upsample_net():
@@ -33,15 +38,34 @@ def test_convin_upsample_net():
         nonlinear_activation="LeakyReLU",
         nonlinear_activation_params={"negative_slope": 0.2},
         freq_axis_kernel_size=3,
-        aux_context_window=0)
+        aux_context_window=0).to(device)
     summary(net)
     for k, v in net2.named_parameters():
         print(k, v.shape)
         net.state_dict()[k].set_value(v.data.cpu().numpy())
 
     c = paddle.randn([4, 80, 180])
-    out = net(c)
-    out2 = net2(torch.as_tensor(c.numpy()))
+    synchronize()
+    with timer(unit='s') as t:
+        out = net(c)
+        synchronize()
+        print(f"paddle conv_in_upsample_net forward takes {t.elapse}s.")
+
+    with timer(unit='s') as t:
+        out.sum().backward()
+        synchronize()
+        print(f"paddle conv_in_upsample_net backward takes {t.elapse}s.")
+
+    c_torch = torch.as_tensor(c.numpy()).to(device)
+    torch.cuda.synchronize()
+    with timer(unit='s') as t:
+        out2 = net2(c_torch)
+        print(f"torch conv_in_upsample_net forward takes {t.elapse}s.")
+
+    with timer(unit='s') as t:
+        out2.sum().backward()
+        print(f"torch conv_in_upsample_net backward takes {t.elapse}s.")
+
     print(out.numpy()[0])
     print(out2.data.cpu().numpy()[0])
 
@@ -74,7 +98,7 @@ def test_pwg_generator():
         "nonlinear_activation_params": {
             "negative_slope": 0.2
         }
-    })
+    }).to(device)
     summary(net)
     summary(net2)
     for k, v in net2.named_parameters():
@@ -85,8 +109,34 @@ def test_pwg_generator():
             p.set_value(v.data.cpu().numpy())
     x = paddle.randn([4, 1, 180 * 256])
     c = paddle.randn([4, 80, 180 + 4])
-    out = net(x, c)
-    out2 = net2(torch.as_tensor(x.numpy()), torch.as_tensor(c.numpy()))
+
+    synchronize()
+    with timer(unit='s') as t:
+        out = net(x, c)
+        synchronize()
+        print(f"paddle generator forward takes {t.elapse}s.")
+
+    synchronize()
+    with timer(unit='s') as t:
+        out.sum().backward()
+        synchronize()
+        print(f"paddle generator backward takes {t.elapse}s.")
+
+    x_torch = torch.as_tensor(x.numpy()).to(device)
+    c_torch = torch.as_tensor(c.numpy()).to(device)
+
+    torch.cuda.synchronize()
+    with timer(unit='s') as t:
+        out2 = net2(x_torch, c_torch)
+        torch.cuda.synchronize()
+        print(f"torch generator forward takes {t.elapse}s.")
+
+    torch.cuda.synchronize()
+    with timer(unit='s') as t:
+        out2.sum().backward()
+        torch.cuda.synchronize()
+        print(f"torch generator backward takes {t.elapse}s.")
+
     print(out.numpy()[0])
     print(out2.data.cpu().numpy()[0])
     # print(out.shape)
