@@ -603,17 +603,17 @@ class PWGDiscriminator(nn.Layer):
         if use_weight_norm:
             self.apply_weight_norm()
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         """
         Parameters
         ----------
         x : Tensor
-            Shape (N, in_channels, T), the input audio.
+            Shape (N, in_channels, num_samples), the input audio.
 
         Returns
         -------
         Tensor
-            Shape (N, out_channels, T), the predicted logits.
+            Shape (N, out_channels, num_samples), the predicted logits.
         """
         return self.conv_layers(x)
 
@@ -635,21 +635,59 @@ class PWGDiscriminator(nn.Layer):
 
 
 class ResidualPWGDiscriminator(nn.Layer):
+    """A wavenet-style discriminator for audio.
+
+    Parameters
+    ----------
+    in_channels : int, optional
+        Number of channels of the input audio, by default 1
+    out_channels : int, optional
+        Output feature size, by default 1
+    kernel_size : int, optional
+        Kernel size of residual blocks, by default 3
+    layers : int, optional
+        Number of residual blocks, by default 30
+    stacks : int, optional
+        Number of groups of residual blocks, within which the dilation 
+        of each residual blocks grows exponentially, by default 3
+    residual_channels : int, optional
+        Residual channels of residual blocks, by default 64
+    gate_channels : int, optional
+        Gate channels of residual blocks, by default 128
+    skip_channels : int, optional
+        Skip channels of residual blocks, by default 64
+    dropout : float, optional
+        Dropout probability of residual blocks, by default 0.
+    bias : bool, optional
+        Whether to use bias in residual blocks, by default True
+    use_weight_norm : bool, optional
+        Whether to use weight normalization in all convolutional layers, 
+        by default True
+    use_causal_conv : bool, optional
+        Whether to use causal convolution in residual blocks, by default False
+    nonlinear_activation : str, optional
+        Activation after convolutions other than those in residual blocks, 
+        by default "LeakyReLU"
+    nonlinear_activation_params : Dict[str, Any], optional
+        Parameters to pass to the activation, by default {"negative_slope": 0.2}
+    """
+
     def __init__(self,
-                 in_channels=1,
-                 out_channels=1,
-                 kernel_size=3,
-                 layers=30,
-                 stacks=3,
-                 residual_channels=64,
-                 gate_channels=128,
-                 skip_channels=64,
-                 dropout=0.,
-                 bias=True,
-                 use_weight_norm=True,
-                 use_causal_conv=False,
-                 nonlinear_activation="LeakyReLU",
-                 nonlinear_activation_params={"negative_slope": 0.2}):
+                 in_channels: int=1,
+                 out_channels: int=1,
+                 kernel_size: int=3,
+                 layers: int=30,
+                 stacks: int=3,
+                 residual_channels: int=64,
+                 gate_channels: int=128,
+                 skip_channels: int=64,
+                 dropout: float=0.,
+                 bias: bool=True,
+                 use_weight_norm: bool=True,
+                 use_causal_conv: bool=False,
+                 nonlinear_activation: str="LeakyReLU",
+                 nonlinear_activation_params: Dict[
+                     str, Any]={"negative_slope": 0.2}):
         super().__init__()
         assert kernel_size % 2 == 1
         self.in_channels = in_channels
@@ -692,7 +730,18 @@ class ResidualPWGDiscriminator(nn.Layer):
         if use_weight_norm:
             self.apply_weight_norm()
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Parameters
+        ----------
+        x : Tensor
+            Shape (N, in_channels, num_samples), the input audio.
+
+        Returns
+        -------
+        Tensor
+            Shape (N, out_channels, num_samples), the predicted logits.
+        """
         x = self.first_conv(x)
         skip = 0
         for f in self.conv_layers:
