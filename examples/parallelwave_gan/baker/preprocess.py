@@ -19,6 +19,7 @@ import numpy as np
 import argparse
 import yaml
 import json
+import jsonlines
 import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
@@ -152,14 +153,14 @@ def process_sentence(config: Dict[str, Any],
 
     mel_path = output_dir / (utt_id + "_feats.npy")
     wav_path = output_dir / (utt_id + "_wave.npy")
-    np.save(wav_path, y)
-    np.save(mel_path, logmel)
+    np.save(wav_path, y)  # (num_samples, )
+    np.save(mel_path, logmel.T)  # (num_frames, n_mels)
     record = {
         "utt_id": utt_id,
         "num_samples": num_sample,
         "num_frames": num_frames,
-        "feats_path": str(mel_path.resolve()),
-        "wave_path": str(wav_path.resolve()),
+        "feats": str(mel_path.resolve()),
+        "wave": str(wav_path.resolve()),
     }
     return record
 
@@ -175,7 +176,7 @@ def process_sentences(config,
             results.append(
                 process_sentence(config, fp, alignment_fp, output_dir))
     else:
-        with ProcessPoolExecutor(nprocs) as pool:
+        with ThreadPoolExecutor(nprocs) as pool:
             futures = []
             with tqdm.tqdm(total=len(fps)) as progress:
                 for fp, alignment_fp in zip(fps, alignment_fps):
@@ -189,8 +190,9 @@ def process_sentences(config,
                     results.append(ft.result())
 
     results.sort(key=itemgetter("utt_id"))
-    with open(output_dir / "metadata.json", 'wt') as f:
-        json.dump(results, f)
+    with jsonlines.open(output_dir / "metadata.jsonl", 'w') as writer:
+        for item in results:
+            writer.write(item)
     print("Done")
 
 
@@ -247,11 +249,11 @@ def main():
     dev_alignment_files = alignment_files[9800:9900]
     test_alignment_files = alignment_files[9900:]
 
-    train_dump_dir = dumpdir / "train"
+    train_dump_dir = dumpdir / "train" / "raw"
     train_dump_dir.mkdir(parents=True, exist_ok=True)
-    dev_dump_dir = dumpdir / "dev"
+    dev_dump_dir = dumpdir / "dev" / "raw"
     dev_dump_dir.mkdir(parents=True, exist_ok=True)
-    test_dump_dir = dumpdir / "test"
+    test_dump_dir = dumpdir / "test" / "raw"
     test_dump_dir.mkdir(parents=True, exist_ok=True)
 
     # process for the 3 sections

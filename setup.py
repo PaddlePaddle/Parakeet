@@ -74,6 +74,7 @@ setup_info = dict(
         'praatio',
         "h5py",
         "timer",
+        'jsonlines',
     ],
     extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 

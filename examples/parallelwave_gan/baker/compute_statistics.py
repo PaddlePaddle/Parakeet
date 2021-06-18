@@ -20,6 +20,7 @@ import os
 import numpy as np
 import yaml
 import json
+import jsonlines
 
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
@@ -36,20 +37,13 @@ def main():
     parser = argparse.ArgumentParser(
         description="Compute mean and variance of dumped raw features.")
     parser.add_argument(
-        "--metadata",
-        default=None,
-        type=str,
-        help="json file with id and file paths ")
+        "--metadata", type=str, help="json file with id and file paths ")
     parser.add_argument(
-        "--field-name",
-        default=None,
-        type=str,
-        help="json file with id and file paths ")
+        "--field-name", type=str, help="json file with id and file paths ")
     parser.add_argument(
         "--config", type=str, help="yaml format configuration file.")
     parser.add_argument(
         "--dumpdir",
-        default=None,
         type=str,
         help="directory to save statistics. if not provided, "
         "stats will be saved in the above root directory. (default=None)")
@@ -89,8 +83,8 @@ def main():
     if not os.path.exists(args.dumpdir):
         os.makedirs(args.dumpdir)
 
-    with open(args.metadata, 'rt') as f:
-        metadata = json.load(f)
+    with jsonlines.open(args.metadata, 'r') as reader:
+        metadata = list(reader)
     dataset = DataTable(
         metadata,
         fields=[args.field_name],
@@ -101,7 +95,7 @@ def main():
     scaler = StandardScaler()
     for datum in tqdm(dataset):
         # StandardScalar supports (*, num_features) by default
-        scaler.partial_fit(datum[args.field_name].T)
+        scaler.partial_fit(datum[args.field_name])
 
     stats = np.stack([scaler.mean_, scaler.scale_], axis=0)
     np.save(
