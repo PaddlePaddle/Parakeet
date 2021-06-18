@@ -290,7 +290,7 @@ class ResidualBlock(nn.Layer):
         x : Tensor
             Shape (N, C_res, T), the input features.
         c : Tensor
-            Shape (N, C_aux, T), he auxiliary input.
+            Shape (N, C_aux, T), the auxiliary input.
 
         Returns
         -------
@@ -525,17 +525,48 @@ class PWGGenerator(nn.Layer):
 
 
 class PWGDiscriminator(nn.Layer):
+    """A convolutional discriminator for audio.
+
+    Parameters
+    ----------
+    in_channels : int, optional
+        Number of channels of the input audio, by default 1
+    out_channels : int, optional
+        Output feature size, by default 1
+    kernel_size : int, optional
+        Kernel size of convolutional sublayers, by default 3
+    layers : int, optional
+        Number of layers, by default 10
+    conv_channels : int, optional
+        Feature size of the convolutional sublayers, by default 64
+    dilation_factor : int, optional
+        The factor with which dilation of each convolutional sublayers grows 
+        exponentially if it is greater than 1, else the dilation of each 
+        convolutional sublayers grows linearly, by default 1
+    nonlinear_activation : str, optional
+        The activation after each convolutional sublayer, by default "LeakyReLU"
+    nonlinear_activation_params : Dict[str, Any], optional
+        The parameters passed to the activation's initializer, by default 
+        {"negative_slope": 0.2}
+    bias : bool, optional
+        Whether to use bias in convolutional sublayers, by default True
+    use_weight_norm : bool, optional
+        Whether to use weight normalization at all convolutional sublayers, 
+        by default True
+    """
+
     def __init__(self,
-                 in_channels=1,
-                 out_channels=1,
-                 kernel_size=3,
-                 layers=10,
-                 conv_channels=64,
-                 dilation_factor=1,
-                 nonlinear_activation="LeakyReLU",
-                 nonlinear_activation_params={"negative_slope": 0.2},
-                 bias=True,
-                 use_weight_norm=True):
+                 in_channels: int=1,
+                 out_channels: int=1,
+                 kernel_size: int=3,
+                 layers: int=10,
+                 conv_channels: int=64,
+                 dilation_factor: int=1,
+                 nonlinear_activation: str="LeakyReLU",
+                 nonlinear_activation_params: Dict[
+                     str, Any]={"negative_slope": 0.2},
+                 bias: bool=True,
+                 use_weight_norm: bool=True):
         super().__init__()
         assert kernel_size % 2 == 1
         assert dilation_factor > 0
@@ -572,7 +603,18 @@ class PWGDiscriminator(nn.Layer):
         if use_weight_norm:
             self.apply_weight_norm()
 
-    def forward(self, x):
+    def forward(self, x: Tensor):
+        """
+        Parameters
+        ----------
+        x : Tensor
+            Shape (N, in_channels, T), the input audio.
+
+        Returns
+        -------
+        Tensor
+            Shape (N, out_channels, T), the predicted logits.
+        """
         return self.conv_layers(x)
 
     def apply_weight_norm(self):
