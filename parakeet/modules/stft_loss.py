@@ -35,8 +35,9 @@ class SpectralConvergenceLoss(nn.Layer):
             Tensor: Spectral convergence loss value.
         """
         return paddle.norm(
-            y_mag - x_mag, p="fro") / paddle.norm(
-                y_mag, p="fro")
+            y_mag - x_mag, p="fro") / paddle.clip(
+                paddle.norm(
+                    y_mag, p="fro"), min=1e-10)
 
 
 class LogSTFTMagnitudeLoss(nn.Layer):
@@ -54,7 +55,11 @@ class LogSTFTMagnitudeLoss(nn.Layer):
         Returns:
             Tensor: Log STFT magnitude loss value.
         """
-        return F.l1_loss(paddle.log(y_mag), paddle.log(x_mag))
+        return F.l1_loss(
+            paddle.log(paddle.clip(
+                y_mag, min=1e-10)),
+            paddle.log(paddle.clip(
+                x_mag, min=1e-10)))
 
 
 class STFTLoss(nn.Layer):

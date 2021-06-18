@@ -20,7 +20,7 @@ import dataclasses
 from pathlib import Path
 
 import yaml
-import json
+import jsonlines
 import paddle
 import numpy as np
 from paddle import nn
@@ -61,23 +61,23 @@ def train_sp(args, config):
     )
 
     # construct dataset for training and validation
-    with open(args.train_metadata) as f:
-        train_metadata = json.load(f)
+    with jsonlines.open(args.train_metadata, 'r') as reader:
+        train_metadata = list(reader)
     train_dataset = DataTable(
         data=train_metadata,
-        fields=["wave_path", "feats_path"],
+        fields=["wave", "feats"],
         converters={
-            "wave_path": np.load,
-            "feats_path": np.load,
+            "wave": np.load,
+            "feats": np.load,
         }, )
-    with open(args.dev_metadata) as f:
-        dev_metadata = json.load(f)
+    with jsonlines.open(args.dev_metadata, 'r') as reader:
+        dev_metadata = list(reader)
     dev_dataset = DataTable(
         data=dev_metadata,
-        fields=["wave_path", "feats_path"],
+        fields=["wave", "feats"],
         converters={
-            "wave_path": np.load,
-            "feats_path": np.load,
+            "wave": np.load,
+            "feats": np.load,
         }, )
 
     # collate function and dataloader
@@ -169,12 +169,13 @@ def train_sp(args, config):
 
     trainer = Trainer(
         updater,
-        stop_trigger=(10, "iteration"),  # PROFILING
+        stop_trigger=(config.train_max_steps, "iteration"),  # PROFILING
         out=output_dir, )
-    with paddle.fluid.profiler.profiler('All', 'total',
-                                        str(output_dir / "profiler.log"),
-                                        'Default') as prof:
-        trainer.run()
+
+    # with paddle.fluid.profiler.profiler('All', 'total',
+    #                                     str(output_dir / "profiler.log"),
+    #                                     'Default') as prof:
+    trainer.run()
 
 
 def main():
