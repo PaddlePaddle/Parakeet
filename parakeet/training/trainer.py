@@ -40,15 +40,13 @@ class Trainer(object):
         self.out = Path(out)
         self.observation = {}
 
-    def setup(self):
-        pass
-
     def extend(self, extension, name=None, trigger=None, priority=None):
         trigger = get_trigger(trigger)
 
         ordinal = 0
         modified_name = name
-        while name in self.extensions:
+        while modified_name in self.extensions:
+            print(self.extensions.keys())
             ordinal += 1
             modified_name = f"{name}_{ordinal}"
 
@@ -61,8 +59,7 @@ class Trainer(object):
             self.extensions.keys(),
             key=lambda name: self.extensions[name].priority,
             reverse=True)
-        extensions = [(name, self.extensions[name])
-                      for name in extension_order]
+        extensions = [(name, self.extensions[name]) for name in extension_order]
 
         update = self.updater.update
         stop_trigger = self.stop_trigger

@@ -39,10 +39,13 @@ from parakeet.training.reporter import report
 from parakeet.training.checkpoint import KBest, KLatest
 from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator
 from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
+from parakeet.training.extensions.visualizer import VisualDL
+from parakeet.training.extensions.snapshot import Snapshot
+from parakeet.training.seeding import seed_everything
 
 from batch_fn import Clip
 from config import get_cfg_default
-from pwg_updater import PWGUpdater
+from pwg_updater import PWGUpdater, PWGEvaluator
 
 
 def train_sp(args, config):
@@ -55,6 +58,9 @@ def train_sp(args, config):
         world_size = paddle.distributed.get_world_size()
         if world_size > 1:
             paddle.distributed.init_parallel_env()
+
+    # set the random seed, it is a must for multiprocess training
+    seed_everything(42)
 
     print(
         f"rank: {dist.get_rank()}, pid: {os.getpid()}, parent_pid: {os.getppid()}",
@@ -128,8 +134,7 @@ def train_sp(args, config):
         parameters=generator.parameters(),
         **config["generator_optimizer_params"])
     lr_schedule_d = StepDecay(**config["discriminator_scheduler_params"])
-    gradient_clip_d = nn.ClipGradByGlobalNorm(config[
-        "discriminator_grad_norm"])
+    gradient_clip_d = nn.ClipGradByGlobalNorm(config["discriminator_grad_norm"])
     optimizer_d = Adam(
         learning_rate=lr_schedule_d,
         grad_clip=gradient_clip_d,
@@ -138,10 +143,10 @@ def train_sp(args, config):
     print("optimizers done!")
 
     output_dir = Path(args.output_dir)
-    log_writer = None
+    checkpoint_dir = output_dir / "checkpoints"
     if dist.get_rank() == 0:
         output_dir.mkdir(parents=True, exist_ok=True)
-        log_writer = LogWriter(str(output_dir))
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     updater = PWGUpdater(
         models={
@@ -160,17 +165,40 @@ def train_sp(args, config):
             "generator": lr_schedule_g,
             "discriminator": lr_schedule_d,
         },
-        dataloaders={
-            "train": train_dataloader,
-            "dev": dev_dataloader,
-        },
+        dataloader=train_dataloader,
         discriminator_train_start_steps=config.discriminator_train_start_steps,
+        lambda_adv=config.lambda_adv, )
+
+    evaluator = PWGEvaluator(
+        models={
+            "generator": generator,
+            "discriminator": discriminator,
+        },
+        criterions={
+            "stft": criterion_stft,
+            "mse": criterion_mse,
+        },
+        dataloader=dev_dataloader,
         lambda_adv=config.lambda_adv, )
 
     trainer = Trainer(
         updater,
-        stop_trigger=(config.train_max_steps, "iteration"),  # PROFILING
+        stop_trigger=(config.train_max_steps, "iteration"),
         out=output_dir, )
+
+    trainer.extend(
+        evaluator,
+        trigger=(config.eval_interval_steps, 'iteration'),
+        priority=3)
+    if dist.get_rank() == 0:
+        log_writer = LogWriter(str(output_dir))
+        trainer.extend(
+            VisualDL(log_writer), trigger=(1, 'iteration'), priority=1)
+    trainer.extend(
+        Snapshot(checkpoint_dir),
+        trigger=(config.save_interval_steps, 'iteration'),
+        priority=2)
+    print("Trainer Done!")
 
     # with paddle.fluid.profiler.profiler('All', 'total',
     #                                     str(output_dir / "profiler.log"),

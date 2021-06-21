@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# Copyright 2019 Tomoki Hayashi
-#  MIT License (https://opensource.org/licenses/MIT)
 """Normalize feature files and dump them."""
 
 import argparse
@@ -28,13 +22,10 @@ from pathlib import Path
 import numpy as np
 import yaml
 import jsonlines
-
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 from parakeet.datasets.data_table import DataTable
-from parakeet.utils.h5_utils import read_hdf5
-from parakeet.utils.h5_utils import write_hdf5
 
 from config import get_cfg_default
 

@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 import paddle
-from paddle.framework import CUDAPlace
+import random
+import numpy as np
 
 
-def synchronize():
-    """Trigger cuda synchronization for better timing."""
-    place = paddle.fluid.framework._current_expected_place()
-    if isinstance(place, CUDAPlace):
-        paddle.fluid.core._cuda_synchronize(place)
+def seed_everything(seed: int):
+    paddle.seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    logging.debug(f"Set the seed of paddle, random, np.random to {seed}.")

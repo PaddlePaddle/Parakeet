@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
+from typing import Dict
+from typing import Union
 
+from timer import timer
+import paddle
+from paddle import Tensor
 from paddle.nn import Layer
 from paddle.optimizer import Optimizer
 from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
+
+from parakeet.training.reporter import report
 
 
 @dataclass
@@ -56,12 +65,34 @@ class UpdaterBase(object):
     So the best practice is to define a model and define a updater for it.
     """
 
-    def update(self):
-        self.state.iteration += 1
-        self.update_core()
+    def __init__(self, init_state=None):
+        if init_state is None:
+            self.state = UpdaterState()
+        else:
+            self.state = init_state
 
-    def update_core(self):
-        pass
+    def update(self, batch):
+        raise NotImplementedError(
+            "Implement your own `update` method for training a step.")
+
+    def state_dict(self):
+        state_dict = {
+            "epoch": self.state.epoch,
+            "iteration": self.state.iteration,
+        }
+        return state_dict
+
+    def set_state_dict(self, state_dict):
+        self.state.epoch = state_dict["epoch"]
+        self.state.iteration = state_dict["iteration"]
+
+    def save(self, path):
+        archive = self.state_dict()
+        paddle.save(archive, path)
+
+    def load(self, path):
+        archive = paddle.load(path)
+        self.set_state_dict(archive)
 
 
 class StandardUpdater(UpdaterBase):
@@ -71,54 +102,116 @@ class StandardUpdater(UpdaterBase):
 
     def __init__(self,
                  model: Layer,
-                 dataloader: DataLoader,
                  optimizer: Optimizer,
-                 loss_func=None,
-                 auto_new_epoch: bool=True,
+                 dataloader: DataLoader,
                  init_state: Optional[UpdaterState]=None):
+        # it is designed to hold multiple models
+        models = {"main": model}
+        self.models: Dict[str, Layer] = models
         self.model = model
-        self.dataloader = dataloader
-        self.optimizer = optimizer
-        self.loss_func = loss_func
-        self.auto_new_epoch = auto_new_epoch
-        self.iterator = iter(dataloader)
 
+        # it is designed to hold multiple optimizers
+        optimizers = {"main": optimizer}
+        self.optimizer = optimizer
+        self.optimizers: Dict[str, Optimizer] = optimizers
+
+        # dataloaders
+        self.dataloader = dataloader
+
+        # init state
         if init_state is None:
             self.state = UpdaterState()
         else:
             self.state = init_state
 
+        self.train_iterator = iter(dataloader)
+
     def update(self):
-        self.update_core()
         self.state.iteration += 1
 
+        # switch to training mode
+        for layer in self.models.values():
+            layer.train()
+
+        # training for a step is implemented here
+        batch = self.read_batch()
+        self.update_core(batch)
+
+    def update_core(self, batch):
+        """A simple case for a training step. Basic assumptions are:
+        Single model;
+        Single optimizer;
+        A batch from the dataloader is just the input of the model;
+        The model return a single loss, or a dict containing serval losses.
+        Parameters updates at every batch, no gradient accumulation.
+        """
+        loss = self.model(*batch)
+
+        if isinstance(loss, Tensor):
+            loss_dict = {"main": loss}
+        else:
+            # Dict[str, Tensor]
+            loss_dict = loss
+            if "main" not in loss_dict:
+                main_loss = 0
+                for loss_item in loss.values():
+                    main_loss += loss_item
+                loss_dict["main"] = main_loss
+
+        for name, loss_item in loss_dict.items():
+            report(name, float(loss_item))
+
+        self.optimizer.clear_gradient()
+        loss_dict["main"].backward()
+        self.optimizer.update()
+
     def new_epoch(self):
-        self.iterator = iter(self.dataloader)
+        """Start a new epoch."""
         self.state.epoch += 1
 
-    def update_core(self):
-        model = self.model
-        optimizer = self.optimizer
-        loss_func = self.loss_func
+        # NOTE: all batch sampler for distributed training should
+        # subclass DistributedBatchSampler and implement `set_epoch` method
+        batch_sampler = self.dataloader.batch_sampler
+        if isinstance(batch_sampler, DistributedBatchSampler):
+            batch_sampler.set_epoch(self.state.epoch)
+        self.train_iterator = iter(self.dataloader)
 
-        model.train()
-        optimizer.clear_grad()
-
-        # fetch a batch
-        try:
-            batch = next(self.iterator)
-        except StopIteration as e:
-            if self.auto_new_epoch:
+    def read_batch(self):
+        """Read a batch from the data loader, auto renew when data is exhausted."""
+        with timer() as t:
+            try:
+                batch = next(self.train_iterator)
+            except StopIteration:
                 self.new_epoch()
+                batch = next(self.train_iterator)
+            logging.debug(
+                f"Read a batch takes {t.elapse}s.")  # replace it with logging
+        return batch
 
-        # forward
-        if self.loss_func is not None:
-            loss = loss_func(batch)
-        else:
-            loss = model(batch)
+    def state_dict(self):
+        """State dict of a Updater, model, optimizer and updater state are included."""
+        state_dict = super().state_dict()
+        for name, layer in self.models.items():
+            state_dict[f"{name}_params"] = layer.state_dict()
+        for name, optim in self.optimizers.items():
+            state_dict[f"{name}_optimizer"] = optim.state_dict()
+        return state_dict
 
-        # backward
-        loss.backward()
+    def set_state_dict(self, state_dict):
+        """Set state dict for a Updater. Parameters of models, states for 
+        optimizers and UpdaterState are restored."""
+        for name, layer in self.models.items():
+            layer.set_state_dict(state_dict[f"{name}_params"])
+        for name, optim in self.optimizers.items():
+            optim.set_state_dict(state_dict[f"{name}_optimizer"])
+        super().set_state_dict(state_dict)
 
-        # update parameters
-        optimizer.step()
+    def save(self, path):
+        """Save Updater state dict."""
+        archive = self.state_dict()
+        paddle.save(archive, path)
+
+    def load(self, path):
+        """Load Updater state dict."""
+        archive = paddle.load(path)
+        self.set_state_dict(archive)
