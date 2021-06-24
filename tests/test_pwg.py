@@ -71,8 +71,8 @@ def test_convin_upsample_net():
     print(out2.data.cpu().numpy()[0])
 
     print("backward check")
-    print(net.conv_in.weight.numpy()[0])
-    print(net2.conv_in.weight.data.cpu().numpy()[0])
+    print(net.conv_in.weight.grad.numpy()[0])
+    print(net2.conv_in.weight.grad.data.cpu().numpy()[0])
 
 
 def test_residual_block():
@@ -87,23 +87,40 @@ def test_residual_block():
     c = paddle.randn([4, 80, 180])
     res, skip = net(x, c)
     res2, skip2 = net2(torch.as_tensor(x.numpy()), torch.as_tensor(c.numpy()))
+
+    print("forward:")
     print(res.numpy()[0])
     print(res2.data.cpu().numpy()[0])
     print(skip.numpy()[0])
     print(skip2.data.cpu().numpy()[0])
 
+    (res.sum() + skip.sum()).backward()
+    (res2.sum() + skip2.sum()).backward()
+
+    print("backward:")
+    print(net.conv.weight.grad.numpy().squeeze()[0])
+    print(net2.conv.weight.grad.data.cpu().numpy().squeeze()[0])
+
 
 def test_pwg_generator():
     net = PWGGenerator(
+        layers=9,
+        stacks=3,
+        upsample_scales=[4, 4, 4, 4],
         nonlinear_activation="LeakyReLU",
-        nonlinear_activation_params={"negative_slope": 0.2})
-    net2 = pwgan.ParallelWaveGANGenerator(upsample_params={
-        "upsample_scales": [4, 4, 4, 4],
-        "nonlinear_activation": "LeakyReLU",
-        "nonlinear_activation_params": {
-            "negative_slope": 0.2
-        }
-    }).to(device)
+        nonlinear_activation_params={"negative_slope": 0.5},
+        use_weight_norm=True)
+    net2 = pwgan.ParallelWaveGANGenerator(
+        layers=9,
+        stacks=3,
+        upsample_params={
+            "upsample_scales": [4, 4, 4, 4],
+            "nonlinear_activation": "LeakyReLU",
+            "nonlinear_activation_params": {
+                "negative_slope": 0.5
+            }
+        },
+        use_weight_norm=True).to(device)
     summary(net)
     summary(net2)
     for k, v in net2.named_parameters():
@@ -112,8 +129,8 @@ def test_pwg_generator():
             p.set_value(v.data.cpu().numpy().reshape([-1]))
         else:
             p.set_value(v.data.cpu().numpy())
-    x = paddle.randn([4, 1, 180 * 256])
-    c = paddle.randn([4, 80, 180 + 4])
+    x = paddle.randn([4, 1, 80 * 256])
+    c = paddle.randn([4, 80, 80 + 4])
 
     synchronize()
     with timer(unit='s') as t:
@@ -147,8 +164,13 @@ def test_pwg_generator():
     print(out2.data.cpu().numpy()[0])
 
     print("test backward:")
-    print(net.first_conv.weight.numpy()[0])
-    print(net2.first_conv.weight.data.cpu().numpy()[0])
+    print("wv")
+    print(net.first_conv.weight_v.grad.numpy().squeeze())
+    print(net2.first_conv.weight_v.grad.data.cpu().numpy().squeeze())
+
+    print("wg")
+    print(net.first_conv.weight_g.grad.numpy().squeeze())
+    print(net2.first_conv.weight_g.grad.data.cpu().numpy().squeeze())
     # print(out.shape)
 
 
@@ -195,8 +217,8 @@ def test_pwg_discriminator():
     print(y2.data.cpu().numpy()[0])
 
     print("test backward:")
-    print(net.conv_layers[0].weight.numpy()[0])
-    print(net2.conv_layers[0].weight.data.cpu().numpy()[0])
+    print(net.conv_layers[0].weight_v.grad.numpy().squeeze())
+    print(net2.conv_layers[0].weight_v.grad.data.cpu().numpy().squeeze())
 
 
 def test_residual_pwg_discriminator():

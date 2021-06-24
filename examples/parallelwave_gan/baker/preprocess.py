@@ -232,8 +232,8 @@ def main():
         print(vars(args))
         print(C)
 
-    root_dir = Path(args.rootdir)
-    dumpdir = Path(args.dumpdir)
+    root_dir = Path(args.rootdir).expanduser()
+    dumpdir = Path(args.dumpdir).expanduser()
     dumpdir.mkdir(parents=True, exist_ok=True)
 
     wav_files = sorted(list((root_dir / "Wave").rglob("*.wav")))
