@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import paddle
+from paddle.framework import core
 from paddle.framework import CUDAPlace
+from contextlib import contextmanager
 
 
 def synchronize():
@@ -21,3 +23,12 @@ def synchronize():
     place = paddle.fluid.framework._current_expected_place()
     if isinstance(place, CUDAPlace):
         paddle.fluid.core._cuda_synchronize(place)
+
+
+@contextmanager
+def nvtx_span(name):
+    try:
+        core.nvprof_nvtx_push(name)
+        yield
+    finally:
+        core.nvprof_nvtx_pop()
