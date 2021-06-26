@@ -198,7 +198,7 @@ class StandardUpdater(UpdaterBase):
         return state_dict
 
     def set_state_dict(self, state_dict):
-        """Set state dict for a Updater. Parameters of models, states for 
+        """Set state dict for a Updater. Parameters of models, states for
         optimizers and UpdaterState are restored."""
         for name, layer in self.models.items():
             layer.set_state_dict(state_dict[f"{name}_params"])

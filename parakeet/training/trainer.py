@@ -59,7 +59,13 @@ class Trainer(object):
             self.extensions.keys(),
             key=lambda name: self.extensions[name].priority,
             reverse=True)
-        extensions = [(name, self.extensions[name]) for name in extension_order]
+        extensions = [(name, self.extensions[name])
+                      for name in extension_order]
+
+        print("initializing")
+        for name, entry in extensions:
+            if hasattr(entry.extension, "initialize"):
+                entry.extension.initialize(self)
 
         update = self.updater.update
         stop_trigger = self.stop_trigger
