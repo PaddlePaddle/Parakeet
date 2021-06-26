@@ -134,7 +134,8 @@ def train_sp(args, config):
         parameters=generator.parameters(),
         **config["generator_optimizer_params"])
     lr_schedule_d = StepDecay(**config["discriminator_scheduler_params"])
-    gradient_clip_d = nn.ClipGradByGlobalNorm(config["discriminator_grad_norm"])
+    gradient_clip_d = nn.ClipGradByGlobalNorm(config[
+        "discriminator_grad_norm"])
     optimizer_d = Adam(
         learning_rate=lr_schedule_d,
         grad_clip=gradient_clip_d,
@@ -180,7 +181,6 @@ def train_sp(args, config):
         },
         dataloader=dev_dataloader,
         lambda_adv=config.lambda_adv, )
-
     trainer = Trainer(
         updater,
         stop_trigger=(config.train_max_steps, "iteration"),

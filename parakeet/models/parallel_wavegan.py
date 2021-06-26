@@ -519,7 +519,7 @@ class PWGGenerator(nn.Layer):
 
         if c is not None:
             c = paddle.transpose(c, [1, 0]).unsqueeze(0)  # pseudo batch
-            c = nn.Pad1D(self.aux_context_window, mode='edge')(c)
+            c = nn.Pad1D(self.aux_context_window, mode='replicate')(c)
         out = self.forward(x, c).squeeze(0).transpose([1, 0])
         return out
 
