@@ -125,3 +125,4 @@ log_interval_steps: 100                 # Interval steps to record the training 
 #                     OTHER SETTING                       #
 ###########################################################
 num_save_intermediate_results: 4  # Number of results to be saved as intermediate results.
+num_snapshots: 10

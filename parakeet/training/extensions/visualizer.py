@@ -29,11 +29,8 @@ class VisualDL(extension.Extension):
     default_name = 'visualdl'
     priority = extension.PRIORITY_READER
 
-    def __init__(self):
-        self.writer =...
-
-    def initialize(self, trainer):
-        self.writer = LogWriter(logdir=str(trainer.out))
+    def __init__(self, writer):
+        self.writer = writer
 
     def __call__(self, trainer: Trainer):
         for k, v in trainer.observation.items():

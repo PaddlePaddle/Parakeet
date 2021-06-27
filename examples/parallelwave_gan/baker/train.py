@@ -36,11 +36,11 @@ from parakeet.datasets.data_table import DataTable
 from parakeet.training.updater import UpdaterBase
 from parakeet.training.trainer import Trainer
 from parakeet.training.reporter import report
-from parakeet.training.checkpoint import KBest, KLatest
+from parakeet.training import extension
+from parakeet.training.extensions.snapshot import Snapshot
+from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator
 from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
-from parakeet.training.extensions.visualizer import VisualDL
-from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.seeding import seed_everything
 
 from batch_fn import Clip
@@ -65,6 +65,9 @@ def train_sp(args, config):
     print(
         f"rank: {dist.get_rank()}, pid: {os.getpid()}, parent_pid: {os.getppid()}",
     )
+
+    # dataloader has been too verbose
+    logging.getLogger("DataLoader").disabled = True
 
     # construct dataset for training and validation
     with jsonlines.open(args.train_metadata, 'r') as reader:
@@ -106,12 +109,12 @@ def train_sp(args, config):
     train_dataloader = DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
-        collate_fn=train_batch_fn,  # TODO(defaine collate fn)
+        collate_fn=train_batch_fn,
         num_workers=config.num_workers)
     dev_dataloader = DataLoader(
         dev_dataset,
         batch_sampler=dev_sampler,
-        collate_fn=train_batch_fn,  # TODO(defaine collate fn)
+        collate_fn=train_batch_fn,
         num_workers=config.num_workers)
     print("dataloaders done!")
 
@@ -191,18 +194,14 @@ def train_sp(args, config):
         trigger=(config.eval_interval_steps, 'iteration'),
         priority=3)
     if dist.get_rank() == 0:
-        log_writer = LogWriter(str(output_dir))
+        writer = LogWriter(str(trainer.out))
+        trainer.extend(VisualDL(writer), trigger=(1, 'iteration'))
         trainer.extend(
-            VisualDL(log_writer), trigger=(1, 'iteration'), priority=1)
-    trainer.extend(
-        Snapshot(checkpoint_dir),
-        trigger=(config.save_interval_steps, 'iteration'),
-        priority=2)
-    print("Trainer Done!")
+            Snapshot(max_size=config.num_snapshots),
+            trigger=(config.save_interval_steps, 'iteration'))
 
-    # with paddle.fluid.profiler.profiler('All', 'total',
-    #                                     str(output_dir / "profiler.log"),
-    #                                     'Default') as prof:
+    print(trainer.extensions.keys())
+    print("Trainer Done!")
     trainer.run()
 
 

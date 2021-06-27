@@ -24,11 +24,10 @@ from paddle.io import DistributedBatchSampler
 from timer import timer
 
 from parakeet.datasets.data_table import DataTable
-from parakeet.training.updater import UpdaterBase, UpdaterState, StandardUpdater
+from parakeet.training.updaters.standard_updater import StandardUpdater, UpdaterState
 from parakeet.training.extensions.evaluator import StandardEvaluator
 from parakeet.training.trainer import Trainer
 from parakeet.training.reporter import report
-from parakeet.training.checkpoint import KBest, KLatest
 from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator
 from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
 from parakeet.utils.profile import synchronize

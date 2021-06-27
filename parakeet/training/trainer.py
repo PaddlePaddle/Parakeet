@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import six
+import traceback
 from pathlib import Path
 from collections import OrderedDict
 from typing import Callable, Union, List
@@ -63,7 +66,7 @@ class Trainer(object):
         if name is None:
             name = getattr(extension, 'name', None)
             if name is None:
-                name = getattr(extenion, 'default_name', None)
+                name = getattr(extension, 'default_name', None)
                 if name is None:
                     name = getattr(extension, '__name__', None)
                     if name is None:
@@ -112,13 +115,15 @@ class Trainer(object):
         extensions = [(name, self.extensions[name])
                       for name in extension_order]
 
-        print("initializing")
+        # initializing all extensions
         for name, entry in extensions:
             if hasattr(entry.extension, "initialize"):
                 entry.extension.initialize(self)
 
         update = self.updater.update  # training step
         stop_trigger = self.stop_trigger
+
+        print(self.updater.state)
 
         # TODO(chenfeiyu): display progress bar correctly
         # if the trainer is controlled by epoch: use 2 progressbars
@@ -129,24 +134,50 @@ class Trainer(object):
             else:
                 max_iteration = self.stop_trigger.period
 
-        p = tqdm.tqdm()
+        p = tqdm.tqdm(initial=self.updater.state.iteration)
 
-        while True:
-            self.observation = {}
-            # set observation as the report target
-            # you can use report freely in Updater.update()
+        try:
+            while not stop_trigger(self):
+                self.observation = {}
+                # set observation as the report target
+                # you can use report freely in Updater.update()
 
-            # updating parameters and state
-            with scope(self.observation):
-                update()
-                p.update()
-                print(self.observation)
+                # updating parameters and state
+                with scope(self.observation):
+                    update()
+                    p.update()
 
-                # execute extension when necessary
-                for name, entry in extensions:
-                    if entry.trigger(self):
-                        entry.extension(self)
+                    # execute extension when necessary
+                    for name, entry in extensions:
+                        if entry.trigger(self):
+                            entry.extension(self)
 
-            if stop_trigger(self):
-                print("Training Done!")
-                break
+                # print("###", self.observation)
+        except Exception as e:
+            f = sys.stderr
+            f.write(f"Exception in main training loop: {e}\n")
+            f.write("Traceback (most recent call last):\n")
+            traceback.print_tb(sys.exc_info()[2])
+            f.write(
+                "Trainer extensions will try to handle the extension. Then all extensions will finalize."
+            )
+
+            # capture the exception in the mian training loop
+            exc_info = sys.exc_info()
+
+            # try to handle it
+            for name, entry in extensions:
+                if hasattr(entry.extension, "on_error"):
+                    try:
+                        entry.extension.on_error(self, e, sys.exc_info()[2])
+                    except Exception as ee:
+                        f.write(f"Exception in error handler: {ee}\n")
+                        f.write('Traceback (most recent call last):\n')
+                        traceback.print_tb(sys.exc_info()[2])
+
+            # raise exception in main training loop
+            six.reraise(*exc_info)
+        finally:
+            for name, entry in extensions:
+                if hasattr(entry.extension, "finalize"):
+                    entry.extension.finalize(self)

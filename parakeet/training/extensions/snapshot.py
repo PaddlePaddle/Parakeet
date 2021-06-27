@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any
@@ -48,25 +49,25 @@ class Snapshot(extension.Extension):
 
     trigger = (1, 'epoch')
     priority = -100
+    default_name = "snapshot"
 
     def __init__(self, max_size: int=5, snapshot_on_error: bool=False):
         self.records: List[Dict[str, Any]] = []
         self.max_size = max_size
         self._snapshot_on_error = snapshot_on_error
         self._save_all = (max_size == -1)
-        self.save_fn =...
-        self.del_fn = os.remove
         self.checkpoint_dir =...
 
     def initialize(self, trainer: Trainer):
         """Setting up this extention."""
-        self.save_fn = trainer.updater.save
         self.checkpoint_dir = trainer.out / "checkpoints"
 
         # load existing records
-        record_path: Path = self.checkpoint_dir / "records.yaml"
+        record_path: Path = self.checkpoint_dir / "records.jsonl"
         if record_path.exists():
+            logging.debug("Loading from an existing checkpoint dir")
             self.records = load_records(record_path)
+            trainer.updater.load(self.records[-1]['path'])
 
     def on_error(self, trainer, exc, tb):
         if self._snapshot_on_error:
@@ -87,10 +88,10 @@ class Snapshot(extension.Extension):
         path = self.checkpoint_dir / f"snapshot_iter_{iteration}.pdz"
 
         # add the new one
-        self.save_fn(path)
+        trainer.updater.save(path)
         record = {
             "time": str(datetime.now()),
-            'path': str(path),
+            'path': str(path.resolve()),  # use absolute path
             'iteration': iteration
         }
         self.records.append(record)
@@ -98,7 +99,7 @@ class Snapshot(extension.Extension):
         # remove the earist
         if self.full():
             eariest_record = self.records[0]
-            self.del_fn(eariest_record["path"])
+            os.remove(eariest_record["path"])
             self.records.pop(0)
 
         # update the record file

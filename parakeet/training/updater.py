@@ -87,9 +87,11 @@ class UpdaterBase(object):
         self.state.iteration = state_dict["iteration"]
 
     def save(self, path):
+        logging.debug(f"Saving to {path}.")
         archive = self.state_dict()
-        paddle.save(archive, path)
+        paddle.save(archive, str(path))
 
     def load(self, path):
-        archive = paddle.load(path)
+        logging.debug(f"Loading from {path}.")
+        archive = paddle.load(str(path))
         self.set_state_dict(archive)
