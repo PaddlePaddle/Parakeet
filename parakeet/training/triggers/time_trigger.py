@@ -12,16 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
-import logging
 
-import paddle
-import numpy as np
+class TimeTrigger(object):
+    """Trigger based on a fixed time interval.
 
+    This trigger accepts iterations with a given interval time.
 
-def seed_everything(seed: int):
-    """Seed paddle, random and np.random to help reproductivity."""
-    paddle.seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    logging.debug(f"Set the seed of paddle, random, np.random to {seed}.")
+    Args:
+        period (float): Interval time. It is given in seconds.
+
+    """
+
+    def __init__(self, period):
+        self._period = period
+        self._next_time = self._period
+
+    def __call__(self, trainer):
+        if self._next_time < trainer.elapsed_time:
+            self._next_time += self._period
+            return True
+        else:
+            return False

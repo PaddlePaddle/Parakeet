@@ -22,9 +22,17 @@ from paddle.nn import Layer
 from paddle.io import DataLoader
 
 from parakeet.training.reporter import scope, report, DictSummary
+from parakeet.training import extension
 
 
-class StandardEvaluator(object):
+class StandardEvaluator(extension.Extension):
+
+    trigger = (1, 'epoch')
+    default_name = 'validation'
+    priority = extension.PRIORITY_WRITER
+
+    name = None
+
     def __init__(self, model: Layer, dataloader: DataLoader):
         # it is designed to hold multiple models
         models = {"main": model}
@@ -43,21 +51,23 @@ class StandardEvaluator(object):
         for layer in self.models.values():
             layer.eval()
 
+        # to average evaluation metrics
         summary = DictSummary()
         for batch in self.dataloader:
             observation = {}
             with scope(observation):
+                # main evaluation computation here.
                 with paddle.no_grad():
-                    self.evaluate_core(
-                        batch)  # main evaluation computation here.
+                    self.evaluate_core(batch)
             summary.add(observation)
         summary = summary.compute_mean()
         return summary
 
     def __call__(self, trainer=None):
-        self.observation = {}
-        with scope(self.observation):
-            summary = self.evaluate()
-            for k, v in summary.items():
-                report(k, v)
-        print(self.observation)
+        # evaluate and report the averaged metric to current observation
+        # if it is used to extend a trainer, the metrics is reported to
+        # to observation of the trainer
+        # or otherwise, you can use your own observation
+        summary = self.evaluate()
+        for k, v in summary.items():
+            report(k, v)

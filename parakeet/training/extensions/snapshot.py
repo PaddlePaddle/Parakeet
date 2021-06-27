@@ -12,18 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union, List, Dict, Any
-from pathlib import Path
-import jsonlines
 import os
+from pathlib import Path
 from datetime import datetime
-import logging
+from typing import List, Dict, Any
+
+import jsonlines
 
 from parakeet.utils.mp_tools import rank_zero_only
 from parakeet.training.trainer import Trainer
+from parakeet.training import extension
 
 
-class Snapshot(object):
+def load_records(records_fp):
+    """Load record files (json lines.)"""
+    with jsonlines.open(records_fp, 'r') as reader:
+        records = list(reader)
+    return records
+
+
+class Snapshot(extension.Extension):
     """An extension to make snapshot of the updater object inside
     the trainer. It is done by calling the updater's `save` method.
 
@@ -38,33 +46,45 @@ class Snapshot(object):
         The directory to save checkpoints into.
     """
 
-    def __init__(self, max_size: int=5):
+    trigger = (1, 'epoch')
+    priority = -100
+
+    def __init__(self, max_size: int=5, snapshot_on_error: bool=False):
         self.records: List[Dict[str, Any]] = []
         self.max_size = max_size
+        self._snapshot_on_error = snapshot_on_error
         self._save_all = (max_size == -1)
         self.save_fn =...
-        self.del_fn =...
+        self.del_fn = os.remove
         self.checkpoint_dir =...
 
-    def initialize(self, trainer):
-        """setting up this extention."""
+    def initialize(self, trainer: Trainer):
+        """Setting up this extention."""
         self.save_fn = trainer.updater.save
-        self.del_fn = os.remove
         self.checkpoint_dir = trainer.out / "checkpoints"
 
+        # load existing records
+        record_path: Path = self.checkpoint_dir / "records.yaml"
+        if record_path.exists():
+            self.records = load_records(record_path)
+
+    def on_error(self, trainer, exc, tb):
+        if self._snapshot_on_error:
+            self.save_checkpoint_and_update(trainer)
+
+    def __call__(self, trainer: Trainer):
+        self.save_checkpoint_and_update(trainer)
+
     def full(self):
-        return (not self._save_all) and len(self.records) >= self.max_size
+        """Whether the number of snapshots it keeps track of is greater
+        than the max_size."""
+        return (not self._save_all) and len(self.records) > self.max_size
 
     @rank_zero_only
-    def save_checkpoint_and_update(self, trainer):
+    def save_checkpoint_and_update(self, trainer: Trainer):
+        """Saving new snapshot and remove the oldest snapshot if needed."""
         iteration = trainer.updater.state.iteration
         path = self.checkpoint_dir / f"snapshot_iter_{iteration}.pdz"
-
-        # remove the earist
-        if self.full():
-            eariest_record = self.records[0]
-            self.del_fn(eariest_record["path"])
-            self.records.pop(0)
 
         # add the new one
         self.save_fn(path)
@@ -75,10 +95,14 @@ class Snapshot(object):
         }
         self.records.append(record)
 
-        # update the record
-        with jsonlines.open(self.checkpoint_dir / "records.jsonl", 'w') as f:
-            for record in self.records:
-                f.write(record)
+        # remove the earist
+        if self.full():
+            eariest_record = self.records[0]
+            self.del_fn(eariest_record["path"])
+            self.records.pop(0)
 
-    def __call__(self, trainer):
-        self.save_checkpoint_and_update(trainer)
+        # update the record file
+        record_path = self.checkpoint_dir / "records.jsonl"
+        with jsonlines.open(record_path, 'w') as writer:
+            for record in self.records:
+                writer.write(record)

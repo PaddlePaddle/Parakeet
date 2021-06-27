@@ -12,21 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-class IntervalTrigger(object):
-    def __init__(self, period: int, unit: str):
-        if unit not in ("iteration", "epoch"):
-            raise ValueError("unit should be 'iteration' or 'epoch'")
-        self.period = period
-        self.unit = unit
-
-    def __call__(self, trainer):
-        state = trainer.updater.state
-        if self.unit == "epoch":
-            fire = state.epoch % self.period == 0
-        else:
-            fire = state.iteration % self.period == 0
-        return fire
+from parakeet.training.triggers.interval_trigger import IntervalTrigger
 
 
 def never_file_trigger(trainer):
