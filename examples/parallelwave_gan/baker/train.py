@@ -149,10 +149,10 @@ def train_sp(args, config):
     output_dir = Path(args.output_dir)
     checkpoint_dir = output_dir / "checkpoints"
     if dist.get_rank() == 0:
-        with open(output_dir / "config.yaml", 'wt') as f:
-            f.write(config.dump(default_flow_style=None))
         output_dir.mkdir(parents=True, exist_ok=True)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        with open(output_dir / "config.yaml", 'wt') as f:
+            f.write(config.dump(default_flow_style=None))
 
     updater = PWGUpdater(
         models={
@@ -192,9 +192,7 @@ def train_sp(args, config):
         out=output_dir, )
 
     trainer.extend(
-        evaluator,
-        trigger=(config.eval_interval_steps, 'iteration'),
-        priority=3)
+        evaluator, trigger=(config.eval_interval_steps, 'iteration'))
     if dist.get_rank() == 0:
         writer = LogWriter(str(trainer.out))
         trainer.extend(VisualDL(writer), trigger=(1, 'iteration'))
