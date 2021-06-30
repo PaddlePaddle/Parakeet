@@ -62,7 +62,40 @@ class StandardUpdater(UpdaterBase):
         self.train_iterator = iter(dataloader)
 
     def update(self):
-        self.state.iteration += 1
+        # We increase the iteration index after updating and before extension.
+        # Here are the reasons.
+
+        # 0. Snapshotting(as well as other extensions, like visualizer) is 
+        #    executed after a step of updating;
+        # 1. We decide to increase the iteration index after updating and 
+        #    before any all extension is executed. 
+        # 3. We do not increase the iteration after extension because we 
+        #    prefer a consistent resume behavior, when load from a 
+        #    `snapshot_iter_100.pdz` then the next step to train is `101`, 
+        #    naturally. But if iteration is increased increased after 
+        #    extension(including snapshot), then, a `snapshot_iter_99` is 
+        #    loaded. You would need a extra increasing of the iteration idex 
+        #    before training to avoid another iteration `99`, which has been 
+        #    done before snapshotting.
+        # 4. Thus iteration index represrnts "currently how mant epochs has 
+        #    been done."
+        # NOTE: use report to capture the correctly value. If you want to 
+        # report the learning rate used for a step, you must report it before
+        # the learning rate scheduler's step() has been called. In paddle's 
+        # convention, we do not use an extension to change the learning rate.
+        # so if you want to report it, do it in the updater.
+
+        # Then here comes the next question. When is the proper time to 
+        # increase the epoch index? Since all extensions are executed after 
+        # updating, it is the time that after updating is the proper time to 
+        # increase epoch index. 
+        # 1. If we increase the epoch index before updating, then an extension
+        #    based ot epoch would miss the correct timing. It could only be 
+        #    triggerd after an extra updating.
+        # 2. Theoretically, when an epoch is done, the epoch index should be 
+        #    increased. So it would be increase after updating.
+        # 3. Thus, eppoch index represents "currently how many epochs has been
+        #    done." So it starts from 0.
 
         # switch to training mode
         for layer in self.models.values():
@@ -71,6 +104,11 @@ class StandardUpdater(UpdaterBase):
         # training for a step is implemented here
         batch = self.read_batch()
         self.update_core(batch)
+
+        self.state.iteration += 1
+        if self.updaters_per_epoch is not None:
+            if self.state.iteration % self.updaters_per_epoch == 0:
+                self.state.epoch += 1
 
     def update_core(self, batch):
         """A simple case for a training step. Basic assumptions are:
@@ -100,10 +138,20 @@ class StandardUpdater(UpdaterBase):
         loss_dict["main"].backward()
         self.optimizer.update()
 
+    @property
+    def updaters_per_epoch(self):
+        """Number of updater per epoch, determined by the length of the 
+        dataloader."""
+        length_of_dataloader = None
+        try:
+            length_of_dataloader = len(self.dataloader)
+        except TypeError:
+            logging.debug("This dataloader has no __len__.")
+        finally:
+            return length_of_dataloader
+
     def new_epoch(self):
         """Start a new epoch."""
-        self.state.epoch += 1
-
         # NOTE: all batch sampler for distributed training should
         # subclass DistributedBatchSampler and implement `set_epoch` method
         batch_sampler = self.dataloader.batch_sampler
@@ -140,13 +188,3 @@ class StandardUpdater(UpdaterBase):
         for name, optim in self.optimizers.items():
             optim.set_state_dict(state_dict[f"{name}_optimizer"])
         super().set_state_dict(state_dict)
-
-    def save(self, path):
-        """Save Updater state dict."""
-        archive = self.state_dict()
-        paddle.save(archive, path)
-
-    def load(self, path):
-        """Load Updater state dict."""
-        archive = paddle.load(path)
-        self.set_state_dict(archive)

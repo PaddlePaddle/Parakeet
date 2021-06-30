@@ -106,4 +106,5 @@ class Snapshot(extension.Extension):
         record_path = self.checkpoint_dir / "records.jsonl"
         with jsonlines.open(record_path, 'w') as writer:
             for record in self.records:
-                writer.write(record)
+                # jsonlines.open may return a Writer or a Reader
+                writer.write(record)  # pylint: disable=no-member 

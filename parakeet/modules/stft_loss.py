@@ -43,9 +43,10 @@ class SpectralConvergenceLoss(nn.Layer):
 class LogSTFTMagnitudeLoss(nn.Layer):
     """Log STFT magnitude loss module."""
 
-    def __init__(self):
+    def __init__(self, epsilon=1e-10):
         """Initilize los STFT magnitude loss module."""
         super().__init__()
+        self.epsilon = epsilon
 
     def forward(self, x_mag, y_mag):
         """Calculate forward propagation.
@@ -57,9 +58,9 @@ class LogSTFTMagnitudeLoss(nn.Layer):
         """
         return F.l1_loss(
             paddle.log(paddle.clip(
-                y_mag, min=1e-10)),
+                y_mag, min=self.epsilon)),
             paddle.log(paddle.clip(
-                x_mag, min=1e-10)))
+                x_mag, min=self.epsilon)))
 
 
 class STFTLoss(nn.Layer):

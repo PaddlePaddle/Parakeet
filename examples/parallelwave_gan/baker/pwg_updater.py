@@ -74,18 +74,15 @@ class PWGUpdater(StandardUpdater):
         # Generator
         noise = paddle.randn(wav.shape)
 
-        synchronize()
         with timer() as t:
             wav_ = self.generator(noise, mel)
-            synchronize()
             logging.debug(f"Generator takes {t.elapse}s.")
 
         ## Multi-resolution stft loss
-        synchronize()
+
         with timer() as t:
             sc_loss, mag_loss = self.criterion_stft(
                 wav_.squeeze(1), wav.squeeze(1))
-            synchronize()
             logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s.")
 
         report("train/spectral_convergence_loss", float(sc_loss))
@@ -94,11 +91,9 @@ class PWGUpdater(StandardUpdater):
 
         ## Adversarial loss
         if self.state.iteration > self.discriminator_train_start_steps:
-            synchronize()
             with timer() as t:
                 p_ = self.discriminator(wav_)
                 adv_loss = self.criterion_mse(p_, paddle.ones_like(p_))
-                synchronize()
                 logging.debug(
                     f"Discriminator and adversarial loss takes {t.elapse}s")
             report("train/adversarial_loss", float(adv_loss))
@@ -106,18 +101,14 @@ class PWGUpdater(StandardUpdater):
 
         report("train/generator_loss", float(gen_loss))
 
-        synchronize()
         with timer() as t:
             self.optimizer_g.clear_grad()
             gen_loss.backward()
-            synchronize()
             logging.debug(f"Backward takes {t.elapse}s.")
 
-        synchronize()
         with timer() as t:
             self.optimizer_g.step()
             self.scheduler_g.step()
-            synchronize()
             logging.debug(f"Update takes {t.elapse}s.")
 
         # Disctiminator
@@ -158,18 +149,15 @@ class PWGEvaluator(StandardEvaluator):
         wav, mel = batch
         noise = paddle.randn(wav.shape)
 
-        synchronize()
         with timer() as t:
             wav_ = self.generator(noise, mel)
-            synchronize()
             logging.debug(f"Generator takes {t.elapse}s")
 
         ## Multi-resolution stft loss
-        synchronize()
+
         with timer() as t:
             sc_loss, mag_loss = self.criterion_stft(
                 wav_.squeeze(1), wav.squeeze(1))
-            synchronize()
             logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s")
 
         report("eval/spectral_convergence_loss", float(sc_loss))
@@ -177,11 +165,9 @@ class PWGEvaluator(StandardEvaluator):
         gen_loss = sc_loss + mag_loss
 
         ## Adversarial loss
-        synchronize()
         with timer() as t:
             p_ = self.discriminator(wav_)
             adv_loss = self.criterion_mse(p_, paddle.ones_like(p_))
-            synchronize()
             logging.debug(
                 f"Discriminator and adversarial loss takes {t.elapse}s")
         report("eval/adversarial_loss", float(adv_loss))

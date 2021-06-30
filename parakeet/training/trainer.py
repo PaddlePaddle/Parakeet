@@ -21,7 +21,7 @@ from typing import Callable, Union, List
 
 import tqdm
 
-from parakeet.training.trigger import get_trigger, IntervalTrigger
+from parakeet.training.trigger import get_trigger, IntervalTrigger, LimitTrigger
 from parakeet.training.updater import UpdaterBase
 from parakeet.training.reporter import scope
 from parakeet.training.extension import Extension, PRIORITY_READER
@@ -42,7 +42,7 @@ class Trainer(object):
                  extensions: List[Extension]=None):
         self.updater = updater
         self.extensions = OrderedDict()
-        self.stop_trigger = get_trigger(stop_trigger)
+        self.stop_trigger = LimitTrigger(*stop_trigger)
         self.out = Path(out)
         self.observation =...
 
@@ -125,16 +125,19 @@ class Trainer(object):
 
         print(self.updater.state)
 
-        # TODO(chenfeiyu): display progress bar correctly
-        # if the trainer is controlled by epoch: use 2 progressbars
-        # if the trainer is controlled by iteration: use 1 progressbar
-        if isinstance(stop_trigger, IntervalTrigger):
+        # display only one progress bar
+        max_iteration = None
+        if isinstance(stop_trigger, LimitTrigger):
             if stop_trigger.unit is 'epoch':
-                max_epoch = self.stop_trigger.period
+                max_epoch = self.stop_trigger.limit
+                updates_per_epoch = getattr(self.updater, "updates_per_epoch",
+                                            None)
+                max_iteration = max_epoch * updates_per_epoch if updates_per_epoch else None
             else:
-                max_iteration = self.stop_trigger.period
+                max_iteration = self.stop_trigger.limit
 
-        p = tqdm.tqdm(initial=self.updater.state.iteration)
+        p = tqdm.tqdm(
+            initial=self.updater.state.iteration, total=max_iteration)
 
         try:
             while not stop_trigger(self):

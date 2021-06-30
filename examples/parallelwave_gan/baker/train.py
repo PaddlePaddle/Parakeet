@@ -60,7 +60,7 @@ def train_sp(args, config):
             paddle.distributed.init_parallel_env()
 
     # set the random seed, it is a must for multiprocess training
-    seed_everything(42)
+    seed_everything(config.seed)
 
     print(
         f"rank: {dist.get_rank()}, pid: {os.getpid()}, parent_pid: {os.getppid()}",
@@ -149,6 +149,8 @@ def train_sp(args, config):
     output_dir = Path(args.output_dir)
     checkpoint_dir = output_dir / "checkpoints"
     if dist.get_rank() == 0:
+        with open(output_dir / "config.yaml", 'wt') as f:
+            f.write(config.dump(default_flow_style=None))
         output_dir.mkdir(parents=True, exist_ok=True)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 

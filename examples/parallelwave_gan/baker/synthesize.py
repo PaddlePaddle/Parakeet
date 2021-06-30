@@ -14,6 +14,7 @@
 
 import os
 import sys
+from timer import timer
 import logging
 import argparse
 from pathlib import Path
@@ -24,6 +25,8 @@ import paddle
 import numpy as np
 import soundfile as sf
 from paddle import distributed as dist
+
+paddle.set_device("cpu")
 
 from parakeet.datasets.data_table import DataTable
 from parakeet.models.parallel_wavegan import PWGGenerator
@@ -71,11 +74,20 @@ test_dataset = DataTable(
 output_dir = Path(args.output_dir)
 output_dir.mkdir(parents=True, exist_ok=True)
 
+N = 0
+T = 0
 for example in test_dataset:
     utt_id = example['utt_id']
     mel = example['feats']
     mel = paddle.to_tensor(mel)  # (T, C)
-    wav = generator.inference(c=mel)
-    wav = wav.numpy()
-    print(f"{utt_id}, mel: {mel.shape}, wave: {wav.shape}")
-    sf.write(output_dir / (utt_id + ".wav"), wav, samplerate=24000)
+    with timer() as t:
+        wav = generator.inference(c=mel)
+        wav = wav.numpy()
+        N += wav.size
+        T += t.elapse
+        speed = wav.size / t.elapse
+    print(
+        f"{utt_id}, mel: {mel.shape}, wave: {wav.shape}, time: {t.elapse}s, Hz: {speed}, RTF: {config.sr / speed}."
+    )
+    sf.write(output_dir / (utt_id + ".wav"), wav, samplerate=config.sr)
+print(f"generation speed: {N / T}Hz, RTF: {config.sr / (N / T) }")

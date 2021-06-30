@@ -19,17 +19,13 @@ class IntervalTrigger(object):
     def __init__(self, period: int, unit: str):
         if unit not in ("iteration", "epoch"):
             raise ValueError("unit should be 'iteration' or 'epoch'")
+        if period <= 0:
+            raise ValueError("period should be a positive integer.")
         self.period = period
         self.unit = unit
 
     def __call__(self, trainer):
         state = trainer.updater.state
-        # we use a special scheme so we can use iteration % period == 0 as
-        # the predicate
-        # increase the iteration then update parameters
-        # instead of updating then increase iteration
-        if self.unit == "epoch":
-            fire = state.epoch % self.period == 0
-        else:
-            fire = state.iteration % self.period == 0
+        index = getattr(state, self.unit)
+        fire = index % self.period == 0
         return fire

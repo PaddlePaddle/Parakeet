@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.2.0-beta.0"
+__version__ = "0.0.0"
 
 import logging
 from parakeet import audio, data, datasets, frontend, models, modules, training, utils
-
-logging.getLogger('parakeet').addHandler(logging.NullHandler())
