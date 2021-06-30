@@ -215,10 +215,14 @@ def main():
     parser.add_argument("--dev-metadata", type=str, help="dev data")
     parser.add_argument("--output-dir", type=str, help="output dir")
     parser.add_argument(
+        "--device", type=str, default="gpu", help="device type to use")
+    parser.add_argument(
         "--nprocs", type=int, default=1, help="number of processes")
     parser.add_argument("--verbose", type=int, default=1, help="verbose")
 
     args = parser.parse_args()
+    if args.device == "cpu" and args.nprocs > 1:
+        raise RuntimeError("Multiprocess training on CPU is not supported.")
     config = get_cfg_default()
     if args.config:
         config.merge_from_file(args.config)
