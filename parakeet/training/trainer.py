@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import six
+import traceback
 from pathlib import Path
-import tqdm
-from dataclasses import dataclass
+from collections import OrderedDict
+from typing import Callable, Union, List
 
-from parakeet.training.trigger import get_trigger, IntervalTrigger
+import tqdm
+
+from parakeet.training.trigger import get_trigger, IntervalTrigger, LimitTrigger
 from parakeet.training.updater import UpdaterBase
 from parakeet.training.reporter import scope
+from parakeet.training.extension import Extension, PRIORITY_READER
 
 
-class ExtensionEntry(object):
+class _ExtensionEntry(object):
     def __init__(self, extension, trigger, priority):
         self.extension = extension
         self.trigger = trigger
@@ -31,31 +37,76 @@ class ExtensionEntry(object):
 class Trainer(object):
     def __init__(self,
                  updater: UpdaterBase,
-                 stop_trigger=None,
-                 out='result',
-                 extensions=None):
+                 stop_trigger: Callable=None,
+                 out: Union[str, Path]='result',
+                 extensions: List[Extension]=None):
         self.updater = updater
-        self.extensions = {}
-        self.stop_trigger = get_trigger(stop_trigger)
+        self.extensions = OrderedDict()
+        self.stop_trigger = LimitTrigger(*stop_trigger)
         self.out = Path(out)
-        self.observation = {}
+        self.observation =...
 
-    def setup(self):
-        pass
+        self._done = False
+        if extensions:
+            for ext in extensions:
+                self.extend(ext)
+
+    @property
+    def is_before_training(self):
+        return self.updater.state.iteration == 0
 
     def extend(self, extension, name=None, trigger=None, priority=None):
+        # get name for the extension
+        # argument \
+        # -> extention's name \
+        # -> default_name (class name, when it is an object) \
+        # -> function name when it is a function \
+        # -> error
+
+        if name is None:
+            name = getattr(extension, 'name', None)
+            if name is None:
+                name = getattr(extension, 'default_name', None)
+                if name is None:
+                    name = getattr(extension, '__name__', None)
+                    if name is None:
+                        raise ValueError(
+                            "Name is not given for the extension.")
+        if name == 'training':
+            raise ValueError("training is a reserved name.")
+
+        if trigger is None:
+            trigger = getattr(extension, 'trigger', (1, 'iteration'))
         trigger = get_trigger(trigger)
 
+        if priority is None:
+            priority = getattr(extension, 'priority', PRIORITY_READER)
+
+        # add suffix to avoid nameing conflict
         ordinal = 0
         modified_name = name
-        while name in self.extensions:
+        while modified_name in self.extensions:
             ordinal += 1
             modified_name = f"{name}_{ordinal}"
+        extension.name = modified_name
 
-        self.extensions[modified_name] = ExtensionEntry(extension, trigger,
-                                                        priority)
+        self.extensions[modified_name] = _ExtensionEntry(extension, trigger,
+                                                         priority)
+
+    def get_extension(self, name):
+        """get extension by name."""
+        extensions = self.extensions
+        if name in extensions:
+            return extensions[name].extension
+        else:
+            raise ValueError(f'extension {name} not found')
 
     def run(self):
+        if self._done:
+            raise RuntimeError("Training is already done!.")
+
+        self.out.mkdir(parents=True, exist_ok=True)
+
         # sort extensions by priorities once
         extension_order = sorted(
             self.extensions.keys(),
@@ -64,28 +115,72 @@ class Trainer(object):
         extensions = [(name, self.extensions[name])
                       for name in extension_order]
 
-        update = self.updater.update
+        # initializing all extensions
+        for name, entry in extensions:
+            if hasattr(entry.extension, "initialize"):
+                entry.extension.initialize(self)
+
+        update = self.updater.update  # training step
         stop_trigger = self.stop_trigger
 
-        # TODO(chenfeiyu): display progress bar correctly
-        # if the trainer is controlled by epoch: use 2 progressbars
-        # if the trainer is controlled by iteration: use 1 progressbar
-        if isinstance(stop_trigger, IntervalTrigger):
+        print(self.updater.state)
+
+        # display only one progress bar
+        max_iteration = None
+        if isinstance(stop_trigger, LimitTrigger):
             if stop_trigger.unit is 'epoch':
-                max_epoch = self.stop_trigger.period
+                max_epoch = self.stop_trigger.limit
+                updates_per_epoch = getattr(self.updater, "updates_per_epoch",
+                                            None)
+                max_iteration = max_epoch * updates_per_epoch if updates_per_epoch else None
             else:
-                max_iteration = self.stop_trigger.period
+                max_iteration = self.stop_trigger.limit
 
-        while not stop_trigger(self):
-            self.observation = {}
-            # set observation as the report target
-            # you can use report freely in Updater.update()
+        p = tqdm.tqdm(
+            initial=self.updater.state.iteration, total=max_iteration)
 
-            # updating parameters and state
-            with scope(self.observation):
-                update()
+        try:
+            while not stop_trigger(self):
+                self.observation = {}
+                # set observation as the report target
+                # you can use report freely in Updater.update()
 
-            # execute extension when necessary
+                # updating parameters and state
+                with scope(self.observation):
+                    update()
+                    p.update()
+
+                    # execute extension when necessary
+                    for name, entry in extensions:
+                        if entry.trigger(self):
+                            entry.extension(self)
+
+                # print("###", self.observation)
+        except Exception as e:
+            f = sys.stderr
+            f.write(f"Exception in main training loop: {e}\n")
+            f.write("Traceback (most recent call last):\n")
+            traceback.print_tb(sys.exc_info()[2])
+            f.write(
+                "Trainer extensions will try to handle the extension. Then all extensions will finalize."
+            )
+
+            # capture the exception in the mian training loop
+            exc_info = sys.exc_info()
+
+            # try to handle it
             for name, entry in extensions:
-                if entry.trigger(self):
-                    entry.extension(self)
+                if hasattr(entry.extension, "on_error"):
+                    try:
+                        entry.extension.on_error(self, e, sys.exc_info()[2])
+                    except Exception as ee:
+                        f.write(f"Exception in error handler: {ee}\n")
+                        f.write('Traceback (most recent call last):\n')
+                        traceback.print_tb(sys.exc_info()[2])
+
+            # raise exception in main training loop
+            six.reraise(*exc_info)
+        finally:
+            for name, entry in extensions:
+                if hasattr(entry.extension, "finalize"):
+                    entry.extension.finalize(self)

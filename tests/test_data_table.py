@@ -12,20 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.triggers.interval_trigger import IntervalTrigger
-from parakeet.training.triggers.limit_trigger import LimitTrigger
-from parakeet.training.triggers.time_trigger import TimeTrigger
+from parakeet.datasets.data_tabel import DataTable
 
 
-def never_file_trigger(trainer):
-    return False
-
-
-def get_trigger(trigger):
-    if trigger is None:
-        return never_file_trigger
-    if callable(trigger):
-        return trigger
-    else:
-        trigger = IntervalTrigger(*trigger)
-        return trigger
+def test_audio_dataset():
+    metadata = [{'name': 'Sonic', 'v': 1000}, {'name': 'Prestol', 'v': 2000}]
+    converters = {'v': lambda x: x / 1000}
+    dataset = DataTable(metadata, fields=['v'], converters=converters)
+    assert dataset[0] == {'v': 1.0}

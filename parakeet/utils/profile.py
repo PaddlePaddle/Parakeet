@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.triggers.interval_trigger import IntervalTrigger
-from parakeet.training.triggers.limit_trigger import LimitTrigger
-from parakeet.training.triggers.time_trigger import TimeTrigger
+import paddle
+from paddle.framework import core
+from paddle.framework import CUDAPlace
+from contextlib import contextmanager
 
 
-def never_file_trigger(trainer):
-    return False
+def synchronize():
+    """Trigger cuda synchronization for better timing."""
+    place = paddle.fluid.framework._current_expected_place()
+    if isinstance(place, CUDAPlace):
+        paddle.fluid.core._cuda_synchronize(place)
 
 
-def get_trigger(trigger):
-    if trigger is None:
-        return never_file_trigger
-    if callable(trigger):
-        return trigger
-    else:
-        trigger = IntervalTrigger(*trigger)
-        return trigger
+@contextmanager
+def nvtx_span(name):
+    try:
+        core.nvprof_nvtx_push(name)
+        yield
+    finally:
+        core.nvprof_nvtx_pop()

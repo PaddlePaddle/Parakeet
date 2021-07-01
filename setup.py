@@ -64,7 +64,6 @@ setup_info = dict(
         'scipy',
         'pandas',
         'sox',
-        # 'opencc',
         'soundfile',
         'g2p_en',
         'yacs',
@@ -73,6 +72,9 @@ setup_info = dict(
         'webrtcvad',
         'g2pM',
         'praatio',
+        "h5py",
+        "timer",
+        'jsonlines',
     ],
     extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 
