@@ -10,7 +10,7 @@ fi
 
 if [ ! -d $EXP_DIR/baker_corpus ]; then
     echo "reorganizing baker corpus..."
-    python local/recorganize_baker.py --root-dir=~/datasets/BZNSYP --output-dir=$EXP_DIR/baker_corpus --resample-audio
+    python local/reorganize_baker.py --root-dir=~/datasets/BZNSYP --output-dir=$EXP_DIR/baker_corpus --resample-audio
     echo "reorganization done. Check output in $EXP_DIR/baker_corpus."
     echo "audio files are resampled to 16kHz"
     echo "transcription for each audio file is saved with the same namd in $EXP_DIR/baker_corpus "
