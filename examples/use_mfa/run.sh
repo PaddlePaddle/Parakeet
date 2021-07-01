@@ -1,5 +1,6 @@
 EXP_DIR=exp
 
+mkdir -p $EXP_DIR
 LEXICON_NAME='simple'
 if [ ! -f "$EXP_DIR/$LEXICON_NAME.lexicon" ]; then
     echo "generating lexicon..."
