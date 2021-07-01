@@ -18,9 +18,8 @@ fmax: 7600               # Maximum frequency in mel basis calculation.
 # global_gain_scale: 1.0   # Will be multiplied to all of waveform.
 trim_silence: false      # Whether to trim the start and end of silence.
 top_db: 60 # Need to tune carefully if the recording is not good.
-trim_frame_length: 2048    # Frame size in trimming.
-trim_hop_length: 512       # Hop size in trimming.
-# format: "npy"           # Feature file format. "npy" or "hdf5" is supported.
+trim_frame_length: 2048    # Frame size in trimming.(in samples)
+trim_hop_length: 512       # Hop size in trimming.(in samples)
 
 ###########################################################
 #         GENERATOR NETWORK ARCHITECTURE SETTING          #
@@ -119,11 +118,11 @@ discriminator_train_start_steps: 100000 # Number of steps to start to train disc
 train_max_steps: 400000                 # Number of training steps.
 save_interval_steps: 5000               # Interval steps to save checkpoint.
 eval_interval_steps: 1000               # Interval steps to evaluate the network.
-log_interval_steps: 100                 # Interval steps to record the training log.
+
 
 ###########################################################
 #                     OTHER SETTING                       #
 ###########################################################
 num_save_intermediate_results: 4  # Number of results to be saved as intermediate results.
-num_snapshots: 10
-seed: 42
+num_snapshots: 10                 # max number of snapshots to keep while training
+seed: 42	                  # random seed for paddle, random, and np.random

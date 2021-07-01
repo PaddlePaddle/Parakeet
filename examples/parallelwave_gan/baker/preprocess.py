@@ -147,8 +147,11 @@ def process_sentence(config: Dict[str, Any],
 
     # adjust time to make num_samples == num_frames * hop_length
     num_frames = logmel.shape[1]
-    y = np.pad(y, (0, config.n_fft), mode="reflect")
-    y = y[:num_frames * config.hop_length]
+    if y.size < num_frames * config.hop_length:
+        y = np.pad(y, (0, num_frames * config.hop_length - y.size),
+                   mode="reflect")
+    else:
+        y = y[:num_frames * config.hop_length]
     num_sample = y.shape[0]
 
     mel_path = output_dir / (utt_id + "_feats.npy")
@@ -241,13 +244,16 @@ def main():
         list((root_dir / "PhoneLabeling").rglob("*.interval")))
 
     # split data into 3 sections
-    train_wav_files = wav_files[:9800]
-    dev_wav_files = wav_files[9800:9900]
-    test_wav_files = wav_files[9900:]
+    num_train = 9800
+    num_dev = 100
 
-    train_alignment_files = alignment_files[:9800]
-    dev_alignment_files = alignment_files[9800:9900]
-    test_alignment_files = alignment_files[9900:]
+    train_wav_files = wav_files[:num_train]
+    dev_wav_files = wav_files[num_train:num_train + num_dev]
+    test_wav_files = wav_files[num_train + num_dev:]
+
+    train_alignment_files = alignment_files[:num_train]
+    dev_alignment_files = alignment_files[num_train:num_train + num_dev]
+    test_alignment_files = alignment_files[num_train + num_dev:]
 
     train_dump_dir = dumpdir / "train" / "raw"
     train_dump_dir.mkdir(parents=True, exist_ok=True)

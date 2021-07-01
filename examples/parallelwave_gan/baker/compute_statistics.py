@@ -39,7 +39,9 @@ def main():
     parser.add_argument(
         "--metadata", type=str, help="json file with id and file paths ")
     parser.add_argument(
-        "--field-name", type=str, help="json file with id and file paths ")
+        "--field-name",
+        type=str,
+        help="name of the field to compute statistics for.")
     parser.add_argument(
         "--config", type=str, help="yaml format configuration file.")
     parser.add_argument(

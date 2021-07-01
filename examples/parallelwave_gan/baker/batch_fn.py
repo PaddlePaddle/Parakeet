@@ -25,7 +25,7 @@ class Clip(object):
             batch_max_steps=20480,
             hop_size=256,
             aux_context_window=0, ):
-        """Initialize customized collater for PyTorch DataLoader.
+        """Initialize customized collater for DataLoader.
 
         Args:
             batch_max_steps (int): The maximum length of input signal in batch.
