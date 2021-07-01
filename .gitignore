@@ -142,3 +142,5 @@ dmypy.json
 *.swp
 runs
 syn_audios
+exp/
+dump/

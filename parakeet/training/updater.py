@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
+from typing import Dict
+from typing import Union
 
+from timer import timer
+import paddle
+from paddle import Tensor
 from paddle.nn import Layer
 from paddle.optimizer import Optimizer
 from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
+
+from parakeet.training.reporter import report
 
 
 @dataclass
@@ -56,68 +65,33 @@ class UpdaterBase(object):
     So the best practice is to define a model and define a updater for it.
     """
 
-    def update(self):
-        pass
-
-    def update_core(self):
-        pass
-
-
-class StandardUpdater(UpdaterBase):
-    """An example of over-simplification. Things may not be that simple, but
-    you can subclass it to fit your need.
-    """
-
-    def __init__(self,
-                 model: Layer,
-                 dataloader: DataLoader,
-                 optimizer: Optimizer,
-                 loss_func=None,
-                 auto_new_epoch: bool=True,
-                 init_state: Optional[UpdaterState]=None):
-        self.model = model
-        self.dataloader = dataloader
-        self.optimizer = optimizer
-        self.loss_func = loss_func
-        self.auto_new_epoch = auto_new_epoch
-        self.iterator = iter(dataloader)
-
+    def __init__(self, init_state=None):
         if init_state is None:
             self.state = UpdaterState()
         else:
             self.state = init_state
 
-    def update(self):
-        self.update_core()
-        self.state.iteration += 1
+    def update(self, batch):
+        raise NotImplementedError(
+            "Implement your own `update` method for training a step.")
 
-    def new_epoch(self):
-        self.iterator = iter(self.dataloader)
-        self.state.epoch += 1
+    def state_dict(self):
+        state_dict = {
+            "epoch": self.state.epoch,
+            "iteration": self.state.iteration,
+        }
+        return state_dict
 
-    def update_core(self):
-        model = self.model
-        optimizer = self.optimizer
-        loss_func = self.loss_func
+    def set_state_dict(self, state_dict):
+        self.state.epoch = state_dict["epoch"]
+        self.state.iteration = state_dict["iteration"]
 
-        model.train()
-        optimizer.clear_grad()
+    def save(self, path):
+        logging.debug(f"Saving to {path}.")
+        archive = self.state_dict()
+        paddle.save(archive, str(path))
 
-        # fetch a batch
-        try:
-            batch = next(self.iterator)
-        except StopIteration as e:
-            if self.auto_new_epoch:
-                self.new_epoch()
-
-        # forward
-        if self.loss_func is not None:
-            loss = loss_func(batch)
-        else:
-            loss = model(batch)
-
-        # backward
-        loss.backward()
-
-        # update parameters
-        optimizer.step()
+    def load(self, path):
+        logging.debug(f"Loading from {path}.")
+        archive = paddle.load(str(path))
+        self.set_state_dict(archive)

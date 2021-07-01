@@ -12,20 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.triggers.interval_trigger import IntervalTrigger
-from parakeet.training.triggers.limit_trigger import LimitTrigger
-from parakeet.training.triggers.time_trigger import TimeTrigger
 
+class TimeTrigger(object):
+    """Trigger based on a fixed time interval.
 
-def never_file_trigger(trainer):
-    return False
+    This trigger accepts iterations with a given interval time.
 
+    Args:
+        period (float): Interval time. It is given in seconds.
 
-def get_trigger(trigger):
-    if trigger is None:
-        return never_file_trigger
-    if callable(trigger):
-        return trigger
-    else:
-        trigger = IntervalTrigger(*trigger)
-        return trigger
+    """
+
+    def __init__(self, period):
+        self._period = period
+        self._next_time = self._period
+
+    def __call__(self, trainer):
+        if self._next_time < trainer.elapsed_time:
+            self._next_time += self._period
+            return True
+        else:
+            return False

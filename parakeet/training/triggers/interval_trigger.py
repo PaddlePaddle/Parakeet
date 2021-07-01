@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.triggers.interval_trigger import IntervalTrigger
-from parakeet.training.triggers.limit_trigger import LimitTrigger
-from parakeet.training.triggers.time_trigger import TimeTrigger
 
+class IntervalTrigger(object):
+    """A Predicate to do something every N cycle."""
 
-def never_file_trigger(trainer):
-    return False
+    def __init__(self, period: int, unit: str):
+        if unit not in ("iteration", "epoch"):
+            raise ValueError("unit should be 'iteration' or 'epoch'")
+        if period <= 0:
+            raise ValueError("period should be a positive integer.")
+        self.period = period
+        self.unit = unit
 
-
-def get_trigger(trigger):
-    if trigger is None:
-        return never_file_trigger
-    if callable(trigger):
-        return trigger
-    else:
-        trigger = IntervalTrigger(*trigger)
-        return trigger
+    def __call__(self, trainer):
+        state = trainer.updater.state
+        index = getattr(state, self.unit)
+        fire = index % self.period == 0
+        return fire

@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.triggers.interval_trigger import IntervalTrigger
-from parakeet.training.triggers.limit_trigger import LimitTrigger
-from parakeet.training.triggers.time_trigger import TimeTrigger
+import random
+import logging
+
+import paddle
+import numpy as np
 
 
-def never_file_trigger(trainer):
-    return False
-
-
-def get_trigger(trigger):
-    if trigger is None:
-        return never_file_trigger
-    if callable(trigger):
-        return trigger
-    else:
-        trigger = IntervalTrigger(*trigger)
-        return trigger
+def seed_everything(seed: int):
+    """Seed paddle, random and np.random to help reproductivity."""
+    paddle.seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    logging.debug(f"Set the seed of paddle, random, np.random to {seed}.")

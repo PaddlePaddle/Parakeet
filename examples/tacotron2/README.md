@@ -58,10 +58,10 @@ For more help on arguments
 
 ## Synthesis
 
-After training the Tacotron2, spectrogram can be synthesized by running ``synthesis.py``.
+After training the Tacotron2, spectrogram can be synthesized by running ``synthesize.py``.
 
 ```bash
-python synthesis.py \
+python synthesize.py \
 --config=${CONFIGPATH} \
 --checkpoint_path=${CHECKPOINTPATH} \
 --input=${TEXTPATH} \

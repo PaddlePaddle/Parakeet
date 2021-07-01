@@ -12,20 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.training.triggers.interval_trigger import IntervalTrigger
-from parakeet.training.triggers.limit_trigger import LimitTrigger
-from parakeet.training.triggers.time_trigger import TimeTrigger
+import yaml
+from yacs.config import CfgNode as Configuration
+
+with open("conf/default.yaml", 'rt') as f:
+    _C = yaml.safe_load(f)
+    _C = Configuration(_C)
 
 
-def never_file_trigger(trainer):
-    return False
-
-
-def get_trigger(trigger):
-    if trigger is None:
-        return never_file_trigger
-    if callable(trigger):
-        return trigger
-    else:
-        trigger = IntervalTrigger(*trigger)
-        return trigger
+def get_cfg_default():
+    config = _C.clone()
+    return config
