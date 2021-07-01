@@ -11,16 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Script to reorganize Baker dataset so as to use Montreal Force
+Aligner to align transcription and audio.
 
-from typing import Union
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-import soundfile as sf
-import librosa
-from tqdm import tqdm
+Please refer to https://montreal-forced-aligner.readthedocs.io/en/latest/data_prep.html
+for more details about Montreal Force Aligner's requirements on cotpus.
+
+For scripts to reorganize other corpus, please refer to 
+ https://github.com/MontrealCorpusTools/MFA-reorganization-scripts
+for more details.
+"""
+
 import os
 import shutil
 import argparse
+from typing import Union
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+
+import librosa
+import soundfile as sf
+from tqdm import tqdm
 
 
 def get_transcripts(path: Union[str, Path]):
@@ -54,7 +65,7 @@ def reorganize_baker(root_dir: Union[str, Path],
     transcriptions = get_transcripts(transcript_path)
 
     wave_dir = root_dir / "Wave"
-    wav_paths = list(wave_dir.glob("*.wav"))
+    wav_paths = sorted(list(wave_dir.glob("*.wav")))
     output_dir = Path(output_dir).expanduser()
     assert wave_dir != output_dir, "Don't use an the original wav's directory as output_dir"
 
