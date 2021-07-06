@@ -125,4 +125,4 @@ eval_interval_steps: 1000               # Interval steps to evaluate the network
 ###########################################################
 num_save_intermediate_results: 4  # Number of results to be saved as intermediate results.
 num_snapshots: 10                 # max number of snapshots to keep while training
-seed: 42	                  # random seed for paddle, random, and np.random
+seed: 42                          # random seed for paddle, random, and np.random
