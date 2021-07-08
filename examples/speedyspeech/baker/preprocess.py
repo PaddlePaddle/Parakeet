@@ -19,6 +19,7 @@ import numpy as np
 import argparse
 import yaml
 import json
+import re
 import jsonlines
 import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -29,6 +30,7 @@ from praatio import tgio
 import logging
 
 from config import get_cfg_default
+from tg_utils import validate_textgrid
 
 
 def logmelfilterbank(audio,
@@ -103,36 +105,25 @@ def process_sentence(config: Dict[str, Any],
     ) <= 1.0, f"{utt_id} is seems to be different that 16 bit PCM."
     duration = librosa.get_duration(y, sr=sr)
 
-    # trim according to the alignment file
+    # intervals with empty lables are ignored
     alignment = tgio.openTextgrid(alignment_fp)
+
+    # validate text grid against audio file
+    num_samples = y.shape[0]
+    validate_textgrid(alignment, num_samples, sr)
+
+    # only with baker's annotation
     intervals = alignment.tierDict[alignment.tierNameList[0]].entryList
+
     first, last = intervals[0], intervals[-1]
-    start = 0
-    end = last.end
-    if first.label == "sil" and first.end < duration:
-        start = first.end
-    else:
+    if not (first.label == "sil" and first.end < duration):
         logging.warning(
             f" There is something wrong with the fisrt interval {first} in utterance: {utt_id}"
         )
-    if last.label == "sil" and last.start < duration:
-        end = last.start
-    else:
-        end = duration
+    if not (last.label == "sil" and last.start < duration):
         logging.warning(
             f" There is something wrong with the last interval {last} in utterance: {utt_id}"
         )
-    # silence trimmed
-    start, end = librosa.time_to_samples([first.end, last.start], sr=sr)
-    y = y[start:end]
-
-    # energy based silence trimming
-    if config.trim_silence:
-        y, _ = librosa.effects.trim(
-            y,
-            top_db=config.top_db,
-            frame_length=config.trim_frame_length,
-            hop_length=config.trim_hop_length)
 
     logmel = logmelfilterbank(
         y,
@@ -145,25 +136,52 @@ def process_sentence(config: Dict[str, Any],
         fmin=config.fmin,
         fmax=config.fmax)
 
-    # adjust time to make num_samples == num_frames * hop_length
-    num_frames = logmel.shape[1]
-    if y.size < num_frames * config.hop_length:
-        y = np.pad(y, (0, num_frames * config.hop_length - y.size),
-                   mode="reflect")
-    else:
-        y = y[:num_frames * config.hop_length]
-    num_sample = y.shape[0]
+    # extract phone and duration
+    phones = []
+    tones = []
+    ends = []
+    durations_sec = []
+
+    for interval in intervals:
+        label = interval.label
+        label = label.replace("sp1", "sp")  # Baker has sp1 rather than sp
+
+        # split tone from finals
+        match = re.match(r'^(\w+)([012345])$', label)
+        if match:
+            phones.append(match.group(1))
+            tones.append(match.group(2))
+        else:
+            phones.append(label)
+            tones.append('0')
+        end = min(duration, interval.end)
+        ends.append(end)
+        durations_sec.append(end - interval.start)  # duration in seconds
+
+    frame_pos = librosa.time_to_frames(
+        ends, sr=sr, hop_length=config.hop_length)
+    durations_frame = np.diff(frame_pos, prepend=0)
+
+    num_frames = logmel.shape[-1]  # number of frames of the spectrogram
+    extra = np.sum(durations_frame) - num_frames
+    assert extra <= 0, (
+        f"Number of frames inferred from alignemnt is "
+        f"larger than number of frames of the spectrogram by {extra} frames")
+    durations_frame[-1] += (-extra)
+
+    assert np.sum(durations_frame) == num_frames
+    durations_frame = durations_frame.tolist()
 
     mel_path = output_dir / (utt_id + "_feats.npy")
-    wav_path = output_dir / (utt_id + "_wave.npy")
-    np.save(wav_path, y)  # (num_samples, )
     np.save(mel_path, logmel.T)  # (num_frames, n_mels)
     record = {
         "utt_id": utt_id,
-        "num_samples": num_sample,
+        "phones": phones,
+        "tones": tones,
+        "num_phones": len(phones),
         "num_frames": num_frames,
-        "feats": str(mel_path.resolve()),
-        "wave": str(wav_path.resolve()),
+        "durations": durations_frame,
+        "feats": str(mel_path.resolve()),  # use absolute path
     }
     return record
 
@@ -175,7 +193,8 @@ def process_sentences(config,
                       nprocs: int=1):
     if nprocs == 1:
         results = []
-        for fp, alignment_fp in tqdm.tqdm(zip(fps, alignment_fps)):
+        for fp, alignment_fp in tqdm.tqdm(
+                zip(fps, alignment_fps), total=len(fps)):
             results.append(
                 process_sentence(config, fp, alignment_fp, output_dir))
     else:
@@ -208,7 +227,8 @@ def main():
         "--rootdir",
         default=None,
         type=str,
-        help="directory to baker dataset.")
+        help="directory including wav files. you need to specify either scp or rootdir."
+    )
     parser.add_argument(
         "--dumpdir",
         type=str,
@@ -241,6 +261,11 @@ def main():
     wav_files = sorted(list((root_dir / "Wave").rglob("*.wav")))
     alignment_files = sorted(
         list((root_dir / "PhoneLabeling").rglob("*.interval")))
+
+    # filter out several files that have errors in annotation
+    exclude = {'000611', '000662', '002365', '005107'}
+    wav_files = [f for f in wav_files if f.stem not in exclude]
+    alignment_files = [f for f in alignment_files if f.stem not in exclude]
 
     # split data into 3 sections
     num_train = 9800
