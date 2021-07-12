@@ -211,4 +211,16 @@ class SpeedySpeech(nn.Layer):
         t_dec, feature_size = shape[1], shape[2]
         encodings += sinusoid_position_encoding(t_dec, feature_size)
         decoded = self.decoder(encodings)
-        return decoded[0], pred_durations[0]
+        return decoded[0]
+
+
+class SpeedySpeechInference(nn.Layer):
+    def __init__(self, normalizer, speedyspeech_model):
+        super().__init__()
+        self.normalizer = normalizer
+        self.acoustic_model = speedyspeech_model
+
+    def forward(self, phones, tones):
+        normalized_mel = self.acoustic_model.inference(phones, tones)
+        logmel = self.normalizer.inverse(normalized_mel)
+        return logmel
