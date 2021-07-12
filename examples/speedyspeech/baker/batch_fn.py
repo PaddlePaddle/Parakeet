@@ -17,21 +17,27 @@ from parakeet.data.batch import batch_sequences
 
 
 def collate_baker_examples(examples):
-    # fields = ["phones", "tones", "num_phones", "num_frames", "feats"]
+    # fields = ["phones", "tones", "num_phones", "num_frames", "feats", "durations"]
     phones = [np.array(item["phones"], dtype=np.int64) for item in examples]
     tones = [np.array(item["tones"], dtype=np.int64) for item in examples]
     feats = [np.array(item["feats"], dtype=np.float32) for item in examples]
+    durations = [
+        np.array(
+            item["durations"], dtype=np.int64) for item in examples
+    ]
     num_phones = np.array([item["num_phones"] for item in examples])
     num_frames = np.array([item["num_frames"] for item in examples])
 
     phones = batch_sequences(phones)
     tones = batch_sequences(tones)
     feats = batch_sequences(feats)
+    durations = batch_sequences(durations)
     batch = {
         "phones": phones,
         "tones": tones,
         "num_phones": num_phones,
         "num_frames": num_frames,
         "feats": feats,
+        "durations": durations,
     }
     return batch

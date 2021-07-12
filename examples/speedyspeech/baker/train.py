@@ -44,6 +44,7 @@ from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.seeding import seed_everything
 
 from batch_fn import collate_baker_examples
+from speedyspeech_updater import SpeedySpeechUpdater, SpeedySpeechEvaluator
 from config import get_cfg_default
 
 
@@ -73,26 +74,29 @@ def train_sp(args, config):
         train_metadata = list(reader)
     train_dataset = DataTable(
         data=train_metadata,
-        fields=["phones", "tones", "num_phones", "num_frames", "feats"],
+        fields=[
+            "phones", "tones", "num_phones", "num_frames", "feats", "durations"
+        ],
         converters={"feats": np.load, }, )
     with jsonlines.open(args.dev_metadata, 'r') as reader:
         dev_metadata = list(reader)
     dev_dataset = DataTable(
         data=dev_metadata,
-        fields=["phones", "tones", "num_phones", "num_frames", "feats"],
+        fields=[
+            "phones", "tones", "num_phones", "num_frames", "feats", "durations"
+        ],
         converters={"feats": np.load, }, )
 
     # collate function and dataloader
     train_sampler = DistributedBatchSampler(
         train_dataset,
         batch_size=config.batch_size,
-        shuffle=True,
-        drop_last=True)
-    dev_sampler = DistributedBatchSampler(
-        dev_dataset,
-        batch_size=config.batch_size,
         shuffle=False,
-        drop_last=False)
+        drop_last=True)
+    # dev_sampler = DistributedBatchSampler(dev_dataset,
+    #                                       batch_size=config.batch_size,
+    #                                       shuffle=False,
+    #                                       drop_last=False)
     print("samplers done!")
 
     train_dataloader = DataLoader(
@@ -102,16 +106,43 @@ def train_sp(args, config):
         num_workers=config.num_workers)
     dev_dataloader = DataLoader(
         dev_dataset,
-        batch_sampler=dev_sampler,
+        shuffle=False,
+        drop_last=False,
+        batch_size=config.batch_size,
         collate_fn=collate_baker_examples,
         num_workers=config.num_workers)
     print("dataloaders done!")
 
     # batch = collate_baker_examples([train_dataset[i] for i in range(10)])
-    # batch = collate_baker_examples([dev_dataset[i] for i in range(10)])
+    # # batch = collate_baker_examples([dev_dataset[i] for i in range(10)])
     # import pdb; pdb.set_trace()
     model = SpeedySpeech(**config["model"])
-    print(model)
+    if world_size > 1:
+        model = DataParallel(model)  # TODO, do not use vocab size from config
+    # print(model)
+    print("model done!")
+    optimizer = Adam(
+        0.001,
+        parameters=model.parameters(),
+        grad_clip=nn.ClipGradByGlobalNorm(5.0))
+    print("optimizer done!")
+
+    updater = SpeedySpeechUpdater(
+        model=model, optimizer=optimizer, dataloader=train_dataloader)
+
+    output_dir = Path(args.output_dir)
+    trainer = Trainer(updater, (config.max_epoch, 'epoch'), output_dir)
+
+    evaluator = SpeedySpeechEvaluator(model, dev_dataloader)
+
+    if dist.get_rank() == 0:
+        trainer.extend(evaluator, trigger=(1, "epoch"))
+        writer = LogWriter(str(output_dir))
+        trainer.extend(VisualDL(writer), trigger=(1, "iteration"))
+        trainer.extend(
+            Snapshot(max_size=config.num_snapshots), trigger=(1, 'epoch'))
+    print(trainer.extensions)
+    trainer.run()
 
 
 def main():

@@ -189,7 +189,7 @@ class SpeedySpeech(nn.Layer):
 
         # decode
         # remove positional encoding here
-        _, t_dec, feature_size = encodings.shpae
+        _, t_dec, feature_size = encodings.shape
         encodings += sinusoid_position_encoding(t_dec, feature_size)
         decoded = self.decoder(encodings)
         return decoded, pred_durations
@@ -211,4 +211,4 @@ class SpeedySpeech(nn.Layer):
         t_dec, feature_size = shape[1], shape[2]
         encodings += sinusoid_position_encoding(t_dec, feature_size)
         decoded = self.decoder(encodings)
-        return decoded, pred_durations
+        return decoded[0], pred_durations[0]
