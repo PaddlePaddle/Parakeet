@@ -22,14 +22,16 @@ from paddle import nn
 class PositionalEncoding(nn.Layer):
     """Positional encoding.
 
-    Args:
-        d_model (int): Embedding dimension.
-        dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
-        reverse (bool): Whether to reverse the input position. Only for
-        the class LegacyRelPositionalEncoding. We remove it in the current
-        class RelPositionalEncoding.
-
+    Parameters
+    ----------
+        d_model : int
+            Embedding dimension.
+        dropout_rate : float
+            Dropout rate.
+        max_len : int
+            Maximum input length.
+        reverse : bool
+            Whether to reverse the input position. Only for
     """
 
     def __init__(self, d_model, dropout_rate, max_len=5000, reverse=False):
@@ -47,7 +49,6 @@ class PositionalEncoding(nn.Layer):
 
         pe = paddle.zeros([x.shape[1], self.d_model])
         if self.reverse:
-            # (x.shape[1],1)
             position = paddle.arange(
                 x.shape[1] - 1, -1, -1.0, dtype=paddle.float32).unsqueeze(1)
         else:
@@ -65,12 +66,15 @@ class PositionalEncoding(nn.Layer):
     def forward(self, x: paddle.Tensor):
         """Add positional encoding.
 
-        Args:
-            x (paddle.Tensor): Input tensor (batch, time, `*`).
+        Parameters
+        ----------
+            x : paddle.Tensor
+                Input tensor (batch, time, `*`).
 
-        Returns:
-            paddle.Tensor: Encoded tensor (batch, time, `*`).
-
+        Returns
+        ----------
+            paddle.Tensor
+                Encoded tensor (batch, time, `*`).
         """
         self.extend_pe(x)
         x = x * self.xscale + self.pe[:, :x.shape[1]]
@@ -82,11 +86,14 @@ class ScaledPositionalEncoding(PositionalEncoding):
 
     See Sec. 3.2  https://arxiv.org/abs/1809.08895
 
-    Args:
-        d_model (int): Embedding dimension.
-        dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
-
+    Parameters
+    ----------
+        d_model : int
+            Embedding dimension.
+        dropout_rate : float
+            Dropout rate.
+        max_len : int
+            Maximum input length.
     """
 
     def __init__(self, d_model, dropout_rate, max_len=5000):
@@ -106,12 +113,15 @@ class ScaledPositionalEncoding(PositionalEncoding):
     def forward(self, x):
         """Add positional encoding.
 
-        Args:
-            x (paddle.Tensor): Input tensor (batch, time, `*`).
+        Parameters
+        ----------
+            x : paddle.Tensor
+                Input tensor (batch, time, `*`).
 
-        Returns:
-            paddle.Tensor: Encoded tensor (batch, time, `*`).
-
+        Returns
+        ----------
+            paddle.Tensor
+                Encoded tensor (batch, time, `*`).
         """
         self.extend_pe(x)
         x = x + self.alpha * self.pe[:, :x.shape[1]]

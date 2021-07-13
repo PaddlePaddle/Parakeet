@@ -15,7 +15,6 @@
 
 import paddle
 from paddle import nn
-
 from parakeet.modules.layer_norm import LayerNorm
 from parakeet.modules.masked_fill import masked_fill
 
@@ -31,7 +30,8 @@ class DurationPredictor(nn.Layer):
     .. _`FastSpeech: Fast, Robust and Controllable Text to Speech`:
         https://arxiv.org/pdf/1905.09263.pdf
 
-    Note:
+    Note
+    ----------
         The calculation domain of outputs is different
         between in `forward` and in `inference`. In `forward`,
         the outputs are calculated in log domain but in `inference`,
@@ -48,13 +48,20 @@ class DurationPredictor(nn.Layer):
                  offset=1.0):
         """Initilize duration predictor module.
 
-        Args:
-            idim (int): Input dimension.
-            n_layers (int, optional): Number of convolutional layers.
-            n_chans (int, optional): Number of channels of convolutional layers.
-            kernel_size (int, optional): Kernel size of convolutional layers.
-            dropout_rate (float, optional): Dropout rate.
-            offset (float, optional): Offset value to avoid nan in log domain.
+        Parameters
+        ----------
+            idim : int
+                Input dimension.
+            n_layers : int, optional
+                 Number of convolutional layers.
+            n_chans : int, optional
+                Number of channels of convolutional layers.
+            kernel_size : int, optional
+                Kernel size of convolutional layers.
+            dropout_rate : float, optional
+                 Dropout rate.
+            offset : float, optional
+                Offset value to avoid nan in log domain.
 
         """
         super(DurationPredictor, self).__init__()
@@ -74,7 +81,7 @@ class DurationPredictor(nn.Layer):
                     LayerNorm(
                         n_chans, dim=1),
                     nn.Dropout(dropout_rate), ))
-        self.linear = nn.Linear(n_chans, 1)
+        self.linear = nn.Linear(n_chans, 1, bias_attr=True)
 
     def _forward(self, xs, x_masks=None, is_inference=False):
         # (B, idim, Tmax)
@@ -83,7 +90,7 @@ class DurationPredictor(nn.Layer):
         for f in self.conv:
             xs = f(xs)
 
-            # NOTE: calculate in log domain
+        # NOTE: calculate in log domain
         # (B, Tmax)
         xs = self.linear(xs.transpose([0, 2, 1])).squeeze(-1)
 
@@ -99,28 +106,34 @@ class DurationPredictor(nn.Layer):
     def forward(self, xs, x_masks=None):
         """Calculate forward propagation.
 
-        Args:
-            xs (Tensor): Batch of input sequences (B, Tmax, idim).
-            x_masks (ByteTensor, optional):
+        Parameters
+        ----------
+            xs : Tensor
+                Batch of input sequences (B, Tmax, idim).
+            x_masks : ByteTensor, optional
                 Batch of masks indicating padded part (B, Tmax).
 
-        Returns:
-            Tensor: Batch of predicted durations in log domain (B, Tmax).
-
+        Returns
+        ----------
+            Tensor
+                Batch of predicted durations in log domain (B, Tmax).
         """
         return self._forward(xs, x_masks, False)
 
     def inference(self, xs, x_masks=None):
         """Inference duration.
 
-        Args:
-            xs (Tensor): Batch of input sequences (B, Tmax, idim).
-            x_masks (ByteTensor, optional):
+        Parameters
+        ----------
+            xs : Tensor
+                Batch of input sequences (B, Tmax, idim).
+            x_masks : Tensor(bool), optional
                 Batch of masks indicating padded part (B, Tmax).
 
-        Returns:
-            LongTensor: Batch of predicted durations in linear domain int64 (B, Tmax).
-
+        Returns
+        ----------
+            LongTensor
+                Batch of predicted durations in linear domain int64 (B, Tmax).
         """
         return self._forward(xs, x_masks, True)
 
@@ -135,10 +148,12 @@ class DurationPredictorLoss(nn.Layer):
     def __init__(self, offset=1.0, reduction="mean"):
         """Initilize duration predictor loss module.
 
-        Args:
-            offset (float, optional): Offset value to avoid nan in log domain.
-            reduction (str): Reduction type in loss calculation.
-
+        Parameters
+        ----------
+            offset : float, optional
+                Offset value to avoid nan in log domain.
+            reduction : str
+                Reduction type in loss calculation.
         """
         super(DurationPredictorLoss, self).__init__()
         self.criterion = nn.MSELoss(reduction=reduction)
@@ -147,16 +162,21 @@ class DurationPredictorLoss(nn.Layer):
     def forward(self, outputs, targets):
         """Calculate forward propagation.
 
-        Args:
-            outputs (Tensor): Batch of prediction durations in log domain (B, T)
-            targets (LongTensor): Batch of groundtruth durations in linear domain (B, T)
+        Parameters
+        ----------
+            outputs : Tensor
+                Batch of prediction durations in log domain (B, T)
+            targets : LongTensor
+                Batch of groundtruth durations in linear domain (B, T)
 
-        Returns:
-            Tensor: Mean squared error loss value.
+        Returns
+        ----------
+            Tensor
+                Mean squared error loss value.
 
-        Note:
+        Note
+        ----------
             `outputs` is in log domain but `targets` is in linear domain.
-
         """
         # NOTE: outputs is in log domain while targets in linear
         targets = paddle.log(targets.cast(dtype='float32') + self.offset)

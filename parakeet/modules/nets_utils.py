@@ -13,20 +13,27 @@
 # limitations under the License.
 
 import paddle
+from paddle import nn
+from typeguard import check_argument_types
 
 
-# 按照这个 batch 里面最长的补零
 def pad_list(xs, pad_value):
     """Perform padding for the list of tensors.
 
-    Args:
-        xs (List): List of Tensors [(T_1, `*`), (T_2, `*`), ..., (T_B, `*`)].
-        pad_value (float): Value for padding.
+    Parameters
+    ----------
+        xs : List[Tensor]
+            List of Tensors [(T_1, `*`), (T_2, `*`), ..., (T_B, `*`)].
+        pad_value : float)
+            Value for padding.
 
-    Returns:
-        Tensor: Padded tensor (B, Tmax, `*`).
+    Returns
+    ----------
+        Tensor
+            Padded tensor (B, Tmax, `*`).
 
-    Examples:
+    Examples
+    ----------
         >>> x = [paddle.ones([4]), paddle.ones([2]), paddle.ones([1])]
         >>> x
         [tensor([1., 1., 1., 1.]), tensor([1., 1.]), tensor([1.])]
@@ -34,11 +41,9 @@ def pad_list(xs, pad_value):
         tensor([[1., 1., 1., 1.],
                 [1., 1., 0., 0.],
                 [1., 0., 0., 0.]])
-
     """
     n_batch = len(xs)
     max_len = max(x.shape[0] for x in xs)
-    # pad = xs[0].new(n_batch, max_len, *xs[0].shape[1:]).fill_(pad_value)
     pad = paddle.full([n_batch, max_len, *xs[0].shape[1:]], pad_value)
 
     for i in range(n_batch):
@@ -50,13 +55,18 @@ def pad_list(xs, pad_value):
 def make_pad_mask(lengths, length_dim=-1):
     """Make mask tensor containing indices of padded part.
 
-    Args:
-        lengths (LongTensor or List): Batch of lengths (B,).
+    Parameters
+    ----------
+        lengths : LongTensor or List
+             Batch of lengths (B,).
 
-    Returns:
-        Tensor: Mask tensor containing indices of padded part bool.
+    Returns
+    ----------
+        Tensor(bool)
+            Mask tensor containing indices of padded part bool.
 
-    Examples:
+    Examples
+    ----------
         With only lengths.
 
         >>> lengths = [5, 3, 2]
@@ -64,7 +74,6 @@ def make_pad_mask(lengths, length_dim=-1):
         masks = [[0, 0, 0, 0 ,0],
                  [0, 0, 0, 1, 1],
                  [0, 0, 1, 1, 1]]
-
     """
     if length_dim == 0:
         raise ValueError("length_dim cannot be 0: {}".format(length_dim))
@@ -88,17 +97,24 @@ def make_pad_mask(lengths, length_dim=-1):
 def make_non_pad_mask(lengths, length_dim=-1):
     """Make mask tensor containing indices of non-padded part.
 
-    Args:
-        lengths (LongTensor or List): Batch of lengths (B,).
-        xs (Tensor, optional): The reference tensor.
+    Parameters
+    ----------
+        lengths : LongTensor or List
+             Batch of lengths (B,).
+        xs : Tensor, optional
+            The reference tensor.
             If set, masks will be the same shape as this tensor.
-        length_dim (int, optional): Dimension indicator of the above tensor.
+        length_dim : int, optional
+            Dimension indicator of the above tensor.
             See the example.
 
-    Returns:
-        ByteTensor: mask tensor containing indices of padded part bool.
+    Returns
+    ----------
+        Tensor(bool)
+            mask tensor containing indices of padded part bool.
 
-    Examples:
+    Examples
+    ----------
         With only lengths.
 
         >>> lengths = [5, 3, 2]
@@ -106,6 +122,37 @@ def make_non_pad_mask(lengths, length_dim=-1):
         masks = [[1, 1, 1, 1 ,1],
                  [1, 1, 1, 0, 0],
                  [1, 1, 0, 0, 0]]
-
     """
     return paddle.logical_not(make_pad_mask(lengths, length_dim))
+
+
+def initialize(model: nn.Layer, init: str):
+    """Initialize weights of a neural network module.
+
+    Parameters are initialized using the given method or distribution.
+
+    Custom initialization routines can be implemented into submodules
+
+    Parameters
+    ----------
+        model : paddle.nn.Layer
+            Target.
+        init : str
+            Method of initialization.
+    """
+    assert check_argument_types()
+
+    if init == "xavier_uniform":
+        nn.initializer.set_global_initializer(nn.initializer.XavierUniform(),
+                                              nn.initializer.Constant())
+    elif init == "xavier_normal":
+        nn.initializer.set_global_initializer(nn.initializer.XavierNormal(),
+                                              nn.initializer.Constant())
+    elif init == "kaiming_uniform":
+        nn.initializer.set_global_initializer(nn.initializer.KaimingUniform(),
+                                              nn.initializer.Constant())
+    elif init == "kaiming_normal":
+        nn.initializer.set_global_initializer(nn.initializer.KaimingNormal(),
+                                              nn.initializer.Constant())
+    else:
+        raise ValueError("Unknown initialization: " + init)

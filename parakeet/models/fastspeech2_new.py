@@ -12,28 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Fastspeech2 related modules for paddle"""
-import logging
-import numpy as np
 
 from typing import Dict
 from typing import Sequence
 from typing import Tuple
-
 from typeguard import check_argument_types
 
 import paddle
+import numpy as np
 from paddle import nn
-
 from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictor
 from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictorLoss
-from parakeet.modules.fastspeech2_predictor.variance_predictor import VariancePredictor
 from parakeet.modules.fastspeech2_predictor.length_regulator import LengthRegulator
 from parakeet.modules.fastspeech2_predictor.postnet import Postnet
-from parakeet.modules.nets_utils import make_non_pad_mask
-from parakeet.modules.nets_utils import make_pad_mask
+from parakeet.modules.fastspeech2_predictor.variance_predictor import VariancePredictor
 from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
 from parakeet.modules.fastspeech2_transformer.embedding import ScaledPositionalEncoding
 from parakeet.modules.fastspeech2_transformer.encoder import Encoder as TransformerEncoder
+from parakeet.modules.nets_utils import initialize
+from parakeet.modules.nets_utils import make_non_pad_mask
+from parakeet.modules.nets_utils import make_pad_mask
 
 
 class FastSpeech2(nn.Layer):
@@ -155,7 +153,6 @@ class FastSpeech2(nn.Layer):
                 positionwise_layer_type=positionwise_layer_type,
                 positionwise_conv_kernel_size=positionwise_conv_kernel_size, )
         else:
-            print("encoder_type:", encoder_type)
             raise ValueError(f"{encoder_type} is not supported.")
 
         # define duration predictor
@@ -236,6 +233,12 @@ class FastSpeech2(nn.Layer):
             use_batch_norm=use_batch_norm,
             dropout_rate=postnet_dropout_rate, ))
 
+        # initialize parameters
+        self._reset_parameters(
+            init_type=init_type,
+            init_enc_alpha=init_enc_alpha,
+            init_dec_alpha=init_dec_alpha, )
+
         # define criterions
         self.criterion = FastSpeech2Loss(
             use_masking=use_masking, use_weighted_masking=use_weighted_masking)
@@ -253,25 +256,37 @@ class FastSpeech2(nn.Layer):
             energy: paddle.Tensor,
             energy_lengths: paddle.Tensor, ) -> Tuple[paddle.Tensor, Dict[
                 str, paddle.Tensor], paddle.Tensor]:
-        # """Calculate forward propagation.
+        """Calculate forward propagation.
 
-        # Args:
-        #     text (LongTensor): Batch of padded token ids (B, Tmax).
-        #     text_lengths (LongTensor): Batch of lengths of each input (B,).
-        #     speech (Tensor): Batch of padded target features (B, Lmax, odim).
-        #     speech_lengths (LongTensor): Batch of the lengths of each target (B,).
-        #     durations (LongTensor): Batch of padded durations (B, Tmax + 1).
-        #     durations_lengths (LongTensor): Batch of duration lengths (B, Tmax + 1).
-        #     pitch (Tensor): Batch of padded token-averaged pitch (B, Tmax + 1, 1).
-        #     pitch_lengths (LongTensor): Batch of pitch lengths (B, Tmax + 1).
-        #     energy (Tensor): Batch of padded token-averaged energy (B, Tmax + 1, 1).
-        #     energy_lengths (LongTensor): Batch of energy lengths (B, Tmax + 1).
-        # Returns:
-        #     Tensor: Loss scalar value.
-        #     Dict: Statistics to be monitored.
-        #     Tensor: Weight value.
-
-        # """
+        Parameters
+        ----------
+            text : LongTensor
+                Batch of padded token ids (B, Tmax).
+            text_lengths : LongTensor)
+                Batch of lengths of each input (B,).
+            speech : Tensor
+                Batch of padded target features (B, Lmax, odim).
+            speech_lengths : LongTensor
+                Batch of the lengths of each target (B,).
+            durations : LongTensor
+                Batch of padded durations (B, Tmax + 1).
+            durations_lengths : LongTensor
+                Batch of duration lengths (B, Tmax + 1).
+            pitch : Tensor
+                Batch of padded token-averaged pitch (B, Tmax + 1, 1).
+            pitch_lengths : LongTensor
+                Batch of pitch lengths (B, Tmax + 1).
+            energy : Tensor
+                Batch of padded token-averaged energy (B, Tmax + 1, 1).
+            energy_lengths : LongTensor
+                Batch of energy lengths (B, Tmax + 1).
+        Returns
+        ----------
+            Tensor
+                Loss scalar value.
+            Dict
+                Statistics to be monitored.
+        """
         text = text[:, :text_lengths.max()]  # for data-parallel
         speech = speech[:, :speech_lengths.max()]  # for data-parallel
         durations = durations[:, :durations_lengths.max()]  # for data-parallel
@@ -282,16 +297,11 @@ class FastSpeech2(nn.Layer):
 
         # Add eos at the last of sequence
         # xs = F.pad(text, [0, 1], "constant", self.padding_idx)
-        print("xs.shape in fastspeech2.py before:", text.shape, text)
         xs = np.pad(text.numpy(),
                     pad_width=((0, 0), (0, 1)),
                     mode="constant",
                     constant_values=self.padding_idx)
         xs = paddle.to_tensor(xs)
-        print("xs.shape in fastspeech2.py end:", xs.shape, xs)
-        # my_pad = nn.Pad1D(padding=[0, 1], mode="constant", value=self.padding_idx)
-        # xs = my_pad(text)
-        # 是否会数组越界？ xs 是否能取到 l -> 可以，因为上一步补充了一个 padding_idx，又变成了 eos
         for i, l in enumerate(text_lengths):
             xs[i, l] = self.eos
         ilens = text_lengths + 1
@@ -302,23 +312,16 @@ class FastSpeech2(nn.Layer):
         # forward propagation
         before_outs, after_outs, d_outs, p_outs, e_outs = self._forward(
             xs, ilens, ys, olens, ds, ps, es, is_inference=False)
-        print("d_outs in paddle:", d_outs)
-        print("p_outs in paddle:", p_outs)
-        print("e_outs in paddle:", e_outs)
-
         # modify mod part of groundtruth
         if self.reduction_factor > 1:
-            # 需要改
             olens = paddle.to_tensor([
                 olen - olen % self.reduction_factor for olen in olens.numpy()
             ])
             max_olen = max(olens)
             ys = ys[:, :max_olen]
-
         # calculate loss
         if self.postnet is None:
             after_outs = None
-
         # calculate loss
         l1_loss, duration_loss, pitch_loss, energy_loss = self.criterion(
             after_outs=after_outs,
@@ -363,9 +366,8 @@ class FastSpeech2(nn.Layer):
             alpha: float=1.0, ) -> Sequence[paddle.Tensor]:
         # forward encoder
         x_masks = self._source_mask(ilens)
-        print("xs.shape in fastspeech2.py:", xs.shape)
-        hs, _ = self.encoder(xs, x_masks)  # (B, Tmax, adim)
 
+        hs, _ = self.encoder(xs, x_masks)  # (B, Tmax, adim)
         # forward duration predictor and variance predictors
         d_masks = make_pad_mask(ilens)
 
@@ -377,10 +379,11 @@ class FastSpeech2(nn.Layer):
             e_outs = self.energy_predictor(hs.detach(), d_masks.unsqueeze(-1))
         else:
             e_outs = self.energy_predictor(hs, d_masks.unsqueeze(-1))
-        print("p_outs.shape:", p_outs.shape)
+
         if is_inference:
             d_outs = self.duration_predictor.inference(hs,
                                                        d_masks)  # (B, Tmax)
+            # print("d_outs:",d_outs)
             # use prediction in inference
             # (B, Tmax, 1)
 
@@ -404,7 +407,6 @@ class FastSpeech2(nn.Layer):
         # forward decoder
         if olens is not None and not is_inference:
             if self.reduction_factor > 1:
-                # 直接to_paddle ,维度会增加 1,需要先转成 numpy
                 olens_in = paddle.to_tensor(
                     [olen // self.reduction_factor for olen in olens.numpy()])
             else:
@@ -412,9 +414,10 @@ class FastSpeech2(nn.Layer):
             h_masks = self._source_mask(olens_in)
         else:
             h_masks = None
-        zs, _ = self.decoder(hs, h_masks)  # (B, Lmax, adim)
-        before_outs = self.feat_out(zs).reshape(
-            (zs.shape[0], -1, self.odim))  # (B, Lmax, odim)
+        # (B, Lmax, adim)
+        zs, _ = self.decoder(hs, h_masks)
+        # (B, Lmax, odim)
+        before_outs = self.feat_out(zs).reshape((zs.shape[0], -1, self.odim))
 
         # postnet -> (B, Lmax//r * r, odim)
         if self.postnet is None:
@@ -437,20 +440,30 @@ class FastSpeech2(nn.Layer):
                 paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """Generate the sequence of features given the sequences of characters.
 
-        Args:
-            text (LongTensor): Input sequence of characters (T,).
-            speech (Tensor, optional): Feature sequence to extract style (N, idim).
-            durations (LongTensor, optional): Groundtruth of duration (T + 1,).
-            pitch (Tensor, optional): Groundtruth of token-averaged pitch (T + 1, 1).
-            energy (Tensor, optional): Groundtruth of token-averaged energy (T + 1, 1).
-            alpha (float, optional): Alpha to control the speed.
-            use_teacher_forcing (bool, optional): Whether to use teacher forcing.
-                If true, groundtruth of duration, pitch and energy will be used.
+        Parameters
+        ----------
+            text : LongTensor
+                Input sequence of characters (T,).
+            speech : Tensor, optional
+                Feature sequence to extract style (N, idim).
+            durations : LongTensor, optional
+                Groundtruth of duration (T + 1,).
+            pitch : Tensor, optional
+                Groundtruth of token-averaged pitch (T + 1, 1).
+            energy : Tensor, optional
+                Groundtruth of token-averaged energy (T + 1, 1).
+            alpha : float, optional
+                 Alpha to control the speed.
+            use_teacher_forcing : bool, optional
+                 Whether to use teacher forcing.
+                 If true, groundtruth of duration, pitch and energy will be used.
 
-        Returns:
-            Tensor: Output sequence of features (L, odim).
-            None: Dummy for compatibility.
-            None: Dummy for compatibility.
+        Returns
+        ----------
+            Tensor
+                Output sequence of features (L, odim).
+            None
+                Dummy for compatibility.
 
         """
         x, y = text, speech
@@ -460,13 +473,15 @@ class FastSpeech2(nn.Layer):
         x = np.pad(text.numpy(),
                    pad_width=((0, 1)),
                    mode="constant",
-                   constant_values=self.padding_idx)
+                   constant_values=self.eos)
+
         x = paddle.to_tensor(x)
 
         # setup batch axis
         ilens = paddle.to_tensor(
             [x.shape[0]], dtype=paddle.int64, place=x.place)
         xs, ys = x.unsqueeze(0), None
+
         if y is not None:
             ys = y.unsqueeze(0)
 
@@ -493,14 +508,19 @@ class FastSpeech2(nn.Layer):
     def _source_mask(self, ilens: paddle.Tensor) -> paddle.Tensor:
         """Make masks for self-attention.
 
-        Args:
-            ilens (LongTensor): Batch of lengths (B,).
+        Parameters
+        ----------
+            ilens : LongTensor
+                Batch of lengths (B,).
 
-        Returns:
-            Tensor: Mask tensor for self-attention.
+        Returns
+        -------
+            Tensor
+                Mask tensor for self-attention.
                 dtype=paddle.bool
 
-        Examples:
+        Examples
+        -------
             >>> ilens = [5, 3]
             >>> self._source_mask(ilens)
             tensor([[[1, 1, 1, 1, 1],
@@ -509,6 +529,29 @@ class FastSpeech2(nn.Layer):
         """
         x_masks = make_non_pad_mask(ilens)
         return x_masks.unsqueeze(-2)
+
+    def _reset_parameters(self,
+                          init_type: str,
+                          init_enc_alpha: float,
+                          init_dec_alpha: float):
+        # initialize parameters
+        initialize(self, init_type)
+
+        # initialize alpha in scaled positional encoding
+        if self.encoder_type == "transformer" and self.use_scaled_pos_enc:
+            init_enc_alpha = paddle.to_tensor(init_enc_alpha)
+            self.encoder.embed[-1].alpha = paddle.create_parameter(
+                shape=init_enc_alpha.shape,
+                dtype=str(init_enc_alpha.numpy().dtype),
+                default_initializer=paddle.nn.initializer.Assign(
+                    init_enc_alpha))
+        if self.decoder_type == "transformer" and self.use_scaled_pos_enc:
+            init_dec_alpha = paddle.to_tensor(init_dec_alpha)
+            self.decoder.embed[-1].alpha = paddle.create_parameter(
+                shape=init_dec_alpha.shape,
+                dtype=str(init_dec_alpha.numpy().dtype),
+                default_initializer=paddle.nn.initializer.Assign(
+                    init_dec_alpha))
 
 
 class FastSpeech2Loss(nn.Layer):
@@ -519,12 +562,12 @@ class FastSpeech2Loss(nn.Layer):
                  use_weighted_masking: bool=False):
         """Initialize feed-forward Transformer loss module.
 
-        Args:
-            use_masking (bool):
+        Parameters
+        ----------
+            use_masking : bool
                 Whether to apply masking for padded part in loss calculation.
-            use_weighted_masking (bool):
+            use_weighted_masking : bool
                 Whether to weighted masking in loss calculation.
-
         """
         assert check_argument_types()
         super().__init__()
@@ -555,24 +598,41 @@ class FastSpeech2Loss(nn.Layer):
                                              paddle.Tensor, paddle.Tensor]:
         """Calculate forward propagation.
 
-        Args:
-            after_outs (Tensor): Batch of outputs after postnets (B, Lmax, odim).
-            before_outs (Tensor): Batch of outputs before postnets (B, Lmax, odim).
-            d_outs (LongTensor): Batch of outputs of duration predictor (B, Tmax).
-            p_outs (Tensor): Batch of outputs of pitch predictor (B, Tmax, 1).
-            e_outs (Tensor): Batch of outputs of energy predictor (B, Tmax, 1).
-            ys (Tensor): Batch of target features (B, Lmax, odim).
-            ds (LongTensor): Batch of durations (B, Tmax).
-            ps (Tensor): Batch of target token-averaged pitch (B, Tmax, 1).
-            es (Tensor): Batch of target token-averaged energy (B, Tmax, 1).
-            ilens (LongTensor): Batch of the lengths of each input (B,).
-            olens (LongTensor): Batch of the lengths of each target (B,).
+        Parameters
+        ----------
+            after_outs : Tensor
+                Batch of outputs after postnets (B, Lmax, odim).
+            before_outs : Tensor
+                Batch of outputs before postnets (B, Lmax, odim).
+            d_outs : LongTensor
+                 Batch of outputs of duration predictor (B, Tmax).
+            p_outs : Tensor
+                Batch of outputs of pitch predictor (B, Tmax, 1).
+            e_outs : Tensor
+                Batch of outputs of energy predictor (B, Tmax, 1).
+            ys : Tensor
+                Batch of target features (B, Lmax, odim).
+            ds : LongTensor
+                Batch of durations (B, Tmax).
+            ps : Tensor
+                Batch of target token-averaged pitch (B, Tmax, 1).
+            es : Tensor
+                Batch of target token-averaged energy (B, Tmax, 1).
+            ilens : LongTensor
+                Batch of the lengths of each input (B,).
+            olens : LongTensor
+                Batch of the lengths of each target (B,).
 
-        Returns:
-            Tensor: L1 loss value.
-            Tensor: Duration predictor loss value.
-            Tensor: Pitch predictor loss value.
-            Tensor: Energy predictor loss value.
+        Returns
+        ----------
+            Tensor
+                L1 loss value.
+            Tensor
+                Duration predictor loss value.
+            Tensor
+                Pitch predictor loss value.
+            Tensor
+                Energy predictor loss value.
 
         """
         # apply mask to remove padded part

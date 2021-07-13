@@ -19,11 +19,14 @@ import paddle
 class PositionwiseFeedForward(paddle.nn.Layer):
     """Positionwise feed forward layer.
 
-    Args:
-        idim (int): Input dimenstion.
-        hidden_units (int): The number of hidden units.
-        dropout_rate (float): Dropout rate.
-
+    Parameters
+    ----------
+        idim : int
+            Input dimenstion.
+        hidden_units : int
+            The number of hidden units.
+        dropout_rate : float
+            Dropout rate.
     """
 
     def __init__(self,
@@ -33,8 +36,8 @@ class PositionwiseFeedForward(paddle.nn.Layer):
                  activation=paddle.nn.ReLU()):
         """Construct an PositionwiseFeedForward object."""
         super(PositionwiseFeedForward, self).__init__()
-        self.w_1 = paddle.nn.Linear(idim, hidden_units)
-        self.w_2 = paddle.nn.Linear(hidden_units, idim)
+        self.w_1 = paddle.nn.Linear(idim, hidden_units, bias_attr=True)
+        self.w_2 = paddle.nn.Linear(hidden_units, idim, bias_attr=True)
         self.dropout = paddle.nn.Dropout(dropout_rate)
         self.activation = activation
 

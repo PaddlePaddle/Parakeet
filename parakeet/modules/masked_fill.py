@@ -28,7 +28,7 @@ def is_broadcastable(shp1, shp2):
 def masked_fill(xs: paddle.Tensor,
                 mask: paddle.Tensor,
                 value: Union[float, int]):
-    # assert is_broadcastable(xs.shape, mask.shape) is True
+    assert is_broadcastable(xs.shape, mask.shape) is True
     bshape = paddle.broadcast_shape(xs.shape, mask.shape)
     mask = mask.broadcast_to(bshape)
     trues = paddle.ones_like(xs) * value

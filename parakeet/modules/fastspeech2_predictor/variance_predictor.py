@@ -15,10 +15,8 @@
 
 import paddle
 from paddle import nn
-
 from parakeet.modules.layer_norm import LayerNorm
 from parakeet.modules.masked_fill import masked_fill
-
 from typeguard import check_argument_types
 
 
@@ -43,13 +41,18 @@ class VariancePredictor(nn.Layer):
             dropout_rate: float=0.5, ):
         """Initilize duration predictor module.
 
-        Args:
-            idim (int): Input dimension.
-            n_layers (int, optional): Number of convolutional layers.
-            n_chans (int, optional): Number of channels of convolutional layers.
-            kernel_size (int, optional): Kernel size of convolutional layers.
-            dropout_rate (float, optional): Dropout rate.
-
+        Parameters
+        ----------
+            idim : int
+                Input dimension.
+            n_layers : int, optional
+                Number of convolutional layers.
+            n_chans : int, optional
+                Number of channels of convolutional layers.
+            kernel_size : int, optional
+                Kernel size of convolutional layers.
+            dropout_rate : float, optional
+                Dropout rate.
         """
         assert check_argument_types()
         super().__init__()
@@ -70,26 +73,30 @@ class VariancePredictor(nn.Layer):
                         n_chans, dim=1),
                     nn.Dropout(dropout_rate), ))
 
-        self.linear = nn.Linear(n_chans, 1)
+        self.linear = nn.Linear(n_chans, 1, bias_attr=True)
 
     def forward(self, xs: paddle.Tensor,
                 x_masks: paddle.Tensor=None) -> paddle.Tensor:
         """Calculate forward propagation.
 
-        Args:
-            xs (Tensor): Batch of input sequences (B, Tmax, idim).
-            x_masks (ByteTensor, optional):
+        Parameters
+        ----------
+            xs : Tensor
+                Batch of input sequences (B, Tmax, idim).
+            x_masks : Tensor(bool), optional
                 Batch of masks indicating padded part (B, Tmax, 1).
 
-        Returns:
-            Tensor: Batch of predicted sequences (B, Tmax, 1).
-
+        Returns
+        ----------
+            Tensor
+                Batch of predicted sequences (B, Tmax, 1).
         """
         # (B, idim, Tmax)
         xs = xs.transpose([0, 2, 1])
         # (B, C, Tmax)
         for f in self.conv:
-            xs = f(xs)  # (B, C, Tmax)
+            # (B, C, Tmax)
+            xs = f(xs)
         # (B, Tmax, 1)
         xs = self.linear(xs.transpose([0, 2, 1]))
 

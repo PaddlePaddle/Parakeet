@@ -14,28 +14,31 @@
 """Encoder self-attention layer definition."""
 
 import paddle
-
 from paddle import nn
 
 
 class EncoderLayer(nn.Layer):
     """Encoder layer module.
 
-    Args:
-        size (int): Input dimension.
-        self_attn (paddle.nn.Layer): Self-attention module instance.
-            `MultiHeadedAttention` or `RelPositionMultiHeadedAttention` instance
-            can be used as the argument.
-        feed_forward (paddle.nn.Layer): Feed-forward module instance.
-            `PositionwiseFeedForward`, `MultiLayeredConv1d`, or `Conv1dLinear` instance
-            can be used as the argument.
-        dropout_rate (float): Dropout rate.
-        normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+    Parameters
+    ----------
+        size : int
+            Input dimension.
+        self_attn : paddle.nn.Layer
+            Self-attention module instance.
+            `MultiHeadedAttention`  instance can be used as the argument.
+        feed_forward : paddle.nn.Layer
+            Feed-forward module instance.
+            `PositionwiseFeedForward`, `MultiLayeredConv1d`, or `Conv1dLinear` instance can be used as the argument.
+        dropout_rate : float
+            Dropout rate.
+        normalize_before : bool
+            Whether to use layer_norm before the first block.
+        concat_after : bool
+            Whether to concat attention layer's input and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
-
     """
 
     def __init__(
@@ -57,20 +60,26 @@ class EncoderLayer(nn.Layer):
         self.normalize_before = normalize_before
         self.concat_after = concat_after
         if self.concat_after:
-            self.concat_linear = nn.Linear(size + size, size)
+            self.concat_linear = nn.Linear(size + size, size, bias_attr=True)
 
     def forward(self, x, mask, cache=None):
         """Compute encoded features.
 
-        Args:
-            x_input (paddle.Tensor): Input tensor (#batch, time, size).
-            mask (paddle.Tensor): Mask tensor for the input (#batch, time).
-            cache (paddle.Tensor): Cache tensor of the input (#batch, time - 1, size).
+        Parameters
+        ----------
+            x_input : paddle.Tensor
+                Input tensor (#batch, time, size).
+            mask : paddle.Tensor
+                Mask tensor for the input (#batch, time).
+            cache : paddle.Tensor
+                 Cache tensor of the input (#batch, time - 1, size).
 
-        Returns:
-            paddle.Tensor: Output tensor (#batch, time, size).
-            paddle.Tensor: Mask tensor (#batch, time).
-
+        Returns
+        ----------
+            paddle.Tensor
+                Output tensor (#batch, time, size).
+            paddle.Tensor
+                Mask tensor (#batch, time).
         """
         residual = x
         if self.normalize_before:
@@ -82,7 +91,6 @@ class EncoderLayer(nn.Layer):
             assert cache.shape == (x.shape[0], x.shape[1] - 1, self.size)
             x_q = x[:, -1:, :]
             residual = residual[:, -1:, :]
-            # non-pad mask 变成 pad mask
             mask = None if mask is None else mask[:, -1:, :]
 
         if self.concat_after:
@@ -90,6 +98,7 @@ class EncoderLayer(nn.Layer):
                 (x, self.self_attn(x_q, x, x, mask)), axis=-1)
             x = residual + self.concat_linear(x_concat)
         else:
+
             x = residual + self.dropout(self.self_attn(x_q, x, x, mask))
         if not self.normalize_before:
             x = self.norm1(x)

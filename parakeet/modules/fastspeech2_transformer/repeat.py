@@ -29,12 +29,16 @@ class MultiSequential(paddle.nn.Sequential):
 def repeat(N, fn):
     """Repeat module N times.
 
-    Args:
-        N (int): Number of repeat time.
-        fn (Callable): Function to generate module.
+    Parameters
+    ----------
+        N : int
+            Number of repeat time.
+        fn : Callable
+            Function to generate module.
 
-    Returns:
-        MultiSequential: Repeated model instance.
-
+    Returns
+    ----------
+        MultiSequential
+            Repeated model instance.
     """
     return MultiSequential(* [fn(n) for n in range(N)])

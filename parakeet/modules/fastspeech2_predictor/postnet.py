@@ -43,15 +43,22 @@ class Postnet(nn.Layer):
             use_batch_norm=True, ):
         """Initialize postnet module.
 
-        Args:
-            idim (int): Dimension of the inputs.
-            odim (int): Dimension of the outputs.
-            n_layers (int, optional): The number of layers.
-            n_filts (int, optional): The number of filter size.
-            n_units (int, optional): The number of filter channels.
-            use_batch_norm (bool, optional): Whether to use batch normalization..
-            dropout_rate (float, optional): Dropout rate..
-
+        Parameters
+        ----------
+            idim : int
+                Dimension of the inputs.
+            odim : int
+                Dimension of the outputs.
+            n_layers : int, optional
+                The number of layers.
+            n_filts : int, optional
+                The number of filter size.
+            n_units : int, optional
+                The number of filter channels.
+            use_batch_norm : bool, optional
+                Whether to use batch normalization..
+            dropout_rate : float, optional
+                Dropout rate..
         """
         super(Postnet, self).__init__()
         self.postnet = nn.LayerList()
@@ -111,11 +118,15 @@ class Postnet(nn.Layer):
     def forward(self, xs):
         """Calculate forward propagation.
 
-        Args:
-            xs (Tensor): Batch of the sequences of padded input tensors (B, idim, Tmax).
+        Parameters
+        ----------
+            xs : Tensor
+                Batch of the sequences of padded input tensors (B, idim, Tmax).
 
-        Returns:
-            Tensor: Batch of padded output tensor. (B, odim, Tmax).
+        Returns
+        ----------
+            Tensor
+                Batch of padded output tensor. (B, odim, Tmax).
 
         """
         for i in six.moves.range(len(self.postnet)):
