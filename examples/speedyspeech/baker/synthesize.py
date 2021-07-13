@@ -24,6 +24,7 @@ import jsonlines
 import paddle
 import numpy as np
 import soundfile as sf
+import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from paddle import distributed as dist
@@ -80,7 +81,8 @@ def evaluate(args, speedyspeech_config, pwg_config):
         phones = paddle.to_tensor(datum["phones"])
         tones = paddle.to_tensor(datum["tones"])
 
-        wav = pwg_inference(speedyspeech_inferencce(phones, tones))
+        with paddle.no_grad():
+            wav = pwg_inference(speedyspeech_inferencce(phones, tones))
         sf.write(
             output_dir / (utt_id + ".wav"),
             wav.numpy(),
