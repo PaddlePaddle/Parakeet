@@ -221,14 +221,12 @@ def process_sentences(config,
 def main():
     # parse config and args
     parser = argparse.ArgumentParser(
-        description="Preprocess audio and then extract features (See detail in parallel_wavegan/bin/preprocess.py)."
-    )
+        description="Preprocess audio and then extract features.")
     parser.add_argument(
         "--rootdir",
         default=None,
         type=str,
-        help="directory including wav files. you need to specify either scp or rootdir."
-    )
+        help="directory to baker dataset.")
     parser.add_argument(
         "--dumpdir",
         type=str,

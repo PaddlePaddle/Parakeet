@@ -202,8 +202,7 @@ def process_sentences(config,
 def main():
     # parse config and args
     parser = argparse.ArgumentParser(
-        description="Preprocess audio and then extract features (See detail in parallel_wavegan/bin/preprocess.py)."
-    )
+        description="Preprocess audio and then extract features .")
     parser.add_argument(
         "--rootdir",
         default=None,
