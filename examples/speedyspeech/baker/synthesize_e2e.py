@@ -35,16 +35,19 @@ from parakeet.models.speedyspeech import SpeedySpeech, SpeedySpeechInference
 from parakeet.models.parallel_wavegan import PWGGenerator, PWGInference
 from parakeet.modules.normalizer import ZScore
 
+from frontend import text_analysis
+
 
 def evaluate(args, speedyspeech_config, pwg_config):
     # dataloader has been too verbose
     logging.getLogger("DataLoader").disabled = True
 
     # construct dataset for evaluation
-    with jsonlines.open(args.test_metadata, 'r') as reader:
-        test_metadata = list(reader)
-    test_dataset = DataTable(
-        data=test_metadata, fields=["utt_id", "phones", "tones"])
+    sentences = []
+    with open(args.text, 'rt') as f:
+        for line in f:
+            utt_id, sentence = line.strip().split()
+            sentences.append((utt_id, sentence))
 
     model = SpeedySpeech(**speedyspeech_config["model"])
     model.set_state_dict(
@@ -76,10 +79,8 @@ def evaluate(args, speedyspeech_config, pwg_config):
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for datum in test_dataset:
-        utt_id = datum["utt_id"]
-        phones = paddle.to_tensor(datum["phones"])
-        tones = paddle.to_tensor(datum["tones"])
+    for utt_id, sentence in sentences:
+        phones, tones = text_analysis(sentence)
 
         with paddle.no_grad():
             wav = pwg_inference(speedyspeech_inferencce(phones, tones))
@@ -121,7 +122,10 @@ def main():
         type=str,
         help="mean and standard deviation used to normalize spectrogram when training speedyspeech."
     )
-    parser.add_argument("--test-metadata", type=str, help="test metadata")
+    parser.add_argument(
+        "--text",
+        type=str,
+        help="text to synthesize, a 'utt_id sentence' pair per line")
     parser.add_argument("--output-dir", type=str, help="output dir")
     parser.add_argument(
         "--device", type=str, default="gpu", help="device type to use")
