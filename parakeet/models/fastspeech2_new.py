@@ -126,6 +126,9 @@ class FastSpeech2(nn.Layer):
         # use idx 0 as padding idx
         self.padding_idx = 0
 
+        # initialize parameters
+        initialize(self, init_type)
+
         # get positional encoding class
         pos_enc_class = (ScaledPositionalEncoding
                          if self.use_scaled_pos_enc else PositionalEncoding)
@@ -135,7 +138,7 @@ class FastSpeech2(nn.Layer):
             num_embeddings=idim,
             embedding_dim=adim,
             padding_idx=self.padding_idx)
-        print("encoder_type:", encoder_type)
+
         if encoder_type == "transformer":
             self.encoder = TransformerEncoder(
                 idim=idim,
@@ -233,7 +236,6 @@ class FastSpeech2(nn.Layer):
             use_batch_norm=use_batch_norm,
             dropout_rate=postnet_dropout_rate, ))
 
-        # initialize parameters
         self._reset_parameters(
             init_type=init_type,
             init_enc_alpha=init_enc_alpha,
@@ -250,11 +252,8 @@ class FastSpeech2(nn.Layer):
             speech: paddle.Tensor,
             speech_lengths: paddle.Tensor,
             durations: paddle.Tensor,
-            durations_lengths: paddle.Tensor,
             pitch: paddle.Tensor,
-            pitch_lengths: paddle.Tensor,
-            energy: paddle.Tensor,
-            energy_lengths: paddle.Tensor, ) -> Tuple[paddle.Tensor, Dict[
+            energy: paddle.Tensor, ) -> Tuple[paddle.Tensor, Dict[
                 str, paddle.Tensor], paddle.Tensor]:
         """Calculate forward propagation.
 
@@ -270,33 +269,33 @@ class FastSpeech2(nn.Layer):
                 Batch of the lengths of each target (B,).
             durations : LongTensor
                 Batch of padded durations (B, Tmax + 1).
-            durations_lengths : LongTensor
-                Batch of duration lengths (B, Tmax + 1).
             pitch : Tensor
                 Batch of padded token-averaged pitch (B, Tmax + 1, 1).
-            pitch_lengths : LongTensor
-                Batch of pitch lengths (B, Tmax + 1).
             energy : Tensor
                 Batch of padded token-averaged energy (B, Tmax + 1, 1).
-            energy_lengths : LongTensor
-                Batch of energy lengths (B, Tmax + 1).
         Returns
         ----------
             Tensor
-                Loss scalar value.
-            Dict
-                Statistics to be monitored.
+                mel outs before postnet
+            Tensor
+                mel outs after postnet
+            Tensor
+                duration predictor's output
+            Tensor
+                pitch predictor's output
+            Tensor
+                energy predictor's output   
+            Tensor
+                speech
+            Tensor
+                real text_lengths
+            Tensor
+                speech_lengths, modified if reduction_factor >1
         """
-        text = text[:, :text_lengths.max()]  # for data-parallel
-        speech = speech[:, :speech_lengths.max()]  # for data-parallel
-        durations = durations[:, :durations_lengths.max()]  # for data-parallel
-        pitch = pitch[:, :pitch_lengths.max()]  # for data-parallel
-        energy = energy[:, :energy_lengths.max()]  # for data-parallel
 
         batch_size = text.shape[0]
 
         # Add eos at the last of sequence
-        # xs = F.pad(text, [0, 1], "constant", self.padding_idx)
         xs = np.pad(text.numpy(),
                     pad_width=((0, 0), (0, 1)),
                     mode="constant",
@@ -319,39 +318,8 @@ class FastSpeech2(nn.Layer):
             ])
             max_olen = max(olens)
             ys = ys[:, :max_olen]
-        # calculate loss
-        if self.postnet is None:
-            after_outs = None
-        # calculate loss
-        l1_loss, duration_loss, pitch_loss, energy_loss = self.criterion(
-            after_outs=after_outs,
-            before_outs=before_outs,
-            d_outs=d_outs,
-            p_outs=p_outs,
-            e_outs=e_outs,
-            ys=ys,
-            ds=ds,
-            ps=ps,
-            es=es,
-            ilens=ilens,
-            olens=olens, )
-        loss = l1_loss + duration_loss + pitch_loss + energy_loss
 
-        stats = dict(
-            l1_loss=l1_loss.item(),
-            duration_loss=duration_loss.item(),
-            pitch_loss=pitch_loss.item(),
-            energy_loss=energy_loss.item(),
-            loss=loss.item(), )
-
-        # report extra information
-        if self.encoder_type == "transformer" and self.use_scaled_pos_enc:
-            stats.update(encoder_alpha=self.encoder.embed[-1].alpha.item(), )
-        if self.decoder_type == "transformer" and self.use_scaled_pos_enc:
-            stats.update(decoder_alpha=self.decoder.embed[-1].alpha.item(), )
-
-        # loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
-        return loss, stats
+        return before_outs, after_outs, d_outs, p_outs, e_outs, ys, ilens, olens
 
     def _forward(
             self,
@@ -383,7 +351,6 @@ class FastSpeech2(nn.Layer):
         if is_inference:
             d_outs = self.duration_predictor.inference(hs,
                                                        d_masks)  # (B, Tmax)
-            # print("d_outs:",d_outs)
             # use prediction in inference
             # (B, Tmax, 1)
 
@@ -396,7 +363,6 @@ class FastSpeech2(nn.Layer):
         else:
             d_outs = self.duration_predictor(hs, d_masks)
             # use groundtruth in training
-            print("ps.shape:", ps.shape)
             p_embs = self.pitch_embed(ps.transpose((0, 2, 1))).transpose(
                 (0, 2, 1))
             e_embs = self.energy_embed(es.transpose((0, 2, 1))).transpose(
@@ -534,8 +500,6 @@ class FastSpeech2(nn.Layer):
                           init_type: str,
                           init_enc_alpha: float,
                           init_dec_alpha: float):
-        # initialize parameters
-        initialize(self, init_type)
 
         # initialize alpha in scaled positional encoding
         if self.encoder_type == "transformer" and self.use_scaled_pos_enc:
@@ -637,19 +601,24 @@ class FastSpeech2Loss(nn.Layer):
         """
         # apply mask to remove padded part
         if self.use_masking:
-            out_masks = make_non_pad_mask(olens).unsqueeze(-1).to(ys.device)
-            before_outs = before_outs.masked_select(out_masks)
+            out_masks = make_non_pad_mask(olens).unsqueeze(-1)
+            before_outs = before_outs.masked_select(
+                out_masks.broadcast_to(before_outs.shape))
             if after_outs is not None:
-                after_outs = after_outs.masked_select(out_masks)
-            ys = ys.masked_select(out_masks)
-            duration_masks = make_non_pad_mask(ilens).to(ys.device)
-            d_outs = d_outs.masked_select(duration_masks)
-            ds = ds.masked_select(duration_masks)
-            pitch_masks = make_non_pad_mask(ilens).unsqueeze(-1).to(ys.device)
-            p_outs = p_outs.masked_select(pitch_masks)
-            e_outs = e_outs.masked_select(pitch_masks)
-            ps = ps.masked_select(pitch_masks)
-            es = es.masked_select(pitch_masks)
+                after_outs = after_outs.masked_select(
+                    out_masks.broadcast_to(after_outs.shape))
+            ys = ys.masked_select(out_masks.broadcast_to(ys.shape))
+            duration_masks = make_non_pad_mask(ilens)
+            d_outs = d_outs.masked_select(
+                duration_masks.broadcast_to(d_outs.shape))
+            ds = ds.masked_select(duration_masks.broadcast_to(ds.shape))
+            pitch_masks = make_non_pad_mask(ilens).unsqueeze(-1)
+            p_outs = p_outs.masked_select(
+                pitch_masks.broadcast_to(p_outs.shape))
+            e_outs = e_outs.masked_select(
+                pitch_masks.broadcast_to(e_outs.shape))
+            ps = ps.masked_select(pitch_masks.broadcast_to(ps.shape))
+            es = es.masked_select(pitch_masks.broadcast_to(es.shape))
 
         # calculate loss
         l1_loss = self.l1_criterion(before_outs, ys)
