@@ -768,3 +768,15 @@ class ResidualPWGDiscriminator(nn.Layer):
                 pass
 
         self.apply(_remove_weight_norm)
+
+
+class PWGInference(nn.Layer):
+    def __init__(self, normalizer, pwg_generator):
+        super().__init__()
+        self.normalizer = normalizer
+        self.pwg_generator = pwg_generator
+
+    def forward(self, logmel):
+        normalized_mel = self.normalizer(logmel)
+        wav = self.pwg_generator.inference(normalized_mel)
+        return wav

@@ -123,8 +123,6 @@ class Trainer(object):
         update = self.updater.update  # training step
         stop_trigger = self.stop_trigger
 
-        print(self.updater.state)
-
         # display only one progress bar
         max_iteration = None
         if isinstance(stop_trigger, LimitTrigger):

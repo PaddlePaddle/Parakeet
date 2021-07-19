@@ -161,3 +161,27 @@ def batch_spec(minibatch, pad_value=0., time_major=False, dtype=np.float32):
                        mode='constant',
                        constant_values=pad_value))
     return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)
+
+
+def batch_sequences(sequences, axis=0, pad_value=0):
+    # import pdb; pdb.set_trace()
+    seq = sequences[0]
+    ndim = seq.ndim
+    if axis < 0:
+        axis += ndim
+    dtype = seq.dtype
+    pad_value = dtype.type(pad_value)
+    seq_lengths = [seq.shape[axis] for seq in sequences]
+    max_length = np.max(seq_lengths)
+
+    padded_sequences = []
+    for seq, length in zip(sequences, seq_lengths):
+        padding = [(0, 0)] * axis + [(0, max_length - length)] + [(0, 0)] * (
+            ndim - axis - 1)
+        padded_seq = np.pad(seq,
+                            padding,
+                            mode='constant',
+                            constant_values=pad_value)
+        padded_sequences.append(padded_seq)
+    batch = np.stack(padded_sequences)
+    return batch

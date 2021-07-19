@@ -106,8 +106,8 @@ class StandardUpdater(UpdaterBase):
         self.update_core(batch)
 
         self.state.iteration += 1
-        if self.updaters_per_epoch is not None:
-            if self.state.iteration % self.updaters_per_epoch == 0:
+        if self.updates_per_epoch is not None:
+            if self.state.iteration % self.updates_per_epoch == 0:
                 self.state.epoch += 1
 
     def update_core(self, batch):
@@ -139,7 +139,7 @@ class StandardUpdater(UpdaterBase):
         self.optimizer.update()
 
     @property
-    def updaters_per_epoch(self):
+    def updates_per_epoch(self):
         """Number of updater per epoch, determined by the length of the 
         dataloader."""
         length_of_dataloader = None
