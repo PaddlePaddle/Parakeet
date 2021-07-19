@@ -51,6 +51,13 @@ def main():
     parser.add_argument(
         "--stats", type=str, required=True, help="statistics file.")
     parser.add_argument(
+        "--phones",
+        type=str,
+        default="phones.txt",
+        help="phone vocabulary file.")
+    parser.add_argument(
+        "--tones", type=str, default="tones.txt", help="tone vocabulary file.")
+    parser.add_argument(
         "--config", type=str, help="yaml format configuration file.")
     parser.add_argument(
         "--verbose",
@@ -100,10 +107,10 @@ def main():
     # from version 0.23.0, this information is needed
     scaler.n_features_in_ = scaler.mean_.shape[0]
 
-    with open("phones.txt", 'rt') as f:
+    with open(args.phones, 'rt') as f:
         phones = [line.strip() for line in f.readlines()]
 
-    with open("tones.txt", 'rt') as f:
+    with open(args.tones, 'rt') as f:
         tones = [line.strip() for line in f.readlines()]
     voc_phones = Vocab(phones, start_symbol=None, end_symbol=None)
     voc_tones = Vocab(tones, start_symbol=None, end_symbol=None)

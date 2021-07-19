@@ -16,6 +16,7 @@
 import argparse
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
 import yaml
@@ -45,10 +46,10 @@ def main():
     parser.add_argument(
         "--config", type=str, help="yaml format configuration file.")
     parser.add_argument(
-        "--dumpdir",
+        "--output",
         type=str,
-        help="directory to save statistics. if not provided, "
-        "stats will be saved in the above root directory. (default=None)")
+        help="path to save statistics. if not provided, "
+        "stats will be saved in the above root directory with name stats.npy")
     parser.add_argument(
         "--verbose",
         type=int,
@@ -80,10 +81,11 @@ def main():
         config.merge_from_file(args.config)
 
     # check directory existence
-    if args.dumpdir is None:
-        args.dumpdir = os.path.dirname(args.metadata)
-    if not os.path.exists(args.dumpdir):
-        os.makedirs(args.dumpdir)
+    if args.output is None:
+        args.output = Path(args.metadata).parent.with_name("stats.npy")
+    else:
+        args.output = Path(args.output)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
 
     with jsonlines.open(args.metadata, 'r') as reader:
         metadata = list(reader)
@@ -100,10 +102,7 @@ def main():
         scaler.partial_fit(datum[args.field_name])
 
     stats = np.stack([scaler.mean_, scaler.scale_], axis=0)
-    np.save(
-        os.path.join(args.dumpdir, "stats.npy"),
-        stats.astype(np.float32),
-        allow_pickle=False)
+    np.save(str(args.output), stats.astype(np.float32), allow_pickle=False)
 
 
 if __name__ == "__main__":

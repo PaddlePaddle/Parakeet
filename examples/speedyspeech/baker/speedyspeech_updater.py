@@ -62,7 +62,6 @@ class SpeedySpeechUpdater(StandardUpdater):
         loss.backward()
         optimizer.step()
 
-        # import pdb; pdb.set_trace()
         report("train/loss", float(loss))
         report("train/l1_loss", float(l1_loss))
         report("train/duration_loss", float(duration_loss))
