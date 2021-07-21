@@ -6,5 +6,6 @@ python synthesize_e2e.py \
   --pwg-params=../../parallelwave_gan/baker/converted.pdparams \
   --pwg-stat=../../parallelwave_gan/baker/dump/train/stats.npy \
   --text=sentences.txt \
-  --output-dir=exp/e2e \
+  --output-dir=exp/debug/e2e \
+  --inference-dir=exp/debug/inference \
   --device="gpu"

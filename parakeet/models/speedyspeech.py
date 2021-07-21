@@ -205,7 +205,19 @@ class SpeedySpeech(nn.Layer):
         pred_durations = self.duration_predictor(encodings)  # (1, T)
         durations_to_expand = paddle.round(pred_durations.exp())
         durations_to_expand = (durations_to_expand).astype(paddle.int64)
-        encodings = expand(encodings, durations_to_expand)
+
+        slens = paddle.sum(durations_to_expand, -1)  # [1]
+        t_dec = slens[0]  # [1]
+        t_enc = paddle.shape(pred_durations)[-1]
+        M = paddle.zeros([1, t_dec, t_enc])
+
+        k = paddle.full([1], 0, dtype=paddle.int64)
+        for j in range(t_enc):
+            d = durations_to_expand[0, j]
+            M[0, k:k + d, j] = 1
+            k += d
+
+        encodings = paddle.matmul(M, encodings)
 
         shape = paddle.shape(encodings)
         t_dec, feature_size = shape[1], shape[2]

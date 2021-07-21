@@ -26,10 +26,12 @@ def sinusoid_position_encoding(num_positions: int,
                                feature_size: int,
                                omega: float=1.0,
                                start_pos: int=0,
-                               dtype=None) -> Tensor:
+                               dtype=None) -> paddle.Tensor:
     # return tensor shape (num_positions, feature_size)
-    if (feature_size % 2 != 0):
-        raise ValueError("size should be divisible by 2")
+    # NOTE: to be compatible with paddle's to_static, we cannnot raise 
+    # an exception here, take care of it by yourself
+    # if (feature_size % 2 != 0):
+    #     raise ValueError("size should be divisible by 2")
     dtype = dtype or paddle.get_default_dtype()
 
     channel = paddle.arange(0, feature_size, 2, dtype=dtype)

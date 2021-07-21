@@ -7,4 +7,5 @@ python synthesize.py \
   --pwg-stat=../../parallelwave_gan/baker/dump/train/stats.npy \
   --test-metadata=dump/test/norm/metadata.jsonl \
   --output-dir=exp/debug/test \
+  --inference-dir=exp/debug/inference \
   --device="gpu"
