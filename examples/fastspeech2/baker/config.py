@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 from yacs.config import CfgNode as Configuration
+import yaml
 
 with open("conf/default.yaml", 'rt') as f:
     _C = yaml.safe_load(f)

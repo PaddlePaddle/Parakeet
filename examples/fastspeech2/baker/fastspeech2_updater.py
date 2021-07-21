@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.nn import functional as F
-from paddle.fluid.layers import huber_loss
-
-from parakeet.modules.losses import masked_l1_loss, weighted_mean
+from parakeet.models.fastspeech2 import FastSpeech2, FastSpeech2Loss
+from parakeet.training.extensions.evaluator import StandardEvaluator
 from parakeet.training.reporter import report
 from parakeet.training.updaters.standard_updater import StandardUpdater
-from parakeet.training.extensions.evaluator import StandardEvaluator
-from parakeet.models.fastspeech2_new import FastSpeech2, FastSpeech2Loss
 
 
 class FastSpeech2Updater(StandardUpdater):
@@ -36,7 +31,7 @@ class FastSpeech2Updater(StandardUpdater):
         self.use_weighted_masking = use_weighted_masking
 
     def update_core(self, batch):
-        before_outs, after_outs, d_outs, p_outs, e_outs, ys, ilens, olens = self.model(
+        before_outs, after_outs, d_outs, p_outs, e_outs, ys, olens = self.model(
             text=batch["text"],
             text_lengths=batch["text_lengths"],
             speech=batch["speech"],
@@ -48,6 +43,7 @@ class FastSpeech2Updater(StandardUpdater):
         criterion = FastSpeech2Loss(
             use_masking=self.use_masking,
             use_weighted_masking=self.use_weighted_masking)
+
         l1_loss, duration_loss, pitch_loss, energy_loss = criterion(
             after_outs=after_outs,
             before_outs=before_outs,
@@ -58,8 +54,9 @@ class FastSpeech2Updater(StandardUpdater):
             ds=batch["durations"],
             ps=batch["pitch"],
             es=batch["energy"],
-            ilens=ilens,
-            olens=olens, )
+            ilens=batch["text_lengths"],
+            olens=olens)
+
         loss = l1_loss + duration_loss + pitch_loss + energy_loss
 
         optimizer = self.optimizer
@@ -67,7 +64,6 @@ class FastSpeech2Updater(StandardUpdater):
         loss.backward()
         optimizer.step()
 
-        # import pdb; pdb.set_trace()
         report("train/loss", float(loss))
         report("train/l1_loss", float(l1_loss))
         report("train/duration_loss", float(duration_loss))
@@ -86,14 +82,14 @@ class FastSpeech2Evaluator(StandardEvaluator):
         self.use_weighted_masking = use_weighted_masking
 
     def evaluate_core(self, batch):
-        before_outs, after_outs, d_outs, p_outs, e_outs, ys, ilens, olens = self.model(
+        before_outs, after_outs, d_outs, p_outs, e_outs, ys, olens = self.model(
             text=batch["text"],
             text_lengths=batch["text_lengths"],
             speech=batch["speech"],
             speech_lengths=batch["speech_lengths"],
             durations=batch["durations"],
             pitch=batch["pitch"],
-            energy=batch["energy"], )
+            energy=batch["energy"])
 
         criterion = FastSpeech2Loss(
             use_masking=self.use_masking,
@@ -108,11 +104,10 @@ class FastSpeech2Evaluator(StandardEvaluator):
             ds=batch["durations"],
             ps=batch["pitch"],
             es=batch["energy"],
-            ilens=ilens,
+            ilens=batch["text_lengths"],
             olens=olens, )
         loss = l1_loss + duration_loss + pitch_loss + energy_loss
 
-        # import pdb; pdb.set_trace()
         report("eval/loss", float(loss))
         report("eval/l1_loss", float(l1_loss))
         report("eval/duration_loss", float(duration_loss))
