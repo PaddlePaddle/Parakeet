@@ -15,7 +15,8 @@
 import math
 
 import paddle
-from paddle.jit import to_static
+from paddle import nn
+from paddle.jit import to_static, save
 from paddle.static import InputSpec
 
 
@@ -31,4 +32,34 @@ def test_applicative_evaluation():
     y = fn(x)
 
     print(x)
+    print(y)
+
+
+def test_nested_sequential():
+    class Net(nn.Layer):
+        def __init__(self):
+            super().__init__()
+            group1 = nn.Sequential(
+                nn.Linear(2, 3),
+                nn.Sigmoid(), )
+            group2 = nn.Sequential(
+                nn.Sequential(nn.Linear(3, 3)),
+                nn.Linear(3, 4),
+                nn.ReLU(), )
+            self.layers = nn.Sequential(group1, group2)
+
+        def forward(self, x):
+            return self.layers(x)
+
+    net = Net()
+    x = paddle.randn([4, 2])
+    y = net(x)
+    print(y)
+
+    subgraph = to_static(net, input_spec=[InputSpec([-1, 2])])
+    paddle.jit.save(subgraph, './temp_test_to_static')
+
+    fn = paddle.jit.load('./temp_test_to_static')
+    y = fn(x)
+
     print(y)

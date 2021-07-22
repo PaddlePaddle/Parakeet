@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import nn
 
 
@@ -23,7 +24,11 @@ class ZScore(nn.Layer):
         self.register_buffer("sigma", sigma)
 
     def forward(self, x):
-        return (x - self.mu) / self.sigma
+        # NOTE: to be compatible with paddle's to_static, we must explicitly
+        # call multiply, or add, etc, instead of +-*/, etc.
+        return paddle.divide(paddle.subtract(x, self.mu), self.sigma)
 
     def inverse(self, x):
-        return x * self.sigma + self.mu
+        # NOTE: to be compatible with paddle's to_static, we must explicitly
+        # call multiply, or add, etc, instead of +-*/, etc.
+        return paddle.add(paddle.multiply(x, self.sigma), self.mu)
