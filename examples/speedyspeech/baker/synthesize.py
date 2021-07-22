@@ -85,6 +85,8 @@ def evaluate(args, speedyspeech_config, pwg_config):
         ])
     paddle.jit.save(speedyspeech_inference,
                     os.path.join(args.inference_dir, "speedyspeech"))
+    speedyspeech_inference = paddle.jit.load(
+        os.path.join(args.inference_dir, "speedyspeech"))
 
     pwg_inference = PWGInference(pwg_normalizer, vocoder)
     pwg_inference.eval()
@@ -93,6 +95,7 @@ def evaluate(args, speedyspeech_config, pwg_config):
         input_spec=[InputSpec(
             [-1, 80], dtype=paddle.float32), ])
     paddle.jit.save(pwg_inference, os.path.join(args.inference_dir, "pwg"))
+    pwg_inference = paddle.jit.load(os.path.join(args.inference_dir, "pwg"))
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
