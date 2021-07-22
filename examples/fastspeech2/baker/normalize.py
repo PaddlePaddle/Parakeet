@@ -45,17 +45,17 @@ def main():
         required=True,
         help="directory to dump normalized feature files.")
     parser.add_argument(
-        "--speech_stats",
+        "--speech-stats",
         type=str,
         required=True,
         help="speech statistics file.")
     parser.add_argument(
-        "--pitch_stats",
+        "--pitch-stats",
         type=str,
         required=True,
         help="pitch statistics file.")
     parser.add_argument(
-        "--energy_stats",
+        "--energy-stats",
         type=str,
         required=True,
         help="energy statistics file.")

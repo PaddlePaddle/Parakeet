@@ -258,7 +258,7 @@ def main():
         type=str,
         help="directory to baker dataset.")
     parser.add_argument(
-        "--dur_path",
+        "--dur-path",
         default=None,
         type=str,
         help="path to baker durations.txt.")
@@ -275,7 +275,7 @@ def main():
         default=1,
         help="logging level. higher is more logging. (default=1)")
     parser.add_argument(
-        "--num_cpu", type=int, default=1, help="number of process.")
+        "--num-cpu", type=int, default=1, help="number of process.")
     args = parser.parse_args()
 
     C = get_cfg_default()

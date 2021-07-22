@@ -397,11 +397,11 @@ class FastSpeech2(nn.Layer):
             speech : Tensor, optional
                 Feature sequence to extract style (N, idim).
             durations : LongTensor, optional
-                Groundtruth of duration (T + 1,).
+                Groundtruth of duration (T,).
             pitch : Tensor, optional
-                Groundtruth of token-averaged pitch (T + 1, 1).
+                Groundtruth of token-averaged pitch (T, 1).
             energy : Tensor, optional
-                Groundtruth of token-averaged energy (T + 1, 1).
+                Groundtruth of token-averaged energy (T, 1).
             alpha : float, optional
                  Alpha to control the speed.
             use_teacher_forcing : bool, optional
@@ -412,9 +412,6 @@ class FastSpeech2(nn.Layer):
         ----------
             Tensor
                 Output sequence of features (L, odim).
-            None
-                Dummy for compatibility.
-
         """
         x, y = text, speech
         d, p, e = durations, pitch, energy
@@ -455,7 +452,7 @@ class FastSpeech2(nn.Layer):
                 is_inference=True,
                 alpha=alpha, )
 
-        return outs[0], None, None
+        return outs[0]
 
     def _source_mask(self, ilens: paddle.Tensor) -> paddle.Tensor:
         """Make masks for self-attention.
@@ -499,6 +496,18 @@ class FastSpeech2(nn.Layer):
                 dtype=str(init_dec_alpha.numpy().dtype),
                 default_initializer=paddle.nn.initializer.Assign(
                     init_dec_alpha))
+
+
+class FastSpeech2Inference(nn.Layer):
+    def __init__(self, normalizer, model):
+        super().__init__()
+        self.normalizer = normalizer
+        self.acoustic_model = model
+
+    def forward(self, text):
+        normalized_mel = self.acoustic_model.inference(text)
+        logmel = self.normalizer.inverse(normalized_mel)
+        return logmel
 
 
 class FastSpeech2Loss(nn.Layer):
