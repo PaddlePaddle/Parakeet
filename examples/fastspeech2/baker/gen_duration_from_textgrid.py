@@ -35,9 +35,17 @@ def readtg(config, tg_path):
         ends, sr=config.fs, hop_length=config.n_shift)
     durations = np.diff(frame_pos, prepend=0)
     assert len(durations) == len(phones)
+    # merge  "" and sp in the end
+    if phones[-1] == "":
+        phones = phones[:-1]
+        durations[-2] += durations[-1]
+        durations = durations[:-1]
+    # replace the last sp with sil
+    phones[-1] = "sil" if phones[-1]=="sp" else phones[-1]
+
     results = ""
+    
     for (p, d) in zip(phones, durations):
-        p = "sil" if p == "" else p
         results += p + " " + str(d) + " "
     return results.strip()
 

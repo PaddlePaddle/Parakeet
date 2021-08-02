@@ -15,53 +15,26 @@
 import re
 import numpy as np
 import paddle
-from pypinyin import lazy_pinyin, Style
-import jieba
+from parakeet.frontend.cn_frontend import Frontend as cnFrontend
 
 
 class Frontend():
-    def __init__(self, vocab_path):
-
+    def __init__(self, phone_vocab_path=None, tone_vocab_path=None):
+        self.frontend = cnFrontend()
         self.voc_phones = {}
-        with open(vocab_path, 'rt') as f:
-            phn_id = [line.strip().split() for line in f.readlines()]
-        for phn, id in phn_id:
-            self.voc_phones[phn] = int(id)
+        self.voc_tones = {}
+        if phone_vocab_path:
+            with open(phone_vocab_path, 'rt') as f:
+                phn_id = [line.strip().split() for line in f.readlines()]
+            for phn, id in phn_id:
+                self.voc_phones[phn] = int(id)
+        if tone_vocab_path:
+            with open(tone_vocab_path, 'rt') as f:
+                tone_id = [line.strip().split() for line in f.readlines()]
+            for tone, id in tone_id:
+                self.voc_tones[tone] = int(id)
 
-    def segment(self, sentence):
-        segments = re.split(r'[：，；。？！]', sentence)
-        segments = [seg for seg in segments if len(seg)]
-        return segments
-
-    def g2p(self, sentence):
-        segments = self.segment(sentence)
-        phones = []
-
-        for seg in segments:
-            seg = jieba.lcut(seg)
-            initials = lazy_pinyin(
-                seg, neutral_tone_with_five=True, style=Style.INITIALS)
-            finals = lazy_pinyin(
-                seg, neutral_tone_with_five=True, style=Style.FINALS_TONE3)
-            for c, v in zip(initials, finals):
-                # NOTE: post process for pypinyin outputs
-                # we discriminate i, ii and iii
-                if re.match(r'i\d', v):
-                    if c in ['z', 'c', 's']:
-                        v = re.sub('i', 'ii', v)
-                    elif c in ['zh', 'ch', 'sh', 'r']:
-                        v = re.sub('i', 'iii', v)
-                if c:
-                    phones.append(c)
-                if v:
-                    phones.append(v)
-            # add sp between sentence
-            phones.append('sp')
-        # replace last sp with <eos>
-        phones[-1] = '<eos>'
-        return phones
-
-    def p2id(self, phonemes):
+    def _p2id(self, phonemes):
         # replace unk phone with sp
         phonemes = [
             phn if phn in self.voc_phones else "sp" for phn in phonemes
@@ -69,8 +42,35 @@ class Frontend():
         phone_ids = [self.voc_phones[item] for item in phonemes]
         return np.array(phone_ids, np.int64)
 
-    def text_analysis(self, sentence):
-        phonemes = self.g2p(sentence)
-        phone_ids = self.p2id(phonemes)
+    def _t2id(self, tones):
+        # replace unk phone with sp
+        tones = [
+            tone if tone in self.voc_tones else "0" for tone in tones
+        ]
+        tone_ids = [self.voc_tones[item] for item in tones]
+        return np.array(tone_ids, np.int64)
+
+    def get_input_ids(self, sentence, get_tone_ids=False):
+        phonemes = self.frontend.get_phonemes(sentence)
+        result = {}
+        phones = []
+        tones = []
+        if get_tone_ids and self.voc_tones:
+            for full_phone in phonemes:
+                # split tone from finals
+                match = re.match(r'^(\w+)([012345])$', full_phone)
+                if match:
+                    phones.append(match.group(1))
+                    tones.append(match.group(2))
+                else:
+                    phones.append(full_phone)
+                    tones.append('0')
+            tone_ids = self._t2id(tones)
+            tone_ids = paddle.to_tensor(tone_ids)
+            result["tone_ids"] = tone_ids
+        else:
+            phones = phonemes
+        phone_ids = self._p2id(phones)
         phone_ids = paddle.to_tensor(phone_ids)
-        return phone_ids
+        result["phone_ids"] = phone_ids
+        return result

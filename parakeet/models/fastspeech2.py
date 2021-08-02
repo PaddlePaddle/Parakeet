@@ -415,14 +415,7 @@ class FastSpeech2(nn.Layer):
         """
         x, y = text, speech
         d, p, e = durations, pitch, energy
-
-        # add eos at the last of sequence
-        x = np.pad(text.numpy(),
-                   pad_width=((0, 1)),
-                   mode="constant",
-                   constant_values=self.eos)
-
-        x = paddle.to_tensor(x)
+        x = paddle.to_tensor(text)
 
         # setup batch axis
         ilens = paddle.to_tensor(

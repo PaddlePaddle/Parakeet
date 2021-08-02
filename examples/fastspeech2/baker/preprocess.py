@@ -75,28 +75,15 @@ def deal_silence(sentence):
                 new_phn.append(p)
                 new_dur.append(cur_dur[i])
 
-        # merge little sil in the begin
-        if new_phn[0] == 'sil' and new_dur[0] <= 14:
-            new_phn = new_phn[1:]
-            new_dur[1] += new_dur[0]
-            new_dur = new_dur[1:]
-
-        # replace the last sil with <eos> if exist
-        if new_phn[-1] == 'sil':
-            new_phn[-1] = '<eos>'
-        else:
-            new_phn.append('<eos>')
-            new_dur.append(0)
-
         for i, (p, d) in enumerate(zip(new_phn, new_dur)):
-            if p in {"sil", "sp"}:
+            if p in {"sp"}:
                 if d < 14:
                     new_phn[i] = 'sp'
                 else:
-                    new_phn[i] = 'sp1'
+                    new_phn[i] = 'spl'
 
         assert len(new_phn) == len(new_dur)
-        sentence[utt] = (new_phn, new_dur)
+        sentence[utt] = [new_phn, new_dur]
 
 
 def get_input_token(sentence, output_path):
@@ -148,7 +135,6 @@ def compare_duration_and_mel_length(sentences, utt, mel):
             elif sentences[utt][1][0] + len_diff > 0:
                 sentences[utt][1][0] += len_diff
             else:
-                # 一般不会触发这个
                 print("the len_diff is unable to correct:", len_diff)
                 sentences.pop(utt)
 
@@ -160,7 +146,8 @@ def process_sentence(
         output_dir: Path,
         mel_extractor=None,
         pitch_extractor=None,
-        energy_extractor=None, ):
+        energy_extractor=None,
+        cut_sil: bool = True):
     utt_id = fp.stem
     record = None
     if utt_id in sentences:
@@ -169,27 +156,47 @@ def process_sentence(
         assert len(wav.shape) == 1, f"{utt_id} is not a mono-channel audio."
         assert np.abs(wav).max(
         ) <= 1.0, f"{utt_id} is seems to be different that 16 bit PCM."
+        phones = sentences[utt_id][0]
+        durations = sentences[utt_id][1]
+        d_cumsum = np.pad(np.array(durations).cumsum(0), (1, 0), 'constant')
+        # little imprecise than use *.TextGrid directly
+        times = librosa.frames_to_time(d_cumsum, sr=config.fs, hop_length=config.n_shift)
+        if cut_sil:
+            start = 0
+            end = d_cumsum[-1]
+            if phones[0] == "sil" and len(durations) > 1:
+                start = times[1]
+                durations = durations[1:]
+                phones = phones[1:]
+            if phones[-1] == 'sil' and len(durations) > 1:
+                end = times[-2]
+                durations = durations[:-1]
+                phones = phones[:-1]
+            sentences[utt_id][0] = phones
+            sentences[utt_id][1] = durations
+            start, end = librosa.time_to_samples([start, end], sr=config.fs)
+            wav = wav[start:end]
         # extract mel feats
         logmel = mel_extractor.get_log_mel_fbank(wav)
         # change duration according to mel_length
         compare_duration_and_mel_length(sentences, utt_id, logmel)
         phones = sentences[utt_id][0]
-        duration = sentences[utt_id][1]
+        durations = sentences[utt_id][1]
         num_frames = logmel.shape[0]
-        assert sum(duration) == num_frames
+        assert sum(durations) == num_frames
         mel_dir = output_dir / "data_speech"
         mel_dir.mkdir(parents=True, exist_ok=True)
         mel_path = mel_dir / (utt_id + "_speech.npy")
         np.save(mel_path, logmel)
         # extract pitch and energy
-        f0 = pitch_extractor.get_pitch(wav, duration=np.array(duration))
-        assert f0.shape[0] == len(duration)
+        f0 = pitch_extractor.get_pitch(wav, duration=np.array(durations))
+        assert f0.shape[0] == len(durations)
         f0_dir = output_dir / "data_pitch"
         f0_dir.mkdir(parents=True, exist_ok=True)
         f0_path = f0_dir / (utt_id + "_pitch.npy")
         np.save(f0_path, f0)
-        energy = energy_extractor.get_energy(wav, duration=np.array(duration))
-        assert energy.shape[0] == len(duration)
+        energy = energy_extractor.get_energy(wav, duration=np.array(durations))
+        assert energy.shape[0] == len(durations)
         energy_dir = output_dir / "data_energy"
         energy_dir.mkdir(parents=True, exist_ok=True)
         energy_path = energy_dir / (utt_id + "_energy.npy")
@@ -199,7 +206,7 @@ def process_sentence(
             "phones": phones,
             "text_lengths": len(phones),
             "speech_lengths": num_frames,
-            "durations": duration,
+            "durations": durations,
             # use absolute path
             "speech": str(mel_path.resolve()),
             "pitch": str(f0_path.resolve()),
@@ -215,13 +222,14 @@ def process_sentences(config,
                       mel_extractor=None,
                       pitch_extractor=None,
                       energy_extractor=None,
-                      nprocs: int=1):
+                      nprocs: int = 1,
+                      cut_sil: bool = True):
     if nprocs == 1:
         results = []
         for fp in tqdm.tqdm(fps, total=len(fps)):
             record = process_sentence(config, fp, sentences, output_dir,
                                       mel_extractor, pitch_extractor,
-                                      energy_extractor)
+                                      energy_extractor, cut_sil)
             if record:
                 results.append(record)
     else:
@@ -231,7 +239,7 @@ def process_sentences(config,
                 for fp in fps:
                     future = pool.submit(process_sentence, config, fp,
                                          sentences, output_dir, mel_extractor,
-                                         pitch_extractor, energy_extractor)
+                                         pitch_extractor, energy_extractor, cut_sil)
                     future.add_done_callback(lambda p: progress.update())
                     futures.append(future)
 
@@ -276,6 +284,10 @@ def main():
         help="logging level. higher is more logging. (default=1)")
     parser.add_argument(
         "--num-cpu", type=int, default=1, help="number of process.")
+    def str2bool(str):
+        return True if str.lower() == 'true' else False
+    parser.add_argument(
+        "--cut-sil", type=str2bool, default=True, help="whether cut sil in the edge of audio")
     args = parser.parse_args()
 
     C = get_cfg_default()
@@ -286,7 +298,7 @@ def main():
     if args.verbose > 1:
         print(vars(args))
         print(C)
-
+        
     root_dir = Path(args.rootdir).expanduser()
     dumpdir = Path(args.dumpdir).expanduser()
     dumpdir.mkdir(parents=True, exist_ok=True)
@@ -318,6 +330,7 @@ def main():
     energy_extractor = Energy(C)
 
     # process for the 3 sections
+    
     process_sentences(
         C,
         train_wav_files,
@@ -326,7 +339,8 @@ def main():
         mel_extractor,
         pitch_extractor,
         energy_extractor,
-        nprocs=args.num_cpu)
+        nprocs=args.num_cpu,
+        cut_sil=args.cut_sil)
     process_sentences(
         C,
         dev_wav_files,
@@ -335,7 +349,8 @@ def main():
         mel_extractor,
         pitch_extractor,
         energy_extractor,
-        nprocs=args.num_cpu)
+        cut_sil=args.cut_sil)
+    
     process_sentences(
         C,
         test_wav_files,
@@ -344,7 +359,8 @@ def main():
         mel_extractor,
         pitch_extractor,
         energy_extractor,
-        nprocs=args.num_cpu)
+        nprocs=args.num_cpu,
+        cut_sil=args.cut_sil)
 
 
 if __name__ == "__main__":

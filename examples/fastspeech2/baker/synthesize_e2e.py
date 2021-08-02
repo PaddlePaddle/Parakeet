@@ -80,9 +80,11 @@ def evaluate(args, fastspeech2_config, pwg_config):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for utt_id, sentence in sentences:
-        phone_ids = frontend.text_analysis(sentence)
+        input_ids = frontend.get_input_ids(sentence)
+        phone_ids = input_ids["phone_ids"]
         with paddle.no_grad():
-            wav = pwg_inference(fastspeech2_inferencce(phone_ids))
+            mel = fastspeech2_inferencce(phone_ids)
+            wav = pwg_inference(mel)
         sf.write(
             str(output_dir / (utt_id + ".wav")),
             wav.numpy(),

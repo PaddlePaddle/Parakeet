@@ -12,11 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.frontend.vocab import *
-from parakeet.frontend.phonectic import *
-from parakeet.frontend.punctuation import *
-from parakeet.frontend.normalizer import *
-from parakeet.frontend.cn_normalization import *
-from parakeet.frontend.modified_tone import *
-from parakeet.frontend.generate_lexicon import *
-
+from parakeet.frontend.cn_normalization.normalization import *
