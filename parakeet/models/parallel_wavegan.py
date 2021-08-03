@@ -44,7 +44,7 @@ class Stretch2D(nn.Layer):
         self.h_scale = h_scale
         self.mode = mode
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x):
         """
         Parameters
         ----------
@@ -115,7 +115,7 @@ class UpsampleNet(nn.Layer):
                     nn, nonlinear_activation)(**nonlinear_activation_params)
                 self.up_layers.append(nonlinear)
 
-    def forward(self, c: Tensor) -> Tensor:
+    def forward(self, c):
         """
         Parameters
         ----------
@@ -197,7 +197,7 @@ class ConvInUpsampleNet(nn.Layer):
             freq_axis_kernel_size=freq_axis_kernel_size,
             use_causal_conv=use_causal_conv)
 
-    def forward(self, c: Tensor) -> Tensor:
+    def forward(self, c):
         """
         Parameters
         ----------
@@ -283,7 +283,7 @@ class ResidualBlock(nn.Layer):
         self.conv1x1_skip = nn.Conv1D(
             gate_out_channels, skip_channels, kernel_size=1, bias_attr=bias)
 
-    def forward(self, x: Tensor, c: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x, c):
         """
         Parameters
         ----------
@@ -439,7 +439,7 @@ class PWGGenerator(nn.Layer):
         if use_weight_norm:
             self.apply_weight_norm()
 
-    def forward(self, x: Tensor, c: Tensor) -> Tensor:
+    def forward(self, x, c):
         """Generate waveform.
 
         Parameters
@@ -492,8 +492,7 @@ class PWGGenerator(nn.Layer):
 
         self.apply(_remove_weight_norm)
 
-    def inference(self, c: Optional[Tensor]=None,
-                  x: Optional[Tensor]=None) -> Tensor:
+    def inference(self, c=None):
         """Waveform generation. This function is used for single instance 
         inference.
 
@@ -510,17 +509,11 @@ class PWGGenerator(nn.Layer):
         Tensor
             Shape (T, C_out), the generated waveform
         """
-        if x is not None:
-            x = paddle.transpose(x, [1, 0]).unsqueeze(0)  # pseudo batch
-        else:
-            assert c is not None
-            x = paddle.randn(
-                [1, self.in_channels, c.shape[0] * self.upsample_factor])
-
-        if c is not None:
-            c = paddle.transpose(c, [1, 0]).unsqueeze(0)  # pseudo batch
-            c = nn.Pad1D(self.aux_context_window, mode='replicate')(c)
-        out = self.forward(x, c).squeeze(0).transpose([1, 0])
+        x = paddle.randn(
+            [1, self.in_channels, paddle.shape(c)[0] * self.upsample_factor])
+        c = paddle.transpose(c, [1, 0]).unsqueeze(0)  # pseudo batch
+        c = nn.Pad1D(self.aux_context_window, mode='replicate')(c)
+        out = self(x, c).squeeze(0).transpose([1, 0])
         return out
 
 
@@ -603,7 +596,7 @@ class PWGDiscriminator(nn.Layer):
         if use_weight_norm:
             self.apply_weight_norm()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x):
         """
         Parameters
         ----------
@@ -730,7 +723,7 @@ class ResidualPWGDiscriminator(nn.Layer):
         if use_weight_norm:
             self.apply_weight_norm()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x):
         """
         Parameters
         ----------
@@ -768,3 +761,15 @@ class ResidualPWGDiscriminator(nn.Layer):
                 pass
 
         self.apply(_remove_weight_norm)
+
+
+class PWGInference(nn.Layer):
+    def __init__(self, normalizer, pwg_generator):
+        super().__init__()
+        self.normalizer = normalizer
+        self.pwg_generator = pwg_generator
+
+    def forward(self, logmel):
+        normalized_mel = self.normalizer(logmel)
+        wav = self.pwg_generator.inference(normalized_mel)
+        return wav

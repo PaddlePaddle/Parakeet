@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from copy import deepcopy
+
 
 class IntervalTrigger(object):
     """A Predicate to do something every N cycle."""
@@ -23,9 +25,16 @@ class IntervalTrigger(object):
             raise ValueError("period should be a positive integer.")
         self.period = period
         self.unit = unit
+        self.last_index = None
 
     def __call__(self, trainer):
-        state = trainer.updater.state
-        index = getattr(state, self.unit)
-        fire = index % self.period == 0
+        if self.last_index is None:
+            last_index = getattr(trainer.updater.state, self.unit)
+            self.last_index = last_index
+
+        last_index = self.last_index
+        index = getattr(trainer.updater.state, self.unit)
+        fire = index // self.period != last_index // self.period
+
+        self.last_index = index
         return fire

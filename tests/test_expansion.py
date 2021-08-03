@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.frontend.vocab import *
-from parakeet.frontend.phonectic import *
-from parakeet.frontend.punctuation import *
-from parakeet.frontend.normalizer import *
-from parakeet.frontend.cn_normalization import *
-from parakeet.frontend.tone_sandhi import *
-from parakeet.frontend.generate_lexicon import *
+import paddle
+from parakeet.modules import expansion
 
+
+def test_expand():
+    x = paddle.randn([2, 4, 3])  # (B, T, C)
+    lengths = paddle.to_tensor([[1, 2, 2, 1], [3, 1, 4, 0]])
+    y = expansion.expand(x, lengths)
+
+    assert y.shape == [2, 8, 3]
+    print("the first sequence")
+    print(y[0])
+
+    print("the second sequence")
+    print(y[1])

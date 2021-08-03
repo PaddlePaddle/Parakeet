@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.frontend.vocab import *
-from parakeet.frontend.phonectic import *
-from parakeet.frontend.punctuation import *
-from parakeet.frontend.normalizer import *
-from parakeet.frontend.cn_normalization import *
-from parakeet.frontend.tone_sandhi import *
-from parakeet.frontend.generate_lexicon import *
+import librosa
+from praatio import tgio
 
+
+def validate_textgrid(text_grid, num_samples, sr):
+    """Validate Text Grid to make sure that the time interval annotated 
+    by the tex grid file does not go beyond the audio file.
+    """
+    start = text_grid.minTimestamp
+    end = text_grid.maxTimestamp
+
+    end_audio = librosa.samples_to_time(num_samples, sr)
+    return start == 0.0 and end <= end_audio

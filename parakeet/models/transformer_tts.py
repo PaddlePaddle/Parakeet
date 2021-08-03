@@ -403,7 +403,7 @@ class TransformerTTS(nn.Layer):
         else:
             self.toned = False
         # position encoding matrix may be extended later
-        self.encoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_encoder)
+        self.encoder_pe = pe.sinusoid_position_encoding(1000, d_encoder)
         self.encoder_pe_scalar = self.create_parameter(
             [1], attr=I.Constant(1.))
         self.encoder = TransformerEncoder(d_encoder, n_heads, d_ffn,
@@ -411,7 +411,7 @@ class TransformerTTS(nn.Layer):
 
         # decoder
         self.decoder_prenet = MLPPreNet(d_mel, d_prenet, d_decoder, dropout)
-        self.decoder_pe = pe.sinusoid_positional_encoding(0, 1000, d_decoder)
+        self.decoder_pe = pe.sinusoid_position_encoding(1000, d_decoder)
         self.decoder_pe_scalar = self.create_parameter(
             [1], attr=I.Constant(1.))
         self.decoder = TransformerDecoder(
@@ -467,7 +467,8 @@ class TransformerTTS(nn.Layer):
             embed += self.tone_embed(tones)
         if embed.shape[1] > self.encoder_pe.shape[0]:
             new_T = max(embed.shape[1], self.encoder_pe.shape[0] * 2)
-            self.encoder_pe = pe.positional_encoding(0, new_T, self.d_encoder)
+            self.encoder_pe = pe.sinusoid_position_encoding(new_T,
+                                                            self.d_encoder)
         pos_enc = self.encoder_pe[:T_enc, :]  # (T, C)
         x = embed.scale(math.sqrt(
             self.d_encoder)) + pos_enc * self.encoder_pe_scalar
@@ -488,8 +489,8 @@ class TransformerTTS(nn.Layer):
         # twice its length if needed
         if x.shape[1] * self.r > self.decoder_pe.shape[0]:
             new_T = max(x.shape[1] * self.r, self.decoder_pe.shape[0] * 2)
-            self.decoder_pe = pe.sinusoid_positional_encoding(0, new_T,
-                                                              self.d_decoder)
+            self.decoder_pe = pe.sinusoid_position_encoding(new_T,
+                                                            self.d_decoder)
         pos_enc = self.decoder_pe[:T_dec * self.r:self.r, :]
         x = x.scale(math.sqrt(
             self.d_decoder)) + pos_enc * self.decoder_pe_scalar
