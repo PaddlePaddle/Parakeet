@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.frontend.cn_normalization.normalization import *
+from parakeet.frontend.cn_normalization.text_normlization import *

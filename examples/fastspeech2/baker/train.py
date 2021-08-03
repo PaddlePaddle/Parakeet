@@ -131,7 +131,7 @@ def train_sp(args, config):
         num_workers=config.num_workers)
     print("dataloaders done!")
 
-    with open(args.phones, "r") as f:
+    with open(args.phones_dict, "r") as f:
         phn_id = [line.strip().split() for line in f.readlines()]
     vocab_size = len(phn_id)
     print("vocab_size:", vocab_size)
@@ -182,7 +182,7 @@ def main():
         "--nprocs", type=int, default=1, help="number of processes")
     parser.add_argument("--verbose", type=int, default=1, help="verbose")
     parser.add_argument(
-        "--phones",
+        "--phones-dict",
         type=str,
         default="phone_id_map.txt ",
         help="phone vocabulary file.")

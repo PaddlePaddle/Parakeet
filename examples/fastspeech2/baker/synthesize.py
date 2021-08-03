@@ -37,7 +37,7 @@ def evaluate(args, fastspeech2_config, pwg_config):
         test_metadata = list(reader)
     test_dataset = DataTable(data=test_metadata, fields=["utt_id", "text"])
 
-    with open(args.phones, "r") as f:
+    with open(args.phones_dict, "r") as f:
         phn_id = [line.strip().split() for line in f.readlines()]
     vocab_size = len(phn_id)
     print("vocab_size:", vocab_size)
@@ -119,7 +119,7 @@ def main():
         help="mean and standard deviation used to normalize spectrogram when training parallel wavegan."
     )
     parser.add_argument(
-        "--phones",
+        "--phones-dict",
         type=str,
         default="phone_id_map.txt ",
         help="phone vocabulary file.")

@@ -18,8 +18,8 @@ import numpy as np
 import paddle
 import re
 from g2pM import G2pM
-from parakeet.frontend.modified_tone import ModifiedTone
-from parakeet.frontend.cn_normalization.normalization import Normalizer
+from parakeet.frontend.tone_sandhi import ToneSandhi
+from parakeet.frontend.cn_normalization.text_normlization import TextNormalizer
 from pypinyin import lazy_pinyin, Style
 
 from parakeet.frontend.generate_lexicon import generate_lexicon
@@ -27,8 +27,8 @@ from parakeet.frontend.generate_lexicon import generate_lexicon
 
 class Frontend():
     def __init__(self, g2p_model="pypinyin"):
-        self.tone_modifier = ModifiedTone()
-        self.normalizer = Normalizer()
+        self.tone_modifier = ToneSandhi()
+        self.text_normalizer = TextNormalizer()
         self.punc = "：，；。？！“”‘’':,;.?!"
         # g2p_model can be pypinyin and g2pM
         self.g2p_model = g2p_model
@@ -65,6 +65,7 @@ class Frontend():
                         initials.append('')
                         finals.append(initial_final_list[1])
                 else:
+                    # If it's not pinyin (possibly punctuation) or no conversion is required
                     initials.append(pinyin)
                     finals.append(pinyin)
         return initials, finals
@@ -96,7 +97,7 @@ class Frontend():
                     phones.append(c)
                 if v and v not in self.punc:
                     phones.append(v)
-            # add sp between sentence
+            # add sp between sentence (replace the last punc with sp)
             if initials[-1] in self.punc:
                 phones.append('sp')
             phones_list.append(phones)
@@ -105,6 +106,6 @@ class Frontend():
         return phones_list
 
     def get_phonemes(self, sentence):
-        sentences = self.normalizer.normalize(sentence)
+        sentences = self.text_normalizer.normalize(sentence)
         phonemes = self._g2p(sentences)
         return phonemes

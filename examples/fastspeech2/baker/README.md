@@ -30,8 +30,8 @@ Download pretrained parallel wavegan model from [parallel_wavegan_baker_ckpt_1.0
 ```bash
 unzip parallel_wavegan_baker_ckpt_1.0.zip
 ```
-`synthesize.sh` can synthesize waveform for `metadata.jsonl`.
-`synthesize_e2e.sh` can synthesize waveform for text list.
+`synthesize.sh` can synthesize waveform from `metadata.jsonl`.
+`synthesize_e2e.sh` can synthesize waveform from text list.
 
 ```bash
 ./synthesize.sh

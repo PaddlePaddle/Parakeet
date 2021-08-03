@@ -21,12 +21,12 @@ from .chronology import replace_time, replace_date, replace_date2
 from .constants import F2H_ASCII_LETTERS, F2H_DIGITS, F2H_SPACE
 from .num import RE_NUMBER, RE_FRAC, RE_PERCENTAGE, RE_RANGE, RE_INTEGER, RE_DEFAULT_NUM
 from .num import replace_number, replace_frac, replace_percentage, replace_range, replace_default_num
-from .phone import RE_MOBILE_PHONE, RE_TELEPHONE, replace_phone
+from .phonecode import RE_MOBILE_PHONE, RE_TELEPHONE, replace_phone
 from .quantifier import RE_TEMPERATURE
 from .quantifier import replace_temperature
 
 
-class Normalizer():
+class TextNormalizer():
     def __init__(self):
         self.SENTENCE_SPLITOR = re.compile(r'([：，；。？！,;?!][”’]?)')
         self._t2s_converter = opencc.OpenCC("t2s.json")

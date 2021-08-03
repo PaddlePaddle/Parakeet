@@ -96,18 +96,18 @@ def get_input_token(sentence, output_path):
         output_path : str or path
             path to save phone_id_map
     '''
-    phn_emb = set()
+    phn_token = set()
     for utt in sentence:
         for phn in sentence[utt][0]:
             if phn != "<eos>":
-                phn_emb.add(phn)
-    phn_emb = list(phn_emb)
-    phn_emb.sort()
-    phn_emb = ["<pad>", "<unk>"] + phn_emb
-    phn_emb += ["，", "。", "？", "！", "<eos>"]
+                phn_token.add(phn)
+    phn_token = list(phn_token)
+    phn_token.sort()
+    phn_token = ["<pad>", "<unk>"] + phn_token
+    phn_token += ["，", "。", "？", "！", "<eos>"]
 
     f = open(output_path, 'w')
-    for i, phn in enumerate(phn_emb):
+    for i, phn in enumerate(phn_token):
         f.write(phn + ' ' + str(i) + '\n')
     f.close()
 
@@ -284,8 +284,10 @@ def main():
         help="logging level. higher is more logging. (default=1)")
     parser.add_argument(
         "--num-cpu", type=int, default=1, help="number of process.")
+
     def str2bool(str):
         return True if str.lower() == 'true' else False
+
     parser.add_argument(
         "--cut-sil", type=str2bool, default=True, help="whether cut sil in the edge of audio")
     args = parser.parse_args()
@@ -298,7 +300,7 @@ def main():
     if args.verbose > 1:
         print(vars(args))
         print(C)
-        
+
     root_dir = Path(args.rootdir).expanduser()
     dumpdir = Path(args.dumpdir).expanduser()
     dumpdir.mkdir(parents=True, exist_ok=True)
@@ -325,12 +327,27 @@ def main():
     test_dump_dir.mkdir(parents=True, exist_ok=True)
 
     # Extractor
-    mel_extractor = LogMelFBank(C)
-    pitch_extractor = Pitch(C)
-    energy_extractor = Energy(C)
+    mel_extractor = LogMelFBank(
+        sr=C.fs,
+        n_fft=C.n_fft,
+        hop_length=C.n_shift,
+        win_length=C.win_length,
+        window=C.window,
+        n_mels=C.n_mels,
+        fmin=C.fmin,
+        fmax=C.fmax)
+    pitch_extractor = Pitch(sr=C.fs,
+                            hop_length=C.n_shift,
+                            f0min=C.f0min,
+                            f0max=C.f0max)
+    energy_extractor = Energy(sr=C.fs,
+                              n_fft=C.n_fft,
+                              hop_length=C.n_shift,
+                              win_length=C.win_length,
+                              window=C.window)
 
     # process for the 3 sections
-    
+
     process_sentences(
         C,
         train_wav_files,
@@ -350,7 +367,7 @@ def main():
         pitch_extractor,
         energy_extractor,
         cut_sil=args.cut_sil)
-    
+
     process_sentences(
         C,
         test_wav_files,

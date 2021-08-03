@@ -18,7 +18,7 @@ from pypinyin import lazy_pinyin
 from pypinyin import Style
 
 
-class ModifiedTone():
+class ToneSandhi():
     def __init__(self):
         self.must_neural_tone_words = {'麻烦', '麻利', '鸳鸯', '高粱', '骨头', '骆驼', '马虎', '首饰', '馒头', '馄饨', '风筝', '难为', '队伍',
                                        '阔气', '闺女', '门道', '锄头', '铺盖', '铃铛', '铁匠', '钥匙', '里脊', '里头', '部分', '那么', '道士',
@@ -51,67 +51,71 @@ class ModifiedTone():
                                        '云彩', '事情', '买卖', '主意', '丫头', '丧气', '两口', '东西', '东家', '世故', '不由', '不在', '下水',
                                        '下巴', '上头', '上司', '丈夫', '丈人', '一辈', '那个'}
 
-    def _neural_tone(self, word, pos, sub_finals):
+    # the meaning of jieba pos tag: https://blog.csdn.net/weixin_44174352/article/details/113731041
+    # e.g.
+        # word: "家里"
+        # pos: "s" 
+        # finals: ['ia1', 'i3']
+    def _neural_sandhi(self, word, pos, finals):
         ge_idx = word.find("个")
         if len(word) == 1 and word in "吧呢啊嘛" and pos == 'y':
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
+            finals[-1] = finals[-1][:-1] + "5"
         elif len(word) == 1 and word in "的地得" and pos in {"ud", "uj", "uv"}:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
-        # eg: 走了, 看着, 去过
+            finals[-1] = finals[-1][:-1] + "5"
+        # e.g. 走了, 看着, 去过
         elif len(word) == 1 and word in "了着过" and pos in {"ul", "uz", "ug"}:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
+            finals[-1] = finals[-1][:-1] + "5"
         elif len(word) > 1 and word[-1] in "们子" and pos in {"r", "n"}:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
-        # eg: 桌上, 地下, 家里
+            finals[-1] = finals[-1][:-1] + "5"
+        # e.g. 桌上, 地下, 家里
         elif len(word) > 1 and word[-1] in "上下里" and pos in {"s", "l", "f"}:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
-        # eg: 上来, 下去
+            finals[-1] = finals[-1][:-1] + "5"
+        # e.g. 上来, 下去
         elif len(word) > 1 and word[-1] in "来去" and pos[0] in {"v"}:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
+            finals[-1] = finals[-1][:-1] + "5"
         # 个做量词
         elif ge_idx >= 1 and word[ge_idx - 1].isnumeric():
-            sub_finals[ge_idx] = sub_finals[ge_idx][:-1] + "5"
-        # reduplication words for n. and v. eg: 奶奶, 试试
+            finals[ge_idx] = finals[ge_idx][:-1] + "5"
+        # reduplication words for n. and v. e.g. 奶奶, 试试
         elif len(word) >= 2 and word[-1] == word[-2] and pos[0] in {"n", "v"}:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
+            finals[-1] = finals[-1][:-1] + "5"
         # conventional tone5 in Chinese
         elif word in self.must_neural_tone_words or word[-2:] in self.must_neural_tone_words:
-            sub_finals[-1] = sub_finals[-1][:-1] + "5"
+            finals[-1] = finals[-1][:-1] + "5"
 
-        return sub_finals
+        return finals
 
-    def _bu_tone(self, word, sub_finals):
-        # "不" before tone4 should be bu2, eg: 不怕
-        if len(word) > 1 and word[0] == "不" and sub_finals[1][-1] == "4":
-            sub_finals[0] = sub_finals[0][:-1] + "2"
-        # eg: 看不懂
+    def _bu_sandhi(self, word, finals):
+        # "不" before tone4 should be bu2, e.g. 不怕
+        if len(word) > 1 and word[0] == "不" and finals[1][-1] == "4":
+            finals[0] = finals[0][:-1] + "2"
+        # e.g. 看不懂
         elif len(word) == 3 and word[1] == "不":
-            sub_finals[1] = sub_finals[1][:-1] + "5"
+            finals[1] = finals[1][:-1] + "5"
 
-        return sub_finals
+        return finals
 
-    def _yi_tone(self, word, sub_finals):
-        # "一" in number sequences, eg: 一零零
+    def _yi_sandhi(self, word, finals):
+        # "一" in number sequences, e.g. 一零零
         if len(word) > 1 and word[0] == "一" and all([item.isnumeric() for item in word]):
-            return sub_finals
-        # "一" before tone4 should be yi2, eg: 一段
-        elif len(word) > 1 and word[0] == "一" and sub_finals[1][-1] == "4":
-            sub_finals[0] = sub_finals[0][:-1] + "2"
-        # "一" before non-tone4 should be yi4, eg: 一天
-        elif len(word) > 1 and word[0] == "一"  and  sub_finals[1][-1]!= "4":
-            sub_finals[0] = sub_finals[0][:-1] + "4"
-        # "一" beturn reduplication words shold be yi5, eg: 看一看
+            return finals
+        # "一" before tone4 should be yi2, e.g. 一段
+        elif len(word) > 1 and word[0] == "一" and finals[1][-1] == "4":
+            finals[0] = finals[0][:-1] + "2"
+        # "一" before non-tone4 should be yi4, e.g. 一天
+        elif len(word) > 1 and word[0] == "一"  and  finals[1][-1]!= "4":
+            finals[0] = finals[0][:-1] + "4"
+        # "一" between reduplication words shold be yi5, e.g. 看一看
         elif len(word) == 3 and word[1] == "一" and word[0] == word[-1]:
-            sub_finals[1] = sub_finals[1][:-1] + "5"
-        # when "一" is oedinal word, it should be yi1
+            finals[1] = finals[1][:-1] + "5"
+        # when "一" is ordinal word, it should be yi1
         elif word.startswith("第一"):
-            sub_finals[1] = sub_finals[1][:-1] + "1"
-        return sub_finals
+            finals[1] = finals[1][:-1] + "1"
+        return finals
 
-    # 我给你讲个故事  没处理
-    def _three_tone(self, word, sub_finals):
-        if len(word) == 2 and self._all_tone_three(sub_finals):
-            sub_finals[0] = sub_finals[0][:-1] + "2"
+    def _three_sandhi(self, word, finals):
+        if len(word) == 2 and self._all_tone_three(finals):
+            finals[0] = finals[0][:-1] + "2"
         elif len(word) == 3:
             word_list = jieba.cut_for_search(word)
             word_list = sorted(word_list, key=lambda i: len(i), reverse=False)
@@ -125,42 +129,43 @@ class ModifiedTone():
                 second_subword = word[:-len(first_subword)]
 
                 new_word_list = [second_subword, first_subword]
-            if self._all_tone_three(sub_finals):
-                #  disyllabic + monosyllabic, eg: 蒙古/包
+            if self._all_tone_three(finals):
+                #  disyllabic + monosyllabic, e.g. 蒙古/包
                 if len(new_word_list[0]) == 2:
-                    sub_finals[0] = sub_finals[0][:-1] + "2"
-                    sub_finals[1] = sub_finals[1][:-1] + "2"
-                #  monosyllabic + disyllabic, eg: 纸/老虎
+                    finals[0] = finals[0][:-1] + "2"
+                    finals[1] = finals[1][:-1] + "2"
+                #  monosyllabic + disyllabic, e.g. 纸/老虎
                 elif len(new_word_list[0]) == 1:
-                    sub_finals[1] = sub_finals[1][:-1] + "2"
+                    finals[1] = finals[1][:-1] + "2"
             else:
-                sub_finals_list = [sub_finals[:len(new_word_list[0])], sub_finals[len(new_word_list[0]):]]
-                if len(sub_finals_list) == 2:
-                    for i, sub in enumerate(sub_finals_list):
-                        # eg: 所有/人
+                finals_list = [finals[:len(new_word_list[0])], finals[len(new_word_list[0]):]]
+                if len(finals_list) == 2:
+                    for i, sub in enumerate(finals_list):
+                        # e.g. 所有/人
                         if self._all_tone_three(sub) and len(sub) == 2:
-                            sub_finals_list[i][0] = sub_finals_list[i][0][:-1] + "2"
-                        # eg: 好/喜欢
-                        elif i == 1 and not self._all_tone_three(sub) and sub_finals_list[i][0][-1] == "3" and \
-                                sub_finals_list[0][-1][-1] == "3":
+                            finals_list[i][0] = finals_list[i][0][:-1] + "2"
+                        # e.g. 好/喜欢
+                        elif i == 1 and not self._all_tone_three(sub) and finals_list[i][0][-1] == "3" and \
+                                finals_list[0][-1][-1] == "3":
 
-                            sub_finals_list[0][-1] = sub_finals_list[0][-1][:-1] + "2"
-                        sub_finals = sum(sub_finals_list, [])
+                            finals_list[0][-1] = finals_list[0][-1][:-1] + "2"
+                        finals = sum(finals_list, [])
         # split idiom into two words who's length is 2
         elif len(word) == 4:
-            sub_finals_list = [sub_finals[:2], sub_finals[2:]]
-            sub_finals = []
-            for sub in sub_finals_list:
+            finals_list = [finals[:2], finals[2:]]
+            finals = []
+            for sub in finals_list:
                 if self._all_tone_three(sub):
                     sub[0] = sub[0][:-1] + "2"
-                sub_finals += sub
+                finals += sub
 
-        return sub_finals
+        return finals
 
     def _all_tone_three(self, finals):
         return all(x[-1] == "3" for x in finals)
 
     # merge "不" and the word behind it
+    # if don't merge, "不" sometimes appears alone according to jieba, which may occur sandhi error
     def _merge_bu(self, seg):
         new_seg = []
         last_word = ""
@@ -176,8 +181,12 @@ class ModifiedTone():
         seg = new_seg
         return seg
 
-    # function 1: merge "一" and reduplication words in it's left and right,eg: "看","一","看" ->"看一看"
-    # function 2: merge single  "一" and the word behind it
+    # function 1: merge "一" and reduplication words in it's left and right, e.g. "听","一","听" ->"听一听"
+    # function 2: merge single  "一" and the word behind it 
+    # if don't merge, "一" sometimes appears alone according to jieba, which may occur sandhi error
+    # e.g.
+        # input seg: [('听', 'v'), ('一', 'm'), ('听', 'v')]
+        # output seg: [['听一听', 'v']]
     def _merge_yi(self, seg):
         new_seg = []
         # function 1
@@ -198,7 +207,6 @@ class ModifiedTone():
                 new_seg[-1][0] = new_seg[-1][0] + word
             else:
                 new_seg.append([word, pos])
-
         seg = new_seg
         return seg
 
@@ -228,8 +236,8 @@ class ModifiedTone():
         return seg
 
     def modified_tone(self, word, pos, finals):
-        finals = self._bu_tone(word, finals)
-        finals = self._yi_tone(word, finals)
-        finals = self._neural_tone(word, pos, finals)
-        finals = self._three_tone(word, finals)
+        finals = self._bu_sandhi(word, finals)
+        finals = self._yi_sandhi(word, finals)
+        finals = self._neural_sandhi(word, pos, finals)
+        finals = self._three_sandhi(word, finals)
         return finals

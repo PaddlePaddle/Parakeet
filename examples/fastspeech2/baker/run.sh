@@ -6,4 +6,4 @@ python3 train.py \
     --config=conf/default.yaml \
     --output-dir=exp/default \
     --nprocs=1 \
-    --phones=dump/phone_id_map.txt
+    --phones-dict=dump/phone_id_map.txt

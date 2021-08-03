@@ -205,6 +205,7 @@ class FastSpeech2(nn.Layer):
                 attention_heads=aheads,
                 linear_units=dunits,
                 num_blocks=dlayers,
+                # in decoder, don't need layer before pos_enc_class (we use embedding here in encoder)
                 input_layer=None,
                 dropout_rate=transformer_dec_dropout_rate,
                 positional_dropout_rate=transformer_dec_positional_dropout_rate,
@@ -286,7 +287,7 @@ class FastSpeech2(nn.Layer):
                 speech_lengths, modified if reduction_factor >1
         """
 
-        xs = paddle.to_tensor(text)
+        xs = text
         ilens = text_lengths
         ys, ds, ps, es = speech, durations, pitch, energy
         olens = speech_lengths
@@ -354,7 +355,7 @@ class FastSpeech2(nn.Layer):
             # (B, Lmax, adim)
             hs = self.length_regulator(hs, ds)
 
-            # forward decoder
+        # forward decoder
         if olens is not None and not is_inference:
             if self.reduction_factor > 1:
                 olens_in = paddle.to_tensor(
@@ -415,7 +416,6 @@ class FastSpeech2(nn.Layer):
         """
         x, y = text, speech
         d, p, e = durations, pitch, energy
-        x = paddle.to_tensor(text)
 
         # setup batch axis
         ilens = paddle.to_tensor(

@@ -21,20 +21,29 @@ from config import get_cfg_default
 
 
 class LogMelFBank():
-    def __init__(self, conf):
-        self.sr = conf.fs
+    def __init__(self,
+                 sr=24000,
+                 n_fft=2048,
+                 hop_length=300,
+                 win_length=1200,
+                 window="hann",
+                 n_mels=80,
+                 fmin=80,
+                 fmax=7600,
+                 eps=1e-10):
+        self.sr = sr
         # stft
-        self.n_fft = conf.n_fft
-        self.win_length = conf.win_length
-        self.hop_length = conf.n_shift
-        self.window = conf.window
+        self.n_fft = n_fft
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.window = window
         self.center = True
         self.pad_mode = "reflect"
 
         # mel
-        self.n_mels = conf.n_mels
-        self.fmin = conf.fmin
-        self.fmax = conf.fmax
+        self.n_mels = n_mels
+        self.fmin = fmin
+        self.fmax = fmax
 
         self.mel_filter = self._create_mel_filter()
 
@@ -66,6 +75,10 @@ class LogMelFBank():
         mel = np.dot(self.mel_filter, S)
         return mel
 
+    # We use different definition for log-spec between TTS and ASR
+    #   TTS: log_10(abs(stft))
+    #   ASR: log_e(power(stft))
+
     def get_log_mel_fbank(self, wav):
         mel = self._mel_spectrogram(wav)
         mel = np.clip(mel, a_min=1e-10, a_max=float("inf"))
@@ -75,12 +88,17 @@ class LogMelFBank():
 
 
 class Pitch():
-    def __init__(self, conf):
+    def __init__(self,
+                 sr=24000,
+                 hop_length=300,
+                 f0min=80,
+                 f0max=7600
+                 ):
 
-        self.sr = conf.fs
-        self.hop_length = conf.n_shift
-        self.f0min = conf.f0min
-        self.f0max = conf.f0max
+        self.sr = sr
+        self.hop_length = hop_length
+        self.f0min = f0min
+        self.f0max = f0max
 
     def _convert_to_continuous_f0(self, f0: np.array) -> np.array:
         if (f0 == 0).all():
@@ -132,6 +150,7 @@ class Pitch():
             arr[mask] = 0
             avg_arr = np.mean(arr, axis=0) if len(arr) != 0 else np.array(0)
             arr_list.append(avg_arr)
+        # shape (T,1)
         arr_list = np.expand_dims(np.array(arr_list), 0).T
 
         return arr_list
@@ -149,15 +168,22 @@ class Pitch():
 
 
 class Energy():
-    def __init__(self, conf):
+    def __init__(self,
+                 sr=24000,
+                 n_fft=2048,
+                 hop_length=300,
+                 win_length=1200,
+                 window="hann",
+                 center=True,
+                 pad_mode="reflect"):
 
-        self.sr = conf.fs
-        self.n_fft = conf.n_fft
-        self.win_length = conf.win_length
-        self.hop_length = conf.n_shift
-        self.window = conf.window
-        self.center = True
-        self.pad_mode = "reflect"
+        self.sr = sr
+        self.n_fft = n_fft
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.window = window
+        self.center = center
+        self.pad_mode = pad_mode
 
     def _stft(self, wav):
         D = librosa.core.stft(
@@ -173,7 +199,7 @@ class Energy():
     def _calculate_energy(self, input):
         input = input.astype(np.float32)
         input_stft = self._stft(input)
-        input_power = np.abs(input_stft)**2
+        input_power = np.abs(input_stft) ** 2
         energy = np.sqrt(
             np.clip(
                 np.sum(input_power, axis=0), a_min=1.0e-10, a_max=float(
@@ -187,6 +213,7 @@ class Energy():
             arr = input[start:end]
             avg_arr = np.mean(arr, axis=0) if len(arr) != 0 else np.array(0)
             arr_list.append(avg_arr)
+        # shape (T,1)
         arr_list = np.expand_dims(np.array(arr_list), 0).T
         return arr_list
 
@@ -201,19 +228,34 @@ if __name__ == "__main__":
     C = get_cfg_default()
     filename = "../raw_data/data/format.1/000001.flac"
     wav, _ = librosa.load(filename, sr=C.fs)
-    mel_extractor = LogMelFBank(C)
+    mel_extractor = LogMelFBank(
+        sr=C.fs,
+        n_fft=C.n_fft,
+        hop_length=C.n_shift,
+        win_length=C.win_length,
+        window=C.window,
+        n_mels=C.n_mels,
+        fmin=C.fmin,
+        fmax=C.fmax, )
     mel = mel_extractor.get_log_mel_fbank(wav)
     print(mel)
     print(mel.shape)
 
-    pitch_extractor = Pitch(C)
+    pitch_extractor = Pitch(sr=C.fs,
+                            hop_length=C.n_shift,
+                            f0min=C.f0min,
+                            f0max=C.f0max)
     duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
     duration = np.array([int(x) for x in duration.split(" ")])
     avg_f0 = pitch_extractor.get_pitch(wav, duration=duration)
     print(avg_f0)
     print(avg_f0.shape)
 
-    energy_extractor = Energy(C)
+    energy_extractor = Energy(sr=C.fs,
+                              n_fft=C.n_fft,
+                              hop_length=C.n_shift,
+                              win_length=C.win_length,
+                              window=C.window)
     duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
     duration = np.array([int(x) for x in duration.split(" ")])
     avg_energy = energy_extractor.get_energy(wav, duration=duration)

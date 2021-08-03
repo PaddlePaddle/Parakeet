@@ -11,4 +11,4 @@ python3 synthesize.py \
   --test-metadata=dump/test/norm/metadata.jsonl \
   --output-dir=exp/debug/test \
   --device="gpu" \
-  --phones=dump/phone_id_map.txt
+  --phones-dict=dump/phone_id_map.txt

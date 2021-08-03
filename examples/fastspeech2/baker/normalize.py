@@ -60,7 +60,7 @@ def main():
         required=True,
         help="energy statistics file.")
     parser.add_argument(
-        "--phones",
+        "--phones-dict",
         type=str,
         default="phone_id_map.txt ",
         help="phone vocabulary file.")
@@ -128,11 +128,11 @@ def main():
     energy_scaler.scale_ = np.load(args.energy_stats)[1]
     energy_scaler.n_features_in_ = energy_scaler.mean_.shape[0]
 
-    voc_phones = {}
-    with open(args.phones, 'rt') as f:
+    vocab_phones = {}
+    with open(args.phones_dict, 'rt') as f:
         phn_id = [line.strip().split() for line in f.readlines()]
     for phn, id in phn_id:
-        voc_phones[phn] = int(id)
+        vocab_phones[phn] = int(id)
 
     # process each file
     output_metadata = []
@@ -160,7 +160,7 @@ def main():
         energy_dir.mkdir(parents=True, exist_ok=True)
         energy_path = energy_dir / f"{utt_id}_energy.npy"
         np.save(energy_path, energy.astype(np.float32), allow_pickle=False)
-        phone_ids = [voc_phones[p] for p in item['phones']]
+        phone_ids = [vocab_phones[p] for p in item['phones']]
         record = {
             "utt_id": item['utt_id'],
             "text": phone_ids,
