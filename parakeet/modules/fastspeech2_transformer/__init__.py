@@ -11,12 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from parakeet.frontend.vocab import *
-from parakeet.frontend.phonectic import *
-from parakeet.frontend.punctuation import *
-from parakeet.frontend.normalizer import *
-from parakeet.frontend.cn_normalization import *
-from parakeet.frontend.tone_sandhi import *
-from parakeet.frontend.generate_lexicon import *
-
