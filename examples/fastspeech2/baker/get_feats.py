@@ -88,12 +88,7 @@ class LogMelFBank():
 
 
 class Pitch():
-    def __init__(self,
-                 sr=24000,
-                 hop_length=300,
-                 f0min=80,
-                 f0max=7600
-                 ):
+    def __init__(self, sr=24000, hop_length=300, f0min=80, f0max=7600):
 
         self.sr = sr
         self.hop_length = hop_length
@@ -199,7 +194,7 @@ class Energy():
     def _calculate_energy(self, input):
         input = input.astype(np.float32)
         input_stft = self._stft(input)
-        input_power = np.abs(input_stft) ** 2
+        input_power = np.abs(input_stft)**2
         energy = np.sqrt(
             np.clip(
                 np.sum(input_power, axis=0), a_min=1.0e-10, a_max=float(
@@ -241,21 +236,20 @@ if __name__ == "__main__":
     print(mel)
     print(mel.shape)
 
-    pitch_extractor = Pitch(sr=C.fs,
-                            hop_length=C.n_shift,
-                            f0min=C.f0min,
-                            f0max=C.f0max)
+    pitch_extractor = Pitch(
+        sr=C.fs, hop_length=C.n_shift, f0min=C.f0min, f0max=C.f0max)
     duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
     duration = np.array([int(x) for x in duration.split(" ")])
     avg_f0 = pitch_extractor.get_pitch(wav, duration=duration)
     print(avg_f0)
     print(avg_f0.shape)
 
-    energy_extractor = Energy(sr=C.fs,
-                              n_fft=C.n_fft,
-                              hop_length=C.n_shift,
-                              win_length=C.win_length,
-                              window=C.window)
+    energy_extractor = Energy(
+        sr=C.fs,
+        n_fft=C.n_fft,
+        hop_length=C.n_shift,
+        win_length=C.win_length,
+        window=C.window)
     duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
     duration = np.array([int(x) for x in duration.split(" ")])
     avg_energy = energy_extractor.get_energy(wav, duration=duration)

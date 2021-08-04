@@ -97,7 +97,7 @@ def process_sentence(config: Dict[str, Any],
     utt_id = fp.stem
 
     # reading
-    y, sr = librosa.load(fp, sr=config.sr)  # resampling may occur
+    y, sr = librosa.load(str(fp), sr=config.sr)  # resampling may occur
     assert len(y.shape) == 1, f"{utt_id} is not a mono-channel audio."
     assert np.abs(y).max(
     ) <= 1.0, f"{utt_id} is seems to be different that 16 bit PCM."

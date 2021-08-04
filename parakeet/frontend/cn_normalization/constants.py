@@ -16,7 +16,6 @@ import re
 import string
 from pypinyin.constants import SUPPORT_UCS4
 
-
 # 全角半角转换
 # 英文字符全角 -> 半角映射表 (num: 52)
 F2H_ASCII_LETTERS = {
@@ -28,10 +27,7 @@ F2H_ASCII_LETTERS = {
 H2F_ASCII_LETTERS = {value: key for key, value in F2H_ASCII_LETTERS.items()}
 
 # 数字字符全角 -> 半角映射表 (num: 10)
-F2H_DIGITS = {
-    chr(ord(char) + 65248): char
-    for char in string.digits
-}
+F2H_DIGITS = {chr(ord(char) + 65248): char for char in string.digits}
 # 数字字符半角 -> 全角映射表
 H2F_DIGITS = {value: key for key, value in F2H_DIGITS.items()}
 
@@ -49,24 +45,21 @@ H2F_SPACE = {' ': '\u3000'}
 
 # 非"有拼音的汉字"的字符串，可用于NSW提取
 if SUPPORT_UCS4:
-    RE_NSW = re.compile(
-        r'(?:[^'
-        r'\u3007'                  # 〇
-        r'\u3400-\u4dbf'           # CJK扩展A:[3400-4DBF]
-        r'\u4e00-\u9fff'           # CJK基本:[4E00-9FFF]
-        r'\uf900-\ufaff'           # CJK兼容:[F900-FAFF]
-        r'\U00020000-\U0002A6DF'   # CJK扩展B:[20000-2A6DF]
-        r'\U0002A703-\U0002B73F'   # CJK扩展C:[2A700-2B73F]
-        r'\U0002B740-\U0002B81D'   # CJK扩展D:[2B740-2B81D]
-        r'\U0002F80A-\U0002FA1F'   # CJK兼容扩展:[2F800-2FA1F]
-        r'])+'
-    )
+    RE_NSW = re.compile(r'(?:[^'
+                        r'\u3007'  # 〇
+                        r'\u3400-\u4dbf'  # CJK扩展A:[3400-4DBF]
+                        r'\u4e00-\u9fff'  # CJK基本:[4E00-9FFF]
+                        r'\uf900-\ufaff'  # CJK兼容:[F900-FAFF]
+                        r'\U00020000-\U0002A6DF'  # CJK扩展B:[20000-2A6DF]
+                        r'\U0002A703-\U0002B73F'  # CJK扩展C:[2A700-2B73F]
+                        r'\U0002B740-\U0002B81D'  # CJK扩展D:[2B740-2B81D]
+                        r'\U0002F80A-\U0002FA1F'  # CJK兼容扩展:[2F800-2FA1F]
+                        r'])+')
 else:
     RE_NSW = re.compile(  # pragma: no cover
         r'(?:[^'
-        r'\u3007'                  # 〇
-        r'\u3400-\u4dbf'           # CJK扩展A:[3400-4DBF]
-        r'\u4e00-\u9fff'           # CJK基本:[4E00-9FFF]
-        r'\uf900-\ufaff'           # CJK兼容:[F900-FAFF]
-        r'])+'
-    )
+        r'\u3007'  # 〇
+        r'\u3400-\u4dbf'  # CJK扩展A:[3400-4DBF]
+        r'\u4e00-\u9fff'  # CJK基本:[4E00-9FFF]
+        r'\uf900-\ufaff'  # CJK兼容:[F900-FAFF]
+        r'])+')

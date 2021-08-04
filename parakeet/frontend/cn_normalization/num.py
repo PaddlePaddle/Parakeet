@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Rules to verbalize numbers into Chinese characters.
 https://zh.wikipedia.org/wiki/中文数字#現代中文
@@ -20,7 +19,6 @@ https://zh.wikipedia.org/wiki/中文数字#現代中文
 import re
 from collections import OrderedDict
 from typing import List
-
 
 DIGITS = {str(i): tran for i, tran in enumerate('零一二三四五六七八九')}
 UNITS = OrderedDict({
@@ -33,6 +31,8 @@ UNITS = OrderedDict({
 
 # 分数表达式
 RE_FRAC = re.compile(r'(-?)(\d+)/(\d+)')
+
+
 def replace_frac(match: re.Match) -> str:
     sign = match.group(1)
     nominator = match.group(2)
@@ -42,10 +42,12 @@ def replace_frac(match: re.Match) -> str:
     denominator: str = num2str(denominator)
     result = f"{sign}{denominator}分之{nominator}"
     return result
-    
+
 
 # 百分数表达式
 RE_PERCENTAGE = re.compile(r'(-?)(\d+(\.\d+)?)%')
+
+
 def replace_percentage(match: re.Match) -> str:
     sign = match.group(1)
     percent = match.group(2)
@@ -54,28 +56,28 @@ def replace_percentage(match: re.Match) -> str:
     result = f"{sign}百分之{percent}"
     return result
 
+
 # 整数表达式
 # 带负号或者不带负号的整数 12, -10
-RE_INTEGER = re.compile(
-    r'(-?)'
-    r'(\d+)'
-)
+RE_INTEGER = re.compile(r'(-?)' r'(\d+)')
 
 # 编号-无符号整形
 # 00078
 RE_DEFAULT_NUM = re.compile(r'\d{4}\d*')
+
+
 def replace_default_num(match: re.Match):
     number = match.group(0)
     return verbalize_digit(number)
+
 
 # 数字表达式
 # 1. 整数: -10, 10;
 # 2. 浮点数: 10.2, -0.3
 # 3. 不带符号和整数部分的纯浮点数: .22, .38   
-RE_NUMBER = re.compile(
-    r'(-?)((\d+)(\.\d+)?)'
-    r'|(\.(\d+))'
-)
+RE_NUMBER = re.compile(r'(-?)((\d+)(\.\d+)?)' r'|(\.(\d+))')
+
+
 def replace_number(match: re.Match) -> str:
     sign = match.group(1)
     number = match.group(2)
@@ -88,11 +90,12 @@ def replace_number(match: re.Match) -> str:
         result = f"{sign}{number}"
     return result
 
+
 # 范围表达式
 # 12-23, 12~23
-RE_RANGE = re.compile(
-    r'(\d+)[-~](\d+)'
-)
+RE_RANGE = re.compile(r'(\d+)[-~](\d+)')
+
+
 def replace_range(match: re.Match) -> str:
     first, second = match.group(1), match.group(2)
     first: str = num2str(first)
@@ -111,25 +114,30 @@ def _get_value(value_string: str, use_zero: bool=True) -> List[str]:
         else:
             return [DIGITS[stripped]]
     else:
-        largest_unit = next(power for power in reversed(UNITS.keys()) if power < len(stripped))
+        largest_unit = next(
+            power for power in reversed(UNITS.keys()) if power < len(stripped))
         first_part = value_string[:-largest_unit]
         second_part = value_string[-largest_unit:]
-        return _get_value(first_part) + [UNITS[largest_unit]] + _get_value(second_part)
+        return _get_value(first_part) + [UNITS[largest_unit]] + _get_value(
+            second_part)
+
 
 def verbalize_cardinal(value_string: str) -> str:
     if not value_string:
         return ''
-    
+
     # 000 -> '零' , 0 -> '零'
     value_string = value_string.lstrip('0')
     if len(value_string) == 0:
         return DIGITS['0']
-    
+
     result_symbols = _get_value(value_string)
     # verbalized number starting with '一十*' is abbreviated as `十*`
-    if len(result_symbols) >= 2 and result_symbols[0] == DIGITS['1'] and result_symbols[1] == UNITS[1]:
+    if len(result_symbols) >= 2 and result_symbols[0] == DIGITS[
+            '1'] and result_symbols[1] == UNITS[1]:
         result_symbols = result_symbols[1:]
     return ''.join(result_symbols)
+
 
 def verbalize_digit(value_string: str, alt_one=False) -> str:
     result_symbols = [DIGITS[digit] for digit in value_string]
@@ -137,6 +145,7 @@ def verbalize_digit(value_string: str, alt_one=False) -> str:
     if alt_one:
         result.replace("一", "幺")
     return result
+
 
 def num2str(value_string: str) -> str:
     integer_decimal = value_string.split('.')
@@ -146,8 +155,10 @@ def num2str(value_string: str) -> str:
     elif len(integer_decimal) == 2:
         integer, decimal = integer_decimal
     else:
-        raise ValueError(f"The value string: '${value_string}' has more than one point in it.")
-    
+        raise ValueError(
+            f"The value string: '${value_string}' has more than one point in it."
+        )
+
     result = verbalize_cardinal(integer)
 
     decimal = decimal.rstrip('0')

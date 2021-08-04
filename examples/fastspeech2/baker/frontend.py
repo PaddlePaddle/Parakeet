@@ -44,9 +44,7 @@ class Frontend():
 
     def _t2id(self, tones):
         # replace unk phone with sp
-        tones = [
-            tone if tone in self.vocab_tones else "0" for tone in tones
-        ]
+        tones = [tone if tone in self.vocab_tones else "0" for tone in tones]
         tone_ids = [self.vocab_tones[item] for item in tones]
         return np.array(tone_ids, np.int64)
 

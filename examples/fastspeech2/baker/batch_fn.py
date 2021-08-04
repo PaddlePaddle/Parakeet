@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 from parakeet.data.batch import batch_sequences
 
 
@@ -34,6 +35,15 @@ def collate_baker_examples(examples):
     speech = batch_sequences(speech)
     durations = batch_sequences(durations)
     energy = batch_sequences(energy)
+
+    # convert each batch to paddle.Tensor
+    text = paddle.to_tensor(text)
+    pitch = paddle.to_tensor(pitch)
+    speech = paddle.to_tensor(speech)
+    durations = paddle.to_tensor(durations)
+    energy = paddle.to_tensor(energy)
+    text_lengths = paddle.to_tensor(text_lengths)
+    speech_lengths = paddle.to_tensor(speech_lengths)
 
     batch = {
         "text": text,

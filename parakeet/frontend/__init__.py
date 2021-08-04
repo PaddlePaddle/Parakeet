@@ -19,4 +19,3 @@ from parakeet.frontend.normalizer import *
 from parakeet.frontend.cn_normalization import *
 from parakeet.frontend.tone_sandhi import *
 from parakeet.frontend.generate_lexicon import *
-

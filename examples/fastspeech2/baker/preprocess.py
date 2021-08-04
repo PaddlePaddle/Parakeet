@@ -139,15 +139,14 @@ def compare_duration_and_mel_length(sentences, utt, mel):
                 sentences.pop(utt)
 
 
-def process_sentence(
-        config: Dict[str, Any],
-        fp: Path,
-        sentences: Dict,
-        output_dir: Path,
-        mel_extractor=None,
-        pitch_extractor=None,
-        energy_extractor=None,
-        cut_sil: bool = True):
+def process_sentence(config: Dict[str, Any],
+                     fp: Path,
+                     sentences: Dict,
+                     output_dir: Path,
+                     mel_extractor=None,
+                     pitch_extractor=None,
+                     energy_extractor=None,
+                     cut_sil: bool=True):
     utt_id = fp.stem
     record = None
     if utt_id in sentences:
@@ -160,7 +159,8 @@ def process_sentence(
         durations = sentences[utt_id][1]
         d_cumsum = np.pad(np.array(durations).cumsum(0), (1, 0), 'constant')
         # little imprecise than use *.TextGrid directly
-        times = librosa.frames_to_time(d_cumsum, sr=config.fs, hop_length=config.n_shift)
+        times = librosa.frames_to_time(
+            d_cumsum, sr=config.fs, hop_length=config.n_shift)
         if cut_sil:
             start = 0
             end = d_cumsum[-1]
@@ -222,8 +222,8 @@ def process_sentences(config,
                       mel_extractor=None,
                       pitch_extractor=None,
                       energy_extractor=None,
-                      nprocs: int = 1,
-                      cut_sil: bool = True):
+                      nprocs: int=1,
+                      cut_sil: bool=True):
     if nprocs == 1:
         results = []
         for fp in tqdm.tqdm(fps, total=len(fps)):
@@ -239,7 +239,8 @@ def process_sentences(config,
                 for fp in fps:
                     future = pool.submit(process_sentence, config, fp,
                                          sentences, output_dir, mel_extractor,
-                                         pitch_extractor, energy_extractor, cut_sil)
+                                         pitch_extractor, energy_extractor,
+                                         cut_sil)
                     future.add_done_callback(lambda p: progress.update())
                     futures.append(future)
 
@@ -289,7 +290,10 @@ def main():
         return True if str.lower() == 'true' else False
 
     parser.add_argument(
-        "--cut-sil", type=str2bool, default=True, help="whether cut sil in the edge of audio")
+        "--cut-sil",
+        type=str2bool,
+        default=True,
+        help="whether cut sil in the edge of audio")
     args = parser.parse_args()
 
     C = get_cfg_default()
@@ -336,15 +340,14 @@ def main():
         n_mels=C.n_mels,
         fmin=C.fmin,
         fmax=C.fmax)
-    pitch_extractor = Pitch(sr=C.fs,
-                            hop_length=C.n_shift,
-                            f0min=C.f0min,
-                            f0max=C.f0max)
-    energy_extractor = Energy(sr=C.fs,
-                              n_fft=C.n_fft,
-                              hop_length=C.n_shift,
-                              win_length=C.win_length,
-                              window=C.window)
+    pitch_extractor = Pitch(
+        sr=C.fs, hop_length=C.n_shift, f0min=C.f0min, f0max=C.f0max)
+    energy_extractor = Energy(
+        sr=C.fs,
+        n_fft=C.n_fft,
+        hop_length=C.n_shift,
+        win_length=C.win_length,
+        window=C.window)
 
     # process for the 3 sections
 

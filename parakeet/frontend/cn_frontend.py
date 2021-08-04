@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import jieba.posseg as psg
 import numpy as np
 import paddle
@@ -34,7 +33,8 @@ class Frontend():
         self.g2p_model = g2p_model
         if self.g2p_model == "g2pM":
             self.g2pM_model = G2pM()
-            self.pinyin2phone = generate_lexicon(with_tone=True, with_erhua=False)
+            self.pinyin2phone = generate_lexicon(
+                with_tone=True, with_erhua=False)
 
     def _get_initials_finals(self, word):
         initials = []
@@ -55,7 +55,7 @@ class Frontend():
         elif self.g2p_model == "g2pM":
             pinyins = self.g2pM_model(word, tone=True, char_split=False)
             for pinyin in pinyins:
-                pinyin = pinyin.replace("u:","v")
+                pinyin = pinyin.replace("u:", "v")
                 if pinyin in self.pinyin2phone:
                     initial_final_list = self.pinyin2phone[pinyin].split(" ")
                     if len(initial_final_list) == 2:
@@ -84,7 +84,8 @@ class Frontend():
                 if pos == 'eng':
                     continue
                 sub_initials, sub_finals = self._get_initials_finals(word)
-                sub_finals = self.tone_modifier.modified_tone(word, pos, sub_finals)
+                sub_finals = self.tone_modifier.modified_tone(word, pos,
+                                                              sub_finals)
                 initials.append(sub_initials)
                 finals.append(sub_finals)
                 # assert len(sub_initials) == len(sub_finals) == len(word)
