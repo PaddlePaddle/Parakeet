@@ -247,21 +247,20 @@ class FastSpeech2(nn.Layer):
             speech_lengths: paddle.Tensor,
             durations: paddle.Tensor,
             pitch: paddle.Tensor,
-            energy: paddle.Tensor, ) -> Tuple[paddle.Tensor, Dict[
-                str, paddle.Tensor], paddle.Tensor]:
+            energy: paddle.Tensor, ) -> Sequence[paddle.Tensor]:
         """Calculate forward propagation.
 
         Parameters
         ----------
-            text : LongTensor
+            text : Tensor
                 Batch of padded token ids (B, Tmax).
-            text_lengths : LongTensor)
+            text_lengths : Tensor)
                 Batch of lengths of each input (B,).
             speech : Tensor
                 Batch of padded target features (B, Lmax, odim).
-            speech_lengths : LongTensor
+            speech_lengths : Tensor
                 Batch of the lengths of each target (B,).
-            durations : LongTensor
+            durations : Tensor
                 Batch of padded durations (B, Tmax).
             pitch : Tensor
                 Batch of padded token-averaged pitch (B, Tmax, 1).
@@ -281,8 +280,6 @@ class FastSpeech2(nn.Layer):
                 energy predictor's output
             Tensor
                 speech
-            Tensor
-                real text_lengths
             Tensor
                 speech_lengths, modified if reduction_factor >1
         """
@@ -387,17 +384,16 @@ class FastSpeech2(nn.Layer):
             pitch: paddle.Tensor=None,
             energy: paddle.Tensor=None,
             alpha: float=1.0,
-            use_teacher_forcing: bool=False, ) -> Tuple[
-                paddle.Tensor, paddle.Tensor, paddle.Tensor]:
+            use_teacher_forcing: bool=False, ) -> paddle.Tensor:
         """Generate the sequence of features given the sequences of characters.
 
         Parameters
         ----------
-            text : LongTensor
+            text : Tensor
                 Input sequence of characters (T,).
             speech : Tensor, optional
                 Feature sequence to extract style (N, idim).
-            durations : LongTensor, optional
+            durations : Tensor, optional
                 Groundtruth of duration (T,).
             pitch : Tensor, optional
                 Groundtruth of token-averaged pitch (T, 1).
@@ -452,7 +448,7 @@ class FastSpeech2(nn.Layer):
 
         Parameters
         ----------
-            ilens : LongTensor
+            ilens : Tensor
                 Batch of lengths (B,).
 
         Returns
@@ -553,7 +549,7 @@ class FastSpeech2Loss(nn.Layer):
                 Batch of outputs after postnets (B, Lmax, odim).
             before_outs : Tensor
                 Batch of outputs before postnets (B, Lmax, odim).
-            d_outs : LongTensor
+            d_outs : Tensor
                  Batch of outputs of duration predictor (B, Tmax).
             p_outs : Tensor
                 Batch of outputs of pitch predictor (B, Tmax, 1).
@@ -561,15 +557,15 @@ class FastSpeech2Loss(nn.Layer):
                 Batch of outputs of energy predictor (B, Tmax, 1).
             ys : Tensor
                 Batch of target features (B, Lmax, odim).
-            ds : LongTensor
+            ds : Tensor
                 Batch of durations (B, Tmax).
             ps : Tensor
                 Batch of target token-averaged pitch (B, Tmax, 1).
             es : Tensor
                 Batch of target token-averaged energy (B, Tmax, 1).
-            ilens : LongTensor
+            ilens : Tensor
                 Batch of the lengths of each input (B,).
-            olens : LongTensor
+            olens : Tensor
                 Batch of the lengths of each target (B,).
 
         Returns

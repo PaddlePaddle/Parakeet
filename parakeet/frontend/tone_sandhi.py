@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Tuple
 
 import jieba
 from pypinyin import lazy_pinyin
@@ -20,43 +21,51 @@ from pypinyin import Style
 
 class ToneSandhi():
     def __init__(self):
-        self.must_neural_tone_words = {'麻烦', '麻利', '鸳鸯', '高粱', '骨头', '骆驼', '马虎', '首饰', '馒头', '馄饨', '风筝', '难为', '队伍',
-                                       '阔气', '闺女', '门道', '锄头', '铺盖', '铃铛', '铁匠', '钥匙', '里脊', '里头', '部分', '那么', '道士',
-                                       '造化', '迷糊', '连累', '这么', '这个', '运气', '过去', '软和', '转悠', '踏实', '跳蚤', '跟头', '趔趄',
-                                       '财主', '豆腐', '讲究', '记性', '记号', '认识', '规矩', '见识', '裁缝', '补丁', '衣裳', '衣服', '衙门',
-                                       '街坊', '行李', '行当', '蛤蟆', '蘑菇', '薄荷', '葫芦', '葡萄', '萝卜', '荸荠', '苗条', '苗头', '苍蝇',
-                                       '芝麻', '舒服', '舒坦', '舌头', '自在', '膏药', '脾气', '脑袋', '脊梁', '能耐', '胳膊', '胭脂', '胡萝',
-                                       '胡琴', '胡同', '聪明', '耽误', '耽搁', '耷拉', '耳朵', '老爷', '老实', '老婆', '老头', '老太', '翻腾',
-                                       '罗嗦', '罐头', '编辑', '结实', '红火', '累赘', '糨糊', '糊涂', '精神', '粮食', '簸箕', '篱笆', '算计',
-                                       '算盘', '答应', '笤帚', '笑语', '笑话', '窟窿', '窝囊', '窗户', '稳当', '稀罕', '称呼', '秧歌', '秀气',
-                                       '秀才', '福气', '祖宗', '砚台', '码头', '石榴', '石头', '石匠', '知识', '眼睛', '眯缝', '眨巴', '眉毛',
-                                       '相声', '盘算', '白净', '痢疾', '痛快', '疟疾', '疙瘩', '疏忽', '畜生', '生意', '甘蔗', '琵琶', '琢磨',
-                                       '琉璃', '玻璃', '玫瑰', '玄乎', '狐狸', '状元', '特务', '牲口', '牙碜', '牌楼', '爽快', '爱人', '热闹',
-                                       '烧饼', '烟筒', '烂糊', '点心', '炊帚', '灯笼', '火候', '漂亮', '滑溜', '溜达', '温和', '清楚', '消息',
-                                       '浪头', '活泼', '比方', '正经', '欺负', '模糊', '槟榔', '棺材', '棒槌', '棉花', '核桃', '栅栏', '柴火',
-                                       '架势', '枕头', '枇杷', '机灵', '本事', '木头', '木匠', '朋友', '月饼', '月亮', '暖和', '明白', '时候',
-                                       '新鲜', '故事', '收拾', '收成', '提防', '挖苦', '挑剔', '指甲', '指头', '拾掇', '拳头', '拨弄', '招牌',
-                                       '招呼', '抬举', '护士', '折腾', '扫帚', '打量', '打算', '打点', '打扮', '打听', '打发', '扎实', '扁担',
-                                       '戒指', '懒得', '意识', '意思', '情形', '悟性', '怪物', '思量', '怎么', '念头', '念叨', '快活', '忙活',
-                                       '志气', '心思', '得罪', '张罗', '弟兄', '开通', '应酬', '庄稼', '干事', '帮手', '帐篷', '希罕', '师父',
-                                       '师傅', '巴结', '巴掌', '差事', '工夫', '岁数', '屁股', '尾巴', '少爷', '小气', '小伙', '将就', '对头',
-                                       '对付', '寡妇', '家伙', '客气', '实在', '官司', '学问', '学生', '字号', '嫁妆', '媳妇', '媒人', '婆家',
-                                       '娘家', '委屈', '姑娘', '姐夫', '妯娌', '妥当', '妖精', '奴才', '女婿', '头发', '太阳', '大爷', '大方',
-                                       '大意', '大夫', '多少', '多么', '外甥', '壮实', '地道', '地方', '在乎', '困难', '嘴巴', '嘱咐', '嘟囔',
-                                       '嘀咕', '喜欢', '喇嘛', '喇叭', '商量', '唾沫', '哑巴', '哈欠', '哆嗦', '咳嗽', '和尚', '告诉', '告示',
-                                       '含糊', '吓唬', '后头', '名字', '名堂', '合同', '吆喝', '叫唤', '口袋', '厚道', '厉害', '千斤', '包袱',
-                                       '包涵', '匀称', '勤快', '动静', '动弹', '功夫', '力气', '前头', '刺猬', '刺激', '别扭', '利落', '利索',
-                                       '利害', '分析', '出息', '凑合', '凉快', '冷战', '冤枉', '冒失', '养活', '关系', '先生', '兄弟', '便宜',
-                                       '使唤', '佩服', '作坊', '体面', '位置', '似的', '伙计', '休息', '什么', '人家', '亲戚', '亲家', '交情',
-                                       '云彩', '事情', '买卖', '主意', '丫头', '丧气', '两口', '东西', '东家', '世故', '不由', '不在', '下水',
-                                       '下巴', '上头', '上司', '丈夫', '丈人', '一辈', '那个'}
+        self.must_neural_tone_words = {
+            '麻烦', '麻利', '鸳鸯', '高粱', '骨头', '骆驼', '马虎', '首饰', '馒头', '馄饨', '风筝',
+            '难为', '队伍', '阔气', '闺女', '门道', '锄头', '铺盖', '铃铛', '铁匠', '钥匙', '里脊',
+            '里头', '部分', '那么', '道士', '造化', '迷糊', '连累', '这么', '这个', '运气', '过去',
+            '软和', '转悠', '踏实', '跳蚤', '跟头', '趔趄', '财主', '豆腐', '讲究', '记性', '记号',
+            '认识', '规矩', '见识', '裁缝', '补丁', '衣裳', '衣服', '衙门', '街坊', '行李', '行当',
+            '蛤蟆', '蘑菇', '薄荷', '葫芦', '葡萄', '萝卜', '荸荠', '苗条', '苗头', '苍蝇', '芝麻',
+            '舒服', '舒坦', '舌头', '自在', '膏药', '脾气', '脑袋', '脊梁', '能耐', '胳膊', '胭脂',
+            '胡萝', '胡琴', '胡同', '聪明', '耽误', '耽搁', '耷拉', '耳朵', '老爷', '老实', '老婆',
+            '老头', '老太', '翻腾', '罗嗦', '罐头', '编辑', '结实', '红火', '累赘', '糨糊', '糊涂',
+            '精神', '粮食', '簸箕', '篱笆', '算计', '算盘', '答应', '笤帚', '笑语', '笑话', '窟窿',
+            '窝囊', '窗户', '稳当', '稀罕', '称呼', '秧歌', '秀气', '秀才', '福气', '祖宗', '砚台',
+            '码头', '石榴', '石头', '石匠', '知识', '眼睛', '眯缝', '眨巴', '眉毛', '相声', '盘算',
+            '白净', '痢疾', '痛快', '疟疾', '疙瘩', '疏忽', '畜生', '生意', '甘蔗', '琵琶', '琢磨',
+            '琉璃', '玻璃', '玫瑰', '玄乎', '狐狸', '状元', '特务', '牲口', '牙碜', '牌楼', '爽快',
+            '爱人', '热闹', '烧饼', '烟筒', '烂糊', '点心', '炊帚', '灯笼', '火候', '漂亮', '滑溜',
+            '溜达', '温和', '清楚', '消息', '浪头', '活泼', '比方', '正经', '欺负', '模糊', '槟榔',
+            '棺材', '棒槌', '棉花', '核桃', '栅栏', '柴火', '架势', '枕头', '枇杷', '机灵', '本事',
+            '木头', '木匠', '朋友', '月饼', '月亮', '暖和', '明白', '时候', '新鲜', '故事', '收拾',
+            '收成', '提防', '挖苦', '挑剔', '指甲', '指头', '拾掇', '拳头', '拨弄', '招牌', '招呼',
+            '抬举', '护士', '折腾', '扫帚', '打量', '打算', '打点', '打扮', '打听', '打发', '扎实',
+            '扁担', '戒指', '懒得', '意识', '意思', '情形', '悟性', '怪物', '思量', '怎么', '念头',
+            '念叨', '快活', '忙活', '志气', '心思', '得罪', '张罗', '弟兄', '开通', '应酬', '庄稼',
+            '干事', '帮手', '帐篷', '希罕', '师父', '师傅', '巴结', '巴掌', '差事', '工夫', '岁数',
+            '屁股', '尾巴', '少爷', '小气', '小伙', '将就', '对头', '对付', '寡妇', '家伙', '客气',
+            '实在', '官司', '学问', '学生', '字号', '嫁妆', '媳妇', '媒人', '婆家', '娘家', '委屈',
+            '姑娘', '姐夫', '妯娌', '妥当', '妖精', '奴才', '女婿', '头发', '太阳', '大爷', '大方',
+            '大意', '大夫', '多少', '多么', '外甥', '壮实', '地道', '地方', '在乎', '困难', '嘴巴',
+            '嘱咐', '嘟囔', '嘀咕', '喜欢', '喇嘛', '喇叭', '商量', '唾沫', '哑巴', '哈欠', '哆嗦',
+            '咳嗽', '和尚', '告诉', '告示', '含糊', '吓唬', '后头', '名字', '名堂', '合同', '吆喝',
+            '叫唤', '口袋', '厚道', '厉害', '千斤', '包袱', '包涵', '匀称', '勤快', '动静', '动弹',
+            '功夫', '力气', '前头', '刺猬', '刺激', '别扭', '利落', '利索', '利害', '分析', '出息',
+            '凑合', '凉快', '冷战', '冤枉', '冒失', '养活', '关系', '先生', '兄弟', '便宜', '使唤',
+            '佩服', '作坊', '体面', '位置', '似的', '伙计', '休息', '什么', '人家', '亲戚', '亲家',
+            '交情', '云彩', '事情', '买卖', '主意', '丫头', '丧气', '两口', '东西', '东家', '世故',
+            '不由', '不在', '下水', '下巴', '上头', '上司', '丈夫', '丈人', '一辈', '那个'
+        }
 
     # the meaning of jieba pos tag: https://blog.csdn.net/weixin_44174352/article/details/113731041
     # e.g.
-        # word: "家里"
-        # pos: "s" 
-        # finals: ['ia1', 'i3']
-    def _neural_sandhi(self, word, pos, finals):
+    # word: "家里"
+    # pos: "s" 
+    # finals: ['ia1', 'i3']
+    def _neural_sandhi(self, word: str, pos: str,
+                       finals: List[str]) -> List[str]:
         ge_idx = word.find("个")
         if len(word) == 1 and word in "吧呢啊嘛" and pos == 'y':
             finals[-1] = finals[-1][:-1] + "5"
@@ -80,12 +89,13 @@ class ToneSandhi():
         elif len(word) >= 2 and word[-1] == word[-2] and pos[0] in {"n", "v"}:
             finals[-1] = finals[-1][:-1] + "5"
         # conventional tone5 in Chinese
-        elif word in self.must_neural_tone_words or word[-2:] in self.must_neural_tone_words:
+        elif word in self.must_neural_tone_words or word[
+                -2:] in self.must_neural_tone_words:
             finals[-1] = finals[-1][:-1] + "5"
 
         return finals
 
-    def _bu_sandhi(self, word, finals):
+    def _bu_sandhi(self, word: str, finals: List[str]) -> List[str]:
         # "不" before tone4 should be bu2, e.g. 不怕
         if len(word) > 1 and word[0] == "不" and finals[1][-1] == "4":
             finals[0] = finals[0][:-1] + "2"
@@ -95,15 +105,16 @@ class ToneSandhi():
 
         return finals
 
-    def _yi_sandhi(self, word, finals):
+    def _yi_sandhi(self, word: str, finals: List[str]) -> List[str]:
         # "一" in number sequences, e.g. 一零零
-        if len(word) > 1 and word[0] == "一" and all([item.isnumeric() for item in word]):
+        if len(word) > 1 and word[0] == "一" and all(
+            [item.isnumeric() for item in word]):
             return finals
         # "一" before tone4 should be yi2, e.g. 一段
         elif len(word) > 1 and word[0] == "一" and finals[1][-1] == "4":
             finals[0] = finals[0][:-1] + "2"
         # "一" before non-tone4 should be yi4, e.g. 一天
-        elif len(word) > 1 and word[0] == "一"  and  finals[1][-1]!= "4":
+        elif len(word) > 1 and word[0] == "一" and finals[1][-1] != "4":
             finals[0] = finals[0][:-1] + "4"
         # "一" between reduplication words shold be yi5, e.g. 看一看
         elif len(word) == 3 and word[1] == "一" and word[0] == word[-1]:
@@ -113,7 +124,7 @@ class ToneSandhi():
             finals[1] = finals[1][:-1] + "1"
         return finals
 
-    def _three_sandhi(self, word, finals):
+    def _three_sandhi(self, word: str, finals: List[str]) -> List[str]:
         if len(word) == 2 and self._all_tone_three(finals):
             finals[0] = finals[0][:-1] + "2"
         elif len(word) == 3:
@@ -138,7 +149,10 @@ class ToneSandhi():
                 elif len(new_word_list[0]) == 1:
                     finals[1] = finals[1][:-1] + "2"
             else:
-                finals_list = [finals[:len(new_word_list[0])], finals[len(new_word_list[0]):]]
+                finals_list = [
+                    finals[:len(new_word_list[0])],
+                    finals[len(new_word_list[0]):]
+                ]
                 if len(finals_list) == 2:
                     for i, sub in enumerate(finals_list):
                         # e.g. 所有/人
@@ -161,12 +175,12 @@ class ToneSandhi():
 
         return finals
 
-    def _all_tone_three(self, finals):
+    def _all_tone_three(self, finals: List[str]) -> bool:
         return all(x[-1] == "3" for x in finals)
 
     # merge "不" and the word behind it
     # if don't merge, "不" sometimes appears alone according to jieba, which may occur sandhi error
-    def _merge_bu(self, seg):
+    def _merge_bu(self, seg: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
         new_seg = []
         last_word = ""
         for word, pos in seg:
@@ -185,17 +199,18 @@ class ToneSandhi():
     # function 2: merge single  "一" and the word behind it 
     # if don't merge, "一" sometimes appears alone according to jieba, which may occur sandhi error
     # e.g.
-        # input seg: [('听', 'v'), ('一', 'm'), ('听', 'v')]
-        # output seg: [['听一听', 'v']]
-    def _merge_yi(self, seg):
+    # input seg: [('听', 'v'), ('一', 'm'), ('听', 'v')]
+    # output seg: [['听一听', 'v']]
+    def _merge_yi(self, seg: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
         new_seg = []
         # function 1
         for i, (word, pos) in enumerate(seg):
-            if i - 1 >= 0 and word == "一" and i + 1 < len(seg) and seg[i - 1][0] == seg[i + 1][0] and seg[i - 1][
-                1] == "v":
+            if i - 1 >= 0 and word == "一" and i + 1 < len(seg) and seg[i - 1][
+                    0] == seg[i + 1][0] and seg[i - 1][1] == "v":
                 new_seg[i - 1][0] = new_seg[i - 1][0] + "一" + new_seg[i - 1][0]
             else:
-                if i - 2 >= 0 and seg[i - 1][0] == "一" and seg[i - 2][0] == word and pos == "v":
+                if i - 2 >= 0 and seg[i - 1][0] == "一" and seg[i - 2][
+                        0] == word and pos == "v":
                     continue
                 else:
                     new_seg.append([word, pos])
@@ -210,15 +225,20 @@ class ToneSandhi():
         seg = new_seg
         return seg
 
-    def _merge_continuous_three_tones(self, seg):
+    def _merge_continuous_three_tones(
+            self, seg: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
         new_seg = []
-        sub_finals_list = [lazy_pinyin(word, neutral_tone_with_five=True, style=Style.FINALS_TONE3) for (word, pos)
-                           in seg]
+        sub_finals_list = [
+            lazy_pinyin(
+                word, neutral_tone_with_five=True, style=Style.FINALS_TONE3)
+            for (word, pos) in seg
+        ]
         assert len(sub_finals_list) == len(seg)
         merge_last = [False] * len(seg)
         for i, (word, pos) in enumerate(seg):
-            if i - 1 >= 0 and self._all_tone_three(sub_finals_list[i - 1]) and self._all_tone_three(
-                    sub_finals_list[i]) and not merge_last[i - 1]:
+            if i - 1 >= 0 and self._all_tone_three(sub_finals_list[
+                    i - 1]) and self._all_tone_three(sub_finals_list[
+                        i]) and not merge_last[i - 1]:
                 if len(seg[i - 1][0]) + len(seg[i][0]) <= 3:
                     new_seg[-1][0] = new_seg[-1][0] + seg[i][0]
                     merge_last[i] = True
@@ -229,13 +249,15 @@ class ToneSandhi():
         seg = new_seg
         return seg
 
-    def pre_merge_for_modify(self, seg):
+    def pre_merge_for_modify(
+            self, seg: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
         seg = self._merge_bu(seg)
         seg = self._merge_yi(seg)
         seg = self._merge_continuous_three_tones(seg)
         return seg
 
-    def modified_tone(self, word, pos, finals):
+    def modified_tone(self, word: str, pos: str,
+                      finals: List[str]) -> List[str]:
         finals = self._bu_sandhi(word, finals)
         finals = self._yi_sandhi(word, finals)
         finals = self._neural_sandhi(word, pos, finals)

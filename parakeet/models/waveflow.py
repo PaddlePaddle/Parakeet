@@ -44,7 +44,7 @@ def fold(x, n_group):
     Tensor : [shape=(\*, time_steps // n_group, group)]
         Folded tensor.
     """
-    spatial_shape = list(x.shape[:-1])   
+    spatial_shape = list(x.shape[:-1])
     time_steps = paddle.shape(x)[-1]
     new_shape = spatial_shape + [time_steps // n_group, n_group]
     return paddle.reshape(x, new_shape)
@@ -549,9 +549,9 @@ class Flow(nn.Layer):
             z_row = z[:, :, i:i + 1, :]
             condition_row = condition[:, :, i:i + 1, :]
             x_next_row, (logs, b) = self._inverse_row(z_row, x_row,
-                                                        condition_row)
-            x[:, :, i:i+1, :] = x_next_row
-        
+                                                      condition_row)
+            x[:, :, i:i + 1, :] = x_next_row
+
         return x
 
 
@@ -615,7 +615,7 @@ class WaveFlow(nn.LayerList):
 
     def _trim(self, x, condition):
         assert condition.shape[-1] >= x.shape[-1]
-        pruned_len = int(paddle.shape(x)[-1] // self.n_group * self.n_group)  
+        pruned_len = int(paddle.shape(x)[-1] // self.n_group * self.n_group)
 
         if x.shape[-1] > pruned_len:
             x = x[:, :pruned_len]

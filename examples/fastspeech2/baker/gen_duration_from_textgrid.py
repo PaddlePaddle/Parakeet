@@ -41,10 +41,10 @@ def readtg(config, tg_path):
         durations[-2] += durations[-1]
         durations = durations[:-1]
     # replace the last sp with sil
-    phones[-1] = "sil" if phones[-1]=="sp" else phones[-1]
+    phones[-1] = "sil" if phones[-1] == "sp" else phones[-1]
 
     results = ""
-    
+
     for (p, d) in zip(phones, durations):
         results += p + " " + str(d) + " "
     return results.strip()
