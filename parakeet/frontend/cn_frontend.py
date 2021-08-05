@@ -109,4 +109,5 @@ class Frontend():
     def get_phonemes(self, sentence):
         sentences = self.text_normalizer.normalize(sentence)
         phonemes = self._g2p(sentences)
+        print("phonemes:", phonemes)
         return phonemes

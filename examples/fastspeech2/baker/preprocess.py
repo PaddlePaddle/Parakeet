@@ -21,10 +21,10 @@ from typing import List, Dict, Any
 import jsonlines
 import librosa
 import numpy as np
+from parakeet.data.get_feats import LogMelFBank, Energy, Pitch
 import tqdm
 
 from config import get_cfg_default
-from get_feats import LogMelFBank, Energy, Pitch
 
 
 def get_phn_dur(file_name):

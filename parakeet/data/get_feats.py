@@ -17,8 +17,6 @@ import numpy as np
 import pyworld
 from scipy.interpolate import interp1d
 
-from config import get_cfg_default
-
 
 class LogMelFBank():
     def __init__(self,
@@ -42,8 +40,8 @@ class LogMelFBank():
 
         # mel
         self.n_mels = n_mels
-        self.fmin = fmin
-        self.fmax = fmax
+        self.fmin = 0 if fmin is None else fmin
+        self.fmax = sr / 2 if fmax is None else fmax
 
         self.mel_filter = self._create_mel_filter()
 
@@ -217,41 +215,3 @@ class Energy():
         if use_token_averaged_energy and duration is not None:
             energy = self._average_by_duration(energy, duration)
         return energy
-
-
-if __name__ == "__main__":
-    C = get_cfg_default()
-    filename = "../raw_data/data/format.1/000001.flac"
-    wav, _ = librosa.load(filename, sr=C.fs)
-    mel_extractor = LogMelFBank(
-        sr=C.fs,
-        n_fft=C.n_fft,
-        hop_length=C.n_shift,
-        win_length=C.win_length,
-        window=C.window,
-        n_mels=C.n_mels,
-        fmin=C.fmin,
-        fmax=C.fmax, )
-    mel = mel_extractor.get_log_mel_fbank(wav)
-    print(mel)
-    print(mel.shape)
-
-    pitch_extractor = Pitch(
-        sr=C.fs, hop_length=C.n_shift, f0min=C.f0min, f0max=C.f0max)
-    duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
-    duration = np.array([int(x) for x in duration.split(" ")])
-    avg_f0 = pitch_extractor.get_pitch(wav, duration=duration)
-    print(avg_f0)
-    print(avg_f0.shape)
-
-    energy_extractor = Energy(
-        sr=C.fs,
-        n_fft=C.n_fft,
-        hop_length=C.n_shift,
-        win_length=C.win_length,
-        window=C.window)
-    duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
-    duration = np.array([int(x) for x in duration.split(" ")])
-    avg_energy = energy_extractor.get_energy(wav, duration=duration)
-    print(avg_energy)
-    print(avg_energy.sum())

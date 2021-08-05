@@ -12,40 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import logging
 import argparse
-import dataclasses
-from pathlib import Path
+import logging
+import os
 
-import yaml
 import jsonlines
-import paddle
 import numpy as np
-from paddle import nn
-from paddle.nn import functional as F
+import paddle
+import yaml
 from paddle import distributed as dist
+from paddle import DataParallel
+from paddle import nn
 from paddle.io import DataLoader, DistributedBatchSampler
 from paddle.optimizer import Adam  # No RAdaom
-from paddle.optimizer.lr import StepDecay
-from paddle import DataParallel
-from visualdl import LogWriter
-
 from parakeet.datasets.data_table import DataTable
 from parakeet.models.speedyspeech import SpeedySpeech
-
-from parakeet.training.updater import UpdaterBase
-from parakeet.training.trainer import Trainer
-from parakeet.training.reporter import report
-from parakeet.training import extension
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.seeding import seed_everything
+from parakeet.training.trainer import Trainer
+from pathlib import Path
+from visualdl import LogWriter
 
 from batch_fn import collate_baker_examples
-from speedyspeech_updater import SpeedySpeechUpdater, SpeedySpeechEvaluator
 from config import get_cfg_default
+from speedyspeech_updater import SpeedySpeechUpdater, SpeedySpeechEvaluator
 
 
 def train_sp(args, config):
@@ -93,10 +84,6 @@ def train_sp(args, config):
         batch_size=config.batch_size,
         shuffle=False,
         drop_last=True)
-    # dev_sampler = DistributedBatchSampler(dev_dataset,
-    #                                       batch_size=config.batch_size,
-    #                                       shuffle=False,
-    #                                       drop_last=False)
     print("samplers done!")
 
     train_dataloader = DataLoader(
@@ -113,13 +100,9 @@ def train_sp(args, config):
         num_workers=config.num_workers)
     print("dataloaders done!")
 
-    # batch = collate_baker_examples([train_dataset[i] for i in range(10)])
-    # # batch = collate_baker_examples([dev_dataset[i] for i in range(10)])
-    # import pdb; pdb.set_trace()
     model = SpeedySpeech(**config["model"])
     if world_size > 1:
         model = DataParallel(model)  # TODO, do not use vocab size from config
-    # print(model)
     print("model done!")
     optimizer = Adam(
         0.001,
@@ -147,18 +130,18 @@ def train_sp(args, config):
 
 def main():
     # parse args and config and redirect to train_sp
-    parser = argparse.ArgumentParser(description="Train a ParallelWaveGAN "
+    parser = argparse.ArgumentParser(description="Train a SpeedySpeech "
                                      "model with Baker Mandrin TTS dataset.")
     parser.add_argument(
-        "--config", type=str, help="config file to overwrite default config")
-    parser.add_argument("--train-metadata", type=str, help="training data")
-    parser.add_argument("--dev-metadata", type=str, help="dev data")
-    parser.add_argument("--output-dir", type=str, help="output dir")
+        "--config", type=str, help="config file to overwrite default config.")
+    parser.add_argument("--train-metadata", type=str, help="training data.")
+    parser.add_argument("--dev-metadata", type=str, help="dev data.")
+    parser.add_argument("--output-dir", type=str, help="output dir.")
     parser.add_argument(
-        "--device", type=str, default="gpu", help="device type to use")
+        "--device", type=str, default="gpu", help="device type to use.")
     parser.add_argument(
-        "--nprocs", type=int, default=1, help="number of processes")
-    parser.add_argument("--verbose", type=int, default=1, help="verbose")
+        "--nprocs", type=int, default=1, help="number of processes.")
+    parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
     args = parser.parse_args()
     if args.device == "cpu" and args.nprocs > 1:

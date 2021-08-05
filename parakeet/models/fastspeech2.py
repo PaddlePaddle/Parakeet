@@ -15,7 +15,6 @@
 
 from typing import Dict, Sequence, Tuple
 
-import numpy as np
 import paddle
 from paddle import nn
 from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictor, DurationPredictorLoss
@@ -252,36 +251,36 @@ class FastSpeech2(nn.Layer):
 
         Parameters
         ----------
-            text : Tensor
-                Batch of padded token ids (B, Tmax).
-            text_lengths : Tensor)
-                Batch of lengths of each input (B,).
-            speech : Tensor
-                Batch of padded target features (B, Lmax, odim).
-            speech_lengths : Tensor
-                Batch of the lengths of each target (B,).
-            durations : Tensor
-                Batch of padded durations (B, Tmax).
-            pitch : Tensor
-                Batch of padded token-averaged pitch (B, Tmax, 1).
-            energy : Tensor
-                Batch of padded token-averaged energy (B, Tmax, 1).
+        text : Tensor
+            Batch of padded token ids (B, Tmax).
+        text_lengths : Tensor)
+            Batch of lengths of each input (B,).
+        speech : Tensor
+            Batch of padded target features (B, Lmax, odim).
+        speech_lengths : Tensor
+            Batch of the lengths of each target (B,).
+        durations : Tensor
+            Batch of padded durations (B, Tmax).
+        pitch : Tensor
+            Batch of padded token-averaged pitch (B, Tmax, 1).
+        energy : Tensor
+            Batch of padded token-averaged energy (B, Tmax, 1).
         Returns
         ----------
-            Tensor
-                mel outs before postnet
-            Tensor
-                mel outs after postnet
-            Tensor
-                duration predictor's output
-            Tensor
-                pitch predictor's output
-            Tensor
-                energy predictor's output
-            Tensor
-                speech
-            Tensor
-                speech_lengths, modified if reduction_factor >1
+        Tensor
+            mel outs before postnet
+        Tensor
+            mel outs after postnet
+        Tensor
+            duration predictor's output
+        Tensor
+            pitch predictor's output
+        Tensor
+            energy predictor's output
+        Tensor
+            speech
+        Tensor
+            speech_lengths, modified if reduction_factor > 1
         """
 
         xs = text
@@ -389,26 +388,26 @@ class FastSpeech2(nn.Layer):
 
         Parameters
         ----------
-            text : Tensor
-                Input sequence of characters (T,).
-            speech : Tensor, optional
-                Feature sequence to extract style (N, idim).
-            durations : Tensor, optional
-                Groundtruth of duration (T,).
-            pitch : Tensor, optional
-                Groundtruth of token-averaged pitch (T, 1).
-            energy : Tensor, optional
-                Groundtruth of token-averaged energy (T, 1).
-            alpha : float, optional
-                 Alpha to control the speed.
-            use_teacher_forcing : bool, optional
-                 Whether to use teacher forcing.
-                 If true, groundtruth of duration, pitch and energy will be used.
+        text : Tensor
+            Input sequence of characters (T,).
+        speech : Tensor, optional
+            Feature sequence to extract style (N, idim).
+        durations : Tensor, optional
+            Groundtruth of duration (T,).
+        pitch : Tensor, optional
+            Groundtruth of token-averaged pitch (T, 1).
+        energy : Tensor, optional
+            Groundtruth of token-averaged energy (T, 1).
+        alpha : float, optional
+            Alpha to control the speed.
+        use_teacher_forcing : bool, optional
+            Whether to use teacher forcing.
+            If true, groundtruth of duration, pitch and energy will be used.
 
         Returns
         ----------
-            Tensor
-                Output sequence of features (L, odim).
+        Tensor
+            Output sequence of features (L, odim).
         """
         x, y = text, speech
         d, p, e = durations, pitch, energy
@@ -448,21 +447,21 @@ class FastSpeech2(nn.Layer):
 
         Parameters
         ----------
-            ilens : Tensor
-                Batch of lengths (B,).
+        ilens : Tensor
+            Batch of lengths (B,).
 
         Returns
         -------
-            Tensor
-                Mask tensor for self-attention.
-                dtype=paddle.bool
+        Tensor
+            Mask tensor for self-attention.
+            dtype=paddle.bool
 
         Examples
         -------
-            >>> ilens = [5, 3]
-            >>> self._source_mask(ilens)
-            tensor([[[1, 1, 1, 1, 1],
-                     [1, 1, 1, 0, 0]]]) bool
+        >>> ilens = [5, 3]
+        >>> self._source_mask(ilens)
+        tensor([[[1, 1, 1, 1, 1],
+                    [1, 1, 1, 0, 0]]]) bool
 
         """
         x_masks = make_non_pad_mask(ilens)
@@ -509,10 +508,10 @@ class FastSpeech2Loss(nn.Layer):
 
         Parameters
         ----------
-            use_masking : bool
-                Whether to apply masking for padded part in loss calculation.
-            use_weighted_masking : bool
-                Whether to weighted masking in loss calculation.
+        use_masking : bool
+            Whether to apply masking for padded part in loss calculation.
+        use_weighted_masking : bool
+            Whether to weighted masking in loss calculation.
         """
         assert check_argument_types()
         super().__init__()
@@ -545,39 +544,39 @@ class FastSpeech2Loss(nn.Layer):
 
         Parameters
         ----------
-            after_outs : Tensor
-                Batch of outputs after postnets (B, Lmax, odim).
-            before_outs : Tensor
-                Batch of outputs before postnets (B, Lmax, odim).
-            d_outs : Tensor
-                 Batch of outputs of duration predictor (B, Tmax).
-            p_outs : Tensor
-                Batch of outputs of pitch predictor (B, Tmax, 1).
-            e_outs : Tensor
-                Batch of outputs of energy predictor (B, Tmax, 1).
-            ys : Tensor
-                Batch of target features (B, Lmax, odim).
-            ds : Tensor
-                Batch of durations (B, Tmax).
-            ps : Tensor
-                Batch of target token-averaged pitch (B, Tmax, 1).
-            es : Tensor
-                Batch of target token-averaged energy (B, Tmax, 1).
-            ilens : Tensor
-                Batch of the lengths of each input (B,).
-            olens : Tensor
-                Batch of the lengths of each target (B,).
+        after_outs : Tensor
+            Batch of outputs after postnets (B, Lmax, odim).
+        before_outs : Tensor
+            Batch of outputs before postnets (B, Lmax, odim).
+        d_outs : Tensor
+                Batch of outputs of duration predictor (B, Tmax).
+        p_outs : Tensor
+            Batch of outputs of pitch predictor (B, Tmax, 1).
+        e_outs : Tensor
+            Batch of outputs of energy predictor (B, Tmax, 1).
+        ys : Tensor
+            Batch of target features (B, Lmax, odim).
+        ds : Tensor
+            Batch of durations (B, Tmax).
+        ps : Tensor
+            Batch of target token-averaged pitch (B, Tmax, 1).
+        es : Tensor
+            Batch of target token-averaged energy (B, Tmax, 1).
+        ilens : Tensor
+            Batch of the lengths of each input (B,).
+        olens : Tensor
+            Batch of the lengths of each target (B,).
 
         Returns
         ----------
-            Tensor
-                L1 loss value.
-            Tensor
-                Duration predictor loss value.
-            Tensor
-                Pitch predictor loss value.
-            Tensor
-                Energy predictor loss value.
+        Tensor
+            L1 loss value.
+        Tensor
+            Duration predictor loss value.
+        Tensor
+            Pitch predictor loss value.
+        Tensor
+            Energy predictor loss value.
 
         """
         # apply mask to remove padded part

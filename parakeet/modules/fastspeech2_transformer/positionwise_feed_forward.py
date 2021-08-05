@@ -21,12 +21,12 @@ class PositionwiseFeedForward(paddle.nn.Layer):
 
     Parameters
     ----------
-        idim : int
-            Input dimenstion.
-        hidden_units : int
-            The number of hidden units.
-        dropout_rate : float
-            Dropout rate.
+    idim : int
+        Input dimenstion.
+    hidden_units : int
+        The number of hidden units.
+    dropout_rate : float
+        Dropout rate.
     """
 
     def __init__(self,

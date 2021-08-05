@@ -34,14 +34,14 @@ class MultiLayeredConv1d(paddle.nn.Layer):
 
         Parameters
         ----------
-            in_chans : int
-                Number of input channels.
-            hidden_chans : int
-                Number of hidden channels.
-            kernel_size : int
-                Kernel size of conv1d.
-            dropout_rate : float
-                Dropout rate.
+        in_chans : int
+            Number of input channels.
+        hidden_chans : int
+            Number of hidden channels.
+        kernel_size : int
+            Kernel size of conv1d.
+        dropout_rate : float
+            Dropout rate.
 
         """
         super(MultiLayeredConv1d, self).__init__()
@@ -65,13 +65,13 @@ class MultiLayeredConv1d(paddle.nn.Layer):
 
         Parameters
         ----------
-            x : paddle.Tensor
-                Batch of input tensors (B, T, in_chans).
+        x : paddle.Tensor
+            Batch of input tensors (B, T, in_chans).
 
         Returns
         ----------
-            paddle.Tensor
-                Batch of output tensors (B, T, in_chans).
+        paddle.Tensor
+            Batch of output tensors (B, T, in_chans).
         """
         x = self.relu(self.w_1(x.transpose([0, 2, 1]))).transpose([0, 2, 1])
         return self.w_2(self.dropout(x).transpose([0, 2, 1])).transpose(
@@ -90,14 +90,14 @@ class Conv1dLinear(paddle.nn.Layer):
 
         Parameters
         ----------
-            in_chans : int
-                Number of input channels.
-            hidden_chans : int
-                Number of hidden channels.
-            kernel_size : int
-                Kernel size of conv1d.
-            dropout_rate : float
-                Dropout rate.
+        in_chans : int
+            Number of input channels.
+        hidden_chans : int
+            Number of hidden channels.
+        kernel_size : int
+            Kernel size of conv1d.
+        dropout_rate : float
+            Dropout rate.
         """
         super(Conv1dLinear, self).__init__()
         self.w_1 = paddle.nn.Conv1D(
@@ -115,13 +115,13 @@ class Conv1dLinear(paddle.nn.Layer):
 
         Parameters
         ----------
-            x : paddle.Tensor
-            Batch of input tensors (B, T, in_chans).
+        x : paddle.Tensor
+        Batch of input tensors (B, T, in_chans).
 
         Returns
         ----------
-            paddle.Tensor
-                Batch of output tensors (B, T, in_chans).
+        paddle.Tensor
+            Batch of output tensors (B, T, in_chans).
 
         """
         x = self.relu(self.w_1(x.transpose([0, 2, 1]))).transpose([0, 2, 1])

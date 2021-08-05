@@ -29,8 +29,8 @@ class SpectralConvergenceLoss(nn.Layer):
     def forward(self, x_mag, y_mag):
         """Calculate forward propagation.
         Args:
-            x_mag (Tensor): Magnitude spectrogram of predicted signal (B, C, T).
-            y_mag (Tensor): Magnitude spectrogram of groundtruth signal (B, C, T).
+            x_mag (Tensor): Magnitude spectrogram of predicted signal (B, #frames, #freq_bins).
+            y_mag (Tensor): Magnitude spectrogram of groundtruth signal (B, #frames, #freq_bins).
         Returns:
             Tensor: Spectral convergence loss value.
         """
@@ -50,11 +50,16 @@ class LogSTFTMagnitudeLoss(nn.Layer):
 
     def forward(self, x_mag, y_mag):
         """Calculate forward propagation.
-        Args:
-            x_mag (Tensor): Magnitude spectrogram of predicted signal (B, #frames, #freq_bins).
-            y_mag (Tensor): Magnitude spectrogram of groundtruth signal (B, #frames, #freq_bins).
-        Returns:
-            Tensor: Log STFT magnitude loss value.
+        Parameters
+        ----------
+        x_mag : Tensor
+            Magnitude spectrogram of predicted signal (B, #frames, #freq_bins).
+        y_mag : Tensor
+            Magnitude spectrogram of groundtruth signal (B, #frames, #freq_bins).
+        Returns
+        ----------
+        Tensor
+            Log STFT magnitude loss value.
         """
         return F.l1_loss(
             paddle.log(paddle.clip(
@@ -86,15 +91,23 @@ class STFTLoss(nn.Layer):
 
     def forward(self, x, y):
         """Calculate forward propagation.
-        Args:
-            x (Tensor): Predicted signal (B, T).
-            y (Tensor): Groundtruth signal (B, T).
-        Returns:
-            Tensor: Spectral convergence loss value.
-            Tensor: Log STFT magnitude loss value.
+        Parameters
+        ----------
+        x : Tensor
+            Predicted signal (B, T).
+        y : Tensor
+            Groundtruth signal (B, T).
+        Returns
+        ----------
+        Tensor
+            Spectral convergence loss value.
+        Tensor
+            Log STFT magnitude loss value.
         """
         x_mag = self.stft.magnitude(x)
         y_mag = self.stft.magnitude(y)
+        x_mag = x_mag.transpose([0, 2, 1])
+        y_mag = y_mag.transpose([0, 2, 1])
         sc_loss = self.spectral_convergence_loss(x_mag, y_mag)
         mag_loss = self.log_stft_magnitude_loss(x_mag, y_mag)
 
@@ -111,11 +124,16 @@ class MultiResolutionSTFTLoss(nn.Layer):
             win_lengths=[600, 1200, 240],
             window="hann", ):
         """Initialize Multi resolution STFT loss module.
-        Args:
-            fft_sizes (list): List of FFT sizes.
-            hop_sizes (list): List of hop sizes.
-            win_lengths (list): List of window lengths.
-            window (str): Window function type.
+        Parameters
+        ----------
+        fft_sizes : list
+            List of FFT sizes.
+        hop_sizes : list
+            List of hop sizes.
+        win_lengths : list
+            List of window lengths.
+        window : str
+            Window function type.
         """
         super().__init__()
         assert len(fft_sizes) == len(hop_sizes) == len(win_lengths)
@@ -125,13 +143,24 @@ class MultiResolutionSTFTLoss(nn.Layer):
 
     def forward(self, x, y):
         """Calculate forward propagation.
-        Args:
-            x (Tensor): Predicted signal (B, T).
-            y (Tensor): Groundtruth signal (B, T).
-        Returns:
-            Tensor: Multi resolution spectral convergence loss value.
-            Tensor: Multi resolution log STFT magnitude loss value.
+        Parameters
+        ----------
+        x : Tensor
+            Predicted signal (B, T) or (B, #subband, T).
+        y : Tensor
+            Groundtruth signal (B, T) or (B, #subband, T).
+        Returns
+        ----------
+        Tensor
+            Multi resolution spectral convergence loss value.
+        Tensor
+            Multi resolution log STFT magnitude loss value.
         """
+        if len(x.shape) == 3:
+            # (B, C, T) -> (B x C, T)
+            x = x.reshape([-1, x.shape[2]])
+            # (B, C, T) -> (B x C, T)
+            y = y.reshape([-1, y.shape[2]])
         sc_loss = 0.0
         mag_loss = 0.0
         for f in self.stft_losses:

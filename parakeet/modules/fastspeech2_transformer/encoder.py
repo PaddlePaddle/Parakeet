@@ -29,42 +29,42 @@ class Encoder(nn.Layer):
 
     Parameters
     ----------
-        idim : int
-            Input dimension.
-        attention_dim : int
-            Dimention of attention.
-        attention_heads : int
-            The number of heads of multi head attention.
-        linear_units : int
-            The number of units of position-wise feed forward.
-        num_blocks : int
-            The number of decoder blocks.
-        dropout_rate : float
-            Dropout rate.
-        positional_dropout_rate : float
-            Dropout rate after adding positional encoding.
-        attention_dropout_rate : float
-            Dropout rate in attention.
-        input_layer : Union[str, paddle.nn.Layer]
-            Input layer type.
-        pos_enc_class : paddle.nn.Layer
-            Positional encoding module class.
-            `PositionalEncoding `or `ScaledPositionalEncoding`
-        normalize_before : bool
-            Whether to use layer_norm before the first block.
-        concat_after : bool
-            Whether to concat attention layer's input and output.
-            if True, additional linear will be applied.
-            i.e. x -> x + linear(concat(x, att(x)))
-            if False, no additional linear will be applied. i.e. x -> x + att(x)
-        positionwise_layer_type : str
-            "linear", "conv1d", or "conv1d-linear".
-        positionwise_conv_kernel_size : int
-            Kernel size of positionwise conv1d layer.
-        selfattention_layer_type : str
-            Encoder attention layer type.
-        padding_idx : int
-            Padding idx for input_layer=embed.
+    idim : int
+        Input dimension.
+    attention_dim : int
+        Dimention of attention.
+    attention_heads : int
+        The number of heads of multi head attention.
+    linear_units : int
+        The number of units of position-wise feed forward.
+    num_blocks : int
+        The number of decoder blocks.
+    dropout_rate : float
+        Dropout rate.
+    positional_dropout_rate : float
+        Dropout rate after adding positional encoding.
+    attention_dropout_rate : float
+        Dropout rate in attention.
+    input_layer : Union[str, paddle.nn.Layer]
+        Input layer type.
+    pos_enc_class : paddle.nn.Layer
+        Positional encoding module class.
+        `PositionalEncoding `or `ScaledPositionalEncoding`
+    normalize_before : bool
+        Whether to use layer_norm before the first block.
+    concat_after : bool
+        Whether to concat attention layer's input and output.
+        if True, additional linear will be applied.
+        i.e. x -> x + linear(concat(x, att(x)))
+        if False, no additional linear will be applied. i.e. x -> x + att(x)
+    positionwise_layer_type : str
+        "linear", "conv1d", or "conv1d-linear".
+    positionwise_conv_kernel_size : int
+        Kernel size of positionwise conv1d layer.
+    selfattention_layer_type : str
+        Encoder attention layer type.
+    padding_idx : int
+        Padding idx for input_layer=embed.
     """
 
     def __init__(
@@ -180,17 +180,17 @@ class Encoder(nn.Layer):
 
         Parameters
         ----------
-            xs : paddle.Tensor
-                Input tensor (#batch, time, idim).
-            masks : paddle.Tensor
-                Mask tensor (#batch, time).
+        xs : paddle.Tensor
+            Input tensor (#batch, time, idim).
+        masks : paddle.Tensor
+            Mask tensor (#batch, time).
 
         Returns
         ----------
-            paddle.Tensor
-                Output tensor (#batch, time, attention_dim).
-            paddle.Tensor
-                Mask tensor (#batch, time).
+        paddle.Tensor
+            Output tensor (#batch, time, attention_dim).
+        paddle.Tensor
+            Mask tensor (#batch, time).
         """
         xs = self.embed(xs)
         xs, masks = self.encoders(xs, masks)
@@ -203,21 +203,21 @@ class Encoder(nn.Layer):
 
         Parameters
         ----------
-            xs : paddle.Tensor
-                Input tensor.
-            masks : paddle.Tensor
-                Mask tensor.
-            cache : List[paddle.Tensor]
-                 List of cache tensors.
+        xs : paddle.Tensor
+            Input tensor.
+        masks : paddle.Tensor
+            Mask tensor.
+        cache : List[paddle.Tensor]
+            List of cache tensors.
 
         Returns
         ----------
-            paddle.Tensor
-                Output tensor.
-            paddle.Tensor
-                Mask tensor.
-            List[paddle.Tensor]
-                List of new cache tensors.
+        paddle.Tensor
+            Output tensor.
+        paddle.Tensor
+            Mask tensor.
+        List[paddle.Tensor]
+            List of new cache tensors.
         """
 
         xs = self.embed(xs)

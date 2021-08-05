@@ -21,10 +21,10 @@ class LayerNorm(paddle.nn.LayerNorm):
 
     Parameters
     ----------
-        nout : int
-            Output dim size.
-        dim : int
-            Dimension to be normalized.
+    nout : int
+        Output dim size.
+    dim : int
+        Dimension to be normalized.
     """
 
     def __init__(self, nout, dim=-1):
@@ -37,13 +37,13 @@ class LayerNorm(paddle.nn.LayerNorm):
 
         Parameters
         ----------
-            x : paddle.Tensor
-                Input tensor.
+        x : paddle.Tensor
+            Input tensor.
 
         Returns
         ----------
-            paddle.Tensor
-                Normalized tensor.
+        paddle.Tensor
+            Normalized tensor.
         """
         if self.dim == -1:
             return super(LayerNorm, self).forward(x)

@@ -24,14 +24,14 @@ class PositionalEncoding(nn.Layer):
 
     Parameters
     ----------
-        d_model : int
-            Embedding dimension.
-        dropout_rate : float
-            Dropout rate.
-        max_len : int
-            Maximum input length.
-        reverse : bool
-            Whether to reverse the input position. Only for
+    d_model : int
+        Embedding dimension.
+    dropout_rate : float
+        Dropout rate.
+    max_len : int
+        Maximum input length.
+    reverse : bool
+        Whether to reverse the input position.
     """
 
     def __init__(self, d_model, dropout_rate, max_len=5000, reverse=False):
@@ -68,13 +68,13 @@ class PositionalEncoding(nn.Layer):
 
         Parameters
         ----------
-            x : paddle.Tensor
-                Input tensor (batch, time, `*`).
+        x : paddle.Tensor
+            Input tensor (batch, time, `*`).
 
         Returns
         ----------
-            paddle.Tensor
-                Encoded tensor (batch, time, `*`).
+        paddle.Tensor
+            Encoded tensor (batch, time, `*`).
         """
         self.extend_pe(x)
         x = x * self.xscale + self.pe[:, :x.shape[1]]

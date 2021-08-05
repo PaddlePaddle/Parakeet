@@ -26,12 +26,12 @@ class MultiHeadedAttention(nn.Layer):
 
     Parameters
     ----------
-        n_head : int
-            The number of heads.
-        n_feat : int
-            The number of features.
-        dropout_rate : float
-            Dropout rate.
+    n_head : int
+        The number of heads.
+    n_feat : int
+        The number of features.
+    dropout_rate : float
+        Dropout rate.
     """
 
     def __init__(self, n_head, n_feat, dropout_rate):
@@ -53,21 +53,21 @@ class MultiHeadedAttention(nn.Layer):
 
         Parameters
         ----------
-            query : paddle.Tensor
-                query tensor (#batch, time1, size).
-            key : paddle.Tensor
-                Key tensor (#batch, time2, size).
-            value : paddle.Tensor
-                Value tensor (#batch, time2, size).
+        query : paddle.Tensor
+            query tensor (#batch, time1, size).
+        key : paddle.Tensor
+            Key tensor (#batch, time2, size).
+        value : paddle.Tensor
+            Value tensor (#batch, time2, size).
 
         Returns
         ----------
-            paddle.Tensor
-                Transformed query tensor (#batch, n_head, time1, d_k).
-            paddle.Tensor
-                Transformed key tensor (#batch, n_head, time2, d_k).
-            paddle.Tensor
-                Transformed value tensor (#batch, n_head, time2, d_k).
+        paddle.Tensor
+            Transformed query tensor (#batch, n_head, time1, d_k).
+        paddle.Tensor
+            Transformed key tensor (#batch, n_head, time2, d_k).
+        paddle.Tensor
+            Transformed value tensor (#batch, n_head, time2, d_k).
         """
         n_batch = query.shape[0]
 
@@ -90,18 +90,18 @@ class MultiHeadedAttention(nn.Layer):
 
         Parameters
         ----------
-            value : paddle.Tensor
-                Transformed value (#batch, n_head, time2, d_k).
-            scores : paddle.Tensor
-                Attention score (#batch, n_head, time1, time2).
-            mask :  paddle.Tensor
-                Mask (#batch, 1, time2) or (#batch, time1, time2).
+        value : paddle.Tensor
+            Transformed value (#batch, n_head, time2, d_k).
+        scores : paddle.Tensor
+            Attention score (#batch, n_head, time1, time2).
+        mask :  paddle.Tensor
+            Mask (#batch, 1, time2) or (#batch, time1, time2).
 
         Returns
         ----------
-            paddle.Tensor:
-                Transformed value (#batch, time1, d_model)
-                weighted by the attention score (#batch, time1, time2).
+        paddle.Tensor:
+            Transformed value (#batch, time1, d_model)
+            weighted by the attention score (#batch, time1, time2).
         """
         n_batch = value.shape[0]
         softmax = paddle.nn.Softmax(axis=-1)
@@ -136,19 +136,19 @@ class MultiHeadedAttention(nn.Layer):
 
         Parameters
         ----------
-            query : paddle.Tensor
-                Query tensor (#batch, time1, size).
-            key : paddle.Tensor
-                Key tensor (#batch, time2, size).
-            value : paddle.Tensor
-                Value tensor (#batch, time2, size).
-            mask : paddle.Tensor
-                Mask tensor (#batch, 1, time2) or (#batch, time1, time2).
+        query : paddle.Tensor
+            Query tensor (#batch, time1, size).
+        key : paddle.Tensor
+            Key tensor (#batch, time2, size).
+        value : paddle.Tensor
+            Value tensor (#batch, time2, size).
+        mask : paddle.Tensor
+            Mask tensor (#batch, 1, time2) or (#batch, time1, time2).
 
         Returns
         ----------
-            paddle.Tensor
-                Output tensor (#batch, time1, d_model).
+        paddle.Tensor
+            Output tensor (#batch, time1, d_model).
         """
         q, k, v = self.forward_qkv(query, key, value)
         scores = paddle.matmul(q, k.transpose(

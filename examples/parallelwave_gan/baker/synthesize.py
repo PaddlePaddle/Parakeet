@@ -32,14 +32,14 @@ from parakeet.models.parallel_wavegan import PWGGenerator
 from config import get_cfg_default
 
 parser = argparse.ArgumentParser(
-    description="synthesize with parallel wavegan.")
+    description="Synthesize with parallel wavegan.")
 parser.add_argument(
-    "--config", type=str, help="config file to overwrite default config")
-parser.add_argument("--checkpoint", type=str, help="snapshot to load")
-parser.add_argument("--test-metadata", type=str, help="dev data")
-parser.add_argument("--output-dir", type=str, help="output dir")
-parser.add_argument("--device", type=str, default="gpu", help="device to run")
-parser.add_argument("--verbose", type=int, default=1, help="verbose")
+    "--config", type=str, help="config file to overwrite default config.")
+parser.add_argument("--checkpoint", type=str, help="snapshot to load.")
+parser.add_argument("--test-metadata", type=str, help="dev data.")
+parser.add_argument("--output-dir", type=str, help="output dir.")
+parser.add_argument("--device", type=str, default="gpu", help="device to run.")
+parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
 args = parser.parse_args()
 config = get_cfg_default()
@@ -89,5 +89,5 @@ for example in test_dataset:
     print(
         f"{utt_id}, mel: {mel.shape}, wave: {wav.shape}, time: {t.elapse}s, Hz: {speed}, RTF: {config.sr / speed}."
     )
-    sf.write(output_dir / (utt_id + ".wav"), wav, samplerate=config.sr)
+    sf.write(str(output_dir / (utt_id + ".wav")), wav, samplerate=config.sr)
 print(f"generation speed: {N / T}Hz, RTF: {config.sr / (N / T) }")

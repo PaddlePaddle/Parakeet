@@ -43,16 +43,16 @@ class VariancePredictor(nn.Layer):
 
         Parameters
         ----------
-            idim : int
-                Input dimension.
-            n_layers : int, optional
-                Number of convolutional layers.
-            n_chans : int, optional
-                Number of channels of convolutional layers.
-            kernel_size : int, optional
-                Kernel size of convolutional layers.
-            dropout_rate : float, optional
-                Dropout rate.
+        idim : int
+            Input dimension.
+        n_layers : int, optional
+            Number of convolutional layers.
+        n_chans : int, optional
+            Number of channels of convolutional layers.
+        kernel_size : int, optional
+            Kernel size of convolutional layers.
+        dropout_rate : float, optional
+            Dropout rate.
         """
         assert check_argument_types()
         super().__init__()

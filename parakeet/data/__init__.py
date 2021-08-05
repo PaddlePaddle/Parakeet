@@ -27,5 +27,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parakeet.data.dataset import *
 from parakeet.data.batch import *
+from parakeet.data.dataset import *
+from parakeet.data.get_feats import *

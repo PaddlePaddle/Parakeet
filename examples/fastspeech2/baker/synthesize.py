@@ -94,7 +94,7 @@ def main():
     parser.add_argument(
         "--fastspeech2-config",
         type=str,
-        help="config file to overwrite default config")
+        help="config file to overwrite default config.")
     parser.add_argument(
         "--fastspeech2-checkpoint",
         type=str,
@@ -121,13 +121,13 @@ def main():
     parser.add_argument(
         "--phones-dict",
         type=str,
-        default="phone_id_map.txt ",
+        default="phone_id_map.txt",
         help="phone vocabulary file.")
-    parser.add_argument("--test-metadata", type=str, help="test metadata")
-    parser.add_argument("--output-dir", type=str, help="output dir")
+    parser.add_argument("--test-metadata", type=str, help="test metadata.")
+    parser.add_argument("--output-dir", type=str, help="output dir.")
     parser.add_argument(
-        "--device", type=str, default="gpu", help="device type to use")
-    parser.add_argument("--verbose", type=int, default=1, help="verbose")
+        "--device", type=str, default="gpu", help="device type to use.")
+    parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
     args = parser.parse_args()
     with open(args.fastspeech2_config) as f:
