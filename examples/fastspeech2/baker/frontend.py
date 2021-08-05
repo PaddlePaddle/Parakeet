@@ -58,8 +58,17 @@ class Frontend():
                 # split tone from finals
                 match = re.match(r'^(\w+)([012345])$', full_phone)
                 if match:
-                    phones.append(match.group(1))
-                    tones.append(match.group(2))
+                    phone = match.group(1)
+                    tone = match.group(2)
+                    # if the merged erhua not in the vocab
+                    if len(phone) >= 2 and phone != "er" and phone[
+                            -1] == 'r' and phone not in self.vocab_phones and phone[:
+                                                                                    -1] in self.vocab_phones:
+                        phones.append(phone[:-1])
+                        phones.append("er")
+                    else:
+                        tones.append(tone)
+                        tones.append("2")
                 else:
                     phones.append(full_phone)
                     tones.append('0')
@@ -67,7 +76,17 @@ class Frontend():
             tone_ids = paddle.to_tensor(tone_ids)
             result["tone_ids"] = tone_ids
         else:
-            phones = phonemes
+            # if the merged erhua not in the vocab
+            phones = []
+            for phone in phonemes:
+                if len(phone) >= 3 and phone[:-1] != "er" and phone[
+                        -2] == 'r' and phone not in self.vocab_phones and (
+                            phone[:-2] + phone[-1]) in self.vocab_phones:
+                    phones.append((phone[:-2] + phone[-1]))
+                    phones.append("er2")
+                else:
+                    phones.append(phone)
+
         phone_ids = self._p2id(phones)
         phone_ids = paddle.to_tensor(phone_ids)
         result["phone_ids"] = phone_ids

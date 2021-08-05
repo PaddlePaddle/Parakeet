@@ -29,6 +29,8 @@ UNITS = OrderedDict({
     8: '亿',
 })
 
+COM_QUANTIFIERS = '(匹|张|座|回|场|尾|条|个|首|阙|阵|网|炮|顶|丘|棵|只|支|袭|辆|挑|担|颗|壳|窠|曲|墙|群|腔|砣|座|客|贯|扎|捆|刀|令|打|手|罗|坡|山|岭|江|溪|钟|队|单|双|对|出|口|头|脚|板|跳|枝|件|贴|针|线|管|名|位|身|堂|课|本|页|家|户|层|丝|毫|厘|分|钱|两|斤|担|铢|石|钧|锱|忽|(千|毫|微)克|毫|厘|分|寸|尺|丈|里|寻|常|铺|程|(千|分|厘|毫|微)米|撮|勺|合|升|斗|石|盘|碗|碟|叠|桶|笼|盆|盒|杯|钟|斛|锅|簋|篮|盘|桶|罐|瓶|壶|卮|盏|箩|箱|煲|啖|袋|钵|年|月|日|季|刻|时|周|天|秒|分|旬|纪|岁|世|更|夜|春|夏|秋|冬|代|伏|辈|丸|泡|粒|颗|幢|堆|条|根|支|道|面|片|张|颗|块|元|(亿|千万|百万|万|千|百)|(亿|千万|百万|万|千|百|美|)元|(亿|千万|百万|万|千|百|)块|角|毛|分)'
+
 # 分数表达式
 RE_FRAC = re.compile(r'(-?)(\d+)/(\d+)')
 
@@ -59,7 +61,17 @@ def replace_percentage(match: re.Match) -> str:
 
 # 整数表达式
 # 带负号或者不带负号的整数 12, -10
-RE_INTEGER = re.compile(r'(-?)' r'(\d+)')
+RE_INTEGER = re.compile(r'(-)' r'(\d+)')
+
+
+def replace_negative_num(match: re.Match) -> str:
+    sign = match.group(1)
+    number = match.group(2)
+    sign: str = "负" if sign else ""
+    number: str = num2str(number)
+    result = f"{sign}{number}"
+    return result
+
 
 # 编号-无符号整形
 # 00078
@@ -72,10 +84,21 @@ def replace_default_num(match: re.Match):
 
 
 # 数字表达式
-# 1. 整数: -10, 10;
-# 2. 浮点数: 10.2, -0.3
-# 3. 不带符号和整数部分的纯浮点数: .22, .38   
+# 纯小数
+RE_DECIMAL_NUM = re.compile(r'(-?)((\d+)(\.\d+))' r'|(\.(\d+))')
+# 正整数 + 量词
+RE_POSITIVE_QUANTIFIERS = re.compile(r"(\d+)([多余几])?" + COM_QUANTIFIERS)
 RE_NUMBER = re.compile(r'(-?)((\d+)(\.\d+)?)' r'|(\.(\d+))')
+
+
+def replace_positive_quantifier(match: re.Match) -> str:
+    number = match.group(1)
+    match_2 = match.group(2)
+    match_2: str = match_2 if match_2 else ""
+    quantifiers: str = match.group(3)
+    number: str = num2str(number)
+    result = f"{number}{match_2}{quantifiers}"
+    return result
 
 
 def replace_number(match: re.Match) -> str:
@@ -93,7 +116,7 @@ def replace_number(match: re.Match) -> str:
 
 # 范围表达式
 # 12-23, 12~23
-RE_RANGE = re.compile(r'(\d+)[-~](\d+)')
+RE_RANGE = re.compile(r'(\d+)[~](\d+)')
 
 
 def replace_range(match: re.Match) -> str:
