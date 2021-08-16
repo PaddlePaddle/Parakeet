@@ -89,6 +89,11 @@ def main():
 
     with jsonlines.open(args.metadata, 'r') as reader:
         metadata = list(reader)
+
+    metadata_dir = Path(args.metadata).parent
+    for item in metadata:
+        item["feats"] = str(metadata_dir / item["feats"])
+
     dataset = DataTable(
         metadata,
         fields=[args.field_name],

@@ -14,6 +14,9 @@
 
 import yaml
 from yacs.config import CfgNode as Configuration
+from pathlib import Path
+
+config_path = (Path(__file__).parent / "conf" / "default.yaml").resolve()
 
 with open("conf/default.yaml", 'rt') as f:
     _C = yaml.safe_load(f)

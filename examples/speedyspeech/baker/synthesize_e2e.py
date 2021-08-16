@@ -152,7 +152,7 @@ def main():
         "--device", type=str, default="gpu", help="device type to use")
     parser.add_argument("--verbose", type=int, default=1, help="verbose")
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     with open(args.speedyspeech_config) as f:
         speedyspeech_config = CfgNode(yaml.safe_load(f))
     with open(args.pwg_config) as f:
