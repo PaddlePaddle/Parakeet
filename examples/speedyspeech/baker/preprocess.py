@@ -113,7 +113,7 @@ def process_sentence(config: Dict[str, Any],
         "num_phones": len(phones),
         "num_frames": num_frames,
         "durations": durations_frame,
-        "feats": str(mel_path.resolve()),  # use absolute path
+        "feats": mel_path,  # Path object
     }
     return record
 
@@ -147,8 +147,12 @@ def process_sentences(config,
                     results.append(ft.result())
 
     results.sort(key=itemgetter("utt_id"))
-    with jsonlines.open(output_dir / "metadata.jsonl", 'w') as writer:
+    output_dir = Path(output_dir)
+    metadata_path = output_dir / "metadata.jsonl"
+    # NOTE: use relative path to the meta jsonlines file
+    with jsonlines.open(metadata_path, 'w') as writer:
         for item in results:
+            item["feats"] = str(item["feats"].relative_to(output_dir))
             writer.write(item)
     print("Done")
 

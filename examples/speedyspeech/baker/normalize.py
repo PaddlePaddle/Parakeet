@@ -96,6 +96,10 @@ def main():
     # get dataset
     with jsonlines.open(args.metadata, 'r') as reader:
         metadata = list(reader)
+    metadata_dir = Path(args.metadata).parent
+    for item in metadata:
+        item["feats"] = str(metadata_dir / item["feats"])
+
     dataset = DataTable(metadata, converters={'feats': np.load, })
     logging.info(f"The number of files = {len(dataset)}.")
 
@@ -136,7 +140,7 @@ def main():
             'num_phones': item['num_phones'],
             'num_frames': item['num_frames'],
             'durations': item['durations'],
-            'feats': str(mel_path),
+            'feats': str(mel_path.relative_to(dumpdir)),
         })
     output_metadata.sort(key=itemgetter('utt_id'))
     output_metadata_path = Path(args.dumpdir) / "metadata.jsonl"

@@ -63,6 +63,10 @@ def train_sp(args, config):
     # construct dataset for training and validation
     with jsonlines.open(args.train_metadata, 'r') as reader:
         train_metadata = list(reader)
+    metadata_dir = Path(args.train_metadata).parent
+    for item in train_metadata:
+        item["feats"] = str(metadata_dir / item["feats"])
+
     train_dataset = DataTable(
         data=train_metadata,
         fields=[
@@ -71,6 +75,9 @@ def train_sp(args, config):
         converters={"feats": np.load, }, )
     with jsonlines.open(args.dev_metadata, 'r') as reader:
         dev_metadata = list(reader)
+    metadata_dir = Path(args.dev_metadata).parent
+    for item in dev_metadata:
+        item["feats"] = str(metadata_dir / item["feats"])
     dev_dataset = DataTable(
         data=dev_metadata,
         fields=[
@@ -124,13 +131,13 @@ def train_sp(args, config):
         trainer.extend(VisualDL(writer), trigger=(1, "iteration"))
         trainer.extend(
             Snapshot(max_size=config.num_snapshots), trigger=(1, 'epoch'))
-    print(trainer.extensions)
+    # print(trainer.extensions)
     trainer.run()
 
 
 def main():
     # parse args and config and redirect to train_sp
-    parser = argparse.ArgumentParser(description="Train a SpeedySpeech "
+    parser = argparse.ArgumentParser(description="Train a Speedyspeech "
                                      "model with Baker Mandrin TTS dataset.")
     parser.add_argument(
         "--config", type=str, help="config file to overwrite default config.")
@@ -143,12 +150,18 @@ def main():
         "--nprocs", type=int, default=1, help="number of processes.")
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
-    args = parser.parse_args()
+    args, rest = parser.parse_known_args()
     if args.device == "cpu" and args.nprocs > 1:
         raise RuntimeError("Multiprocess training on CPU is not supported.")
     config = get_cfg_default()
     if args.config:
         config.merge_from_file(args.config)
+    if rest:
+        extra = []
+        # to support key=value format
+        for item in rest:
+            extra.extend(item.split("=", maxsplit=1))
+        config.merge_from_list(extra)
 
     print("========Args========")
     print(yaml.safe_dump(vars(args)))

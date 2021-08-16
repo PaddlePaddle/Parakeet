@@ -32,12 +32,12 @@ def get_phn_dur(file_name):
     read MFA duration.txt
     Parameters
     ----------
-        file_name : str or Path
-            path of gen_duration_from_textgrid.py's result
+    file_name : str or Path
+        path of gen_duration_from_textgrid.py's result
     Returns
     ----------
-        Dict
-            sentence: {'utt': ([char], [int])}
+    Dict
+        sentence: {'utt': ([char], [int])}
     '''
     f = open(file_name, 'r')
     sentence = {}
@@ -58,8 +58,8 @@ def deal_silence(sentence):
     merge silences, set <eos>
     Parameters
     ----------
-        sentence : Dict
-            sentence: {'utt': ([char], [int])}
+    sentence : Dict
+        sentence: {'utt': ([char], [int])}
     '''
     for utt in sentence:
         cur_phn, cur_dur = sentence[utt]
@@ -91,10 +91,10 @@ def get_input_token(sentence, output_path):
     get phone set from training data and save it
     Parameters
     ----------
-        sentence : Dict
-            sentence: {'utt': ([char], [int])}
-        output_path : str or path
-            path to save phone_id_map
+    sentence : Dict
+        sentence: {'utt': ([char], [int])}
+    output_path : str or path
+        path to save phone_id_map
     '''
     phn_token = set()
     for utt in sentence:
@@ -117,12 +117,12 @@ def compare_duration_and_mel_length(sentences, utt, mel):
     check duration error, correct sentences[utt] if possible, else pop sentences[utt]
     Parameters
     ----------
-        sentences : Dict
-            sentences[utt] = [phones_list ,durations_list]
-        utt : str
-            utt_id
-        mel : np.ndarry
-            features (num_frames, n_mels)
+    sentences : Dict
+        sentences[utt] = [phones_list ,durations_list]
+    utt : str
+        utt_id
+    mel : np.ndarry
+        features (num_frames, n_mels)
     '''
 
     if utt in sentences:
@@ -267,7 +267,7 @@ def main():
         type=str,
         help="directory to baker dataset.")
     parser.add_argument(
-        "--dur-path",
+        "--dur-file",
         default=None,
         type=str,
         help="path to baker durations.txt.")
@@ -308,8 +308,13 @@ def main():
     root_dir = Path(args.rootdir).expanduser()
     dumpdir = Path(args.dumpdir).expanduser()
     dumpdir.mkdir(parents=True, exist_ok=True)
+    dur_file = Path(args.dur_file).expanduser()
 
-    sentences = get_phn_dur(args.dur_path)
+    assert root_dir.is_dir()
+    assert dur_file.is_file()
+
+    sentences = get_phn_dur(dur_file)
+
     deal_silence(sentences)
     phone_id_map_path = dumpdir / "phone_id_map.txt"
     get_input_token(sentences, phone_id_map_path)

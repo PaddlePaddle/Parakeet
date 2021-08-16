@@ -33,7 +33,7 @@ def main():
         help="text to synthesize, a 'utt_id sentence' pair per line")
     parser.add_argument("--output-dir", type=str, help="output dir")
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     speedyspeech_config = inference.Config(
         str(Path(args.inference_dir) / "speedyspeech.pdmodel"),

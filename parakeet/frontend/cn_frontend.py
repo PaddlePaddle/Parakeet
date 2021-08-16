@@ -35,6 +35,14 @@ class Frontend():
             self.g2pM_model = G2pM()
             self.pinyin2phone = generate_lexicon(
                 with_tone=True, with_erhua=False)
+        self.must_erhua = {"小院儿", "胡同儿", "范儿", "老汉儿", "撒欢儿", "寻老礼儿", "妥妥儿"}
+        self.not_erhua = {
+            "虐儿", "为儿", "护儿", "瞒儿", "救儿", "替儿", "有儿", "一儿", "我儿", "俺儿", "妻儿",
+            "拐儿", "聋儿", "乞儿", "患儿", "幼儿", "孤儿", "婴儿", "婴幼儿", "连体儿", "脑瘫儿",
+            "流浪儿", "体弱儿", "混血儿", "蜜雪儿", "舫儿", "祖儿", "美儿", "应采儿", "可儿", "侄儿",
+            "孙儿", "侄孙儿", "女儿", "男儿", "红孩儿", "花儿", "虫儿", "马儿", "鸟儿", "猪儿", "猫儿",
+            "狗儿"
+        }
 
     def _get_initials_finals(self, word):
         initials = []
@@ -71,26 +79,31 @@ class Frontend():
         return initials, finals
 
     # if merge_sentences, merge all sentences into one phone sequence
-    def _g2p(self, sentences, merge_sentences=True):
+    def _g2p(self, sentences, merge_sentences=True, with_erhua=True):
         segments = sentences
         phones_list = []
         for seg in segments:
             phones = []
-            seg = psg.lcut(seg)
+            seg_cut = psg.lcut(seg)
             initials = []
             finals = []
-            seg = self.tone_modifier.pre_merge_for_modify(seg)
-            for word, pos in seg:
+            seg_cut = self.tone_modifier.pre_merge_for_modify(seg_cut)
+            for word, pos in seg_cut:
                 if pos == 'eng':
                     continue
                 sub_initials, sub_finals = self._get_initials_finals(word)
+
                 sub_finals = self.tone_modifier.modified_tone(word, pos,
                                                               sub_finals)
+                if with_erhua:
+                    sub_initials, sub_finals = self._merge_erhua(
+                        sub_initials, sub_finals, word, pos)
                 initials.append(sub_initials)
                 finals.append(sub_finals)
                 # assert len(sub_initials) == len(sub_finals) == len(word)
             initials = sum(initials, [])
             finals = sum(finals, [])
+
             for c, v in zip(initials, finals):
                 # NOTE: post process for pypinyin outputs
                 # we discriminate i, ii and iii
@@ -103,11 +116,30 @@ class Frontend():
                 phones.append('sp')
             phones_list.append(phones)
         if merge_sentences:
-            phones_list = sum(phones_list, [])
+            merge_list = sum(phones_list, [])
+            phones_list = []
+            phones_list.append(merge_list)
         return phones_list
 
-    def get_phonemes(self, sentence):
+    def _merge_erhua(self, initials, finals, word, pos):
+        if word not in self.must_erhua and (word in self.not_erhua or
+                                            pos in {"a", "j", "nr"}):
+            return initials, finals
+        new_initials = []
+        new_finals = []
+        assert len(finals) == len(word)
+        for i, phn in enumerate(finals):
+            if i == len(finals) - 1 and word[i] == "儿" and phn in {
+                    "er2", "er5"
+            } and word[-2:] not in self.not_erhua and new_finals:
+                new_finals[-1] = new_finals[-1][:-1] + "r" + new_finals[-1][-1]
+            else:
+                new_finals.append(phn)
+                new_initials.append(initials[i])
+        return new_initials, new_finals
+
+    def get_phonemes(self, sentence, merge_sentences=True, with_erhua=True):
         sentences = self.text_normalizer.normalize(sentence)
-        phonemes = self._g2p(sentences)
-        print("phonemes:", phonemes)
+        phonemes = self._g2p(
+            sentences, merge_sentences=merge_sentences, with_erhua=with_erhua)
         return phonemes

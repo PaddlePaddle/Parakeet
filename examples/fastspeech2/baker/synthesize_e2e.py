@@ -72,19 +72,25 @@ def evaluate(args, fastspeech2_config, pwg_config):
     std = paddle.to_tensor(std)
     pwg_normalizer = ZScore(mu, std)
 
-    fastspeech2_inferencce = FastSpeech2Inference(fastspeech2_normalizer,
-                                                  model)
+    fastspeech2_inference = FastSpeech2Inference(fastspeech2_normalizer, model)
     pwg_inference = PWGInference(pwg_normalizer, vocoder)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for utt_id, sentence in sentences:
-        input_ids = frontend.get_input_ids(sentence)
+        input_ids = frontend.get_input_ids(sentence, merge_sentences=True)
         phone_ids = input_ids["phone_ids"]
-        with paddle.no_grad():
-            mel = fastspeech2_inferencce(phone_ids)
-            wav = pwg_inference(mel)
+        flags = 0
+        for part_phone_ids in phone_ids:
+            with paddle.no_grad():
+                mel = fastspeech2_inference(part_phone_ids)
+                temp_wav = pwg_inference(mel)
+                if flags == 0:
+                    wav = temp_wav
+                    flags = 1
+                else:
+                    wav = paddle.concat([wav, temp_wav])
         sf.write(
             str(output_dir / (utt_id + ".wav")),
             wav.numpy(),

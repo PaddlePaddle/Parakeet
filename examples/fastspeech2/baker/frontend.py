@@ -48,9 +48,7 @@ class Frontend():
         tone_ids = [self.vocab_tones[item] for item in tones]
         return np.array(tone_ids, np.int64)
 
-    def get_input_ids(self, sentence, get_tone_ids=False):
-        phonemes = self.frontend.get_phonemes(sentence)
-        result = {}
+    def _get_phone_tone(self, phonemes, get_tone_ids=False):
         phones = []
         tones = []
         if get_tone_ids and self.vocab_tones:
@@ -58,17 +56,59 @@ class Frontend():
                 # split tone from finals
                 match = re.match(r'^(\w+)([012345])$', full_phone)
                 if match:
-                    phones.append(match.group(1))
-                    tones.append(match.group(2))
+                    phone = match.group(1)
+                    tone = match.group(2)
+                    # if the merged erhua not in the vocab
+                    # assume that the input is ['iaor3'] and 'iaor' not in self.vocab_phones, we split 'iaor' into ['iao','er']
+                    # and the tones accordingly change from ['3'] to ['3','2'], while '2' is the tone of 'er2'
+                    if len(phone) >= 2 and phone != "er" and phone[
+                            -1] == 'r' and phone not in self.vocab_phones and phone[:
+                                                                                    -1] in self.vocab_phones:
+                        phones.append(phone[:-1])
+                        phones.append("er")
+                        tones.append(tone)
+                        tones.append("2")
+                    else:
+                        phones.append(phone)
+                        tones.append(tone)
                 else:
                     phones.append(full_phone)
                     tones.append('0')
-            tone_ids = self._t2id(tones)
-            tone_ids = paddle.to_tensor(tone_ids)
-            result["tone_ids"] = tone_ids
         else:
-            phones = phonemes
-        phone_ids = self._p2id(phones)
-        phone_ids = paddle.to_tensor(phone_ids)
-        result["phone_ids"] = phone_ids
+            for phone in phonemes:
+                # if the merged erhua not in the vocab
+                # assume that the input is ['iaor3'] and 'iaor' not in self.vocab_phones, change ['iaor3'] to ['iao3','er2']
+                if len(phone) >= 3 and phone[:-1] != "er" and phone[
+                        -2] == 'r' and phone not in self.vocab_phones and (
+                            phone[:-2] + phone[-1]) in self.vocab_phones:
+                    phones.append((phone[:-2] + phone[-1]))
+                    phones.append("er2")
+                else:
+                    phones.append(phone)
+        return phones, tones
+
+    def get_input_ids(self, sentence, merge_sentences=True,
+                      get_tone_ids=False):
+        phonemes = self.frontend.get_phonemes(
+            sentence, merge_sentences=merge_sentences)
+        result = {}
+        phones = []
+        tones = []
+        temp_phone_ids = []
+        temp_tone_ids = []
+        for part_phonemes in phonemes:
+            phones, tones = self._get_phone_tone(
+                part_phonemes, get_tone_ids=get_tone_ids)
+            if tones:
+                tone_ids = self._t2id(tones)
+                tone_ids = paddle.to_tensor(tone_ids)
+                temp_tone_ids.append(tone_ids)
+            if phones:
+                phone_ids = self._p2id(phones)
+                phone_ids = paddle.to_tensor(phone_ids)
+                temp_phone_ids.append(phone_ids)
+        if temp_tone_ids:
+            result["tone_ids"] = temp_tone_ids
+        if temp_phone_ids:
+            result["phone_ids"] = temp_phone_ids
         return result
