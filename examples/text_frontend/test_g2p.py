@@ -14,12 +14,12 @@
 
 import argparse
 import re
-from collections import defaultdict
 from pathlib import Path
 
 from parakeet.frontend.cn_frontend import Frontend as cnFrontend
-from parakeet.utils.error_rate import wer
-from praatio import tgio
+from parakeet.utils.error_rate import word_errors
+
+SILENCE_TOKENS = {"sp", "sil", "sp1", "spl"}
 
 
 def text_cleaner(raw_text):
@@ -29,80 +29,68 @@ def text_cleaner(raw_text):
     return text
 
 
-def get_baker_data(root_dir):
-    alignment_files = sorted(
-        list((root_dir / "PhoneLabeling").rglob("*.interval")))
-    text_file = root_dir / "ProsodyLabeling/000001-010000.txt"
-    text_file = Path(text_file).expanduser()
-    data_dict = defaultdict(dict)
-    # filter out several files that have errors in annotation
-    exclude = {'000611', '000662', '002365', '005107'}
-    alignment_files = [f for f in alignment_files if f.stem not in exclude]
-    # biaobei 前后有 sil ，中间没有 sp
-    data_dict = defaultdict(dict)
-    for alignment_fp in alignment_files:
-        alignment = tgio.openTextgrid(alignment_fp)
-        # only with baker's annotation
-        utt_id = alignment.tierNameList[0].split(".")[0]
-        intervals = alignment.tierDict[alignment.tierNameList[0]].entryList
-        phones = []
-        for interval in intervals:
-            label = interval.label
-            # Baker has sp1 rather than sp
-            label = label.replace("sp1", "sp")
-            phones.append(label)
-        data_dict[utt_id]["phones"] = phones
-    for line in open(text_file, "r"):
-        if line.startswith("0"):
-            utt_id, raw_text = line.strip().split()
-            text = text_cleaner(raw_text)
-            if utt_id in data_dict:
-                data_dict[utt_id]['text'] = text
-        else:
-            pinyin = line.strip().split()
-            if utt_id in data_dict:
-                data_dict[utt_id]['pinyin'] = pinyin
-    return data_dict
-
-
-def get_g2p_phones(data_dict, frontend):
-    for utt_id in data_dict:
-        g2p_phones = frontend.get_phonemes(data_dict[utt_id]['text'])
-        data_dict[utt_id]["g2p_phones"] = g2p_phones
-    return data_dict
-
-
-def get_avg_wer(data_dict):
-    wer_list = []
-    for utt_id in data_dict:
-        g2p_phones = data_dict[utt_id]['g2p_phones']
-        # delete silence tokens in predicted phones
-        g2p_phones = [phn for phn in g2p_phones if phn not in {"sp", "sil"}]
-        gt_phones = data_dict[utt_id]['phones']
-        # delete silence tokens in baker phones
-        gt_phones = [phn for phn in gt_phones if phn not in {"sp", "sil"}]
+def get_avg_wer(raw_dict, ref_dict, frontend, output_dir):
+    edit_distances = []
+    ref_lens = []
+    wf_g2p = open(output_dir / "text.g2p", "w")
+    wf_ref = open(output_dir / "text.ref.clean", "w")
+    for utt_id in raw_dict:
+        if utt_id not in ref_dict:
+            continue
+        raw_text = raw_dict[utt_id]
+        text = text_cleaner(raw_text)
+        g2p_phones = frontend.get_phonemes(text)
+        gt_phones = ref_dict[utt_id].split(" ")
+        # delete silence tokens in predicted phones and ground truth phones
+        g2p_phones = [phn for phn in g2p_phones if phn not in SILENCE_TOKENS]
+        gt_phones = [phn for phn in gt_phones if phn not in SILENCE_TOKENS]
         gt_phones = " ".join(gt_phones)
         g2p_phones = " ".join(g2p_phones)
-        single_wer = wer(gt_phones, g2p_phones)
-        wer_list.append(single_wer)
-    return sum(wer_list) / len(wer_list)
+        wf_ref.write(utt_id + " " + gt_phones + "\n")
+        wf_g2p.write(utt_id + " " + g2p_phones + "\n")
+        edit_distance, ref_len = word_errors(gt_phones, g2p_phones)
+        edit_distances.append(edit_distance)
+        ref_lens.append(ref_len)
+
+    return sum(edit_distances) / sum(ref_lens)
 
 
 def main():
     parser = argparse.ArgumentParser(description="g2p example.")
     parser.add_argument(
-        "--root-dir",
-        default=None,
+        "--input-dir",
+        default="data/g2p",
         type=str,
-        help="directory to baker dataset.")
+        help="directory to preprocessed test data.")
+    parser.add_argument(
+        "--output-dir",
+        default="exp/g2p",
+        type=str,
+        help="directory to save g2p results.")
 
     args = parser.parse_args()
-    root_dir = Path(args.root_dir).expanduser()
-    assert root_dir.is_dir()
+    input_dir = Path(args.input_dir).expanduser()
+    output_dir = Path(args.output_dir).expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    assert input_dir.is_dir()
+    raw_dict, ref_dict = dict(), dict()
+    raw_path = input_dir / "text"
+    ref_path = input_dir / "text.ref"
+
+    with open(raw_path, "r") as rf:
+        for line in rf:
+            line = line.strip()
+            line_list = line.split(" ")
+            utt_id, raw_text = line_list[0], " ".join(line_list[1:])
+            raw_dict[utt_id] = raw_text
+    with open(ref_path, "r") as rf:
+        for line in rf:
+            line = line.strip()
+            line_list = line.split(" ")
+            utt_id, phones = line_list[0], " ".join(line_list[1:])
+            ref_dict[utt_id] = phones
     frontend = cnFrontend()
-    data_dict = get_baker_data(root_dir)
-    data_dict = get_g2p_phones(data_dict, frontend)
-    avg_wer = get_avg_wer(data_dict)
+    avg_wer = get_avg_wer(raw_dict, ref_dict, frontend, output_dir)
     print("The avg WER of g2p is:", avg_wer)
 
 

@@ -55,11 +55,11 @@ class TextNormalizer():
         sentence = RE_DATE2.sub(replace_date2, sentence)
         sentence = RE_TIME.sub(replace_time, sentence)
         sentence = RE_TEMPERATURE.sub(replace_temperature, sentence)
-        sentence = RE_RANGE.sub(replace_range, sentence)
         sentence = RE_FRAC.sub(replace_frac, sentence)
         sentence = RE_PERCENTAGE.sub(replace_percentage, sentence)
         sentence = RE_MOBILE_PHONE.sub(replace_mobile, sentence)
         sentence = RE_TELEPHONE.sub(replace_phone, sentence)
+        sentence = RE_RANGE.sub(replace_range, sentence)
         sentence = RE_INTEGER.sub(replace_negative_num, sentence)
         sentence = RE_DECIMAL_NUM.sub(replace_number, sentence)
         sentence = RE_POSITIVE_QUANTIFIERS.sub(replace_positive_quantifier,

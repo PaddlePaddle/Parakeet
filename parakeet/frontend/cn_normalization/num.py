@@ -60,7 +60,7 @@ def replace_percentage(match: re.Match) -> str:
 
 
 # 整数表达式
-# 带负号或者不带负号的整数 12, -10
+# 带负号的整数 -10
 RE_INTEGER = re.compile(r'(-)' r'(\d+)')
 
 
@@ -116,7 +116,7 @@ def replace_number(match: re.Match) -> str:
 
 # 范围表达式
 # 12-23, 12~23
-RE_RANGE = re.compile(r'(\d+)[~](\d+)')
+RE_RANGE = re.compile(r'(\d+)[-~](\d+)')
 
 
 def replace_range(match: re.Match) -> str:

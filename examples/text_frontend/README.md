@@ -15,6 +15,6 @@ Run the command below to get the results of test.
 ```bash
 ./run.sh
 ```
-The `avg WER` of g2p is: 0.02785753389811866
+The `avg WER` of g2p is: 0.027124048652822204
 
-The `avg CER` of text normalization is: 0.014229233983486172
+The `avg CER` of text normalization is: 0.0061629764893859846
