@@ -64,7 +64,7 @@ setup_info = dict(
         'scipy',
         'pandas',
         'sox',
-        'soundfile',
+        'soundfile~=0.10',
         'g2p_en',
         'yacs',
         'visualdl',
@@ -78,6 +78,7 @@ setup_info = dict(
         'pyworld',
         'typeguard',
         'jieba',
+        "phkit",
     ],
     extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
 

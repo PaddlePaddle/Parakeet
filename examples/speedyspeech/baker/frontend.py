@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import re
+from pathlib import Path
+
 import numpy as np
 import paddle
 import pypinyin
@@ -22,10 +24,11 @@ import phkit
 phkit.initialize()
 from parakeet.frontend.vocab import Vocab
 
-with open("phones.txt", 'rt') as f:
+file_dir = Path(__file__).parent.resolve()
+with open(file_dir / "phones.txt", 'rt') as f:
     phones = [line.strip() for line in f.readlines()]
 
-with open("tones.txt", 'rt') as f:
+with open(file_dir / "tones.txt", 'rt') as f:
     tones = [line.strip() for line in f.readlines()]
 voc_phones = Vocab(phones, start_symbol=None, end_symbol=None)
 voc_tones = Vocab(tones, start_symbol=None, end_symbol=None)
