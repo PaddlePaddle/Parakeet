@@ -116,7 +116,9 @@ class Frontend():
                 phones.append('sp')
             phones_list.append(phones)
         if merge_sentences:
-            phones_list = sum(phones_list, [])
+            merge_list = sum(phones_list, [])
+            phones_list = []
+            phones_list.append(merge_list)
         return phones_list
 
     def _merge_erhua(self, initials, finals, word, pos):
@@ -136,7 +138,8 @@ class Frontend():
                 new_initials.append(initials[i])
         return new_initials, new_finals
 
-    def get_phonemes(self, sentence, with_erhua=True):
+    def get_phonemes(self, sentence, merge_sentences=True, with_erhua=True):
         sentences = self.text_normalizer.normalize(sentence)
-        phonemes = self._g2p(sentences, with_erhua=with_erhua)
+        phonemes = self._g2p(
+            sentences, merge_sentences=merge_sentences, with_erhua=with_erhua)
         return phonemes
