@@ -70,7 +70,6 @@ class SpeedySpeechUpdater(StandardUpdater):
 
 class SpeedySpeechEvaluator(StandardEvaluator):
     def evaluate_core(self, batch):
-        print("fire")
         decoded, predicted_durations = self.model(
             text=batch["phones"],
             tones=batch["tones"],
