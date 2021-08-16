@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
 from yacs.config import CfgNode as Configuration
 import yaml
 
-with open("conf/default.yaml", 'rt') as f:
+config_path = (Path(__file__).parent / "conf" / "default.yaml").resolve()
+
+with open(config_path, 'rt') as f:
     _C = yaml.safe_load(f)
     _C = Configuration(_C)
 

@@ -4,7 +4,7 @@
 python3 gen_duration_from_textgrid.py --inputdir ./baker_alignment_tone --output durations.txt
 
 # extract features
-python3 preprocess.py --rootdir=~/datasets/BZNSYP/ --dumpdir=dump --dur-path durations.txt --num-cpu 4 --cut-sil True
+python3 preprocess.py --rootdir=~/datasets/BZNSYP/ --dumpdir=dump --dur-file durations.txt --num-cpu 4 --cut-sil True
 
 # # get features' stats(mean and std)
 python3 compute_statistics.py --metadata=dump/train/raw/metadata.jsonl --field-name="speech"

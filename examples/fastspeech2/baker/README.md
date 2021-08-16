@@ -1,5 +1,3 @@
-
-
 # FastSpeech2 with BZNSYP
 
 ## Dataset
