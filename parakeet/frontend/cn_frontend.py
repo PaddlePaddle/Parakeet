@@ -103,10 +103,12 @@ class Frontend():
                 phones.append('sp')
             phones_list.append(phones)
         if merge_sentences:
-            phones_list = sum(phones_list, [])
+            merge_list = sum(phones_list, [])
+            phones_list = []
+            phones_list.append(merge_list) 
         return phones_list
 
     def get_phonemes(self, sentence):
         sentences = self.text_normalizer.normalize(sentence)
-        phonemes = self._g2p(sentences)
+        phonemes = self._g2p(sentences, False)
         return phonemes

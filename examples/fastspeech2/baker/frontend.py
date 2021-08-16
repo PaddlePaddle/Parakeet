@@ -53,6 +53,7 @@ class Frontend():
         result = {}
         phones = []
         tones = []
+        temp = []
         if get_tone_ids and self.vocab_tones:
             for full_phone in phonemes:
                 # split tone from finals
@@ -68,7 +69,10 @@ class Frontend():
             result["tone_ids"] = tone_ids
         else:
             phones = phonemes
-        phone_ids = self._p2id(phones)
-        phone_ids = paddle.to_tensor(phone_ids)
-        result["phone_ids"] = phone_ids
+        
+        for part_phones in phones:
+            phone_ids = self._p2id(part_phones)
+            phone_ids = paddle.to_tensor(phone_ids)
+            temp.append(phone_ids)
+        result["phone_ids"] = temp
         return result
