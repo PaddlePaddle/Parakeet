@@ -1,10 +1,10 @@
 # Speedyspeech with the Baker dataset
 
-This example contains code used to train a speedyspeech model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html). NOTE that we only implement the student part of the Speedyspeech model. The ground truth alignment used to train the model is extracted from the dataset.
+This example contains code used to train a [Speedyspeech](http://arxiv.org/abs/2008.03802) model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html). NOTE that we only implement the student part of the Speedyspeech model. The ground truth alignment used to train the model is extracted from the dataset.
 
 ## Preprocess the dataset
 
-Download the dataset from the [official website of data-baker](https://www.data-baker.com/data/index/source) and extract it to `~/datasets`. Then the dataset is `~/datasets/BZNSYP`.
+Download the dataset from the [official website of data-baker](https://www.data-baker.com/data/index/source) and extract it to `~/datasets`. Then the dataset is in directory `~/datasets/BZNSYP`.
 
 Run the script for preprocessing.
 
@@ -30,17 +30,17 @@ dump
 
 The dataset is split into 3 parts, namely train, dev and test, each of which contains a `norm` and `raw` sub folder. The raw folder contains log magnitude of mel spectrogram of each utterances, while the norm folder contains normalized spectrogram. The statistics used to normalize the spectrogram is computed from the training set, which is located in `dump/train/stats.npy`.
 
-Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations and ids of each utterance.
+Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations, path of spectrogram, and id of each utterance.
 
 ## Train the model
 
-To train the model use the `run.sh`.
+To train the model use the `run.sh`. It is an example script to run `train.py`.
 
 ```bash
 bash run.sh
 ```
 
-Or you can change some arguments. Here's the complete help message.
+Or you can use `train.py` directly. Here's the complete help message.
 
 ```text
 usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
@@ -65,7 +65,7 @@ optional arguments:
 
 1. `--config` is a config file in yaml format to overwrite the default config, which can be found at `conf/default.yaml`.
 2. `--train-metadata` and `--dev-metadata` should be the metadata file in the normalized subfolder of `train` and `dev` in the `dump` folder.
-3. `--output-dir` is the directory to save the results of the experiment.
+3. `--output-dir` is the directory to save the results of the experiment. Checkpoints are save in `checkpoints/` inside this directory.
 4. `--device` is the type of the device to run the experiment, 'cpu' or 'gpu' are supported.
 5. `--nprocs` is the number of processes to run in parallel, note that nprocs > 1 is only supported when `--device` is 'gpu'.
 
@@ -95,7 +95,7 @@ pwg_baker_ckpt_0.4
 
 ## Synthesize End to End
 
-When training is done or pretrained models are downloaded. You can run `synthesize_e2e.py` to synthsize. An example shell script `synthesize_e2e.sh` is provided.
+When training is done or pretrained models are downloaded. You can run `synthesize_e2e.py` to synthsize.
 
 ```text
 usage: synthesize_e2e.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
