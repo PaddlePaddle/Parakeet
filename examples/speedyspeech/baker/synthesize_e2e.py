@@ -57,7 +57,8 @@ def evaluate(args, speedyspeech_config, pwg_config):
     model.eval()
 
     vocoder = PWGGenerator(**pwg_config["generator_params"])
-    vocoder.set_state_dict(paddle.load(args.pwg_params))
+    vocoder.set_state_dict(
+        paddle.load(args.pwg_checkpoint)["generator_params"])
     vocoder.remove_weight_norm()
     vocoder.eval()
     print("model done!")
@@ -133,9 +134,9 @@ def main():
     parser.add_argument(
         "--pwg-config", type=str, help="config file for parallelwavegan.")
     parser.add_argument(
-        "--pwg-params",
+        "--pwg-checkpoint",
         type=str,
-        help="parallel wavegan generator parameters to load.")
+        help="parallel wavegan checkpoint to load.")
     parser.add_argument(
         "--pwg-stat",
         type=str,

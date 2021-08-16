@@ -30,7 +30,7 @@ dump
 
 The dataset is split into 3 parts, namely train, dev and test, each of which contains a `norm` and `raw` sub folder. The raw folder contains log magnitude of mel spectrogram of each utterances, while the norm folder contains normalized spectrogram. The statistics used to normalize the spectrogram is computed from the training set, which is located in `dump/train/stats.npy`.
 
-Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations and ids of each utterances.
+Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations and ids of each utterance.
 
 ## Train the model
 
@@ -88,9 +88,9 @@ Parallel WaveGAN checkpoint contains files listed below.
 
 ```text
 pwg_baker_ckpt_0.4
-├── pwg_default.yaml            # default config used to train parallel wavegan
-├── pwg_generator.pdparams      # generator parameters of parallel wavegan
-└── pwg_stats.npy               # statistics used to normalize spectrogram when training parallel wavegan
+├── pwg_default.yaml              # default config used to train parallel wavegan
+├── pwg_snapshot_iter_400000.pdz  # model parameters and optimizer states of parallel wavegan
+└── pwg_stats.npy                 # statistics used to normalize spectrogram when training parallel wavegan
 ```
 
 ## Synthesize End to End
@@ -120,8 +120,8 @@ optional arguments:
                         spectrogram when training speedyspeech.
   --pwg-config PWG_CONFIG
                         config file for parallelwavegan.
-  --pwg-params PWG_PARAMS
-                        parallel wavegan generator parameters to load.
+  --pwg-checkpoint PWG_PARAMS
+                        parallel wavegan checkpoint to load.
   --pwg-stat PWG_STAT   mean and standard deviation used to normalize
                         spectrogram when training speedyspeech.
   --text TEXT           text to synthesize, a 'utt_id sentence' pair per line
@@ -134,7 +134,7 @@ optional arguments:
 ```
 
 1. `--speedyspeech-config`, `--speedyspeech-checkpoint`, `--speedyspeech-stat` are arguments for speedyspeech, which correspond to the 3 files in the speedyspeech pretrained model.
-2. `--pwg-config`, `--pwg-params`, `--pwg-stat` are arguments for speedyspeech, which correspond to the 3 files in the parallel wavegan pretrained model.
+2. `--pwg-config`, `--pwg-checkpoint`, `--pwg-stat` are arguments for speedyspeech, which correspond to the 3 files in the parallel wavegan pretrained model.
 3. `--text` is the text file, which contains sentences to synthesize.
 4. `--output-dir` is the directory to save synthesized audio files.
 5. `--inference-dir` is the directory to save exported model, which can be used with paddle infernece.
