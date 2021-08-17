@@ -61,9 +61,10 @@ def batch_text_id(minibatch, pad_id=0, dtype=np.int64):
     for example in minibatch:
         pad_len = max_len - example.shape[0]
         batch.append(
-            np.pad(example, [(0, pad_len)],
-                   mode='constant',
-                   constant_values=pad_id))
+            np.pad(
+                example, [(0, pad_len)],
+                mode='constant',
+                constant_values=pad_id))
 
     return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)
 
@@ -103,9 +104,10 @@ def batch_wav(minibatch, pad_value=0., dtype=np.float32):
     for example in minibatch:
         pad_len = max_len - example.shape[-1]
         batch.append(
-            np.pad(example, [(0, pad_len)],
-                   mode='constant',
-                   constant_values=pad_value))
+            np.pad(
+                example, [(0, pad_len)],
+                mode='constant',
+                constant_values=pad_value))
     return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)
 
 
@@ -152,14 +154,16 @@ def batch_spec(minibatch, pad_value=0., time_major=False, dtype=np.float32):
         pad_len = max_len - example.shape[time_idx]
         if time_major:
             batch.append(
-                np.pad(example, [(0, pad_len), (0, 0)],
-                       mode='constant',
-                       constant_values=pad_value))
+                np.pad(
+                    example, [(0, pad_len), (0, 0)],
+                    mode='constant',
+                    constant_values=pad_value))
         else:
             batch.append(
-                np.pad(example, [(0, 0), (0, pad_len)],
-                       mode='constant',
-                       constant_values=pad_value))
+                np.pad(
+                    example, [(0, 0), (0, pad_len)],
+                    mode='constant',
+                    constant_values=pad_value))
     return np.array(batch, dtype=dtype), np.array(lengths, dtype=np.int64)
 
 
@@ -178,10 +182,8 @@ def batch_sequences(sequences, axis=0, pad_value=0):
     for seq, length in zip(sequences, seq_lengths):
         padding = [(0, 0)] * axis + [(0, max_length - length)] + [(0, 0)] * (
             ndim - axis - 1)
-        padded_seq = np.pad(seq,
-                            padding,
-                            mode='constant',
-                            constant_values=pad_value)
+        padded_seq = np.pad(
+            seq, padding, mode='constant', constant_values=pad_value)
         padded_sequences.append(padded_seq)
     batch = np.stack(padded_sequences)
     return batch

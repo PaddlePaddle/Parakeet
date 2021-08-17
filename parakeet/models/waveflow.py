@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import time
 import math
-from typing import List, Union, Tuple
+import time
+from typing import List
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import paddle
@@ -22,8 +23,8 @@ from paddle import nn
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 
-from parakeet.utils import checkpoint
 from parakeet.modules import geometry as geo
+from parakeet.utils import checkpoint
 
 __all__ = ["WaveFlow", "ConditionalWaveFlow", "WaveFlowLoss"]
 
@@ -120,7 +121,7 @@ class UpsampleNet(nn.LayerList):
         If trim_conv_artifact is ``True``, the output time steps is less
         than ``time_steps \* upsample_factors``.
         """
-        x = paddle.unsqueeze(x, 1)  #(B, C, T) -> (B, 1, C, T)
+        x = paddle.unsqueeze(x, 1)  # (B, C, T) -> (B, 1, C, T)
         for layer in self:
             x = layer(x)
             if trim_conv_artifact:
@@ -795,7 +796,7 @@ class ConditionalWaveFlow(nn.LayerList):
             The synthesized audio, where``T <= T_mel \* upsample_factors``.
         """
         start = time.time()
-        condition = self.encoder(mel, trim_conv_artifact=True)  #(B, C, T)
+        condition = self.encoder(mel, trim_conv_artifact=True)  # (B, C, T)
         batch_size, _, time_steps = condition.shape
         z = paddle.randn([batch_size, time_steps], dtype=mel.dtype)
         x = self.decoder.inverse(z, condition)
@@ -893,12 +894,12 @@ class WaveFlowLoss(nn.Layer):
 class ConditionalWaveFlow2Infer(ConditionalWaveFlow):
     def forward(self, mel):
         """Generate raw audio given mel spectrogram.
-     
+
         Parameters
         ----------
         mel : np.ndarray [shape=(C_mel, T_mel)]
-            Mel spectrogram of an utterance(in log-magnitude). 
- 
+            Mel spectrogram of an utterance(in log-magnitude).
+
         Returns
         -------
         np.ndarray [shape=(T,)]

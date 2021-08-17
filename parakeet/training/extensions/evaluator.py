@@ -11,18 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict
 
-from collections import defaultdict
-from typing import Optional, Callable, Dict
-
-from tqdm import tqdm
 import paddle
-from paddle import Tensor
-from paddle.nn import Layer
 from paddle.io import DataLoader
+from paddle.nn import Layer
 
-from parakeet.training.reporter import scope, report, DictSummary
 from parakeet.training import extension
+from parakeet.training.reporter import DictSummary
+from parakeet.training.reporter import report
+from parakeet.training.reporter import scope
 
 
 class StandardEvaluator(extension.Extension):

@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
 
 import paddle
 from paddle import nn
-from paddle.jit import to_static, save
+from paddle.jit import to_static
 from paddle.static import InputSpec
 
 

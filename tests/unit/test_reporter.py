@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numpy as np
-from parakeet.training.reporter import report, scope
-from parakeet.training.reporter import Summary, DictSummary
+
+from parakeet.training.reporter import report
+from parakeet.training.reporter import scope
+from parakeet.training.reporter import Summary
 
 
 def test_reporter_scope():

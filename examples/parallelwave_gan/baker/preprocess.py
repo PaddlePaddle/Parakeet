@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from operator import itemgetter
-from typing import List, Dict, Any
+from typing import Any
+from typing import Dict
+from typing import List
 
 import argparse
 import jsonlines
@@ -39,8 +41,8 @@ def process_sentence(config: Dict[str, Any],
     # reading
     y, sr = librosa.load(str(fp), sr=config.sr)  # resampling may occur
     assert len(y.shape) == 1, f"{utt_id} is not a mono-channel audio."
-    assert np.abs(y).max(
-    ) <= 1.0, f"{utt_id} is seems to be different that 16 bit PCM."
+    assert np.abs(
+        y).max() <= 1.0, f"{utt_id} is seems to be different that 16 bit PCM."
     duration = librosa.get_duration(y, sr=sr)
 
     # trim according to the alignment file
@@ -80,8 +82,8 @@ def process_sentence(config: Dict[str, Any],
     # adjust time to make num_samples == num_frames * hop_length
     num_frames = logmel.shape[0]
     if y.size < num_frames * config.hop_length:
-        y = np.pad(y, (0, num_frames * config.hop_length - y.size),
-                   mode="reflect")
+        y = np.pad(
+            y, (0, num_frames * config.hop_length - y.size), mode="reflect")
     else:
         y = y[:num_frames * config.hop_length]
     num_sample = y.shape[0]
@@ -139,10 +141,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Preprocess audio and then extract features .")
     parser.add_argument(
-        "--rootdir",
-        default=None,
-        type=str,
-        help="directory to baker dataset.")
+        "--rootdir", default=None, type=str, help="directory to baker dataset.")
     parser.add_argument(
         "--dumpdir",
         type=str,

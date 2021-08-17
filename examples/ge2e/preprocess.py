@@ -52,7 +52,8 @@ if __name__ == "__main__":
     if not args.no_trim:
         try:
             import webrtcvad
-        except:
+            print(webrtcvad.__version__)
+        except Exception as e:
             raise ModuleNotFoundError(
                 "Package 'webrtcvad' not found. This package enables "
                 "noise removal and is recommended. Please install and "
@@ -96,5 +97,5 @@ if __name__ == "__main__":
 
     for dataset in args.datasets:
         print("Preprocessing %s" % dataset)
-        preprocess_func[dataset](processor, args.datasets_root,
-                                 args.output_dir, args.skip_existing)
+        preprocess_func[dataset](processor, args.datasets_root, args.output_dir,
+                                 args.skip_existing)

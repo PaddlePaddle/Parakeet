@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numpy as np
 from paddle import nn
 
@@ -42,7 +41,7 @@ def recursively_remove_weight_norm(layer: nn.Layer):
     for layer in layer.sublayers():
         try:
             nn.utils.remove_weight_norm(layer)
-        except:
+        except Exception as e:
             # ther is not weight norm hoom in this layer
             pass
 

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from parakeet.frontend.phonectic import Phonetics
 """
 A phonology system with ARPABET symbols and limited punctuations. The G2P 
@@ -200,8 +199,7 @@ class ARPABET(Phonetics):
             The list of pronunciation id sequence.
         """
         return self.numericalize(
-            self.phoneticize(
-                sentence, add_start_end=add_start_end))
+            self.phoneticize(sentence, add_start_end=add_start_end))
 
     @property
     def vocab_size(self):
@@ -217,9 +215,9 @@ class ARPABETWithStress(Phonetics):
         'AO1', 'AO2', 'AW0', 'AW1', 'AW2', 'AY0', 'AY1', 'AY2', 'B', 'CH', 'D',
         'DH', 'EH0', 'EH1', 'EH2', 'ER0', 'ER1', 'ER2', 'EY0', 'EY1', 'EY2',
         'F', 'G', 'HH', 'IH0', 'IH1', 'IH2', 'IY0', 'IY1', 'IY2', 'JH', 'K',
-        'L', 'M', 'N', 'NG', 'OW0', 'OW1', 'OW2', 'OY0', 'OY1', 'OY2', 'P',
-        'R', 'S', 'SH', 'T', 'TH', 'UH0', 'UH1', 'UH2', 'UW0', 'UW1', 'UW2',
-        'V', 'W', 'Y', 'Z', 'ZH'
+        'L', 'M', 'N', 'NG', 'OW0', 'OW1', 'OW2', 'OY0', 'OY1', 'OY2', 'P', 'R',
+        'S', 'SH', 'T', 'TH', 'UH0', 'UH1', 'UH2', 'UW0', 'UW1', 'UW2', 'V',
+        'W', 'Y', 'Z', 'ZH'
     ]
     punctuations = [',', '.', '?', '!']
     symbols = phonemes + punctuations
@@ -294,8 +292,7 @@ class ARPABETWithStress(Phonetics):
             The list of pronunciation id sequence.
         """
         return self.numericalize(
-            self.phoneticize(
-                sentence, add_start_end=add_start_end))
+            self.phoneticize(sentence, add_start_end=add_start_end))
 
     @property
     def vocab_size(self):

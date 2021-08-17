@@ -11,22 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
-from tqdm import trange
+
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
+from tqdm import trange
 
 import parakeet
-from parakeet.modules.attention import _split_heads, _concat_heads, drop_head, scaled_dot_product_attention
-from parakeet.modules.transformer import PositionwiseFFN
-from parakeet.modules import masking
-from parakeet.modules.conv import Conv1dBatchNorm
-from parakeet.modules import positional_encoding as pe
 from parakeet.modules import losses as L
-from parakeet.utils import checkpoint, scheduler
+from parakeet.modules import masking
+from parakeet.modules import positional_encoding as pe
+from parakeet.modules.attention import _concat_heads
+from parakeet.modules.attention import _split_heads
+from parakeet.modules.attention import drop_head
+from parakeet.modules.attention import scaled_dot_product_attention
+from parakeet.modules.conv import Conv1dBatchNorm
+from parakeet.modules.transformer import PositionwiseFFN
+from parakeet.utils import checkpoint
+from parakeet.utils import scheduler
 
 __all__ = ["TransformerTTS", "TransformerTTSLoss"]
 
@@ -404,16 +408,14 @@ class TransformerTTS(nn.Layer):
             self.toned = False
         # position encoding matrix may be extended later
         self.encoder_pe = pe.sinusoid_position_encoding(1000, d_encoder)
-        self.encoder_pe_scalar = self.create_parameter(
-            [1], attr=I.Constant(1.))
+        self.encoder_pe_scalar = self.create_parameter([1], attr=I.Constant(1.))
         self.encoder = TransformerEncoder(d_encoder, n_heads, d_ffn,
                                           encoder_layers, dropout)
 
         # decoder
         self.decoder_prenet = MLPPreNet(d_mel, d_prenet, d_decoder, dropout)
         self.decoder_pe = pe.sinusoid_position_encoding(1000, d_decoder)
-        self.decoder_pe_scalar = self.create_parameter(
-            [1], attr=I.Constant(1.))
+        self.decoder_pe_scalar = self.create_parameter([1], attr=I.Constant(1.))
         self.decoder = TransformerDecoder(
             d_decoder,
             n_heads,
@@ -470,14 +472,13 @@ class TransformerTTS(nn.Layer):
             self.encoder_pe = pe.sinusoid_position_encoding(new_T,
                                                             self.d_encoder)
         pos_enc = self.encoder_pe[:T_enc, :]  # (T, C)
-        x = embed.scale(math.sqrt(
-            self.d_encoder)) + pos_enc * self.encoder_pe_scalar
+        x = embed.scale(
+            math.sqrt(self.d_encoder)) + pos_enc * self.encoder_pe_scalar
         x = F.dropout(x, self.dropout, training=self.training)
 
         # TODO(chenfeiyu): unsqueeze a decoder_time_steps=1 for the mask
         encoder_padding_mask = paddle.unsqueeze(
-            masking.id_mask(
-                text, self.padding_idx, dtype=x.dtype), 1)
+            masking.id_mask(text, self.padding_idx, dtype=x.dtype), 1)
         x, attention_weights = self.encoder(x, encoder_padding_mask,
                                             self.drop_n_heads)
         return x, attention_weights, encoder_padding_mask
@@ -492,8 +493,8 @@ class TransformerTTS(nn.Layer):
             self.decoder_pe = pe.sinusoid_position_encoding(new_T,
                                                             self.d_decoder)
         pos_enc = self.decoder_pe[:T_dec * self.r:self.r, :]
-        x = x.scale(math.sqrt(
-            self.d_decoder)) + pos_enc * self.decoder_pe_scalar
+        x = x.scale(
+            math.sqrt(self.d_decoder)) + pos_enc * self.decoder_pe_scalar
         x = F.dropout(x, self.dropout, training=self.training)
 
         no_future_mask = masking.future_mask(T_dec, dtype=input.dtype)
@@ -547,9 +548,8 @@ class TransformerTTS(nn.Layer):
             # stop condition: (if any ouput frame of the output multiframes hits the stop condition)
             # import pdb; pdb.set_trace()
             if paddle.any(
-                    paddle.argmax(
-                        stop_logits[0, -self.r:, :], axis=-1) ==
-                    self.stop_prob_index):
+                    paddle.argmax(stop_logits[0, -self.r:, :],
+                                  axis=-1) == self.stop_prob_index):
                 if verbose:
                     print("Hits stop condition.")
                 break
@@ -602,8 +602,7 @@ class TransformerTTSLoss(nn.Layer):
 
     def forward(self, mel_output, mel_intermediate, mel_target, stop_logits,
                 stop_probs):
-        mask = masking.feature_mask(
-            mel_target, axis=-1, dtype=mel_target.dtype)
+        mask = masking.feature_mask(mel_target, axis=-1, dtype=mel_target.dtype)
         mask1 = paddle.unsqueeze(mask, -1)
         mel_loss1 = L.masked_l1_loss(mel_output, mel_target, mask1)
         mel_loss2 = L.masked_l1_loss(mel_intermediate, mel_target, mask1)

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import librosa
-from praatio import tgio
 
 
 def validate_textgrid(text_grid, num_samples, sr):

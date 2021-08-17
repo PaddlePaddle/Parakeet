@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 
 from .num import verbalize_digit
@@ -32,14 +31,12 @@ def phone2str(phone_string: str, mobile=True) -> str:
     if mobile:
         sp_parts = phone_string.strip('+').split()
         result = ''.join(
-            [verbalize_digit(
-                part, alt_one=True) for part in sp_parts])
+            [verbalize_digit(part, alt_one=True) for part in sp_parts])
         return result
     else:
         sil_parts = phone_string.split('-')
         result = ''.join(
-            [verbalize_digit(
-                part, alt_one=True) for part in sil_parts])
+            [verbalize_digit(part, alt_one=True) for part in sil_parts])
         return result
 
 

@@ -121,8 +121,8 @@ def convert(syllable):
     syllable = syllable.replace("ing", "ieng").replace("in", "ien")
 
     # expansion for un, ui, iu
-    syllable = syllable.replace("un", "uen").replace(
-        "ui", "uei").replace("iu", "iou")
+    syllable = syllable.replace("un", "uen").replace("ui",
+                                                     "uei").replace("iu", "iou")
 
     # rule for variants of i
     syllable = syllable.replace("zi", "zii").replace("ci", "cii").replace("si", "sii")\

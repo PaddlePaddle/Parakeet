@@ -11,15 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import argparse
 import json
-import six
-import sys
-import unittest
 
-import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import six
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -167,19 +163,19 @@ class Timeline(object):
                     if (k, mevent.device_id, "GPU") not in self._mem_devices:
                         pid = self._allocate_pid()
                         self._mem_devices[(k, mevent.device_id, "GPU")] = pid
-                        self._chrome_trace.emit_pid("memory usage on %s:gpu:%d"
-                                                    % (k, mevent.device_id),
-                                                    pid)
+                        self._chrome_trace.emit_pid(
+                            "memory usage on %s:gpu:%d" % (k, mevent.device_id),
+                            pid)
                 elif mevent.place == profiler_pb2.MemEvent.CPUPlace:
                     if (k, mevent.device_id, "CPU") not in self._mem_devices:
                         pid = self._allocate_pid()
                         self._mem_devices[(k, mevent.device_id, "CPU")] = pid
-                        self._chrome_trace.emit_pid("memory usage on %s:cpu:%d"
-                                                    % (k, mevent.device_id),
-                                                    pid)
+                        self._chrome_trace.emit_pid(
+                            "memory usage on %s:cpu:%d" % (k, mevent.device_id),
+                            pid)
                 elif mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace:
-                    if (k, mevent.device_id, "CUDAPinnedPlace"
-                        ) not in self._mem_devices:
+                    if (k, mevent.device_id,
+                            "CUDAPinnedPlace") not in self._mem_devices:
                         pid = self._allocate_pid()
                         self._mem_devices[(k, mevent.device_id,
                                            "CUDAPinnedPlace")] = pid
@@ -190,9 +186,9 @@ class Timeline(object):
                     if (k, mevent.device_id, "NPU") not in self._mem_devices:
                         pid = self._allocate_pid()
                         self._mem_devices[(k, mevent.device_id, "NPU")] = pid
-                        self._chrome_trace.emit_pid("memory usage on %s:npu:%d"
-                                                    % (k, mevent.device_id),
-                                                    pid)
+                        self._chrome_trace.emit_pid(
+                            "memory usage on %s:npu:%d" % (k, mevent.device_id),
+                            pid)
                 if (k, 0, "CPU") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "CPU")] = pid
@@ -273,14 +269,14 @@ class Timeline(object):
             total_size = 0
             while i < len(mem_list):
                 total_size += mem_list[i]['size']
-                while i < len(mem_list) - 1 and mem_list[i][
-                        'time'] == mem_list[i + 1]['time']:
+                while i < len(mem_list) - 1 and mem_list[i]['time'] == mem_list[
+                        i + 1]['time']:
                     total_size += mem_list[i + 1]['size']
                     i += 1
 
                 self._chrome_trace.emit_counter(
-                    "Memory", "Memory", mem_list[i]['pid'],
-                    mem_list[i]['time'], 0, total_size)
+                    "Memory", "Memory", mem_list[i]['pid'], mem_list[i]['time'],
+                    0, total_size)
                 i += 1
 
     def generate_chrome_trace(self):

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
@@ -28,16 +27,20 @@ class SpectralConvergenceLoss(nn.Layer):
 
     def forward(self, x_mag, y_mag):
         """Calculate forward propagation.
-        Args:
-            x_mag (Tensor): Magnitude spectrogram of predicted signal (B, #frames, #freq_bins).
-            y_mag (Tensor): Magnitude spectrogram of groundtruth signal (B, #frames, #freq_bins).
-        Returns:
-            Tensor: Spectral convergence loss value.
+        Parameters
+        ----------
+        x_mag : Tensor
+            Magnitude spectrogram of predicted signal (B, #frames, #freq_bins).
+        y_mag : Tensor)
+            Magnitude spectrogram of groundtruth signal (B, #frames, #freq_bins).
+        Returns
+        ----------
+        Tensor
+            Spectral convergence loss value.
         """
         return paddle.norm(
             y_mag - x_mag, p="fro") / paddle.clip(
-                paddle.norm(
-                    y_mag, p="fro"), min=1e-10)
+                paddle.norm(y_mag, p="fro"), min=1e-10)
 
 
 class LogSTFTMagnitudeLoss(nn.Layer):
@@ -62,10 +65,8 @@ class LogSTFTMagnitudeLoss(nn.Layer):
             Log STFT magnitude loss value.
         """
         return F.l1_loss(
-            paddle.log(paddle.clip(
-                y_mag, min=self.epsilon)),
-            paddle.log(paddle.clip(
-                x_mag, min=self.epsilon)))
+            paddle.log(paddle.clip(y_mag, min=self.epsilon)),
+            paddle.log(paddle.clip(x_mag, min=self.epsilon)))
 
 
 class STFTLoss(nn.Layer):

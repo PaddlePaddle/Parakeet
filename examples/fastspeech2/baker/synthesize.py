@@ -67,8 +67,7 @@ def evaluate(args, fastspeech2_config, pwg_config):
     std = paddle.to_tensor(std)
     pwg_normalizer = ZScore(mu, std)
 
-    fastspeech2_inferencce = FastSpeech2Inference(fastspeech2_normalizer,
-                                                  model)
+    fastspeech2_inferencce = FastSpeech2Inference(fastspeech2_normalizer, model)
     pwg_inference = PWGInference(pwg_normalizer, vocoder)
 
     output_dir = Path(args.output_dir)

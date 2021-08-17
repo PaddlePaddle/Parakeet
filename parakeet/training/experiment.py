@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import sys
 import logging
+import sys
 from pathlib import Path
 
 import paddle
@@ -21,7 +20,8 @@ from paddle import distributed as dist
 from paddle.io import DistributedBatchSampler
 from visualdl import LogWriter
 
-from parakeet.utils import checkpoint, mp_tools
+from parakeet.utils import checkpoint
+from parakeet.utils import mp_tools
 
 __all__ = ["ExperimentBase"]
 

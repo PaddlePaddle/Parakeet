@@ -17,7 +17,6 @@ from pathlib import Path
 
 import numpy as np
 import paddle
-import pypinyin
 from pypinyin import lazy_pinyin, Style
 import jieba
 import phkit

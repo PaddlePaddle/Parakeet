@@ -11,14 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import math
-import numpy as np
-
 import paddle
-from paddle import Tensor
 from paddle.static import InputSpec
-from paddle.nn import functional as F
 
 
 def sinusoid_position_encoding(num_positions: int,
@@ -52,6 +46,5 @@ def call_it(x):
 
 call_it(paddle.randn([8, 32]))
 m = paddle.jit.to_static(
-    call_it, input_spec=[InputSpec(
-        [-1, -1], dtype=paddle.int32)])
+    call_it, input_spec=[InputSpec([-1, -1], dtype=paddle.int32)])
 m(paddle.randn([8, 32]).astype(paddle.int32))

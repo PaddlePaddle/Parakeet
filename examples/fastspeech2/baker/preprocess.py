@@ -262,10 +262,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Preprocess audio and then extract features.")
     parser.add_argument(
-        "--rootdir",
-        default=None,
-        type=str,
-        help="directory to baker dataset.")
+        "--rootdir", default=None, type=str, help="directory to baker dataset.")
     parser.add_argument(
         "--dur-file",
         default=None,

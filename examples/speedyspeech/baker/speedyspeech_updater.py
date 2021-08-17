@@ -13,15 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.nn import functional as F
 from paddle.fluid.layers import huber_loss
-
-from parakeet.modules.ssim import ssim
+from paddle.nn import functional as F
 from parakeet.modules.losses import masked_l1_loss, weighted_mean
+from parakeet.modules.ssim import ssim
+from parakeet.training.extensions.evaluator import StandardEvaluator
 from parakeet.training.reporter import report
 from parakeet.training.updaters.standard_updater import StandardUpdater
-from parakeet.training.extensions.evaluator import StandardEvaluator
-from parakeet.models.speedyspeech import SpeedySpeech
 
 
 class SpeedySpeechUpdater(StandardUpdater):

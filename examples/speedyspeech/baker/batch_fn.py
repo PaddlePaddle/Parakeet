@@ -22,8 +22,7 @@ def collate_baker_examples(examples):
     tones = [np.array(item["tones"], dtype=np.int64) for item in examples]
     feats = [np.array(item["feats"], dtype=np.float32) for item in examples]
     durations = [
-        np.array(
-            item["durations"], dtype=np.int64) for item in examples
+        np.array(item["durations"], dtype=np.int64) for item in examples
     ]
     num_phones = np.array([item["num_phones"] for item in examples])
     num_frames = np.array([item["num_frames"] for item in examples])

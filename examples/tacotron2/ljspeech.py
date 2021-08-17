@@ -46,8 +46,7 @@ class LJSpeech(Dataset):
 class LJSpeechCollector(object):
     """A simple callable to batch LJSpeech examples."""
 
-    def __init__(self, padding_idx=0, padding_value=0.,
-                 padding_stop_token=1.0):
+    def __init__(self, padding_idx=0, padding_value=0., padding_stop_token=1.0):
         self.padding_idx = padding_idx
         self.padding_value = padding_value
         self.padding_stop_token = padding_stop_token

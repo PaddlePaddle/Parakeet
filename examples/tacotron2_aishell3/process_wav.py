@@ -68,8 +68,7 @@ def preprocess_aishell3(source_dir, target_dir, alignment_dir):
         alignment_dir=alignment_dir)
     with Pool(16) as p:
         list(
-            tqdm(
-                p.imap(fx, wav_paths), total=len(wav_paths), unit="utterance"))
+            tqdm(p.imap(fx, wav_paths), total=len(wav_paths), unit="utterance"))
 
 
 if __name__ == "__main__":

@@ -11,18 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
 import logging
-from pathlib import Path
+import os
 from datetime import datetime
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any
+from typing import Dict
+from typing import List
 
 import jsonlines
 
-from parakeet.utils.mp_tools import rank_zero_only
-from parakeet.training.trainer import Trainer
 from parakeet.training import extension
+from parakeet.training.trainer import Trainer
+from parakeet.utils.mp_tools import rank_zero_only
 
 
 def load_records(records_fp):
@@ -56,7 +57,7 @@ class Snapshot(extension.Extension):
         self.max_size = max_size
         self._snapshot_on_error = snapshot_on_error
         self._save_all = (max_size == -1)
-        self.checkpoint_dir =...
+        self.checkpoint_dir = None
 
     def initialize(self, trainer: Trainer):
         """Setting up this extention."""
@@ -107,4 +108,4 @@ class Snapshot(extension.Extension):
         with jsonlines.open(record_path, 'w') as writer:
             for record in self.records:
                 # jsonlines.open may return a Writer or a Reader
-                writer.write(record)  # pylint: disable=no-member 
+                writer.write(record)  # pylint: disable=no-member

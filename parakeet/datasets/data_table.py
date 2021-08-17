@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Union, Optional, Callable, Tuple, List, Dict, Any
-from pathlib import Path
 from multiprocessing import Manager
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
 
-import numpy as np
 from paddle.io import Dataset
 
 

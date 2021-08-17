@@ -12,19 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Fastspeech2 related modules for paddle"""
-
-from typing import Dict, Sequence, Tuple
+from typing import Sequence
+from typing import Tuple
 
 import paddle
 from paddle import nn
-from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictor, DurationPredictorLoss
+from typeguard import check_argument_types
+
+from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictor
+from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictorLoss
 from parakeet.modules.fastspeech2_predictor.length_regulator import LengthRegulator
 from parakeet.modules.fastspeech2_predictor.postnet import Postnet
 from parakeet.modules.fastspeech2_predictor.variance_predictor import VariancePredictor
-from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding, ScaledPositionalEncoding
+from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
+from parakeet.modules.fastspeech2_transformer.embedding import ScaledPositionalEncoding
 from parakeet.modules.fastspeech2_transformer.encoder import Encoder as TransformerEncoder
-from parakeet.modules.nets_utils import initialize, make_non_pad_mask, make_pad_mask
-from typeguard import check_argument_types
+from parakeet.modules.nets_utils import initialize
+from parakeet.modules.nets_utils import make_non_pad_mask
+from parakeet.modules.nets_utils import make_pad_mask
 
 
 class FastSpeech2(nn.Layer):
@@ -293,9 +298,8 @@ class FastSpeech2(nn.Layer):
             xs, ilens, ys, olens, ds, ps, es, is_inference=False)
         # modify mod part of groundtruth
         if self.reduction_factor > 1:
-            olens = paddle.to_tensor([
-                olen - olen % self.reduction_factor for olen in olens.numpy()
-            ])
+            olens = paddle.to_tensor(
+                [olen - olen % self.reduction_factor for olen in olens.numpy()])
             max_olen = max(olens)
             ys = ys[:, :max_olen]
 
@@ -501,8 +505,7 @@ class FastSpeech2Inference(nn.Layer):
 class FastSpeech2Loss(nn.Layer):
     """Loss function module for FastSpeech2."""
 
-    def __init__(self,
-                 use_masking: bool=True,
+    def __init__(self, use_masking: bool=True,
                  use_weighted_masking: bool=False):
         """Initialize feed-forward Transformer loss module.
 
@@ -538,8 +541,8 @@ class FastSpeech2Loss(nn.Layer):
             ps: paddle.Tensor,
             es: paddle.Tensor,
             ilens: paddle.Tensor,
-            olens: paddle.Tensor, ) -> Tuple[paddle.Tensor, paddle.Tensor,
-                                             paddle.Tensor, paddle.Tensor]:
+            olens: paddle.Tensor,
+    ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """Calculate forward propagation.
 
         Parameters
@@ -611,9 +614,9 @@ class FastSpeech2Loss(nn.Layer):
         # make weighted mask and apply it
         if self.use_weighted_masking:
             out_masks = make_non_pad_mask(olens).unsqueeze(-1)
-            out_weights = out_masks.cast(
-                dtype=paddle.float32) / out_masks.cast(
-                    dtype=paddle.float32).sum(axis=1, keepdim=True)
+            out_weights = out_masks.cast(dtype=paddle.float32) / out_masks.cast(
+                dtype=paddle.float32).sum(
+                    axis=1, keepdim=True)
             out_weights /= ys.shape[0] * ys.shape[2]
             duration_masks = make_non_pad_mask(ilens)
             duration_weights = (duration_masks.cast(dtype=paddle.float32) /

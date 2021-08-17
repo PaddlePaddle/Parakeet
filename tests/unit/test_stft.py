@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import paddle
-import torch
 import librosa
 import numpy as np
-from parakeet.modules.stft_loss import STFT, MultiResolutionSTFTLoss
+import paddle
+import torch
 from parallel_wavegan.losses import stft_loss as sl
 from scipy import signal
+
+from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
+from parakeet.modules.stft_loss import STFT
 
 
 def test_stft():
@@ -34,8 +35,7 @@ def test_stft():
         window=torch.as_tensor(window))
     S2 = (D2**2).sum(-1).sqrt()
     S3 = np.abs(
-        librosa.stft(
-            x.numpy()[0], n_fft=1024, hop_length=256, win_length=1024))
+        librosa.stft(x.numpy()[0], n_fft=1024, hop_length=256, win_length=1024))
     print(S2.shape)
     print(S.numpy()[0])
     print(S2.data.cpu().numpy()[0])

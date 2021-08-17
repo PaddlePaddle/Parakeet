@@ -11,23 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
-from dataclasses import dataclass
-from typing import Optional
 from typing import Dict
-from typing import Union
+from typing import Optional
 
-from timer import timer
-import paddle
 from paddle import Tensor
-from paddle.nn import Layer
-from paddle.optimizer import Optimizer
 from paddle.io import DataLoader
 from paddle.io import DistributedBatchSampler
+from paddle.nn import Layer
+from paddle.optimizer import Optimizer
+from timer import timer
 
 from parakeet.training.reporter import report
-from parakeet.training.updater import UpdaterBase, UpdaterState
+from parakeet.training.updater import UpdaterBase
+from parakeet.training.updater import UpdaterState
 
 
 class StandardUpdater(UpdaterBase):
@@ -65,34 +62,34 @@ class StandardUpdater(UpdaterBase):
         # We increase the iteration index after updating and before extension.
         # Here are the reasons.
 
-        # 0. Snapshotting(as well as other extensions, like visualizer) is 
+        # 0. Snapshotting(as well as other extensions, like visualizer) is
         #    executed after a step of updating;
-        # 1. We decide to increase the iteration index after updating and 
+        # 1. We decide to increase the iteration index after updating and
         #    before any all extension is executed. 
-        # 3. We do not increase the iteration after extension because we 
-        #    prefer a consistent resume behavior, when load from a 
-        #    `snapshot_iter_100.pdz` then the next step to train is `101`, 
-        #    naturally. But if iteration is increased increased after 
-        #    extension(including snapshot), then, a `snapshot_iter_99` is 
-        #    loaded. You would need a extra increasing of the iteration idex 
-        #    before training to avoid another iteration `99`, which has been 
+        # 3. We do not increase the iteration after extension because we
+        #    prefer a consistent resume behavior, when load from a
+        #    `snapshot_iter_100.pdz` then the next step to train is `101`,
+        #    naturally. But if iteration is increased increased after
+        #    extension(including snapshot), then, a `snapshot_iter_99` is
+        #    loaded. You would need a extra increasing of the iteration idex
+        #    before training to avoid another iteration `99`, which has been
         #    done before snapshotting.
-        # 4. Thus iteration index represrnts "currently how mant epochs has 
+        # 4. Thus iteration index represrnts "currently how mant epochs has
         #    been done."
-        # NOTE: use report to capture the correctly value. If you want to 
+        # NOTE: use report to capture the correctly value. If you want to
         # report the learning rate used for a step, you must report it before
-        # the learning rate scheduler's step() has been called. In paddle's 
+        # the learning rate scheduler's step() has been called. In paddle's
         # convention, we do not use an extension to change the learning rate.
         # so if you want to report it, do it in the updater.
 
-        # Then here comes the next question. When is the proper time to 
-        # increase the epoch index? Since all extensions are executed after 
-        # updating, it is the time that after updating is the proper time to 
-        # increase epoch index. 
+        # Then here comes the next question. When is the proper time to
+        # increase the epoch index? Since all extensions are executed after
+        # updating, it is the time that after updating is the proper time to
+        # increase epoch index.
         # 1. If we increase the epoch index before updating, then an extension
-        #    based ot epoch would miss the correct timing. It could only be 
+        #    based ot epoch would miss the correct timing. It could only be
         #    triggerd after an extra updating.
-        # 2. Theoretically, when an epoch is done, the epoch index should be 
+        # 2. Theoretically, when an epoch is done, the epoch index should be
         #    increased. So it would be increase after updating.
         # 3. Thus, eppoch index represents "currently how many epochs has been
         #    done." So it starts from 0.
@@ -140,7 +137,7 @@ class StandardUpdater(UpdaterBase):
 
     @property
     def updates_per_epoch(self):
-        """Number of updater per epoch, determined by the length of the 
+        """Number of updater per epoch, determined by the length of the
         dataloader."""
         length_of_dataloader = None
         try:

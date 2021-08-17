@@ -30,9 +30,7 @@ except ModuleNotFoundError:
 INT16_MAX = (2**15) - 1
 
 
-def normalize_volume(wav,
-                     target_dBFS,
-                     increase_only=False,
+def normalize_volume(wav, target_dBFS, increase_only=False,
                      decrease_only=False):
     # this function implements Loudness normalization, instead of peak
     # normalization, See https://en.wikipedia.org/wiki/Audio_normalization
@@ -44,8 +42,9 @@ def normalize_volume(wav,
     if increase_only and decrease_only:
         raise ValueError("Both increase only and decrease only are set")
     dBFS_change = target_dBFS - 10 * np.log10(np.mean(wav**2))
-    if ((dBFS_change < 0 and increase_only) or
-        (dBFS_change > 0 and decrease_only)):
+    if dBFS_change < 0 and increase_only:
+        return wav
+    if dBFS_change > 0 and decrease_only:
         return wav
     gain = 10**(dBFS_change / 20)
     return wav * gain
@@ -59,9 +58,14 @@ def trim_long_silences(wav,
     """
     Ensures that segments without voice in the waveform remain no longer than a
     threshold determined by the VAD parameters in params.py.
-
-    :param wav: the raw waveform as a numpy array of floats
-    :return: the same waveform with silences trimmed away (length <= original wav length)
+    Parameters
+    ----------
+    wav : np.array
+        the raw waveform as a numpy array of floats
+    Returns
+    ----------
+    np.array
+        the same waveform with silences trimmed away (length <= original wav length)
     """
     # Compute the voice detection window size
     samples_per_window = (vad_window_length * sampling_rate) // 1000
@@ -117,20 +121,25 @@ def compute_partial_slices(n_samples: int,
 
     The returned ranges may be indexing further than the length of the waveform. It is
     recommended that you pad the waveform with zeros up to wave_slices[-1].stop.
+    Parameters
+    ----------
+    n_samples : int
+        the number of samples in the waveform.
+    partial_utterance_n_frames : int
+        the number of mel spectrogram frames in each partial utterance.
 
-    :param n_samples: the number of samples in the waveform
-    :param partial_utterance_n_frames: the number of mel spectrogram frames in each partial
-    utterance
-    :param min_pad_coverage: when reaching the last partial utterance, it may or may not have
-    enough frames. If at least <min_pad_coverage> of <partial_utterance_n_frames> are present,
-    then the last partial utterance will be considered, as if we padded the audio. Otherwise,
-    it will be discarded, as if we trimmed the audio. If there aren't enough frames for 1 partial
-    utterance, this parameter is ignored so that the function always returns at least 1 slice.
-    :param overlap: by how much the partial utterance should overlap. If set to 0, the partial
-    utterances are entirely disjoint.
-    :return: the waveform slices and mel spectrogram slices as lists of array slices. Index
-    respectively the waveform and the mel spectrogram with these slices to obtain the partial
-    utterances.
+    min_pad_coverage : int 
+        when reaching the last partial utterance, it may or may not have enough frames.
+        If at least <min_pad_coverage> of <partial_utterance_n_frames> are present,
+        then the last partial utterance will be considered, as if we padded the audio. Otherwise,
+        it will be discarded, as if we trimmed the audio. If there aren't enough frames for 1 partial
+        utterance, this parameter is ignored so that the function always returns at least 1 slice.
+    overlap : float
+        by how much the partial utterance should overlap. If set to 0, the partial utterances are entirely disjoint.
+    Returns
+    ----------
+        the waveform slices and mel spectrogram slices as lists of array slices. 
+        Index respectively the waveform and the mel spectrogram with these slices to obtain the partialutterances.
     """
     assert 0 <= overlap < 1
     assert 0 < min_pad_coverage <= 1
@@ -138,8 +147,8 @@ def compute_partial_slices(n_samples: int,
     # librosa's function to compute num_frames from num_samples
     n_frames = int(np.ceil((n_samples + 1) / hop_length))
     # frame shift between ajacent partials
-    frame_step = max(
-        1, int(np.round(partial_utterance_n_frames * (1 - overlap))))
+    frame_step = max(1,
+                     int(np.round(partial_utterance_n_frames * (1 - overlap))))
 
     # Compute the slices
     wav_slices, mel_slices = [], []

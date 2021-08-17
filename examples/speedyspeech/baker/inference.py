@@ -15,9 +15,8 @@
 import argparse
 from pathlib import Path
 
-import numpy as np
-from paddle import inference
 import soundfile as sf
+from paddle import inference
 
 from frontend import text_analysis
 
@@ -73,8 +72,8 @@ def main():
 
         speedyspeech_predictor.run()
         output_names = speedyspeech_predictor.get_output_names()
-        output_handle = speedyspeech_predictor.get_output_handle(output_names[
-            0])
+        output_handle = speedyspeech_predictor.get_output_handle(
+            output_names[0])
         output_data = output_handle.copy_to_cpu()
 
         input_names = pwg_predictor.get_input_names()

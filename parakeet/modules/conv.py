@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import paddle
 from paddle import nn
 
@@ -22,48 +21,40 @@ __all__ = [
 
 
 class Conv1dCell(nn.Conv1D):
-    """A subclass of Conv1D layer, which can be used in an autoregressive 
+    """A subclass of Conv1D layer, which can be used in an autoregressive
     decoder like an RNN cell. 
     
-    When used in autoregressive decoding, it performs causal temporal 
-    convolution incrementally. At each time step, it takes a step input and 
-    returns a step output. 
+    When used in autoregressive decoding, it performs causal temporal
+    convolution incrementally. At each time step, it takes a step input and
+    returns a step output.
     
     Notes
     ------
-    It is done by caching an internal buffer of length ``receptive_file - 1``. 
-    when adding a step input, the buffer is shited by one step, the latest 
-    input is added to be buffer and the oldest step is discarded. And it 
-    returns a step output. For single step case, convolution is equivalent to a 
+    It is done by caching an internal buffer of length ``receptive_file - 1``.
+    when adding a step input, the buffer is shited by one step, the latest
+    input is added to be buffer and the oldest step is discarded. And it
+    returns a step output. For single step case, convolution is equivalent to a
     linear transformation.
-    
     That it can be used as a cell depends on several restrictions:
-    
     1. stride must be 1;
     2. padding must be a causal padding (recpetive_field - 1, 0).
-    
-    Thus, these arguments are removed from the ``__init__`` method of this 
+    Thus, these arguments are removed from the ``__init__`` method of this
     class.
     
     Parameters
     ----------
     in_channels: int
         The feature size of the input.
-        
     out_channels: int
         The feature size of the output.
-        
     kernel_size: int or Tuple[int]
         The size of the kernel.
-        
     dilation: int or Tuple[int]
         The dilation of the convolution, by default 1
-        
     weight_attr: ParamAttr, Initializer, str or bool, optional
         The parameter attribute of the convolution kernel, by default None.
-        
     bias_attr: ParamAttr, Initializer, str or bool, optional
-        The parameter attribute of the bias. If ``False``, this layer does not 
+        The parameter attribute of the bias. If ``False``, this layer does not
         have a bias, by default None.
         
     Examples
@@ -114,7 +105,7 @@ class Conv1dCell(nn.Conv1D):
         
         Warnings
         ---------
-        This method should be called before a sequence of calls to 
+        This method should be called before a sequence of calls to
         ``add_input``.
 
         Raises
@@ -165,12 +156,12 @@ class Conv1dCell(nn.Conv1D):
         
         Parameters
         -----------
-        x_t : Tensor [shape=(batch_size, in_channels)] 
+        x_t : Tensor [shape=(batch_size, in_channels)]
             The step input.
             
         Returns
         -------
-        y_t :Tensor [shape=(batch_size, out_channels)] 
+        y_t :Tensor [shape=(batch_size, out_channels)]
             The step output.
         """
         batch_size = x_t.shape[0]
@@ -199,36 +190,27 @@ class Conv1dBatchNorm(nn.Layer):
     ----------
     in_channels : int
         The feature size of the input.
-        
     out_channels : int
         The feature size of the output.
-        
     kernel_size : int
         The size of the convolution kernel.
-        
     stride : int, optional
         The stride of the convolution, by default 1.
-        
     padding : int, str or Tuple[int], optional
-        The padding of the convolution. 
+        The padding of the convolution.
         If int, a symmetrical padding is applied before convolution;
         If str, it should be "same" or "valid";
-        If Tuple[int], its length should be 2, meaning 
+        If Tuple[int], its length should be 2, meaning
         ``(pad_before, pad_after)``, by default 0.
-        
     weight_attr : ParamAttr, Initializer, str or bool, optional
         The parameter attribute of the convolution kernel, by default None.
-        
     bias_attr : ParamAttr, Initializer, str or bool, optional
-        The parameter attribute of the bias of the convolution, by default 
+        The parameter attribute of the bias of the convolution, by default
         None.
-        
     data_format : str ["NCL" or "NLC"], optional
         The data layout of the input, by default "NCL"
-        
     momentum : float, optional
         The momentum of the BatchNorm1D layer, by default 0.9
-        
     epsilon : [type], optional
         The epsilon of the BatchNorm1D layer, by default 1e-05
     """

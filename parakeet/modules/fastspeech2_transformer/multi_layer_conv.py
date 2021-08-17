@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Layer modules for FFT block in FastSpeech (Feed-forward Transformer)."""
-
 import paddle
 
 

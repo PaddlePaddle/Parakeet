@@ -15,7 +15,6 @@
 Rules to verbalize numbers into Chinese characters.
 https://zh.wikipedia.org/wiki/中文数字#現代中文
 """
-
 import re
 from collections import OrderedDict
 from typing import List

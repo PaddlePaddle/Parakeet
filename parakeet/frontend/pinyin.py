@@ -19,13 +19,15 @@ text -> pinyin to other part of a TTS system. Other NLP techniques may be used
 (e.g. tokenization, tagging, NER...)
 """
 import re
+from itertools import product
+
+from pypinyin.contrib.neutral_tone import NeutralToneWith5Mixin
+from pypinyin.core import DefaultConverter
+from pypinyin.core import Pinyin
+from pypinyin.core import Style
+
 from parakeet.frontend.phonectic import Phonetics
 from parakeet.frontend.vocab import Vocab
-import pypinyin
-from pypinyin.core import Pinyin, Style
-from pypinyin.core import DefaultConverter
-from pypinyin.contrib.neutral_tone import NeutralToneWith5Mixin
-from itertools import product
 
 _punctuations = ['，', '。', '？', '！']
 _initials = [
@@ -33,10 +35,10 @@ _initials = [
     'ch', 'sh', 'r', 'z', 'c', 's'
 ]
 _finals = [
-    'ii', 'iii', 'a', 'o', 'e', 'ea', 'ai', 'ei', 'ao', 'ou', 'an', 'en',
-    'ang', 'eng', 'er', 'i', 'ia', 'io', 'ie', 'iai', 'iao', 'iou', 'ian',
-    'ien', 'iang', 'ieng', 'u', 'ua', 'uo', 'uai', 'uei', 'uan', 'uen', 'uang',
-    'ueng', 'v', 've', 'van', 'ven', 'veng'
+    'ii', 'iii', 'a', 'o', 'e', 'ea', 'ai', 'ei', 'ao', 'ou', 'an', 'en', 'ang',
+    'eng', 'er', 'i', 'ia', 'io', 'ie', 'iai', 'iao', 'iou', 'ian', 'ien',
+    'iang', 'ieng', 'u', 'ua', 'uo', 'uai', 'uei', 'uan', 'uen', 'uang', 'ueng',
+    'v', 've', 'van', 'ven', 'veng'
 ]
 _ernized_symbol = ['&r']
 _phones = _initials + _finals + _ernized_symbol + _punctuations
@@ -76,12 +78,12 @@ class ParakeetPinyin(Phonetics):
 
     def phoneticize(self, sentence, add_start_end=False):
         """ Normalize the input text sequence and convert it into pronunciation sequence.
-    
+
         Parameters
         -----------
         sentence: str
             The input text sequence.
-    
+
         Returns
         ----------
         List[str]
@@ -95,12 +97,12 @@ class ParakeetPinyin(Phonetics):
 
     def numericalize(self, phonemes, tones):
         """ Convert pronunciation sequence into pronunciation id sequence.
-        
+
         Parameters
         -----------
         phonemes: List[str]
             The list of pronunciation sequence.
-    
+
         Returns
         ----------
         List[int]
@@ -112,12 +114,12 @@ class ParakeetPinyin(Phonetics):
 
     def __call__(self, sentence, add_start_end=False):
         """ Convert the input text sequence into pronunciation id sequence.
-    
+
         Parameters
         -----------
         sentence: str
             The input text sequence.
-    
+
         Returns
         ----------
         List[str]
@@ -159,12 +161,12 @@ class ParakeetPinyinWithTone(Phonetics):
 
     def phoneticize(self, sentence, add_start_end=False):
         """ Normalize the input text sequence and convert it into pronunciation sequence.
-    
+
         Parameters
         -----------
         sentence: str
             The input text sequence.
-    
+
         Returns
         ----------
         List[str]
@@ -178,12 +180,12 @@ class ParakeetPinyinWithTone(Phonetics):
 
     def numericalize(self, phonemes):
         """ Convert pronunciation sequence into pronunciation id sequence.
-        
+
         Parameters
         -----------
         phonemes: List[str]
             The list of pronunciation sequence.
-    
+
         Returns
         ----------
         List[int]
@@ -194,12 +196,12 @@ class ParakeetPinyinWithTone(Phonetics):
 
     def __call__(self, sentence, add_start_end=False):
         """ Convert the input text sequence into pronunciation id sequence.
-    
+
         Parameters
         -----------
         sentence: str
             The input text sequence.
-    
+
         Returns
         ----------
         List[str]
@@ -232,17 +234,17 @@ def _convert_to_parakeet_convension(syllable):
     syllable = syllable.replace("ing", "ieng").replace("in", "ien")
 
     # expansion for un, ui, iu
-    syllable = syllable.replace("un","uen")\
-        .replace("ui", "uei")\
+    syllable = syllable.replace("un", "uen") \
+        .replace("ui", "uei") \
         .replace("iu", "iou")
 
     # rule for variants of i
-    syllable = syllable.replace("zi", "zii")\
-        .replace("ci", "cii")\
-        .replace("si", "sii")\
-        .replace("zhi", "zhiii")\
-        .replace("chi", "chiii")\
-        .replace("shi", "shiii")\
+    syllable = syllable.replace("zi", "zii") \
+        .replace("ci", "cii") \
+        .replace("si", "sii") \
+        .replace("zhi", "zhiii") \
+        .replace("chi", "chiii") \
+        .replace("shi", "shiii") \
         .replace("ri", "riii")
 
     # rule for y preceding i, u
@@ -252,8 +254,8 @@ def _convert_to_parakeet_convension(syllable):
     syllable = syllable.replace("wu", "u").replace("w", "u")
 
     # rule for v following j, q, x
-    syllable = syllable.replace("ju", "jv")\
-        .replace("qu", "qv")\
+    syllable = syllable.replace("ju", "jv") \
+        .replace("qu", "qv") \
         .replace("xu", "xv")
 
     return syllable + tone

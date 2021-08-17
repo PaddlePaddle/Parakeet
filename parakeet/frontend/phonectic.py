@@ -11,16 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from abc import ABC
+from abc import abstractmethod
 
-from abc import ABC, abstractmethod
-from typing import Union
 from g2p_en import G2p
 from g2pM import G2pM
+
 from parakeet.frontend import Vocab
+from parakeet.frontend.normalizer.normalizer import normalize
+from parakeet.frontend.punctuation import get_punctuations
+
 # discard opencc untill we find an easy solution to install it on windows
 # from opencc import OpenCC
-from parakeet.frontend.punctuation import get_punctuations
-from parakeet.frontend.normalizer.normalizer import normalize
 
 __all__ = ["Phonetics", "English", "EnglishCharacter", "Chinese"]
 
@@ -65,14 +67,14 @@ class English(Phonetics):
         start = self.vocab.start_symbol
         end = self.vocab.end_symbol
         phonemes = ([] if start is None else [start]) \
-                 + self.backend(sentence) \
-                 + ([] if end is None else [end])
+                   + self.backend(sentence) \
+                   + ([] if end is None else [end])
         phonemes = [item for item in phonemes if item in self.vocab.stoi]
         return phonemes
 
     def numericalize(self, phonemes):
         """ Convert pronunciation sequence into pronunciation id sequence.
-        
+
         Parameters
         -----------
         phonemes: List[str]
@@ -91,7 +93,7 @@ class English(Phonetics):
 
     def reverse(self, ids):
         """ Reverse the list of pronunciation id sequence to a list of pronunciation sequence.
-        
+
         Parameters
         -----------
         ids: List[int]
@@ -183,7 +185,7 @@ class EnglishCharacter(Phonetics):
         ----------
         str
             The input text sequence.
-        
+
         """
         return [self.vocab.reverse(i) for i in ids]
 
@@ -244,8 +246,8 @@ class Chinese(Phonetics):
         start = self.vocab.start_symbol
         end = self.vocab.end_symbol
         phonemes = ([] if start is None else [start]) \
-                 + phonemes \
-                 + ([] if end is None else [end])
+                   + phonemes \
+                   + ([] if end is None else [end])
         return self._filter_symbols(phonemes)
 
     def _filter_symbols(self, phonemes):
@@ -261,7 +263,7 @@ class Chinese(Phonetics):
 
     def numericalize(self, phonemes):
         """ Convert pronunciation sequence into pronunciation id sequence.
-        
+
         Parameters
         -----------
         phonemes: List[str]
@@ -298,7 +300,7 @@ class Chinese(Phonetics):
 
     def reverse(self, ids):
         """ Reverse the list of pronunciation id sequence to a list of pronunciation sequence.
-        
+
         Parameters
         -----------
         ids: List[int]

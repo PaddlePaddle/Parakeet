@@ -154,8 +154,7 @@ def train_sp(args, config):
     output_dir = Path(args.output_dir)
     trainer = Trainer(updater, (config.max_epoch, 'epoch'), output_dir)
 
-    evaluator = FastSpeech2Evaluator(model, dev_dataloader,
-                                     **config["updater"])
+    evaluator = FastSpeech2Evaluator(model, dev_dataloader, **config["updater"])
 
     if dist.get_rank() == 0:
         trainer.extend(evaluator, trigger=(1, "epoch"))

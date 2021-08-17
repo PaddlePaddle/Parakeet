@@ -11,13 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import numba
-import numpy as np
 import paddle
-from paddle import nn
-from paddle.nn import functional as F
 from paddle.fluid.layers import sequence_mask
+from paddle.nn import functional as F
 
 __all__ = [
     "guided_attention_loss",
@@ -30,7 +26,7 @@ __all__ = [
 def attention_guide(dec_lens, enc_lens, N, T, g, dtype=None):
     """Build that W matrix. shape(B, T_dec, T_enc)
     W[i, n, t] = 1 - exp(-(n/dec_lens[i] - t/enc_lens[i])**2 / (2g**2)) 
-    
+
     See also:
     Tachibana, Hideyuki, Katsuya Uenoyama, and Shunsuke Aihara. 2017. “Efficiently Trainable Text-to-Speech System Based on Deep Convolutional Networks with Guided Attention.” ArXiv:1710.08969 [Cs, Eess], October. http://arxiv.org/abs/1710.08969.
     """
@@ -88,12 +84,10 @@ def masked_l1_loss(prediction, target, mask):
     ----------
     prediction : Tensor
         The prediction.
-        
     target : Tensor
         The target. The shape should be broadcastable to ``prediction``.
-        
     mask : Tensor
-        The mask. The shape should be broadcatable to the broadcasted shape of 
+        The mask. The shape should be broadcatable to the broadcasted shape of
         ``prediction`` and ``target``.
 
     Returns
@@ -113,13 +107,10 @@ def masked_softmax_with_cross_entropy(logits, label, mask, axis=-1):
     ----------
     logits : Tensor
         The logits. The ``axis``-th axis is the class dimension.
-        
     label : Tensor [dtype: int]
         The label. The size of the ``axis``-th axis should be 1.
-        
     mask : Tensor 
         The mask. The shape should be broadcastable to ``label``.
-        
     axis : int, optional
         The index of the class dimension in the shape of ``logits``, by default
         -1.

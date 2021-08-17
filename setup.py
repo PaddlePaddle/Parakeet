@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
 import io
+import os
 import re
-import sys
-from setuptools import setup, find_packages
+
+from setuptools import find_packages
+from setuptools import setup
 
 
 def read(*names, **kwargs):
@@ -80,7 +80,9 @@ setup_info = dict(
         'jieba',
         "phkit",
     ],
-    extras_require={'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"], },
+    extras_require={
+        'doc': ["sphinx", "sphinx-rtd-theme", "numpydoc"],
+    },
 
     # Package info
     packages=find_packages(exclude=('tests', 'tests.*')),

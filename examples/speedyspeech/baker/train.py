@@ -72,7 +72,9 @@ def train_sp(args, config):
         fields=[
             "phones", "tones", "num_phones", "num_frames", "feats", "durations"
         ],
-        converters={"feats": np.load, }, )
+        converters={
+            "feats": np.load,
+        }, )
     with jsonlines.open(args.dev_metadata, 'r') as reader:
         dev_metadata = list(reader)
     metadata_dir = Path(args.dev_metadata).parent
@@ -83,7 +85,9 @@ def train_sp(args, config):
         fields=[
             "phones", "tones", "num_phones", "num_frames", "feats", "durations"
         ],
-        converters={"feats": np.load, }, )
+        converters={
+            "feats": np.load,
+        }, )
 
     # collate function and dataloader
     train_sampler = DistributedBatchSampler(

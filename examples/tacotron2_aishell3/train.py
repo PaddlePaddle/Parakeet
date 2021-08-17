@@ -109,8 +109,7 @@ class Experiment(ExperimentBase):
             mel_pred = outputs['mel_outputs_postnet']
             self.visualizer.add_figure(
                 f"valid_sentence_{i}_predicted_spectrogram",
-                display.plot_spectrogram(mel_pred[0].numpy().T),
-                self.iteration)
+                display.plot_spectrogram(mel_pred[0].numpy().T), self.iteration)
 
         # write visual log
         valid_losses = {k: np.mean(v) for k, v in valid_losses.items()}

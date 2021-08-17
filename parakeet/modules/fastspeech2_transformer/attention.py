@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Multi-Head Attention layer definition."""
-
 import math
 
 import numpy
 import paddle
 from paddle import nn
+
 from parakeet.modules.masked_fill import masked_fill
 
 
@@ -111,8 +111,7 @@ class MultiHeadedAttention(nn.Layer):
             mask = paddle.logical_not(mask)
             min_value = float(
                 numpy.finfo(
-                    paddle.to_tensor(
-                        0, dtype=scores.dtype).numpy().dtype).min)
+                    paddle.to_tensor(0, dtype=scores.dtype).numpy().dtype).min)
 
             scores = masked_fill(scores, mask, min_value)
             # (batch, head, time1, time2)

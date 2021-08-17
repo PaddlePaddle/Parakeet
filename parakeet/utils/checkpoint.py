@@ -11,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
-import time
-import numpy as np
+
 import paddle
 from paddle import distributed as dist
-from paddle.nn import Layer
-from paddle.optimizer import Optimizer
 
 from parakeet.utils import mp_tools
 
@@ -66,7 +62,7 @@ def load_parameters(model,
                     optimizer=None,
                     checkpoint_dir=None,
                     checkpoint_path=None):
-    """Load a specific model checkpoint from disk. 
+    """Load a specific model checkpoint from disk.
 
     Args:
         model (Layer): model to load parameters.
@@ -74,8 +70,8 @@ def load_parameters(model,
             Defaults to None.
         checkpoint_dir (str, optional): the directory where checkpoint is saved.
         checkpoint_path (str, optional): if specified, load the checkpoint
-            stored in the checkpoint_path and the argument 'checkpoint_dir' will 
-            be ignored. Defaults to None. 
+            stored in the checkpoint_path and the argument 'checkpoint_dir' will
+            be ignored. Defaults to None.
 
     Returns:
         iteration (int): number of iterations that the loaded checkpoint has 
@@ -137,7 +133,6 @@ def save_parameters(checkpoint_dir, iteration, model, optimizer=None):
         opt_dict = optimizer.state_dict()
         optimizer_path = checkpoint_path + ".pdopt"
         paddle.save(opt_dict, optimizer_path)
-        print("[checkpoint] Saved optimzier state to {}".format(
-            optimizer_path))
+        print("[checkpoint] Saved optimzier state to {}".format(optimizer_path))
 
     _save_checkpoint(checkpoint_dir, iteration)

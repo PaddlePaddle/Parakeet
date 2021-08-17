@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import librosa
 import numpy as np
 import pyworld
@@ -46,11 +45,12 @@ class LogMelFBank():
         self.mel_filter = self._create_mel_filter()
 
     def _create_mel_filter(self):
-        mel_filter = librosa.filters.mel(sr=self.sr,
-                                         n_fft=self.n_fft,
-                                         n_mels=self.n_mels,
-                                         fmin=self.fmin,
-                                         fmax=self.fmax)
+        mel_filter = librosa.filters.mel(
+            sr=self.sr,
+            n_fft=self.n_fft,
+            n_mels=self.n_mels,
+            fmin=self.fmin,
+            fmax=self.fmax)
         return mel_filter
 
     def _stft(self, wav):
@@ -121,11 +121,12 @@ class Pitch():
                       use_log_f0=True) -> np.array:
         input = input.astype(np.float)
         frame_period = 1000 * self.hop_length / self.sr
-        f0, timeaxis = pyworld.dio(input,
-                                   fs=self.sr,
-                                   f0_floor=self.f0min,
-                                   f0_ceil=self.f0max,
-                                   frame_period=frame_period)
+        f0, timeaxis = pyworld.dio(
+            input,
+            fs=self.sr,
+            f0_floor=self.f0min,
+            f0_ceil=self.f0max,
+            frame_period=frame_period)
         f0 = pyworld.stonemask(input, f0, timeaxis, self.sr)
         if use_continuous_f0:
             f0 = self._convert_to_continuous_f0(f0)
@@ -195,8 +196,7 @@ class Energy():
         input_power = np.abs(input_stft)**2
         energy = np.sqrt(
             np.clip(
-                np.sum(input_power, axis=0), a_min=1.0e-10, a_max=float(
-                    'inf')))
+                np.sum(input_power, axis=0), a_min=1.0e-10, a_max=float('inf')))
         return energy
 
     def _average_by_duration(self, input: np.array, d: np.array) -> np.array:

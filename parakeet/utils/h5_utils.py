@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from pathlib import Path
-from typing import Union, Any
-import sys
 import logging
+import sys
+from pathlib import Path
+from typing import Any
+from typing import Union
+
 import h5py
 import numpy as np
 
@@ -44,8 +45,7 @@ def read_hdf5(filename: Union[Path, str], dataset_name: str) -> Any:
     hdf5_file = h5py.File(filename, "r")
 
     if dataset_name not in hdf5_file:
-        logging.error(
-            f"There is no such a data in hdf5 file. ({dataset_name})")
+        logging.error(f"There is no such a data in hdf5 file. ({dataset_name})")
         sys.exit(1)
 
     # [()]: a special syntax of h5py to get the dataset as-is

@@ -18,8 +18,6 @@ than words are used in transcriptions produced by `reorganize_baker.py`.
 We make this choice to better leverage other software for chinese text to 
 pinyin tools like pypinyin. This is the convention for G2P in Chinese.
 """
-
-import argparse
 import re
 from collections import OrderedDict
 
@@ -41,10 +39,10 @@ SPECIALS = ['sil', 'sp']
 def rule(C, V, R, T):
     """Generate a syllable given the initial, the final, erhua indicator, and tone.
     Orthographical rules for pinyin are applied. (special case for y, w, ui, un, iu)
-    
+
     Note that in this system, 'ü' is alway written as 'v' when appeared in phoneme, but converted to 
     'u' in syllables when certain conditions are satisfied.
-    
+
     'i' is distinguished when appeared in phonemes, and separated into 3 categories, 'i', 'ii' and 'iii'.
     Erhua is is possibly applied to every finals, except for finals that already ends with 'r'.
     When a syllable is impossible or does not have any characters with this pronunciation, return None
@@ -86,8 +84,8 @@ def rule(C, V, R, T):
         return None
 
     # ua, uai, uang 不能和 d, t, n, l, r, z, c, s 拼
-    if V in ['ua', 'uai', 'uang'
-             ] and C in ['d', 't', 'n', 'l', 'r', 'z', 'c', 's']:
+    if V in ['ua', 'uai',
+             'uang'] and C in ['d', 't', 'n', 'l', 'r', 'z', 'c', 's']:
         return None
 
     # sh 和 ong 不能拼

@@ -109,8 +109,7 @@ class Clip(object):
 
         """
         if len(x) < c.shape[1] * self.hop_size:
-            x = np.pad(x, (0, c.shape[1] * self.hop_size - len(x)),
-                       mode="edge")
+            x = np.pad(x, (0, c.shape[1] * self.hop_size - len(x)), mode="edge")
 
         # check the legnth is valid
         assert len(x) == c.shape[

@@ -11,20 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import librosa
+import numpy as np
 import paddle
+from librosa.util import pad_center
 from paddle import nn
 from paddle.nn import functional as F
 from scipy import signal
-import librosa
-from librosa.util import pad_center
-import numpy as np
 
 __all__ = ["quantize", "dequantize", "STFT", "MelScale"]
 
 
 def quantize(values, n_bands):
-    """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in 
+    """Linearlly quantize a float Tensor in [-1, 1) to an interger Tensor in
     [0, n_bands).
 
     Parameters
@@ -33,7 +32,7 @@ def quantize(values, n_bands):
         The floating point value.
         
     n_bands : int
-        The number of bands. The output integer Tensor's value is in the range 
+        The number of bands. The output integer Tensor's value is in the range
         [0, n_bans).
 
     Returns
@@ -46,7 +45,7 @@ def quantize(values, n_bands):
 
 
 def dequantize(quantized, n_bands, dtype=None):
-    """Linearlly dequantize an integer Tensor into a float Tensor in the range 
+    """Linearlly dequantize an integer Tensor into a float Tensor in the range
     [-1, 1).
 
     Parameters
@@ -55,7 +54,7 @@ def dequantize(quantized, n_bands, dtype=None):
         The quantized value in the range [0, n_bands).
         
     n_bands : int
-        Number of bands. The input integer Tensor's value is in the range 
+        Number of bands. The input integer Tensor's value is in the range
         [0, n_bans).
         
     dtype : str, optional
@@ -73,43 +72,36 @@ def dequantize(quantized, n_bands, dtype=None):
 
 
 class STFT(nn.Layer):
-    """A module for computing stft transformation in a differentiable way. 
+    """A module for computing stft transformation in a differentiable way.
     
     Parameters
     ------------
     n_fft : int
         Number of samples in a frame.
-        
     hop_length : int
         Number of samples shifted between adjacent frames.
-        
     win_length : int
         Length of the window.
-        
     window : str, optional
-        Name of window function, see `scipy.signal.get_window` for more 
+        Name of window function, see `scipy.signal.get_window` for more
         details. Defaults to "hanning".
-        
     center : bool
         If True, the signal y is padded so that frame D[:, t] is centered 
         at y[t * hop_length]. If False, then D[:, t] begins at y[t * hop_length].
         Defaults to True.
-    
     pad_mode : string or function
-        If center=True, this argument is passed to np.pad for padding the edges 
-        of the signal y. By default (pad_mode="reflect"), y is padded on both 
-        sides with its own reflection, mirrored around its first and last 
+        If center=True, this argument is passed to np.pad for padding the edges
+        of the signal y. By default (pad_mode="reflect"), y is padded on both
+        sides with its own reflection, mirrored around its first and last
         sample respectively. If center=False, this argument is ignored.
-    
-        
         
     Notes
     -----------
-    It behaves like ``librosa.core.stft``. See ``librosa.core.stft`` for more 
+    It behaves like ``librosa.core.stft``. See ``librosa.core.stft`` for more
     details.
     
-    Given a audio which ``T`` samples, it the STFT transformation outputs a 
-    spectrum with (C, frames) and complex dtype, where ``C = 1 + n_fft / 2`` 
+    Given a audio which ``T`` samples, it the STFT transformation outputs a
+    spectrum with (C, frames) and complex dtype, where ``C = 1 + n_fft / 2``
     and ``frames = 1 + T // hop_lenghth``.
     
     Ony ``center`` and ``reflect`` padding is supported now.
@@ -144,19 +136,19 @@ class STFT(nn.Layer):
         # pad window to n_fft size
         if n_fft != win_length:
             window = pad_center(window, n_fft, mode="constant")
-            #lpad = (n_fft - win_length) // 2
-            #rpad = n_fft - win_length - lpad
-            #window = np.pad(window, ((lpad, pad), ), 'constant')
+            # lpad = (n_fft - win_length) // 2
+            # rpad = n_fft - win_length - lpad
+            # window = np.pad(window, ((lpad, pad), ), 'constant')
 
         # calculate weights
-        #r = np.arange(0, n_fft)
-        #M = np.expand_dims(r, -1) * np.expand_dims(r, 0)
-        #w_real = np.reshape(window *
-        #np.cos(2 * np.pi * M / n_fft)[:self.n_bin],
-        #(self.n_bin, 1, self.n_fft))
-        #w_imag = np.reshape(window *
-        #np.sin(-2 * np.pi * M / n_fft)[:self.n_bin],
-        #(self.n_bin, 1, self.n_fft))
+        # r = np.arange(0, n_fft)
+        # M = np.expand_dims(r, -1) * np.expand_dims(r, 0)
+        # w_real = np.reshape(window *
+        # np.cos(2 * np.pi * M / n_fft)[:self.n_bin],
+        # (self.n_bin, 1, self.n_fft))
+        # w_imag = np.reshape(window *
+        # np.sin(-2 * np.pi * M / n_fft)[:self.n_bin],
+        # (self.n_bin, 1, self.n_fft))
         weight = np.fft.fft(np.eye(n_fft))[:self.n_bin]
         w_real = weight.real
         w_imag = weight.imag
@@ -174,17 +166,18 @@ class STFT(nn.Layer):
             The input waveform.
         Returns
         ------------
-        real : Tensor [shape=(B, C, frames)] 
+        real : Tensor [shape=(B, C, frames)]
             The real part of the spectrogram.
             
-        imag : Tensor [shape=(B, C, frames)] 
+        imag : Tensor [shape=(B, C, frames)]
             The image part of the spectrogram.
         """
         x = paddle.unsqueeze(x, axis=1)
         if self.center:
-            x = F.pad(x, [self.n_fft // 2, self.n_fft // 2],
-                      data_format='NCL',
-                      mode=self.pad_mode)
+            x = F.pad(
+                x, [self.n_fft // 2, self.n_fft // 2],
+                data_format='NCL',
+                mode=self.pad_mode)
 
         # to BCT, C=1
         out = F.conv1d(x, self.weight, stride=self.hop_length)
@@ -199,7 +192,7 @@ class STFT(nn.Layer):
             The input waveform.
         Returns
         ------------
-        Tensor [shape=(B, C, T)] 
+        Tensor [shape=(B, C, T)]
             The power spectrum.
         """
         real, imag = self.forward(x)
@@ -214,7 +207,7 @@ class STFT(nn.Layer):
             The input waveform.
         Returns
         ------------
-        Tensor [shape=(B, C, T)] 
+        Tensor [shape=(B, C, T)]
             The magnitude of the spectrum.
         """
         power = self.power(x)

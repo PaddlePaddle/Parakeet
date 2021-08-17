@@ -11,19 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
+
 import numpy as np
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
 
-def scaled_dot_product_attention(q,
-                                 k,
-                                 v,
-                                 mask=None,
-                                 dropout=0.0,
+def scaled_dot_product_attention(q, k, v, mask=None, dropout=0.0,
                                  training=True):
     r"""Scaled dot product attention with masking. 
     
@@ -33,24 +29,19 @@ def scaled_dot_product_attention(q,
 
     Parameters
     -----------
-    
     q : Tensor [shape=(\*, T_q, d)]
         the query tensor.
-        
     k : Tensor [shape=(\*, T_k, d)]
         the key tensor.
-        
     v : Tensor [shape=(\*, T_k, d_v)]
         the value tensor.
-        
     mask : Tensor, [shape=(\*, T_q, T_k) or broadcastable shape], optional
         the mask tensor, zeros correspond to paddings. Defaults to None.
-    
+
     Returns
     ----------
-    out : Tensor [shape=(\*, T_q, d_v)] 
+    out : Tensor [shape=(\*, T_q, d_v)]
         the context vector.
-
     attn_weights : Tensor [shape=(\*, T_q, T_k)]
         the attention weights.
     """
@@ -74,10 +65,8 @@ def drop_head(x, drop_n_heads, training=True):
     ----------
     x : Tensor [shape=(batch_size, num_heads, time_steps, channels)]
         The input, multiple context vectors.
-        
     drop_n_heads : int [0<= drop_n_heads <= num_heads]
         Number of vectors to drop.
-        
     training : bool
         A flag indicating whether it is in training. If `False`, no dropout is 
         applied.
@@ -127,17 +116,14 @@ class MonoheadAttention(nn.Layer):
     ----------
     model_dim : int
         Feature size of the query.
-        
     dropout : float, optional
-        Dropout probability of scaled dot product attention and final context 
+        Dropout probability of scaled dot product attention and final context
         vector. Defaults to 0.0.
-        
     k_dim : int, optional
-        Feature size of the key of each scaled dot product attention. If not 
+        Feature size of the key of each scaled dot product attention. If not
         provided, it is set to `model_dim / num_heads`. Defaults to None.
-        
     v_dim : int, optional
-        Feature size of the key of each scaled dot product attention. If not 
+        Feature size of the key of each scaled dot product attention. If not
         provided, it is set to `model_dim / num_heads`. Defaults to None.
     """
 
@@ -162,23 +148,19 @@ class MonoheadAttention(nn.Layer):
         
         Parameters
         -----------
-        q : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+        q : Tensor [shape=(batch_size, time_steps_q, model_dim)]
             The queries.
-            
-        k : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+        k : Tensor [shape=(batch_size, time_steps_k, model_dim)]
             The keys.
-            
-        v : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+        v : Tensor [shape=(batch_size, time_steps_k, model_dim)]
             The values.
-            
         mask : Tensor [shape=(batch_size, times_steps_q, time_steps_k] or broadcastable shape
             The mask.
 
         Returns
         ----------
-        out : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+        out : Tensor [shape=(batch_size, time_steps_q, model_dim)]
             The context vector.
-            
         attention_weights : Tensor [shape=(batch_size, times_steps_q, time_steps_k)]
             The attention weights.
         """
@@ -200,20 +182,16 @@ class MultiheadAttention(nn.Layer):
     -----------
     model_dim: int
         The feature size of query.
-        
     num_heads : int
         The number of attention heads.
-        
     dropout : float, optional
-        Dropout probability of scaled dot product attention and final context 
+        Dropout probability of scaled dot product attention and final context
         vector. Defaults to 0.0.
-        
     k_dim : int, optional
-        Feature size of the key of each scaled dot product attention. If not 
+        Feature size of the key of each scaled dot product attention. If not
         provided, it is set to ``model_dim / num_heads``. Defaults to None.
-        
     v_dim : int, optional
-        Feature size of the key of each scaled dot product attention. If not 
+        Feature size of the key of each scaled dot product attention. If not
         provided, it is set to ``model_dim / num_heads``. Defaults to None.
 
     Raises
@@ -248,23 +226,19 @@ class MultiheadAttention(nn.Layer):
         
         Parameters
         -----------
-        q : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+        q : Tensor [shape=(batch_size, time_steps_q, model_dim)]
             The queries.
-            
-        k : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+        k : Tensor [shape=(batch_size, time_steps_k, model_dim)]
             The keys.
-            
-        v : Tensor [shape=(batch_size, time_steps_k, model_dim)] 
+        v : Tensor [shape=(batch_size, time_steps_k, model_dim)]
             The values.
-            
         mask : Tensor [shape=(batch_size, times_steps_q, time_steps_k] or broadcastable shape
             The mask.
 
         Returns
         ----------
-        out : Tensor [shape=(batch_size, time_steps_q, model_dim)] 
+        out : Tensor [shape=(batch_size, time_steps_q, model_dim)]
             The context vector.
-            
         attention_weights : Tensor [shape=(batch_size, times_steps_q, time_steps_k)]
             The attention weights.
         """
@@ -290,16 +264,12 @@ class LocationSensitiveAttention(nn.Layer):
     -----------
     d_query: int
         The feature size of query.
-        
     d_key : int
         The feature size of key.
-        
     d_attention : int
-        The feature size of dimension. 
-        
+        The feature size of dimension.
     location_filters : int
         Filter size of attention convolution.
-        
     location_kernel_size : int
         Kernel size of attention convolution.
     """
@@ -337,27 +307,22 @@ class LocationSensitiveAttention(nn.Layer):
         
         Parameters
         -----------
-        query : Tensor [shape=(batch_size, d_query)] 
+        query : Tensor [shape=(batch_size, d_query)]
             The queries.
-            
-        processed_key : Tensor [shape=(batch_size, time_steps_k, d_attention)] 
+        processed_key : Tensor [shape=(batch_size, time_steps_k, d_attention)]
             The keys after linear layer.
-            
-        value : Tensor [shape=(batch_size, time_steps_k, d_key)] 
+        value : Tensor [shape=(batch_size, time_steps_k, d_key)]
             The values.
-
         attention_weights_cat : Tensor [shape=(batch_size, time_step_k, 2)]
             Attention weights concat.
-            
         mask : Tensor, optional
             The mask. Shape should be (batch_size, times_steps_k, 1).
             Defaults to None.
 
         Returns
         ----------
-        attention_context : Tensor [shape=(batch_size, d_attention)] 
+        attention_context : Tensor [shape=(batch_size, d_attention)]
             The context vector.
-            
         attention_weights : Tensor [shape=(batch_size, time_steps_k)]
             The attention weights.
         """

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Duration predictor related modules."""
-
 import paddle
 from paddle import nn
+
 from parakeet.modules.layer_norm import LayerNorm
 from parakeet.modules.masked_fill import masked_fill
 
@@ -78,8 +78,7 @@ class DurationPredictor(nn.Layer):
                         stride=1,
                         padding=(kernel_size - 1) // 2, ),
                     nn.ReLU(),
-                    LayerNorm(
-                        n_chans, dim=1),
+                    LayerNorm(n_chans, dim=1),
                     nn.Dropout(dropout_rate), ))
         self.linear = nn.Linear(n_chans, 1, bias_attr=True)
 

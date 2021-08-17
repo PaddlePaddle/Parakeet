@@ -14,14 +14,13 @@
 
 import time
 from collections import defaultdict
+
 import numpy as np
-
 import paddle
+from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
 from paddle import distributed as dist
-from paddle.io import DataLoader, DistributedBatchSampler
-
 from parakeet.data import dataset
-from parakeet.frontend import EnglishCharacter  # pylint: disable=unused-import
 from parakeet.training.cli import default_argument_parser
 from parakeet.training.experiment import ExperimentBase
 from parakeet.utils import display, mp_tools
@@ -74,8 +73,7 @@ class Experiment(ExperimentBase):
 
         if dist.get_rank() == 0:
             for k, v in losses_np.items():
-                self.visualizer.add_scalar(f"train_loss/{k}", v,
-                                           self.iteration)
+                self.visualizer.add_scalar(f"train_loss/{k}", v, self.iteration)
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()

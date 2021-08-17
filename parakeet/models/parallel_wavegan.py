@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
-from typing import List, Dict, Any, Union, Optional, Tuple
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
 import numpy as np
 import paddle
-from paddle import Tensor
 from paddle import nn
 from paddle.nn import functional as F
 
@@ -63,8 +64,8 @@ class Stretch2D(nn.Layer):
 
 
 class UpsampleNet(nn.Layer):
-    """A Layer to upsample spectrogram by applying consecutive stretch and 
-    convolutions. 
+    """A Layer to upsample spectrogram by applying consecutive stretch and
+    convolutions.
 
     Parameters
     ----------
@@ -81,10 +82,10 @@ class UpsampleNet(nn.Layer):
     use_causal_conv : bool, optional
         Whether to use causal padding before convolution, by default False
 
-        If True, Causal padding is used along the time axis, i.e. padding 
-        amount is ``receptive field - 1`` and 0 for before and after, 
+        If True, Causal padding is used along the time axis, i.e. padding
+        amount is ``receptive field - 1`` and 0 for before and after,
         respectively.
-        
+
         If False, "same" padding is used along the time axis.
     """
 
@@ -158,7 +159,7 @@ class ConvInUpsampleNet(nn.Layer):
     aux_context_window : int, optional
         Context window of the first 1D convolution applied to the input. It 
         related to the kernel size of the convolution, by default 0
-        
+
         If use causal convolution, the kernel size is ``window + 1``, else
         the kernel size is ``2 * window + 1``.
     use_causal_conv : bool, optional
@@ -167,7 +168,7 @@ class ConvInUpsampleNet(nn.Layer):
         If True, Causal padding is used along the time axis, i.e. padding 
         amount is ``receptive field - 1`` and 0 for before and after, 
         respectively.
-        
+
         If False, "same" padding is used along the time axis.
     """
 
@@ -276,10 +277,7 @@ class ResidualBlock(nn.Layer):
 
         gate_out_channels = gate_channels // 2
         self.conv1x1_out = nn.Conv1D(
-            gate_out_channels,
-            residual_channels,
-            kernel_size=1,
-            bias_attr=bias)
+            gate_out_channels, residual_channels, kernel_size=1, bias_attr=bias)
         self.conv1x1_skip = nn.Conv1D(
             gate_out_channels, skip_channels, kernel_size=1, bias_attr=bias)
 
@@ -428,13 +426,18 @@ class PWGGenerator(nn.Layer):
                 use_causal_conv=use_causal_conv)
             self.conv_layers.append(conv)
 
-        self.last_conv_layers = nn.Sequential(
-            nn.ReLU(),
-            nn.Conv1D(
-                skip_channels, skip_channels, 1, bias_attr=True),
-            nn.ReLU(),
-            nn.Conv1D(
-                skip_channels, out_channels, 1, bias_attr=True))
+        self.last_conv_layers = nn.Sequential(nn.ReLU(),
+                                              nn.Conv1D(
+                                                  skip_channels,
+                                                  skip_channels,
+                                                  1,
+                                                  bias_attr=True),
+                                              nn.ReLU(),
+                                              nn.Conv1D(
+                                                  skip_channels,
+                                                  out_channels,
+                                                  1,
+                                                  bias_attr=True))
 
         if use_weight_norm:
             self.apply_weight_norm()
@@ -548,18 +551,18 @@ class PWGDiscriminator(nn.Layer):
         by default True
     """
 
-    def __init__(self,
-                 in_channels: int=1,
-                 out_channels: int=1,
-                 kernel_size: int=3,
-                 layers: int=10,
-                 conv_channels: int=64,
-                 dilation_factor: int=1,
-                 nonlinear_activation: str="LeakyReLU",
-                 nonlinear_activation_params: Dict[
-                     str, Any]={"negative_slope": 0.2},
-                 bias: bool=True,
-                 use_weight_norm: bool=True):
+    def __init__(
+            self,
+            in_channels: int=1,
+            out_channels: int=1,
+            kernel_size: int=3,
+            layers: int=10,
+            conv_channels: int=64,
+            dilation_factor: int=1,
+            nonlinear_activation: str="LeakyReLU",
+            nonlinear_activation_params: Dict[str, Any]={"negative_slope": 0.2},
+            bias: bool=True,
+            use_weight_norm: bool=True):
         super().__init__()
         assert kernel_size % 2 == 1
         assert dilation_factor > 0
@@ -693,8 +696,7 @@ class ResidualPWGDiscriminator(nn.Layer):
         layers_per_stack = layers // stacks
 
         self.first_conv = nn.Sequential(
-            nn.Conv1D(
-                in_channels, residual_channels, 1, bias_attr=True),
+            nn.Conv1D(in_channels, residual_channels, 1, bias_attr=True),
             getattr(nn, nonlinear_activation)(**nonlinear_activation_params))
 
         self.conv_layers = nn.LayerList()
@@ -714,11 +716,9 @@ class ResidualPWGDiscriminator(nn.Layer):
 
         self.last_conv_layers = nn.Sequential(
             getattr(nn, nonlinear_activation)(**nonlinear_activation_params),
-            nn.Conv1D(
-                skip_channels, skip_channels, 1, bias_attr=True),
+            nn.Conv1D(skip_channels, skip_channels, 1, bias_attr=True),
             getattr(nn, nonlinear_activation)(**nonlinear_activation_params),
-            nn.Conv1D(
-                skip_channels, out_channels, 1, bias_attr=True))
+            nn.Conv1D(skip_channels, out_channels, 1, bias_attr=True))
 
         if use_weight_norm:
             self.apply_weight_norm()

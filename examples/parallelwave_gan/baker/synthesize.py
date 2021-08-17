@@ -12,20 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-from timer import timer
-import logging
 import argparse
+import os
 from pathlib import Path
+from timer import timer
 
-import yaml
 import jsonlines
-import paddle
 import numpy as np
+import paddle
 import soundfile as sf
+import yaml
 from paddle import distributed as dist
-
 from parakeet.datasets.data_table import DataTable
 from parakeet.models.parallel_wavegan import PWGGenerator
 

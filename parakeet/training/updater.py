@@ -11,22 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 from dataclasses import dataclass
-from typing import Optional
-from typing import Dict
-from typing import Union
 
-from timer import timer
 import paddle
-from paddle import Tensor
-from paddle.nn import Layer
-from paddle.optimizer import Optimizer
-from paddle.io import DataLoader
-from paddle.io import DistributedBatchSampler
-
-from parakeet.training.reporter import report
 
 
 @dataclass

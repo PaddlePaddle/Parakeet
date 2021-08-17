@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import paddle
 import torch
-from timer import timer
-from parallel_wavegan.layers import upsample, residual_block
+from parallel_wavegan.layers import residual_block
+from parallel_wavegan.layers import upsample
 from parallel_wavegan.models import parallel_wavegan as pwgan
+from timer import timer
+
+from parakeet.models.parallel_wavegan import ConvInUpsampleNet
+from parakeet.models.parallel_wavegan import PWGDiscriminator
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import ResidualBlock
+from parakeet.models.parallel_wavegan import ResidualPWGDiscriminator
 from parakeet.utils.layer_tools import summary
 from parakeet.utils.profile import synchronize
-
-from parakeet.models.parallel_wavegan import ConvInUpsampleNet, ResidualBlock
-from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator, ResidualPWGDiscriminator
 
 paddle.set_device("gpu:0")
 device = torch.device("cuda:0")

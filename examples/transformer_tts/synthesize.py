@@ -60,7 +60,7 @@ def main(config, args):
         display.plot_multilayer_multihead_alignments(attns)
         plt.savefig(str(output_dir / f"sentence_{i}.png"))
 
-        mel_output = mel_output.T  #(C, T)
+        mel_output = mel_output.T  # (C, T)
         np.save(str(output_dir / f"sentence_{i}"), mel_output)
         if args.verbose:
             print("spectrogram saved at {}".format(output_dir /

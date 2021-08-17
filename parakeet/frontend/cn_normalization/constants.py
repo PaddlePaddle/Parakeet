@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 import string
+
 from pypinyin.constants import SUPPORT_UCS4
 
 # 全角半角转换
@@ -32,10 +32,7 @@ F2H_DIGITS = {chr(ord(char) + 65248): char for char in string.digits}
 H2F_DIGITS = {value: key for key, value in F2H_DIGITS.items()}
 
 # 标点符号全角 -> 半角映射表 (num: 32)
-F2H_PUNCTUATIONS = {
-    chr(ord(char) + 65248): char
-    for char in string.punctuation
-}
+F2H_PUNCTUATIONS = {chr(ord(char) + 65248): char for char in string.punctuation}
 # 标点符号半角 -> 全角映射表
 H2F_PUNCTUATIONS = {value: key for key, value in F2H_PUNCTUATIONS.items()}
 

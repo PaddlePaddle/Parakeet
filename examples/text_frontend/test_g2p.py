@@ -40,6 +40,7 @@ def get_avg_wer(raw_dict, ref_dict, frontend, output_dir):
         raw_text = raw_dict[utt_id]
         text = text_cleaner(raw_text)
         g2p_phones = frontend.get_phonemes(text)
+        g2p_phones = sum(g2p_phones, [])
         gt_phones = ref_dict[utt_id].split(" ")
         # delete silence tokens in predicted phones and ground truth phones
         g2p_phones = [phn for phn in g2p_phones if phn not in SILENCE_TOKENS]
