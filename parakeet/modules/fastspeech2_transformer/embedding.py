@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Positional Encoding Module."""
-
 import math
 
 import paddle
@@ -24,14 +23,14 @@ class PositionalEncoding(nn.Layer):
 
     Parameters
     ----------
-        d_model : int
-            Embedding dimension.
-        dropout_rate : float
-            Dropout rate.
-        max_len : int
-            Maximum input length.
-        reverse : bool
-            Whether to reverse the input position. Only for
+    d_model : int
+        Embedding dimension.
+    dropout_rate : float
+        Dropout rate.
+    max_len : int
+        Maximum input length.
+    reverse : bool
+        Whether to reverse the input position.
     """
 
     def __init__(self, d_model, dropout_rate, max_len=5000, reverse=False):
@@ -55,9 +54,8 @@ class PositionalEncoding(nn.Layer):
             position = paddle.arange(
                 0, x.shape[1], dtype=paddle.float32).unsqueeze(1)
         div_term = paddle.exp(
-            paddle.arange(
-                0, self.d_model, 2,
-                dtype=paddle.float32) * -(math.log(10000.0) / self.d_model))
+            paddle.arange(0, self.d_model, 2, dtype=paddle.float32) *
+            -(math.log(10000.0) / self.d_model))
         pe[:, 0::2] = paddle.sin(position * div_term)
         pe[:, 1::2] = paddle.cos(position * div_term)
         pe = pe.unsqueeze(0)
@@ -68,13 +66,13 @@ class PositionalEncoding(nn.Layer):
 
         Parameters
         ----------
-            x : paddle.Tensor
-                Input tensor (batch, time, `*`).
+        x : paddle.Tensor
+            Input tensor (batch, time, `*`).
 
         Returns
         ----------
-            paddle.Tensor
-                Encoded tensor (batch, time, `*`).
+        paddle.Tensor
+            Encoded tensor (batch, time, `*`).
         """
         self.extend_pe(x)
         x = x * self.xscale + self.pe[:, :x.shape[1]]

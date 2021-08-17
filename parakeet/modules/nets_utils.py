@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import paddle
 from paddle import nn
 from typeguard import check_argument_types
@@ -22,25 +21,25 @@ def pad_list(xs, pad_value):
 
     Parameters
     ----------
-        xs : List[Tensor]
-            List of Tensors [(T_1, `*`), (T_2, `*`), ..., (T_B, `*`)].
-        pad_value : float)
-            Value for padding.
+    xs : List[Tensor]
+        List of Tensors [(T_1, `*`), (T_2, `*`), ..., (T_B, `*`)].
+    pad_value : float)
+        Value for padding.
 
     Returns
     ----------
-        Tensor
-            Padded tensor (B, Tmax, `*`).
+    Tensor
+        Padded tensor (B, Tmax, `*`).
 
     Examples
     ----------
-        >>> x = [paddle.ones([4]), paddle.ones([2]), paddle.ones([1])]
-        >>> x
-        [tensor([1., 1., 1., 1.]), tensor([1., 1.]), tensor([1.])]
-        >>> pad_list(x, 0)
-        tensor([[1., 1., 1., 1.],
-                [1., 1., 0., 0.],
-                [1., 0., 0., 0.]])
+    >>> x = [paddle.ones([4]), paddle.ones([2]), paddle.ones([1])]
+    >>> x
+    [tensor([1., 1., 1., 1.]), tensor([1., 1.]), tensor([1.])]
+    >>> pad_list(x, 0)
+    tensor([[1., 1., 1., 1.],
+            [1., 1., 0., 0.],
+            [1., 0., 0., 0.]])
     """
     n_batch = len(xs)
     max_len = max(x.shape[0] for x in xs)
@@ -57,23 +56,23 @@ def make_pad_mask(lengths, length_dim=-1):
 
     Parameters
     ----------
-        lengths : LongTensor or List
-             Batch of lengths (B,).
+    lengths : LongTensor or List
+            Batch of lengths (B,).
 
     Returns
     ----------
-        Tensor(bool)
-            Mask tensor containing indices of padded part bool.
+    Tensor(bool)
+        Mask tensor containing indices of padded part bool.
 
     Examples
     ----------
-        With only lengths.
+    With only lengths.
 
-        >>> lengths = [5, 3, 2]
-        >>> make_non_pad_mask(lengths)
-        masks = [[0, 0, 0, 0 ,0],
-                 [0, 0, 0, 1, 1],
-                 [0, 0, 1, 1, 1]]
+    >>> lengths = [5, 3, 2]
+    >>> make_non_pad_mask(lengths)
+    masks = [[0, 0, 0, 0 ,0],
+                [0, 0, 0, 1, 1],
+                [0, 0, 1, 1, 1]]
     """
     if length_dim == 0:
         raise ValueError("length_dim cannot be 0: {}".format(length_dim))
@@ -99,29 +98,29 @@ def make_non_pad_mask(lengths, length_dim=-1):
 
     Parameters
     ----------
-        lengths : LongTensor or List
-             Batch of lengths (B,).
-        xs : Tensor, optional
-            The reference tensor.
-            If set, masks will be the same shape as this tensor.
-        length_dim : int, optional
-            Dimension indicator of the above tensor.
-            See the example.
+    lengths : LongTensor or List
+            Batch of lengths (B,).
+    xs : Tensor, optional
+        The reference tensor.
+        If set, masks will be the same shape as this tensor.
+    length_dim : int, optional
+        Dimension indicator of the above tensor.
+        See the example.
 
     Returns
     ----------
-        Tensor(bool)
-            mask tensor containing indices of padded part bool.
+    Tensor(bool)
+        mask tensor containing indices of padded part bool.
 
     Examples
     ----------
-        With only lengths.
+    With only lengths.
 
-        >>> lengths = [5, 3, 2]
-        >>> make_non_pad_mask(lengths)
-        masks = [[1, 1, 1, 1 ,1],
-                 [1, 1, 1, 0, 0],
-                 [1, 1, 0, 0, 0]]
+    >>> lengths = [5, 3, 2]
+    >>> make_non_pad_mask(lengths)
+    masks = [[1, 1, 1, 1 ,1],
+                [1, 1, 1, 0, 0],
+                [1, 1, 0, 0, 0]]
     """
     return paddle.logical_not(make_pad_mask(lengths, length_dim))
 
@@ -135,10 +134,10 @@ def initialize(model: nn.Layer, init: str):
 
     Parameters
     ----------
-        model : paddle.nn.Layer
-            Target.
-        init : str
-            Method of initialization.
+    model : paddle.nn.Layer
+        Target.
+    init : str
+        Method of initialization.
     """
     assert check_argument_types()
 

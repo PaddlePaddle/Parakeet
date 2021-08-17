@@ -53,10 +53,10 @@ class Transform(object):
         ids, mel = example  # ids already have <s> and </s>
         ids = np.array(ids, dtype=np.int64)
         # add start and end frame
-        mel = np.pad(mel, [(0, 0), (1, 1)],
-                     mode='constant',
-                     constant_values=[(0, 0),
-                                      (self.start_value, self.end_value)])
+        mel = np.pad(
+            mel, [(0, 0), (1, 1)],
+            mode='constant',
+            constant_values=[(0, 0), (self.start_value, self.end_value)])
         stop_labels = np.ones([mel.shape[1]], dtype=np.int64)
         stop_labels[-1] = 2
         # actually this thing can also be done within the model

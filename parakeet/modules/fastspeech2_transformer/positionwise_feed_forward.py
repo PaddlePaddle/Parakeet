@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Positionwise feed forward layer definition."""
-
 import paddle
 
 
@@ -21,12 +20,12 @@ class PositionwiseFeedForward(paddle.nn.Layer):
 
     Parameters
     ----------
-        idim : int
-            Input dimenstion.
-        hidden_units : int
-            The number of hidden units.
-        dropout_rate : float
-            Dropout rate.
+    idim : int
+        Input dimenstion.
+    hidden_units : int
+        The number of hidden units.
+    dropout_rate : float
+        Dropout rate.
     """
 
     def __init__(self,

@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from contextlib import contextmanager
 
 import paddle
 from paddle.framework import core
 from paddle.framework import CUDAPlace
-from contextlib import contextmanager
 
 
 def synchronize():

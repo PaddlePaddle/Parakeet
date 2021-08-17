@@ -11,17 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 
 import jieba.posseg as psg
-import numpy as np
-import paddle
-import re
 from g2pM import G2pM
-from parakeet.frontend.tone_sandhi import ToneSandhi
-from parakeet.frontend.cn_normalization.text_normlization import TextNormalizer
-from pypinyin import lazy_pinyin, Style
+from pypinyin import lazy_pinyin
+from pypinyin import Style
 
+from parakeet.frontend.cn_normalization.text_normlization import TextNormalizer
 from parakeet.frontend.generate_lexicon import generate_lexicon
+from parakeet.frontend.tone_sandhi import ToneSandhi
 
 
 class Frontend():

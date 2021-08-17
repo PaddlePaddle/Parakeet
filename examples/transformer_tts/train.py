@@ -76,8 +76,7 @@ class TransformerTTSExperiment(ExperimentBase):
         ljspeech_dataset = LJSpeech(args.data)
         transform = Transform(config.data.mel_start_value,
                               config.data.mel_end_value)
-        ljspeech_dataset = dataset.TransformDataset(ljspeech_dataset,
-                                                    transform)
+        ljspeech_dataset = dataset.TransformDataset(ljspeech_dataset, transform)
         valid_set, train_set = dataset.split(ljspeech_dataset,
                                              config.data.valid_size)
         batch_fn = LJSpeechCollector(padding_idx=config.data.padding_idx)
@@ -159,8 +158,7 @@ class TransformerTTSExperiment(ExperimentBase):
 
         if dist.get_rank() == 0:
             for k, v in losses_np.items():
-                self.visualizer.add_scalar(f"train_loss/{k}", v,
-                                           self.iteration)
+                self.visualizer.add_scalar(f"train_loss/{k}", v, self.iteration)
 
     @mp_tools.rank_zero_only
     @paddle.no_grad()

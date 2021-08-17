@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import paddle
-from paddle.fluid.layers import sequence_mask
 
 __all__ = [
     "id_mask",
@@ -25,7 +23,7 @@ __all__ = [
 
 def id_mask(input, padding_index=0, dtype="bool"):
     """Generate mask with input ids. 
-    
+
     Those positions where the value equals ``padding_index`` correspond to 0 or
     ``False``, otherwise, 1 or ``True``.
 
@@ -33,10 +31,8 @@ def id_mask(input, padding_index=0, dtype="bool"):
     ----------
     input : Tensor [dtype: int]
         The input tensor. It represents the ids.
-        
     padding_index : int, optional
         The id which represents padding, by default 0.
-        
     dtype : str, optional
         Data type of the returned mask, by default "bool".
 
@@ -50,7 +46,7 @@ def id_mask(input, padding_index=0, dtype="bool"):
 
 def feature_mask(input, axis, dtype="bool"):
     """Compute mask from input features.
-    
+
     For a input features, represented as batched feature vectors, those vectors
     which all zeros are considerd padding vectors.
 
@@ -58,19 +54,16 @@ def feature_mask(input, axis, dtype="bool"):
     ----------
     input : Tensor [dtype: float]
         The input tensor which represents featues.
-        
     axis : int
         The index of the feature dimension in ``input``. Other dimensions are
         considered ``spatial`` dimensions.
-        
     dtype : str, optional
         Data type of the generated mask, by default "bool"
-
     Returns
     -------
     Tensor
         The geenrated mask with ``spatial`` shape as mentioned above.
-        
+
         It has one less dimension than ``input`` does.
     """
     feature_sum = paddle.sum(paddle.abs(input), axis)
@@ -83,22 +76,20 @@ def combine_mask(mask1, mask2):
     Parameters
     -----------
     mask1 : Tensor
-        The first mask. 
-        
+        The first mask.
     mask2 : Tensor
         The second mask with broadcastable shape with ``mask1``.
-        
     Returns
     --------
     Tensor
         Combined mask.
-        
+
     Notes
     ------
-    It is mainly used to combine the padding mask and no future mask for 
+    It is mainly used to combine the padding mask and no future mask for
     transformer decoder. 
-    
-    Padding mask is used to mask padding positions of the decoder inputs and 
+
+    Padding mask is used to mask padding positions of the decoder inputs and
     no future mask is used to prevent the decoder to see future information.
     """
     if mask1.dtype == paddle.fluid.core.VarDesc.VarType.BOOL:
@@ -109,8 +100,8 @@ def combine_mask(mask1, mask2):
 
 def future_mask(time_steps, dtype="bool"):
     """Generate lower triangular mask.
-    
-    It is used at transformer decoder to prevent the decoder to see future 
+
+    It is used at transformer decoder to prevent the decoder to see future
     information.
 
     Parameters

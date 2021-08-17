@@ -21,10 +21,10 @@ from typing import List, Dict, Any
 import jsonlines
 import librosa
 import numpy as np
+from parakeet.data.get_feats import LogMelFBank, Energy, Pitch
 import tqdm
 
 from config import get_cfg_default
-from get_feats import LogMelFBank, Energy, Pitch
 
 
 def get_phn_dur(file_name):
@@ -262,10 +262,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Preprocess audio and then extract features.")
     parser.add_argument(
-        "--rootdir",
-        default=None,
-        type=str,
-        help="directory to baker dataset.")
+        "--rootdir", default=None, type=str, help="directory to baker dataset.")
     parser.add_argument(
         "--dur-file",
         default=None,

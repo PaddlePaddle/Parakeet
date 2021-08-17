@@ -28,8 +28,8 @@ from config import get_cfg_defaults
 
 
 class Transform(object):
-    def __init__(self, sample_rate, n_fft, win_length, hop_length, n_mels,
-                 fmin, fmax):
+    def __init__(self, sample_rate, n_fft, win_length, hop_length, n_mels, fmin,
+                 fmax):
         self.sample_rate = sample_rate
         self.n_fft = n_fft
         self.win_length = win_length
@@ -79,11 +79,8 @@ class Transform(object):
         spectrogram_magnitude = np.abs(spectrogram)
 
         # Compute mel-spectrograms.
-        mel_filter_bank = librosa.filters.mel(sr=sr,
-                                              n_fft=n_fft,
-                                              n_mels=n_mels,
-                                              fmin=fmin,
-                                              fmax=fmax)
+        mel_filter_bank = librosa.filters.mel(
+            sr=sr, n_fft=n_fft, n_mels=n_mels, fmin=fmin, fmax=fmax)
         mel_spectrogram = np.dot(mel_filter_bank, spectrogram_magnitude)
 
         # log scale mel_spectrogram.

@@ -11,13 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import librosa
 import numpy as np
 import pyworld
 from scipy.interpolate import interp1d
-
-from config import get_cfg_default
 
 
 class LogMelFBank():
@@ -42,17 +39,18 @@ class LogMelFBank():
 
         # mel
         self.n_mels = n_mels
-        self.fmin = fmin
-        self.fmax = fmax
+        self.fmin = 0 if fmin is None else fmin
+        self.fmax = sr / 2 if fmax is None else fmax
 
         self.mel_filter = self._create_mel_filter()
 
     def _create_mel_filter(self):
-        mel_filter = librosa.filters.mel(sr=self.sr,
-                                         n_fft=self.n_fft,
-                                         n_mels=self.n_mels,
-                                         fmin=self.fmin,
-                                         fmax=self.fmax)
+        mel_filter = librosa.filters.mel(
+            sr=self.sr,
+            n_fft=self.n_fft,
+            n_mels=self.n_mels,
+            fmin=self.fmin,
+            fmax=self.fmax)
         return mel_filter
 
     def _stft(self, wav):
@@ -123,11 +121,12 @@ class Pitch():
                       use_log_f0=True) -> np.array:
         input = input.astype(np.float)
         frame_period = 1000 * self.hop_length / self.sr
-        f0, timeaxis = pyworld.dio(input,
-                                   fs=self.sr,
-                                   f0_floor=self.f0min,
-                                   f0_ceil=self.f0max,
-                                   frame_period=frame_period)
+        f0, timeaxis = pyworld.dio(
+            input,
+            fs=self.sr,
+            f0_floor=self.f0min,
+            f0_ceil=self.f0max,
+            frame_period=frame_period)
         f0 = pyworld.stonemask(input, f0, timeaxis, self.sr)
         if use_continuous_f0:
             f0 = self._convert_to_continuous_f0(f0)
@@ -197,8 +196,7 @@ class Energy():
         input_power = np.abs(input_stft)**2
         energy = np.sqrt(
             np.clip(
-                np.sum(input_power, axis=0), a_min=1.0e-10, a_max=float(
-                    'inf')))
+                np.sum(input_power, axis=0), a_min=1.0e-10, a_max=float('inf')))
         return energy
 
     def _average_by_duration(self, input: np.array, d: np.array) -> np.array:
@@ -217,41 +215,3 @@ class Energy():
         if use_token_averaged_energy and duration is not None:
             energy = self._average_by_duration(energy, duration)
         return energy
-
-
-if __name__ == "__main__":
-    C = get_cfg_default()
-    filename = "../raw_data/data/format.1/000001.flac"
-    wav, _ = librosa.load(filename, sr=C.fs)
-    mel_extractor = LogMelFBank(
-        sr=C.fs,
-        n_fft=C.n_fft,
-        hop_length=C.n_shift,
-        win_length=C.win_length,
-        window=C.window,
-        n_mels=C.n_mels,
-        fmin=C.fmin,
-        fmax=C.fmax, )
-    mel = mel_extractor.get_log_mel_fbank(wav)
-    print(mel)
-    print(mel.shape)
-
-    pitch_extractor = Pitch(
-        sr=C.fs, hop_length=C.n_shift, f0min=C.f0min, f0max=C.f0max)
-    duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
-    duration = np.array([int(x) for x in duration.split(" ")])
-    avg_f0 = pitch_extractor.get_pitch(wav, duration=duration)
-    print(avg_f0)
-    print(avg_f0.shape)
-
-    energy_extractor = Energy(
-        sr=C.fs,
-        n_fft=C.n_fft,
-        hop_length=C.n_shift,
-        win_length=C.win_length,
-        window=C.window)
-    duration = "2 8 8 8 12 11 10 13 11 10 18 9 12 10 12 11 5"
-    duration = np.array([int(x) for x in duration.split(" ")])
-    avg_energy = energy_extractor.get_energy(wav, duration=duration)
-    print(avg_energy)
-    print(avg_energy.sum())

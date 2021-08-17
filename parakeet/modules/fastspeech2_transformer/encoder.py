@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 
 from paddle import nn
-from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
+
 from parakeet.modules.fastspeech2_transformer.attention import MultiHeadedAttention
+from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
+from parakeet.modules.fastspeech2_transformer.encoder_layer import EncoderLayer
 from parakeet.modules.fastspeech2_transformer.multi_layer_conv import Conv1dLinear
 from parakeet.modules.fastspeech2_transformer.multi_layer_conv import MultiLayeredConv1d
 from parakeet.modules.fastspeech2_transformer.positionwise_feed_forward import PositionwiseFeedForward
-from parakeet.modules.fastspeech2_transformer.encoder_layer import EncoderLayer
 from parakeet.modules.fastspeech2_transformer.repeat import repeat
 
 
@@ -29,42 +29,42 @@ class Encoder(nn.Layer):
 
     Parameters
     ----------
-        idim : int
-            Input dimension.
-        attention_dim : int
-            Dimention of attention.
-        attention_heads : int
-            The number of heads of multi head attention.
-        linear_units : int
-            The number of units of position-wise feed forward.
-        num_blocks : int
-            The number of decoder blocks.
-        dropout_rate : float
-            Dropout rate.
-        positional_dropout_rate : float
-            Dropout rate after adding positional encoding.
-        attention_dropout_rate : float
-            Dropout rate in attention.
-        input_layer : Union[str, paddle.nn.Layer]
-            Input layer type.
-        pos_enc_class : paddle.nn.Layer
-            Positional encoding module class.
-            `PositionalEncoding `or `ScaledPositionalEncoding`
-        normalize_before : bool
-            Whether to use layer_norm before the first block.
-        concat_after : bool
-            Whether to concat attention layer's input and output.
-            if True, additional linear will be applied.
-            i.e. x -> x + linear(concat(x, att(x)))
-            if False, no additional linear will be applied. i.e. x -> x + att(x)
-        positionwise_layer_type : str
-            "linear", "conv1d", or "conv1d-linear".
-        positionwise_conv_kernel_size : int
-            Kernel size of positionwise conv1d layer.
-        selfattention_layer_type : str
-            Encoder attention layer type.
-        padding_idx : int
-            Padding idx for input_layer=embed.
+    idim : int
+        Input dimension.
+    attention_dim : int
+        Dimention of attention.
+    attention_heads : int
+        The number of heads of multi head attention.
+    linear_units : int
+        The number of units of position-wise feed forward.
+    num_blocks : int
+        The number of decoder blocks.
+    dropout_rate : float
+        Dropout rate.
+    positional_dropout_rate : float
+        Dropout rate after adding positional encoding.
+    attention_dropout_rate : float
+        Dropout rate in attention.
+    input_layer : Union[str, paddle.nn.Layer]
+        Input layer type.
+    pos_enc_class : paddle.nn.Layer
+        Positional encoding module class.
+        `PositionalEncoding `or `ScaledPositionalEncoding`
+    normalize_before : bool
+        Whether to use layer_norm before the first block.
+    concat_after : bool
+        Whether to concat attention layer's input and output.
+        if True, additional linear will be applied.
+        i.e. x -> x + linear(concat(x, att(x)))
+        if False, no additional linear will be applied. i.e. x -> x + att(x)
+    positionwise_layer_type : str
+        "linear", "conv1d", or "conv1d-linear".
+    positionwise_conv_kernel_size : int
+        Kernel size of positionwise conv1d layer.
+    selfattention_layer_type : str
+        Encoder attention layer type.
+    padding_idx : int
+        Padding idx for input_layer=embed.
     """
 
     def __init__(
@@ -90,16 +90,14 @@ class Encoder(nn.Layer):
         self.conv_subsampling_factor = 1
         if input_layer == "linear":
             self.embed = nn.Sequential(
-                nn.Linear(
-                    idim, attention_dim, bias_attr=True),
+                nn.Linear(idim, attention_dim, bias_attr=True),
                 nn.LayerNorm(attention_dim),
                 nn.Dropout(dropout_rate),
                 nn.ReLU(),
                 pos_enc_class(attention_dim, positional_dropout_rate), )
         elif input_layer == "embed":
             self.embed = nn.Sequential(
-                nn.Embedding(
-                    idim, attention_dim, padding_idx=padding_idx),
+                nn.Embedding(idim, attention_dim, padding_idx=padding_idx),
                 pos_enc_class(attention_dim, positional_dropout_rate), )
         elif isinstance(input_layer, nn.Layer):
             self.embed = nn.Sequential(
@@ -125,10 +123,9 @@ class Encoder(nn.Layer):
         ]:
             logging.info("encoder self-attention layer type = self-attention")
             encoder_selfattn_layer = MultiHeadedAttention
-            encoder_selfattn_layer_args = [(
-                attention_heads,
-                attention_dim,
-                attention_dropout_rate, )] * num_blocks
+            encoder_selfattn_layer_args = [
+                (attention_heads, attention_dim, attention_dropout_rate, )
+            ] * num_blocks
 
         else:
             raise NotImplementedError(selfattention_layer_type)
@@ -159,18 +156,14 @@ class Encoder(nn.Layer):
                                        dropout_rate)
         elif positionwise_layer_type == "conv1d":
             positionwise_layer = MultiLayeredConv1d
-            positionwise_layer_args = (
-                attention_dim,
-                linear_units,
-                positionwise_conv_kernel_size,
-                dropout_rate, )
+            positionwise_layer_args = (attention_dim, linear_units,
+                                       positionwise_conv_kernel_size,
+                                       dropout_rate, )
         elif positionwise_layer_type == "conv1d-linear":
             positionwise_layer = Conv1dLinear
-            positionwise_layer_args = (
-                attention_dim,
-                linear_units,
-                positionwise_conv_kernel_size,
-                dropout_rate, )
+            positionwise_layer_args = (attention_dim, linear_units,
+                                       positionwise_conv_kernel_size,
+                                       dropout_rate, )
         else:
             raise NotImplementedError("Support only linear or conv1d.")
         return positionwise_layer, positionwise_layer_args
@@ -180,17 +173,17 @@ class Encoder(nn.Layer):
 
         Parameters
         ----------
-            xs : paddle.Tensor
-                Input tensor (#batch, time, idim).
-            masks : paddle.Tensor
-                Mask tensor (#batch, time).
+        xs : paddle.Tensor
+            Input tensor (#batch, time, idim).
+        masks : paddle.Tensor
+            Mask tensor (#batch, time).
 
         Returns
         ----------
-            paddle.Tensor
-                Output tensor (#batch, time, attention_dim).
-            paddle.Tensor
-                Mask tensor (#batch, time).
+        paddle.Tensor
+            Output tensor (#batch, time, attention_dim).
+        paddle.Tensor
+            Mask tensor (#batch, time).
         """
         xs = self.embed(xs)
         xs, masks = self.encoders(xs, masks)
@@ -203,21 +196,21 @@ class Encoder(nn.Layer):
 
         Parameters
         ----------
-            xs : paddle.Tensor
-                Input tensor.
-            masks : paddle.Tensor
-                Mask tensor.
-            cache : List[paddle.Tensor]
-                 List of cache tensors.
+        xs : paddle.Tensor
+            Input tensor.
+        masks : paddle.Tensor
+            Mask tensor.
+        cache : List[paddle.Tensor]
+            List of cache tensors.
 
         Returns
         ----------
-            paddle.Tensor
-                Output tensor.
-            paddle.Tensor
-                Mask tensor.
-            List[paddle.Tensor]
-                List of new cache tensors.
+        paddle.Tensor
+            Output tensor.
+        paddle.Tensor
+            Mask tensor.
+        List[paddle.Tensor]
+            List of new cache tensors.
         """
 
         xs = self.embed(xs)

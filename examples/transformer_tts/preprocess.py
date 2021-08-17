@@ -64,8 +64,7 @@ def create_dataset(config, source_path, target_path, verbose=False):
     with open(target_path / "metadata.pkl", 'wb') as f:
         pickle.dump(records, f)
         if verbose:
-            print("saved metadata into {}".format(target_path /
-                                                  "metadata.pkl"))
+            print("saved metadata into {}".format(target_path / "metadata.pkl"))
 
     # also save meta data into text format for inspection
     with open(target_path / "metadata.txt", 'wt') as f:
@@ -73,8 +72,7 @@ def create_dataset(config, source_path, target_path, verbose=False):
             phoneme_str = "|".join(phonemes)
             f.write("{}\t{}\t{}\n".format(mel_name, text, phoneme_str))
         if verbose:
-            print("saved metadata into {}".format(target_path /
-                                                  "metadata.txt"))
+            print("saved metadata into {}".format(target_path / "metadata.txt"))
 
     print("Done.")
 

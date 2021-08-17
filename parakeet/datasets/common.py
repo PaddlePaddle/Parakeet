@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from paddle.io import Dataset
-import os
-import librosa
 from pathlib import Path
-import numpy as np
 from typing import List
+
+import librosa
+import numpy as np
+from paddle.io import Dataset
 
 __all__ = ["AudioSegmentDataset", "AudioDataset", "AudioFolderDataset"]
 
@@ -57,7 +56,7 @@ class AudioSegmentDataset(Dataset):
 
 
 class AudioDataset(Dataset):
-    """A simple dataset adaptor for the audio files. 
+    """A simple dataset adaptor for the audio files.
     Read -> trim silence -> normalize
     """
 

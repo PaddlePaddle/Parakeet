@@ -15,19 +15,16 @@
 
 import argparse
 import logging
-import os
-from copy import copy
 from operator import itemgetter
 from pathlib import Path
 
-import numpy as np
-import yaml
 import jsonlines
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from parakeet.frontend.vocab import Vocab
 from parakeet.datasets.data_table import DataTable
+from parakeet.frontend.vocab import Vocab
 
 from config import get_cfg_default
 
@@ -100,7 +97,10 @@ def main():
     for item in metadata:
         item["feats"] = str(metadata_dir / item["feats"])
 
-    dataset = DataTable(metadata, converters={'feats': np.load, })
+    dataset = DataTable(
+        metadata, converters={
+            'feats': np.load,
+        })
     logging.info(f"The number of files = {len(dataset)}.")
 
     # restore scaler

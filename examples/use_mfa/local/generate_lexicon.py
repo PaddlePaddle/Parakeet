@@ -90,8 +90,8 @@ def rule(C, V, R, T):
         return None
 
     # ua, uai, uang 不能和 d, t, n, l, r, z, c, s 拼
-    if V in ['ua', 'uai', 'uang'
-             ] and C in ['d', 't', 'n', 'l', 'r', 'z', 'c', 's']:
+    if V in ['ua', 'uai',
+             'uang'] and C in ['d', 't', 'n', 'l', 'r', 'z', 'c', 's']:
         return None
 
     # sh 和 ong 不能拼

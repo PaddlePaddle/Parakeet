@@ -1,11 +1,11 @@
-repos:
--   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
-    rev: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
+-   repo: https://github.com/pre-commit/mirrors-yapf.git
+    sha: v0.16.0
     hooks:
     -   id: yapf
         files: \.py$
+        exclude: (?=third_party).*(\.py)$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: a11d9314b22d8f8c7556443875b731ef05965464
+    sha: a11d9314b22d8f8c7556443875b731ef05965464
     hooks:
     -   id: check-merge-conflict
     -   id: check-symlinks
@@ -15,8 +15,23 @@ repos:
         files: \.md$
     -   id: trailing-whitespace
         files: \.md$
--   repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.0.1
+    -   id: requirements-txt-fixer
+        exclude: (?=third_party).*$
+    -   id: check-yaml
+    -   id: check-json
+    -   id: pretty-format-json
+        args:
+        - --no-sort-keys
+        - --autofix
+    -   id: check-merge-conflict
+    -   id: flake8
+        aergs:
+        -  --ignore=E501,E228,E226,E261,E266,E128,E402,W503
+        -  --builtins=G,request
+        -  --jobs=1
+        exclude: (?=third_party).*(\.py)$
+-   repo : https://github.com/Lucas-C/pre-commit-hooks
+    sha: v1.0.1
     hooks:
     -   id: forbid-crlf
         files: \.md$
@@ -28,9 +43,15 @@ repos:
         files: \.md$
 -   repo: local
     hooks:
+    -   id: clang-format
+        name: clang-format
+        description: Format files with ClangFormat
+        entry: bash .pre-commit-hooks/clang-format.hook -i
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|cuh|proto)$
     -   id: copyright_checker
         name: copyright_checker
-        entry: python ./tools/copyright.hook
+        entry: python .pre-commit-hooks/copyright-check.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
-        exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$
+        exclude: (?=third_party|pypinyin).*(\.cpp|\.h|\.py)$

@@ -15,17 +15,14 @@
 
 import argparse
 import logging
-import os
 from operator import itemgetter
 from pathlib import Path
 
-import numpy as np
-import yaml
 import jsonlines
+import numpy as np
+from parakeet.datasets.data_table import DataTable
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
-
-from parakeet.datasets.data_table import DataTable
 
 from config import get_cfg_default
 

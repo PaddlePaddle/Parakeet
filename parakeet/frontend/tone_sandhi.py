@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import List, Tuple
+from typing import List
+from typing import Tuple
 
 import jieba
 from pypinyin import lazy_pinyin
@@ -76,8 +76,7 @@ class ToneSandhi():
 
         # reduplication words for n. and v. e.g. 奶奶, 试试, 旺旺
         for j, item in enumerate(word):
-            if j - 1 >= 0 and item == word[j - 1] and pos[
-                    0] in {"n", "v", "a"}:
+            if j - 1 >= 0 and item == word[j - 1] and pos[0] in {"n", "v", "a"}:
                 finals[j] = finals[j][:-1] + "5"
         ge_idx = word.find("个")
         if len(word) >= 1 and word[-1] in "吧呢哈啊呐噻嘛吖嗨呐哦哒额滴哩哟喽啰耶喔诶":
@@ -125,8 +124,8 @@ class ToneSandhi():
         else:
             for i, char in enumerate(word):
                 # "不" before tone4 should be bu2, e.g. 不怕
-                if char == "不" and i + 1 < len(word) and finals[i + 1][
-                        -1] == "4":
+                if char == "不" and i + 1 < len(word) and finals[i +
+                                                                1][-1] == "4":
                     finals[i] = finals[i][:-1] + "2"
         return finals
 
@@ -266,12 +265,12 @@ class ToneSandhi():
         assert len(sub_finals_list) == len(seg)
         merge_last = [False] * len(seg)
         for i, (word, pos) in enumerate(seg):
-            if i - 1 >= 0 and self._all_tone_three(sub_finals_list[
-                    i - 1]) and self._all_tone_three(sub_finals_list[
-                        i]) and not merge_last[i - 1]:
+            if i - 1 >= 0 and self._all_tone_three(
+                    sub_finals_list[i - 1]) and self._all_tone_three(
+                        sub_finals_list[i]) and not merge_last[i - 1]:
                 # if the last word is reduplication, not merge, because reduplication need to be _neural_sandhi
-                if not self._is_reduplication(seg[i - 1][0]) and len(seg[
-                        i - 1][0]) + len(seg[i][0]) <= 3:
+                if not self._is_reduplication(seg[i - 1][0]) and len(
+                        seg[i - 1][0]) + len(seg[i][0]) <= 3:
                     new_seg[-1][0] = new_seg[-1][0] + seg[i][0]
                     merge_last[i] = True
                 else:
@@ -299,8 +298,8 @@ class ToneSandhi():
             if i - 1 >= 0 and sub_finals_list[i - 1][-1][-1] == "3" and sub_finals_list[i][0][-1] == "3" and not \
                     merge_last[i - 1]:
                 # if the last word is reduplication, not merge, because reduplication need to be _neural_sandhi
-                if not self._is_reduplication(seg[i - 1][0]) and len(seg[
-                        i - 1][0]) + len(seg[i][0]) <= 3:
+                if not self._is_reduplication(seg[i - 1][0]) and len(
+                        seg[i - 1][0]) + len(seg[i][0]) <= 3:
                     new_seg[-1][0] = new_seg[-1][0] + seg[i][0]
                     merge_last[i] = True
                 else:

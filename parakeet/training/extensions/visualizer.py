@@ -11,11 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from visualdl import LogWriter
-
-from parakeet.training.trainer import Trainer
 from parakeet.training import extension
+from parakeet.training.trainer import Trainer
 
 
 class VisualDL(extension.Extension):

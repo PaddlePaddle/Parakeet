@@ -11,13 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from math import exp
 
-import numpy as np
 import paddle
-from paddle import nn
 import paddle.nn.functional as F
+from paddle import nn
 
 
 def gaussian(window_size, sigma):
@@ -30,9 +28,8 @@ def gaussian(window_size, sigma):
 
 def create_window(window_size, channel):
     _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-    _2D_window = paddle.matmul(_1D_window,
-                               paddle.transpose(_1D_window,
-                                                [1, 0])).unsqueeze([0, 1])
+    _2D_window = paddle.matmul(_1D_window, paddle.transpose(
+        _1D_window, [1, 0])).unsqueeze([0, 1])
     window = paddle.expand(_2D_window, [channel, 1, window_size, window_size])
     return window
 
@@ -50,8 +47,7 @@ def _ssim(img1, img2, window, window_size, channel, size_average=True):
     sigma2_sq = F.conv2d(
         img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
     sigma12 = F.conv2d(
-        img1 * img2, window, padding=window_size // 2,
-        groups=channel) - mu1_mu2
+        img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
 
     C1 = 0.01**2
     C2 = 0.03**2

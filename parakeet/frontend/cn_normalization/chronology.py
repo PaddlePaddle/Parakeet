@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 
-from .num import verbalize_cardinal, verbalize_digit, num2str, DIGITS
+from .num import DIGITS
+from .num import num2str
+from .num import verbalize_cardinal
+from .num import verbalize_digit
 
 
 def _time_num2str(num_string: str) -> str:

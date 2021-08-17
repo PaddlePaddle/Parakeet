@@ -11,16 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import argparse
 import os
 from pathlib import Path
 
 import librosa
 import numpy as np
-from praatio import tgio
-
 from config import get_cfg_default
+from praatio import tgio
 
 
 def readtg(config, tg_path):

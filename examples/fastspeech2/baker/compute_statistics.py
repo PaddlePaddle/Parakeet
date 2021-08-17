@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Calculate statistics of feature files."""
-
 import argparse
 import logging
 from pathlib import Path
 
 import jsonlines
 import numpy as np
-from parakeet.datasets.data_table import DataTable
+from config import get_cfg_default
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from config import get_cfg_default
+from parakeet.datasets.data_table import DataTable
 
 
 def main():
@@ -75,8 +74,8 @@ def main():
 
     # check directory existence
     if args.output is None:
-        args.output = Path(args.metadata).parent.with_name(args.field_name +
-                                                           "_stats.npy")
+        args.output = Path(
+            args.metadata).parent.with_name(args.field_name + "_stats.npy")
     else:
         args.output = Path(args.output)
     args.output.parent.mkdir(parents=True, exist_ok=True)

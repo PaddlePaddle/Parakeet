@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
+
 import numpy as np
 import paddle
+
 from parakeet.frontend.cn_frontend import Frontend as cnFrontend
 
 
@@ -87,8 +88,7 @@ class Frontend():
                     phones.append(phone)
         return phones, tones
 
-    def get_input_ids(self, sentence, merge_sentences=True,
-                      get_tone_ids=False):
+    def get_input_ids(self, sentence, merge_sentences=True, get_tone_ids=False):
         phonemes = self.frontend.get_phonemes(
             sentence, merge_sentences=merge_sentences)
         result = {}

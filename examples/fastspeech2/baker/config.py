@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from pathlib import Path
 
-from yacs.config import CfgNode as Configuration
 import yaml
+from yacs.config import CfgNode as Configuration
 
 config_path = (Path(__file__).parent / "conf" / "default.yaml").resolve()
 

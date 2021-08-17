@@ -11,18 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import math
-
-import numpy as np
 import paddle
-from paddle import Tensor
 from paddle import nn
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
 
-from parakeet.modules.positional_encoding import sinusoid_position_encoding
 from parakeet.modules.expansion import expand
+from parakeet.modules.positional_encoding import sinusoid_position_encoding
 
 
 class ResidualBlock(nn.Layer):
@@ -38,8 +31,7 @@ class ResidualBlock(nn.Layer):
                     padding="same",
                     data_format="NLC"),
                 nn.ReLU(),
-                nn.BatchNorm1D(
-                    channels, data_format="NLC"), ) for _ in range(n)
+                nn.BatchNorm1D(channels, data_format="NLC"), ) for _ in range(n)
         ]
         self.blocks = nn.Sequential(*blocks)
 
@@ -95,16 +87,14 @@ class SpeedySpeechEncoder(nn.Layer):
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(), )
         res_blocks = [
-            ResidualBlock(
-                hidden_size, kernel_size, d, n=2) for d in dilations
+            ResidualBlock(hidden_size, kernel_size, d, n=2) for d in dilations
         ]
         self.res_blocks = nn.Sequential(*res_blocks)
 
         self.postnet1 = nn.Sequential(nn.Linear(hidden_size, hidden_size))
         self.postnet2 = nn.Sequential(
             nn.ReLU(),
-            nn.BatchNorm1D(
-                hidden_size, data_format="NLC"),
+            nn.BatchNorm1D(hidden_size, data_format="NLC"),
             nn.Linear(hidden_size, hidden_size), )
 
     def forward(self, text, tones):
@@ -120,13 +110,9 @@ class DurationPredictor(nn.Layer):
     def __init__(self, hidden_size):
         super().__init__()
         self.layers = nn.Sequential(
-            ResidualBlock(
-                hidden_size, 4, 1, n=1),
-            ResidualBlock(
-                hidden_size, 3, 1, n=1),
-            ResidualBlock(
-                hidden_size, 1, 1, n=1),
-            nn.Linear(hidden_size, 1))
+            ResidualBlock(hidden_size, 4, 1, n=1),
+            ResidualBlock(hidden_size, 3, 1, n=1),
+            ResidualBlock(hidden_size, 1, 1, n=1), nn.Linear(hidden_size, 1))
 
     def forward(self, x):
         return paddle.squeeze(self.layers(x), -1)
@@ -136,15 +122,13 @@ class SpeedySpeechDecoder(nn.Layer):
     def __init__(self, hidden_size, output_size, kernel_size, dilations):
         super().__init__()
         res_blocks = [
-            ResidualBlock(
-                hidden_size, kernel_size, d, n=2) for d in dilations
+            ResidualBlock(hidden_size, kernel_size, d, n=2) for d in dilations
         ]
         self.res_blocks = nn.Sequential(*res_blocks)
 
         self.postnet1 = nn.Sequential(nn.Linear(hidden_size, hidden_size))
         self.postnet2 = nn.Sequential(
-            ResidualBlock(
-                hidden_size, kernel_size, 1, n=2),
+            ResidualBlock(hidden_size, kernel_size, 1, n=2),
             nn.Linear(hidden_size, output_size))
 
     def forward(self, x):

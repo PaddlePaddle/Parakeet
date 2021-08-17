@@ -50,10 +50,7 @@ def main():
         required=True,
         help="speech statistics file.")
     parser.add_argument(
-        "--pitch-stats",
-        type=str,
-        required=True,
-        help="pitch statistics file.")
+        "--pitch-stats", type=str, required=True, help="pitch statistics file.")
     parser.add_argument(
         "--energy-stats",
         type=str,

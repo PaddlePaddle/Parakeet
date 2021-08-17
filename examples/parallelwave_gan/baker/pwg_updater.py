@@ -20,17 +20,11 @@ from paddle.nn import Layer
 from paddle.optimizer import Optimizer
 from paddle.optimizer.lr import LRScheduler
 from paddle.io import DataLoader
-from paddle.io import DistributedBatchSampler
 from timer import timer
 
-from parakeet.datasets.data_table import DataTable
 from parakeet.training.updaters.standard_updater import StandardUpdater, UpdaterState
 from parakeet.training.extensions.evaluator import StandardEvaluator
-from parakeet.training.trainer import Trainer
 from parakeet.training.reporter import report
-from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator
-from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
-from parakeet.utils.profile import synchronize
 
 
 class PWGUpdater(StandardUpdater):
@@ -78,16 +72,17 @@ class PWGUpdater(StandardUpdater):
             wav_ = self.generator(noise, mel)
             logging.debug(f"Generator takes {t.elapse}s.")
 
-        ## Multi-resolution stft loss
+        # initialize
+        gen_loss = 0.0
 
+        ## Multi-resolution stft loss
         with timer() as t:
-            sc_loss, mag_loss = self.criterion_stft(
-                wav_.squeeze(1), wav.squeeze(1))
+            sc_loss, mag_loss = self.criterion_stft(wav_, wav)
             logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s.")
 
         report("train/spectral_convergence_loss", float(sc_loss))
         report("train/log_stft_magnitude_loss", float(mag_loss))
-        gen_loss = sc_loss + mag_loss
+        gen_loss += sc_loss + mag_loss
 
         ## Adversarial loss
         if self.state.iteration > self.discriminator_train_start_steps:
@@ -119,9 +114,9 @@ class PWGUpdater(StandardUpdater):
             p_ = self.discriminator(wav_.detach())
             real_loss = self.criterion_mse(p, paddle.ones_like(p))
             fake_loss = self.criterion_mse(p_, paddle.zeros_like(p_))
+            dis_loss = real_loss + fake_loss
             report("train/real_loss", float(real_loss))
             report("train/fake_loss", float(fake_loss))
-            dis_loss = real_loss + fake_loss
             report("train/discriminator_loss", float(dis_loss))
 
             self.optimizer_d.clear_grad()
@@ -164,8 +159,7 @@ class PWGEvaluator(StandardEvaluator):
 
         # stft loss
         with timer() as t:
-            sc_loss, mag_loss = self.criterion_stft(
-                wav_.squeeze(1), wav.squeeze(1))
+            sc_loss, mag_loss = self.criterion_stft(wav_, wav)
             logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s")
 
         report("eval/spectral_convergence_loss", float(sc_loss))
@@ -178,7 +172,7 @@ class PWGEvaluator(StandardEvaluator):
         p = self.discriminator(wav)
         real_loss = self.criterion_mse(p, paddle.ones_like(p))
         fake_loss = self.criterion_mse(p_, paddle.zeros_like(p_))
+        dis_loss = real_loss + fake_loss
         report("eval/real_loss", float(real_loss))
         report("eval/fake_loss", float(fake_loss))
-        dis_loss = real_loss + fake_loss
         report("eval/discriminator_loss", float(dis_loss))

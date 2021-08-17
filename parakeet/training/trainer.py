@@ -11,20 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
-import six
 import traceback
-from pathlib import Path
 from collections import OrderedDict
-from typing import Callable, Union, List
+from pathlib import Path
+from typing import Callable
+from typing import List
+from typing import Union
 
+import six
 import tqdm
 
-from parakeet.training.trigger import get_trigger, IntervalTrigger, LimitTrigger
-from parakeet.training.updater import UpdaterBase
+from parakeet.training.extension import Extension
+from parakeet.training.extension import PRIORITY_READER
 from parakeet.training.reporter import scope
-from parakeet.training.extension import Extension, PRIORITY_READER
+from parakeet.training.trigger import get_trigger
+from parakeet.training.triggers.limit_trigger import LimitTrigger
+from parakeet.training.updater import UpdaterBase
 
 
 class _ExtensionEntry(object):
@@ -44,7 +47,7 @@ class Trainer(object):
         self.extensions = OrderedDict()
         self.stop_trigger = LimitTrigger(*stop_trigger)
         self.out = Path(out)
-        self.observation =...
+        self.observation = None
 
         self._done = False
         if extensions:
@@ -70,8 +73,7 @@ class Trainer(object):
                 if name is None:
                     name = getattr(extension, '__name__', None)
                     if name is None:
-                        raise ValueError(
-                            "Name is not given for the extension.")
+                        raise ValueError("Name is not given for the extension.")
         if name == 'training':
             raise ValueError("training is a reserved name.")
 
@@ -112,8 +114,7 @@ class Trainer(object):
             self.extensions.keys(),
             key=lambda name: self.extensions[name].priority,
             reverse=True)
-        extensions = [(name, self.extensions[name])
-                      for name in extension_order]
+        extensions = [(name, self.extensions[name]) for name in extension_order]
 
         # initializing all extensions
         for name, entry in extensions:
@@ -126,7 +127,7 @@ class Trainer(object):
         # display only one progress bar
         max_iteration = None
         if isinstance(stop_trigger, LimitTrigger):
-            if stop_trigger.unit is 'epoch':
+            if stop_trigger.unit == 'epoch':
                 max_epoch = self.stop_trigger.limit
                 updates_per_epoch = getattr(self.updater, "updates_per_epoch",
                                             None)
@@ -134,8 +135,7 @@ class Trainer(object):
             else:
                 max_iteration = self.stop_trigger.limit
 
-        p = tqdm.tqdm(
-            initial=self.updater.state.iteration, total=max_iteration)
+        p = tqdm.tqdm(initial=self.updater.state.iteration, total=max_iteration)
 
         try:
             while not stop_trigger(self):

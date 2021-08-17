@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Duration predictor related modules."""
-
 import paddle
 from paddle import nn
+
 from parakeet.modules.layer_norm import LayerNorm
 from parakeet.modules.masked_fill import masked_fill
 
@@ -32,10 +32,10 @@ class DurationPredictor(nn.Layer):
 
     Note
     ----------
-        The calculation domain of outputs is different
-        between in `forward` and in `inference`. In `forward`,
-        the outputs are calculated in log domain but in `inference`,
-        those are calculated in linear domain.
+    The calculation domain of outputs is different
+    between in `forward` and in `inference`. In `forward`,
+    the outputs are calculated in log domain but in `inference`,
+    those are calculated in linear domain.
 
     """
 
@@ -50,18 +50,18 @@ class DurationPredictor(nn.Layer):
 
         Parameters
         ----------
-            idim : int
-                Input dimension.
-            n_layers : int, optional
-                 Number of convolutional layers.
-            n_chans : int, optional
-                Number of channels of convolutional layers.
-            kernel_size : int, optional
-                Kernel size of convolutional layers.
-            dropout_rate : float, optional
-                 Dropout rate.
-            offset : float, optional
-                Offset value to avoid nan in log domain.
+        idim : int
+            Input dimension.
+        n_layers : int, optional
+                Number of convolutional layers.
+        n_chans : int, optional
+            Number of channels of convolutional layers.
+        kernel_size : int, optional
+            Kernel size of convolutional layers.
+        dropout_rate : float, optional
+                Dropout rate.
+        offset : float, optional
+            Offset value to avoid nan in log domain.
 
         """
         super(DurationPredictor, self).__init__()
@@ -78,8 +78,7 @@ class DurationPredictor(nn.Layer):
                         stride=1,
                         padding=(kernel_size - 1) // 2, ),
                     nn.ReLU(),
-                    LayerNorm(
-                        n_chans, dim=1),
+                    LayerNorm(n_chans, dim=1),
                     nn.Dropout(dropout_rate), ))
         self.linear = nn.Linear(n_chans, 1, bias_attr=True)
 
@@ -108,10 +107,10 @@ class DurationPredictor(nn.Layer):
 
         Parameters
         ----------
-            xs : Tensor
-                Batch of input sequences (B, Tmax, idim).
-            x_masks : ByteTensor, optional
-                Batch of masks indicating padded part (B, Tmax).
+        xs : Tensor
+            Batch of input sequences (B, Tmax, idim).
+        x_masks : ByteTensor, optional
+            Batch of masks indicating padded part (B, Tmax).
 
         Returns
         ----------
@@ -125,15 +124,15 @@ class DurationPredictor(nn.Layer):
 
         Parameters
         ----------
-            xs : Tensor
-                Batch of input sequences (B, Tmax, idim).
-            x_masks : Tensor(bool), optional
-                Batch of masks indicating padded part (B, Tmax).
+        xs : Tensor
+            Batch of input sequences (B, Tmax, idim).
+        x_masks : Tensor(bool), optional
+            Batch of masks indicating padded part (B, Tmax).
 
         Returns
         ----------
-            LongTensor
-                Batch of predicted durations in linear domain int64 (B, Tmax).
+        Tensor
+            Batch of predicted durations in linear domain int64 (B, Tmax).
         """
         return self._forward(xs, x_masks, True)
 
@@ -150,10 +149,10 @@ class DurationPredictorLoss(nn.Layer):
 
         Parameters
         ----------
-            offset : float, optional
-                Offset value to avoid nan in log domain.
-            reduction : str
-                Reduction type in loss calculation.
+        offset : float, optional
+            Offset value to avoid nan in log domain.
+        reduction : str
+            Reduction type in loss calculation.
         """
         super(DurationPredictorLoss, self).__init__()
         self.criterion = nn.MSELoss(reduction=reduction)
@@ -164,19 +163,19 @@ class DurationPredictorLoss(nn.Layer):
 
         Parameters
         ----------
-            outputs : Tensor
-                Batch of prediction durations in log domain (B, T)
-            targets : LongTensor
-                Batch of groundtruth durations in linear domain (B, T)
+        outputs : Tensor
+            Batch of prediction durations in log domain (B, T)
+        targets : Tensor
+            Batch of groundtruth durations in linear domain (B, T)
 
         Returns
         ----------
-            Tensor
-                Mean squared error loss value.
+        Tensor
+            Mean squared error loss value.
 
         Note
         ----------
-            `outputs` is in log domain but `targets` is in linear domain.
+        `outputs` is in log domain but `targets` is in linear domain.
         """
         # NOTE: outputs is in log domain while targets in linear
         targets = paddle.log(targets.cast(dtype='float32') + self.offset)

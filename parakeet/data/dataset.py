@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import six
-import paddle
 from paddle.io import Dataset
 
 __all__ = [
@@ -69,7 +67,7 @@ class CacheDataset(Dataset):
         return len(self._dataset)
 
     def __getitem__(self, i):
-        if not i in self._cache:
+        if i not in self._cache:
             self._cache[i] = self._dataset[i]
         return self._cache[i]
 
@@ -86,9 +84,8 @@ class TupleDataset(Dataset):
         length = len(datasets[0])
         for i, dataset in enumerate(datasets):
             if len(dataset) != length:
-                raise ValueError(
-                    "all the datasets should have the same length."
-                    "dataset {} has a different length".format(i))
+                raise ValueError("all the datasets should have the same length."
+                                 "dataset {} has a different length".format(i))
         self._datasets = datasets
         self._length = length
 
@@ -115,7 +112,7 @@ class DictDataset(Dataset):
         A compound dataset made from several datasets of the same length. An 
         example of the `DictDataset` is a dict of examples from the constituent 
         datasets.
-        
+
         WARNING: paddle does not have a good support for DictDataset, because
         every batch yield from a DataLoader is a list, but it cannot be a dict.
         So you have to provide a collate function because you cannot use the

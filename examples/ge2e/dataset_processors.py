@@ -57,7 +57,7 @@ def _process_speaker(speaker_dir: Path,
         try:
             with sources_fpath.open("rt") as sources_file:
                 existing_names = {line.split(",")[0] for line in sources_file}
-        except:
+        except Exception as e:
             existing_names = {}
     else:
         existing_names = {}
@@ -114,9 +114,7 @@ def process_librispeech(processor,
                      output_dir, "*.flac", skip_existing)
 
 
-def process_voxceleb1(processor,
-                      datasets_root,
-                      output_dir,
+def process_voxceleb1(processor, datasets_root, output_dir,
                       skip_existing=False):
     dataset_name = "VoxCeleb1"
     dataset_root = datasets_root / dataset_name
@@ -126,10 +124,7 @@ def process_voxceleb1(processor,
         metadata = [line.strip().split("\t") for line in metafile][1:]
 
     # speaker id -> nationality
-    nationalities = {
-        line[0]: line[3]
-        for line in metadata if line[-1] == "dev"
-    }
+    nationalities = {line[0]: line[3] for line in metadata if line[-1] == "dev"}
     keep_speaker_ids = [
         speaker_id for speaker_id, nationality in nationalities.items()
         if nationality.lower() in anglophone_nationalites
@@ -147,9 +142,7 @@ def process_voxceleb1(processor,
                      output_dir, "*.wav", skip_existing)
 
 
-def process_voxceleb2(processor,
-                      datasets_root,
-                      output_dir,
+def process_voxceleb2(processor, datasets_root, output_dir,
                       skip_existing=False):
     dataset_name = "VoxCeleb2"
     dataset_root = datasets_root / dataset_name
@@ -171,9 +164,7 @@ def process_aidatatang_200zh(processor,
                      output_dir, "*.wav", skip_existing)
 
 
-def process_magicdata(processor,
-                      datasets_root,
-                      output_dir,
+def process_magicdata(processor, datasets_root, output_dir,
                       skip_existing=False):
     dataset_name = "magicdata/train"
     dataset_root = datasets_root / dataset_name

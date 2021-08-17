@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numpy as np
 import paddle
+
 from parakeet.data.batch import batch_sequences
 
 
@@ -24,8 +24,7 @@ def collate_baker_examples(examples):
     pitch = [np.array(item["pitch"], dtype=np.float32) for item in examples]
     energy = [np.array(item["energy"], dtype=np.float32) for item in examples]
     durations = [
-        np.array(
-            item["durations"], dtype=np.int64) for item in examples
+        np.array(item["durations"], dtype=np.int64) for item in examples
     ]
     text_lengths = np.array([item["text_lengths"] for item in examples])
     speech_lengths = np.array([item["speech_lengths"] for item in examples])

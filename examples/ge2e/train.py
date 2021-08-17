@@ -83,12 +83,11 @@ class Ge2eExperiment(ExperimentBase):
         self.logger.info(msg)
 
         if dist.get_rank() == 0:
-            self.visualizer.add_scalar("train/loss", loss_value,
-                                       self.iteration)
+            self.visualizer.add_scalar("train/loss", loss_value, self.iteration)
             self.visualizer.add_scalar("train/eer", eer, self.iteration)
-            self.visualizer.add_scalar(
-                "param/w",
-                float(self.model_core.similarity_weight), self.iteration)
+            self.visualizer.add_scalar("param/w",
+                                       float(self.model_core.similarity_weight),
+                                       self.iteration)
             self.visualizer.add_scalar("param/b",
                                        float(self.model_core.similarity_bias),
                                        self.iteration)

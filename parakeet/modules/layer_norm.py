@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Layer normalization module."""
-
 import paddle
 
 
@@ -21,10 +20,10 @@ class LayerNorm(paddle.nn.LayerNorm):
 
     Parameters
     ----------
-        nout : int
-            Output dim size.
-        dim : int
-            Dimension to be normalized.
+    nout : int
+        Output dim size.
+    dim : int
+        Dimension to be normalized.
     """
 
     def __init__(self, nout, dim=-1):
@@ -37,13 +36,13 @@ class LayerNorm(paddle.nn.LayerNorm):
 
         Parameters
         ----------
-            x : paddle.Tensor
-                Input tensor.
+        x : paddle.Tensor
+            Input tensor.
 
         Returns
         ----------
-            paddle.Tensor
-                Normalized tensor.
+        paddle.Tensor
+            Normalized tensor.
         """
         if self.dim == -1:
             return super(LayerNorm, self).forward(x)
@@ -55,8 +54,9 @@ class LayerNorm(paddle.nn.LayerNorm):
 
             orig_perm = list(range(len_dim))
             new_perm = orig_perm[:]
-            new_perm[self.dim], new_perm[len_dim - 1] = new_perm[
-                len_dim - 1], new_perm[self.dim]
+            new_perm[self.dim], new_perm[len_dim -
+                                         1] = new_perm[len_dim -
+                                                       1], new_perm[self.dim]
 
             return paddle.transpose(
                 super(LayerNorm, self).forward(paddle.transpose(x, new_perm)),

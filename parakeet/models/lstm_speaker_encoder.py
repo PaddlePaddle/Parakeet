@@ -11,17 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numpy as np
 import paddle
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-
 from scipy.interpolate import interp1d
-from sklearn.metrics import roc_curve
 from scipy.optimize import brentq
+from sklearn.metrics import roc_curve
 
 
 class LSTMSpeakerEncoder(nn.Layer):
@@ -81,8 +78,7 @@ class LSTMSpeakerEncoder(nn.Layer):
         # print("p1: ", p1.shape)
         p2 = paddle.bmm(
             embeds.reshape([-1, 1, embed_dim]),
-            normalized_centroids_excl.reshape(
-                [-1, embed_dim, 1]))  # (NM, 1, 1)
+            normalized_centroids_excl.reshape([-1, embed_dim, 1]))  # (NM, 1, 1)
         p2 = p2.reshape([-1])  # （NM)
 
         # begin: alternative implementation for scatter
@@ -94,9 +90,8 @@ class LSTMSpeakerEncoder(nn.Layer):
             index = index * speakers_per_batch + paddle.arange(
                 0, speakers_per_batch, dtype="int64").unsqueeze(-1)
             index = paddle.reshape(index, [-1])
-        ones = paddle.ones([
-            speakers_per_batch * utterances_per_speaker * speakers_per_batch
-        ])
+        ones = paddle.ones(
+            [speakers_per_batch * utterances_per_speaker * speakers_per_batch])
         zeros = paddle.zeros_like(index, dtype=ones.dtype)
         mask_p1 = paddle.scatter(ones, index, zeros)
         p = p1 * mask_p1 + (1 - mask_p1) * paddle.scatter(ones, index, p2)
@@ -112,6 +107,9 @@ class LSTMSpeakerEncoder(nn.Layer):
         for p in [self.similarity_weight, self.similarity_bias]:
             g = p._grad_ivar()
             g[...] = g * 0.01
+
+    def inv_argmax(self, i, num):
+        return np.eye(1, num, i, dtype=np.int)[0]
 
     def loss(self, embeds):
         """
@@ -138,8 +136,8 @@ class LSTMSpeakerEncoder(nn.Layer):
         # EER (not backpropagated)
         with paddle.no_grad():
             ground_truth = target.numpy()
-            inv_argmax = lambda i: np.eye(1, speakers_per_batch, i, dtype=np.int)[0]
-            labels = np.array([inv_argmax(i) for i in ground_truth])
+            labels = np.array(
+                [self.inv_argmax(i, speakers_per_batch) for i in ground_truth])
             preds = sim_matrix.numpy()
 
             # Snippet from https://yangcha.github.io/EER-ROC/

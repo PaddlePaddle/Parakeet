@@ -11,19 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from pathlib import Path
 import shutil
-
-import numpy as np
-import paddle
-from paddle import nn
-from paddle.optimizer import Adam
 from itertools import count
 
-from parakeet.training.updater import StandardUpdater
-from parakeet.training.trainer import Trainer
+from paddle import nn
+from paddle.optimizer import Adam
+
 from parakeet.training.extensions.snapshot import Snapshot
+from parakeet.training.trainer import Trainer
+from parakeet.training.updater import StandardUpdater
 
 
 def test_snapshot():

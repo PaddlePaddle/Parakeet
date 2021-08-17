@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Dict, Iterable, List
 from collections import OrderedDict
+from typing import Iterable
 
 __all__ = ["Vocab"]
 
@@ -25,13 +24,13 @@ class Vocab(object):
     -----------
     symbols: Iterable[str]
         Common symbols.
-    
+
     padding_symbol: str, optional
         Symbol for pad. Defaults to "<pad>".
 
     unk_symbol: str, optional
         Symbol for unknow. Defaults to "<unk>"
-    
+
     start_symbol: str, optional
         Symbol for start. Defaults to "<s>"
 

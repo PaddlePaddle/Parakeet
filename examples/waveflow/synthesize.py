@@ -39,8 +39,7 @@ def main(config, args):
         mel = np.load(str(file_path))
         with paddle.amp.auto_cast():
             audio = model.predict(mel)
-        audio_path = output_dir / (
-            os.path.splitext(file_path.name)[0] + ".wav")
+        audio_path = output_dir / (os.path.splitext(file_path.name)[0] + ".wav")
         sf.write(audio_path, audio, config.data.sample_rate)
         print("[synthesize] {} -> {}".format(file_path, audio_path))
 

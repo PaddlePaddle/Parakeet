@@ -15,20 +15,13 @@
 
 import argparse
 import logging
-import os
 from pathlib import Path
 
-import numpy as np
-import yaml
-import json
 import jsonlines
-
+import numpy as np
+from parakeet.datasets.data_table import DataTable
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
-
-from parakeet.datasets.data_table import DataTable
-from parakeet.utils.h5_utils import read_hdf5
-from parakeet.utils.h5_utils import write_hdf5
 
 from config import get_cfg_default
 

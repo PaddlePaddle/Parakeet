@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import librosa
-import soundfile as sf
 import numpy as np
+import soundfile as sf
 
 __all__ = ["AudioProcessor"]
 
@@ -53,11 +52,12 @@ class AudioProcessor(object):
         self.inv_mel_filter = np.linalg.pinv(self.mel_filter)
 
     def _create_mel_filter(self):
-        mel_filter = librosa.filters.mel(self.sample_rate,
-                                         self.n_fft,
-                                         n_mels=self.n_mels,
-                                         fmin=self.fmin,
-                                         fmax=self.fmax)
+        mel_filter = librosa.filters.mel(
+            self.sample_rate,
+            self.n_fft,
+            n_mels=self.n_mels,
+            fmin=self.fmin,
+            fmax=self.fmax)
         return mel_filter
 
     def read_wav(self, filename):

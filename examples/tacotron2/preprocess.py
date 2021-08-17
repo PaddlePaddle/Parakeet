@@ -63,8 +63,7 @@ def create_dataset(config, source_path, target_path, verbose=False):
     with open(target_path / "metadata.pkl", 'wb') as f:
         pickle.dump(records, f)
         if verbose:
-            print("saved metadata into {}".format(target_path /
-                                                  "metadata.pkl"))
+            print("saved metadata into {}".format(target_path / "metadata.pkl"))
 
     print("Done.")
 

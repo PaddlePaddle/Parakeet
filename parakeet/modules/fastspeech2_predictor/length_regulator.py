@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Length regulator related modules."""
-
 import numpy as np
 import paddle
 from paddle import nn
@@ -37,8 +36,8 @@ class LengthRegulator(nn.Layer):
 
         Parameters
         ----------
-            pad_value : float, optional
-                Value used for padding.
+        pad_value : float, optional
+            Value used for padding.
 
         """
         super().__init__()
@@ -70,17 +69,17 @@ class LengthRegulator(nn.Layer):
 
         Parameters
         ----------
-            xs : Tensor
-                Batch of sequences of char or phoneme embeddings (B, Tmax, D).
-            ds : LongTensor
-                 Batch of durations of each frame (B, T).
-            alpha : float, optional
-                Alpha value to control speed of speech.
+        xs : Tensor
+            Batch of sequences of char or phoneme embeddings (B, Tmax, D).
+        ds : LongTensor
+                Batch of durations of each frame (B, T).
+        alpha : float, optional
+            Alpha value to control speed of speech.
 
         Returns
         ----------
-            Tensor
-                replicated input tensor based on durations (B, T*, D).
+        Tensor
+            replicated input tensor based on durations (B, T*, D).
         """
         if alpha != 1.0:
             assert alpha > 0

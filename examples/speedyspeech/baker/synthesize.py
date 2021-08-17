@@ -11,30 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
-import sys
 import logging
 import argparse
-import dataclasses
 from pathlib import Path
 
-import yaml
 import jsonlines
-import paddle
 import numpy as np
 import soundfile as sf
 import paddle
-from paddle import nn
-from paddle.nn import functional as F
-from paddle import distributed as dist
+import yaml
 from paddle import jit
 from paddle.static import InputSpec
 from yacs.config import CfgNode
 
 from parakeet.datasets.data_table import DataTable
-from parakeet.models.speedyspeech import SpeedySpeech, SpeedySpeechInference
-from parakeet.models.parallel_wavegan import PWGGenerator, PWGInference
+from parakeet.models.speedyspeech import SpeedySpeech
+from parakeet.models.speedyspeech import SpeedySpeechInference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 
 
@@ -79,9 +74,8 @@ def evaluate(args, speedyspeech_config, pwg_config):
     speedyspeech_inference = jit.to_static(
         speedyspeech_inference,
         input_spec=[
-            InputSpec(
-                [-1], dtype=paddle.int64), InputSpec(
-                    [-1], dtype=paddle.int64)
+            InputSpec([-1], dtype=paddle.int64), InputSpec(
+                [-1], dtype=paddle.int64)
         ])
     paddle.jit.save(speedyspeech_inference,
                     os.path.join(args.inference_dir, "speedyspeech"))
@@ -91,9 +85,9 @@ def evaluate(args, speedyspeech_config, pwg_config):
     pwg_inference = PWGInference(pwg_normalizer, vocoder)
     pwg_inference.eval()
     pwg_inference = jit.to_static(
-        pwg_inference,
-        input_spec=[InputSpec(
-            [-1, 80], dtype=paddle.float32), ])
+        pwg_inference, input_spec=[
+            InputSpec([-1, 80], dtype=paddle.float32),
+        ])
     paddle.jit.save(pwg_inference, os.path.join(args.inference_dir, "pwg"))
     pwg_inference = paddle.jit.load(os.path.join(args.inference_dir, "pwg"))
 
@@ -119,9 +113,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Synthesize with speedyspeech & parallel wavegan.")
     parser.add_argument(
-        "--speedyspeech-config",
-        type=str,
-        help="config file for speedyspeech.")
+        "--speedyspeech-config", type=str, help="config file for speedyspeech.")
     parser.add_argument(
         "--speedyspeech-checkpoint",
         type=str,

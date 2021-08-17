@@ -11,20 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
 
 import paddle
 from paddle import nn
+from paddle.fluid.layers import sequence_mask
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.fluid.layers import sequence_mask
+from tqdm import trange
 
-from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules.attention import LocationSensitiveAttention
+from parakeet.modules.conv import Conv1dBatchNorm
 from parakeet.modules.losses import guided_attention_loss
 from parakeet.utils import checkpoint
-from tqdm import trange
 
 __all__ = ["Tacotron2", "Tacotron2Loss"]
 
@@ -74,8 +73,7 @@ class DecoderPreNet(nn.Layer):
 
         """
 
-        x = F.dropout(
-            F.relu(self.linear1(x)), self.dropout_rate, training=True)
+        x = F.dropout(F.relu(self.linear1(x)), self.dropout_rate, training=True)
         output = F.dropout(
             F.relu(self.linear2(x)), self.dropout_rate, training=True)
         return output
@@ -745,10 +743,10 @@ class Tacotron2(nn.Layer):
 
         if global_condition is not None:
             global_condition = global_condition.unsqueeze(1)
-            global_condition = paddle.expand(
-                global_condition, [-1, encoder_outputs.shape[1], -1])
-            encoder_outputs = paddle.concat(
-                [encoder_outputs, global_condition], -1)
+            global_condition = paddle.expand(global_condition,
+                                             [-1, encoder_outputs.shape[1], -1])
+            encoder_outputs = paddle.concat([encoder_outputs, global_condition],
+                                            -1)
 
         # [B, T_enc, 1]
         mask = sequence_mask(
@@ -813,10 +811,10 @@ class Tacotron2(nn.Layer):
 
         if global_condition is not None:
             global_condition = global_condition.unsqueeze(1)
-            global_condition = paddle.expand(
-                global_condition, [-1, encoder_outputs.shape[1], -1])
-            encoder_outputs = paddle.concat(
-                [encoder_outputs, global_condition], -1)
+            global_condition = paddle.expand(global_condition,
+                                             [-1, encoder_outputs.shape[1], -1])
+            encoder_outputs = paddle.concat([encoder_outputs, global_condition],
+                                            -1)
         if self.decoder.use_stop_token:
             mel_outputs, alignments, stop_logits = self.decoder.infer(
                 encoder_outputs, max_decoder_steps=max_decoder_steps)

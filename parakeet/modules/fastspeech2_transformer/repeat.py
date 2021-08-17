@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repeat the same layer definition."""
-
 import paddle
 
 
@@ -31,14 +30,14 @@ def repeat(N, fn):
 
     Parameters
     ----------
-        N : int
-            Number of repeat time.
-        fn : Callable
-            Function to generate module.
+    N : int
+        Number of repeat time.
+    fn : Callable
+        Function to generate module.
 
     Returns
     ----------
-        MultiSequential
-            Repeated model instance.
+    MultiSequential
+        Repeated model instance.
     """
     return MultiSequential(* [fn(n) for n in range(N)])
