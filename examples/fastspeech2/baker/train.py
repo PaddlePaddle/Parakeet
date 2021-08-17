@@ -65,13 +65,13 @@ def build_optimizers(model: nn.Layer, optim='adadelta',
 def train_sp(args, config):
     # decides device type and whether to run in parallel
     # setup running environment correctly
-    if not paddle.is_compiled_with_cuda:
+    if not paddle.is_compiled_with_cuda():
         paddle.set_device("cpu")
     else:
         paddle.set_device("gpu")
-        world_size = paddle.distributed.get_world_size()
-        if world_size > 1:
-            paddle.distributed.init_parallel_env()
+    world_size = paddle.distributed.get_world_size()
+    if world_size > 1:
+        paddle.distributed.init_parallel_env()
 
     # set the random seed, it is a must for multiprocess training
     seed_everything(config.seed)
@@ -139,7 +139,7 @@ def train_sp(args, config):
     odim = config.n_mels
     model = FastSpeech2(idim=vocab_size, odim=odim, **config["model"])
     if world_size > 1:
-        model = DataParallel(model)  # TODO, do not use vocab size from config
+        model = DataParallel(model)
     print("model done!")
 
     optimizer = build_optimizers(model, **config["optimizer"])
