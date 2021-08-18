@@ -22,6 +22,7 @@ Run the command below to preprocess the dataset.
 ```bash
 ./run.sh
 ```
+If you want to train fastspeech2 with cpu, please add `--device=cpu` arguments for `python3 train.py` in `run.sh`.
 ## Synthesize
 We use [parallel wavegan](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/parallelwave_gan/baker) as the neural vocoder.
 Download pretrained parallel wavegan model from [parallel_wavegan_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/parallel_wavegan_baker_ckpt_0.4.zip) and unzip it.
