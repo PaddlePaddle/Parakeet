@@ -114,7 +114,6 @@ class ToneSandhi():
                     -2:] in self.must_neural_tone_words:
                 finals_list[i][-1] = finals_list[i][-1][:-1] + "5"
         finals = sum(finals_list, [])
-
         return finals
 
     def _bu_sandhi(self, word: str, finals: List[str]) -> List[str]:
@@ -151,11 +150,9 @@ class ToneSandhi():
                         finals[i] = finals[i][:-1] + "4"
         return finals
 
-    def _split_word(self, word):
+    def _split_word(self, word: str) -> List[str]:
         word_list = jieba.cut_for_search(word)
         word_list = sorted(word_list, key=lambda i: len(i), reverse=False)
-        new_word_list = []
-
         first_subword = word_list[0]
         first_begin_idx = word.find(first_subword)
         if first_begin_idx == 0:
@@ -280,7 +277,7 @@ class ToneSandhi():
 
         return new_seg
 
-    def _is_reduplication(self, word):
+    def _is_reduplication(self, word: str) -> bool:
         return len(word) == 2 and word[0] == word[1]
 
     # the last char of first word and the first char of second word is tone_three

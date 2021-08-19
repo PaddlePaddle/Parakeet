@@ -14,6 +14,7 @@
 import re
 from typing import List
 
+from .char_convert import tranditional_to_simplified
 from .chronology import RE_DATE
 from .chronology import RE_DATE2
 from .chronology import RE_TIME
@@ -66,8 +67,9 @@ class TextNormalizer():
         sentences = [sentence.strip() for sentence in re.split(r'\n+', text)]
         return sentences
 
-    def normalize_sentence(self, sentence):
+    def normalize_sentence(self, sentence: str) -> str:
         # basic character conversions
+        sentence = tranditional_to_simplified(sentence)
         sentence = sentence.translate(F2H_ASCII_LETTERS).translate(
             F2H_DIGITS).translate(F2H_SPACE)
 
@@ -90,7 +92,7 @@ class TextNormalizer():
 
         return sentence
 
-    def normalize(self, text):
+    def normalize(self, text: str) -> List[str]:
         sentences = self._split(text)
         sentences = [self.normalize_sentence(sent) for sent in sentences]
         return sentences
