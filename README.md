@@ -29,6 +29,7 @@ May-07-2021, Add an example for voice cloning in Chinese. Check [examples/tacotr
 
 
 ## Setup
+It's difficult to install some dependent libraries for this repo in Windows system, we recommend that you **DO NOT** use Windows system, please use `Linux`.
 
 Make sure the library `libsndfile1` is installed, e.g., on Ubuntu.
 
@@ -38,7 +39,7 @@ sudo apt-get install libsndfile1
 
 ### Install PaddlePaddle
 
-See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **2.0.0rc1** or above.
+See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **2.1.2** or above.
 
 ### Install Parakeet
 ```bash
