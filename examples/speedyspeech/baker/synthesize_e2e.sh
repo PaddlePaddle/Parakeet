@@ -3,7 +3,7 @@ python synthesize_e2e.py \
   --speedyspeech-checkpoint=exp/debug/checkpoints/snapshot_iter_91800.pdz \
   --speedyspeech-stat=dump/train/stats.npy \
   --pwg-config=../../parallelwave_gan/baker/conf/default.yaml \
-  --pwg-params=../../parallelwave_gan/baker/converted.pdparams \
+  --pwg-checkpoint=../../parallelwave_gan/baker/exp/default/checkpoints/snapshot_iter_400000.pdz \
   --pwg-stat=../../parallelwave_gan/baker/dump/train/stats.npy \
   --text=sentences.txt \
   --output-dir=exp/debug/e2e \

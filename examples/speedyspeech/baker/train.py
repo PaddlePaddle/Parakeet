@@ -42,11 +42,11 @@ from speedyspeech_updater import SpeedySpeechUpdater, SpeedySpeechEvaluator
 def train_sp(args, config):
     # decides device type and whether to run in parallel
     # setup running environment correctly
-    if not paddle.is_compiled_with_cuda:
+    world_size = paddle.distributed.get_world_size()
+    if not paddle.is_compiled_with_cuda():
         paddle.set_device("cpu")
     else:
         paddle.set_device("gpu")
-        world_size = paddle.distributed.get_world_size()
         if world_size > 1:
             paddle.distributed.init_parallel_env()
 
