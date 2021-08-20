@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from typing import Dict
+from typing import List
 
 import numpy as np
 import paddle
@@ -35,7 +37,7 @@ class Frontend():
             for tone, id in tone_id:
                 self.vocab_tones[tone] = int(id)
 
-    def _p2id(self, phonemes):
+    def _p2id(self, phonemes: List[str]) -> np.array:
         # replace unk phone with sp
         phonemes = [
             phn if phn in self.vocab_phones else "sp" for phn in phonemes
@@ -43,13 +45,14 @@ class Frontend():
         phone_ids = [self.vocab_phones[item] for item in phonemes]
         return np.array(phone_ids, np.int64)
 
-    def _t2id(self, tones):
+    def _t2id(self, tones: List[str]) -> np.array:
         # replace unk phone with sp
         tones = [tone if tone in self.vocab_tones else "0" for tone in tones]
         tone_ids = [self.vocab_tones[item] for item in tones]
         return np.array(tone_ids, np.int64)
 
-    def _get_phone_tone(self, phonemes, get_tone_ids=False):
+    def _get_phone_tone(self, phonemes: List[str],
+                        get_tone_ids: bool=False) -> List[List[str]]:
         phones = []
         tones = []
         if get_tone_ids and self.vocab_tones:
@@ -88,7 +91,11 @@ class Frontend():
                     phones.append(phone)
         return phones, tones
 
-    def get_input_ids(self, sentence, merge_sentences=True, get_tone_ids=False):
+    def get_input_ids(
+            self,
+            sentence: str,
+            merge_sentences: bool=True,
+            get_tone_ids: bool=False) -> Dict[str, List[paddle.Tensor]]:
         phonemes = self.frontend.get_phonemes(
             sentence, merge_sentences=merge_sentences)
         result = {}

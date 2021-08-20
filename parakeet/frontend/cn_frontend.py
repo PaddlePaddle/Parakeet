@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from typing import List
 
 import jieba.posseg as psg
 from g2pM import G2pM
@@ -43,7 +44,7 @@ class Frontend():
             "狗儿"
         }
 
-    def _get_initials_finals(self, word):
+    def _get_initials_finals(self, word: str) -> List[List[str]]:
         initials = []
         finals = []
         if self.g2p_model == "pypinyin":
@@ -78,7 +79,10 @@ class Frontend():
         return initials, finals
 
     # if merge_sentences, merge all sentences into one phone sequence
-    def _g2p(self, sentences, merge_sentences=True, with_erhua=True):
+    def _g2p(self,
+             sentences: List[str],
+             merge_sentences: bool=True,
+             with_erhua: bool=True) -> List[List[str]]:
         segments = sentences
         phones_list = []
         for seg in segments:
@@ -120,7 +124,11 @@ class Frontend():
             phones_list.append(merge_list)
         return phones_list
 
-    def _merge_erhua(self, initials, finals, word, pos):
+    def _merge_erhua(self,
+                     initials: List[str],
+                     finals: List[str],
+                     word: str,
+                     pos: str) -> List[List[str]]:
         if word not in self.must_erhua and (word in self.not_erhua or
                                             pos in {"a", "j", "nr"}):
             return initials, finals
@@ -137,7 +145,10 @@ class Frontend():
                 new_initials.append(initials[i])
         return new_initials, new_finals
 
-    def get_phonemes(self, sentence, merge_sentences=True, with_erhua=True):
+    def get_phonemes(self,
+                     sentence: str,
+                     merge_sentences: bool=True,
+                     with_erhua: bool=True) -> List[List[str]]:
         sentences = self.text_normalizer.normalize(sentence)
         phonemes = self._g2p(
             sentences, merge_sentences=merge_sentences, with_erhua=with_erhua)
