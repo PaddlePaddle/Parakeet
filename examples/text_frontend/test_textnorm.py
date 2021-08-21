@@ -43,8 +43,8 @@ def get_avg_cer(raw_dict, ref_dict, text_normalizer, output_dir):
 
         gt_text = del_en_add_space(gt_text)
         textnorm_text = del_en_add_space(textnorm_text)
-        wf_ref.write(text_id + " " + gt_text + "\n")
-        wf_tn.write(text_id + " " + textnorm_text + "\n")
+        wf_ref.write(gt_text + "(" + text_id + ")" + "\n")
+        wf_tn.write(textnorm_text + "(" + text_id + ")" + "\n")
         edit_distance, ref_len = char_errors(gt_text, textnorm_text)
         edit_distances.append(edit_distance)
         ref_lens.append(ref_len)

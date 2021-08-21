@@ -47,8 +47,8 @@ def get_avg_wer(raw_dict, ref_dict, frontend, output_dir):
         gt_phones = [phn for phn in gt_phones if phn not in SILENCE_TOKENS]
         gt_phones = " ".join(gt_phones)
         g2p_phones = " ".join(g2p_phones)
-        wf_ref.write(utt_id + " " + gt_phones + "\n")
-        wf_g2p.write(utt_id + " " + g2p_phones + "\n")
+        wf_ref.write(gt_phones + "(baker_" + utt_id + ")" + "\n")
+        wf_g2p.write(g2p_phones + "(baker_" + utt_id + ")" + "\n")
         edit_distance, ref_len = word_errors(gt_phones, g2p_phones)
         edit_distances.append(edit_distance)
         ref_lens.append(ref_len)
