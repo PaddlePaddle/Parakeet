@@ -11,6 +11,10 @@ For text normalization, the test data is  `data/textnorm_test_cases.txt`, we use
 
 We use `CER` as evaluation criterion.
 ## Start
+If you want to use sclite to get more detail information of WER, you should run the command below to make sclite first.
+```bash
+./make_sclite.sh
+```
 Run the command below to get the results of test.
 ```bash
 ./run.sh
