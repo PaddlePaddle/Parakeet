@@ -101,7 +101,7 @@ When training is done or pretrained models are downloaded. You can run `synthesi
 usage: synthesize_e2e.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
                          [--speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT]
                          [--speedyspeech-stat SPEEDYSPEECH_STAT]
-                         [--pwg-config PWG_CONFIG] [--pwg-params PWG_PARAMS]
+                         [--pwg-config PWG_CONFIG] [--pwg-checkpoint PWG_CHECKPOINT]
                          [--pwg-stat PWG_STAT] [--text TEXT]
                          [--output-dir OUTPUT_DIR]
                          [--inference-dir INFERENCE_DIR] [--device DEVICE]
@@ -120,7 +120,7 @@ optional arguments:
                         spectrogram when training speedyspeech.
   --pwg-config PWG_CONFIG
                         config file for parallelwavegan.
-  --pwg-checkpoint PWG_PARAMS
+  --pwg-checkpoint PWG_CHECKPOINT
                         parallel wavegan checkpoint to load.
   --pwg-stat PWG_STAT   mean and standard deviation used to normalize
                         spectrogram when training speedyspeech.
