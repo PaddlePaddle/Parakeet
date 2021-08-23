@@ -101,7 +101,7 @@ When training is done or pretrained models are downloaded. You can run `synthesi
 usage: synthesize_e2e.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
                          [--speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT]
                          [--speedyspeech-stat SPEEDYSPEECH_STAT]
-                         [--pwg-config PWG_CONFIG] [--pwg-params PWG_CHECKPOINT]
+                         [--pwg-config PWG_CONFIG] [--pwg-checkpoint PWG_CHECKPOINT]
                          [--pwg-stat PWG_STAT] [--text TEXT]
                          [--output-dir OUTPUT_DIR]
                          [--inference-dir INFERENCE_DIR] [--device DEVICE]
