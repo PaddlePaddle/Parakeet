@@ -21,13 +21,12 @@ For scripts to reorganize other corpus, please refer to
  https://github.com/MontrealCorpusTools/MFA-reorganization-scripts
 for more details.
 """
-
+import argparse
 import os
 import shutil
-import argparse
-from typing import Union
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Union
 
 import librosa
 import soundfile as sf
@@ -103,7 +102,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output-dir",
         type=str,
-        help="path to save outputs(audio and transcriptions)")
+        help="path to save outputs (audio and transcriptions)")
     parser.add_argument(
         "--resample-audio",
         action="store_true",

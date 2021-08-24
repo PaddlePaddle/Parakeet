@@ -11,4 +11,5 @@ python3 synthesize_e2e.py \
   --text=../sentences.txt \
   --output-dir=exp/debug/test_e2e \
   --device="gpu" \
-  --phones-dict=dump/phone_id_map.txt
+  --phones-dict=dump/phone_id_map.txt \
+  --speaker-dict=dump/speaker_id_map.txt
