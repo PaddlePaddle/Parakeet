@@ -53,6 +53,12 @@ cd Parakeet
 pip install -e .
 ```
 
+If some python dependent packages cannot be installed successfully, you can run the following script first.
+(replace `python3.6` with your own python version)
+```bash
+sudo apt install -y python3.6-dev
+```
+
 See [install](https://paddle-parakeet.readthedocs.io/en/latest/install.html) for more details.
 
 ## Examples
