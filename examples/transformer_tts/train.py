@@ -21,7 +21,7 @@ from paddle import distributed as dist
 from paddle.io import DataLoader, DistributedBatchSampler
 
 from parakeet.data import dataset
-from parakeet.frontend import English
+from parakeet.frontend.phonectic import English
 from parakeet.models.transformer_tts import TransformerTTS, TransformerTTSLoss
 from parakeet.utils import scheduler, mp_tools, display
 from parakeet.training.cli import default_argument_parser

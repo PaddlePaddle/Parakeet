@@ -370,7 +370,7 @@ class CNNPostNet(nn.Layer):
 
 class TransformerTTS(nn.Layer):
     def __init__(self,
-                 frontend: parakeet.frontend.Phonetics,
+                 frontend: parakeet.frontend.phonectic.Phonetics,
                  d_encoder: int,
                  d_decoder: int,
                  d_mel: int,
