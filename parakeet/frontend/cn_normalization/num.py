@@ -34,7 +34,15 @@ COM_QUANTIFIERS = '(朵|匹|张|座|回|场|尾|条|个|首|阙|阵|网|炮|顶|
 RE_FRAC = re.compile(r'(-?)(\d+)/(\d+)')
 
 
-def replace_frac(match: re.Match) -> str:
+def replace_frac(match) -> str:
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     sign = match.group(1)
     nominator = match.group(2)
     denominator = match.group(3)
@@ -49,7 +57,15 @@ def replace_frac(match: re.Match) -> str:
 RE_PERCENTAGE = re.compile(r'(-?)(\d+(\.\d+)?)%')
 
 
-def replace_percentage(match: re.Match) -> str:
+def replace_percentage(match) -> str:
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     sign = match.group(1)
     percent = match.group(2)
     sign: str = "负" if sign else ""
@@ -63,7 +79,15 @@ def replace_percentage(match: re.Match) -> str:
 RE_INTEGER = re.compile(r'(-)' r'(\d+)')
 
 
-def replace_negative_num(match: re.Match) -> str:
+def replace_negative_num(match) -> str:
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     sign = match.group(1)
     number = match.group(2)
     sign: str = "负" if sign else ""
@@ -77,7 +101,15 @@ def replace_negative_num(match: re.Match) -> str:
 RE_DEFAULT_NUM = re.compile(r'\d{3}\d*')
 
 
-def replace_default_num(match: re.Match):
+def replace_default_num(match):
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     number = match.group(0)
     return verbalize_digit(number)
 
@@ -90,7 +122,15 @@ RE_POSITIVE_QUANTIFIERS = re.compile(r"(\d+)([多余几])?" + COM_QUANTIFIERS)
 RE_NUMBER = re.compile(r'(-?)((\d+)(\.\d+)?)' r'|(\.(\d+))')
 
 
-def replace_positive_quantifier(match: re.Match) -> str:
+def replace_positive_quantifier(match) -> str:
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     number = match.group(1)
     match_2 = match.group(2)
     match_2: str = match_2 if match_2 else ""
@@ -100,7 +140,15 @@ def replace_positive_quantifier(match: re.Match) -> str:
     return result
 
 
-def replace_number(match: re.Match) -> str:
+def replace_number(match) -> str:
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     sign = match.group(1)
     number = match.group(2)
     pure_decimal = match.group(5)
@@ -118,7 +166,15 @@ def replace_number(match: re.Match) -> str:
 RE_RANGE = re.compile(r'(\d+)[-~](\d+)')
 
 
-def replace_range(match: re.Match) -> str:
+def replace_range(match) -> str:
+    """
+    Parameters
+    ----------
+    match : re.Match
+    Returns
+    ----------
+    str
+    """
     first, second = match.group(1), match.group(2)
     first: str = num2str(first)
     second: str = num2str(second)
