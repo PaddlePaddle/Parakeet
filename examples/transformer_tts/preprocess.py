@@ -19,10 +19,10 @@ from pathlib import Path
 
 import tqdm
 import numpy as np
-from parakeet.audio.audio import AudioProcessor
-from parakeet.audio.spec_normalizer import LogMagnitude
-from parakeet.datasets.ljspeech import LJSpeechMetaData
-from parakeet.frontend.phonectic import English
+from parakeet.audio import AudioProcessor
+from parakeet.audio import LogMagnitude
+from parakeet.datasets import LJSpeechMetaData
+from parakeet.frontend import English
 
 from config import get_cfg_defaults
 
