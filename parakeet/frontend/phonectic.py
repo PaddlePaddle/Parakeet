@@ -17,7 +17,7 @@ from abc import abstractmethod
 from g2p_en import G2p
 from g2pM import G2pM
 
-from parakeet.frontend import Vocab
+from parakeet.frontend.vocab import Vocab
 from parakeet.frontend.normalizer.normalizer import normalize
 from parakeet.frontend.punctuation import get_punctuations
 

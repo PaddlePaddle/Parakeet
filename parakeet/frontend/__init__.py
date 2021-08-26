@@ -11,3 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from .cn_normalization import *
+from .generate_lexicon import *
+from .normalizer import *
+from .phonectic import *
+from .punctuation import *
+from .tone_sandhi import *
+from .vocab import *
