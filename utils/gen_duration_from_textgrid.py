@@ -17,11 +17,10 @@ from pathlib import Path
 
 import librosa
 import numpy as np
-from config import get_cfg_default
 from praatio import tgio
 
 
-def readtg(config, tg_path):
+def readtg(tg_path, sample_rate=24000, n_shift=300):
     alignment = tgio.openTextgrid(tg_path, readRaw=True)
     phones = []
     ends = []
@@ -29,40 +28,55 @@ def readtg(config, tg_path):
         phone = interval.label
         phones.append(phone)
         ends.append(interval.end)
-    frame_pos = librosa.time_to_frames(
-        ends, sr=config.fs, hop_length=config.n_shift)
+    frame_pos = librosa.time_to_frames(ends, sr=sample_rate, hop_length=n_shift)
     durations = np.diff(frame_pos, prepend=0)
     assert len(durations) == len(phones)
     # merge  "" and sp in the end
-    if phones[-1] == "":
+    if phones[-1] == "" and len(phones) > 1 and phones[-2] == "sp":
         phones = phones[:-1]
         durations[-2] += durations[-1]
         durations = durations[:-1]
-    # replace the last sp with sil
+    # replace the last "sp" with "sil" in MFA1.x
     phones[-1] = "sil" if phones[-1] == "sp" else phones[-1]
-
+    # replace the edge "" with "sil", replace the inner "" with "sp"
+    new_phones = []
+    for i, phn in enumerate(phones):
+        if phn == "":
+            if i in {0, len(phones) - 1}:
+                new_phones.append("sil")
+            else:
+                new_phones.append("sp")
+        else:
+            new_phones.append(phn)
+    phones = new_phones
     results = ""
-
     for (p, d) in zip(phones, durations):
         results += p + " " + str(d) + " "
     return results.strip()
 
 
 # assume that the directory structure of inputdir is inputdir/speaker/*.TextGrid
-# in MFA1.x, there are blank labels("") in the end, we replace it with "sil"
-def gen_duration_from_textgrid(config, inputdir, output):
+# in MFA1.x, there are blank labels("") in the end, and maybe "sp" before it
+# in MFA2.x, there are  blank labels("") in the begin and the end, while no "sp" and "sil" anymore
+# we replace it with "sil"
+def gen_duration_from_textgrid(inputdir, output, sample_rate=24000,
+                               n_shift=300):
+    # key: utt_id, value: (speaker, phn_durs)
     durations_dict = {}
-
-    for speaker in os.listdir(inputdir):
+    list_dir = os.listdir(inputdir)
+    speakers = [dir for dir in list_dir if os.path.isdir(inputdir / dir)]
+    for speaker in speakers:
         subdir = inputdir / speaker
         for file in os.listdir(subdir):
             if file.endswith(".TextGrid"):
                 tg_path = subdir / file
                 name = file.split(".")[0]
-                durations_dict[name] = readtg(config, tg_path)
+                durations_dict[name] = (speaker, readtg(
+                    tg_path, sample_rate=sample_rate, n_shift=n_shift))
     with open(output, "w") as wf:
         for name in sorted(durations_dict.keys()):
-            wf.write(name + "|" + durations_dict[name] + "\n")
+            wf.write(name + "|" + durations_dict[name][0] + "|" +
+                     durations_dict[name][1] + "\n")
 
 
 def main():
@@ -75,19 +89,18 @@ def main():
         type=str,
         help="directory to alignment files.")
     parser.add_argument(
-        "--output", type=str, required=True, help="output duration file name")
+        "--output", type=str, required=True, help="output duration file.")
+    parser.add_argument("--sample-rate", type=int, help="the sample of wavs.")
     parser.add_argument(
-        "--config", type=str, help="yaml format configuration file.")
+        "--n-shift",
+        type=int,
+        help="the n_shift of time_to_freames, also called hop_length.")
 
     args = parser.parse_args()
-    C = get_cfg_default()
-    if args.config:
-        C.merge_from_file(args.config)
-        C.freeze()
 
     inputdir = Path(args.inputdir).expanduser()
     output = Path(args.output).expanduser()
-    gen_duration_from_textgrid(C, inputdir, output)
+    gen_duration_from_textgrid(inputdir, output, args.sample_rate, args.n_shift)
 
 
 if __name__ == "__main__":

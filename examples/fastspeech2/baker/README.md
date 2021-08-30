@@ -45,7 +45,7 @@ You can see the bash files for more datails of input parameters.
 ## Pretrained Model
 Pretrained Model with no sil in the edge of audios can be downloaded here. [fastspeech2_nosil_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech2_nosil_baker_ckpt_0.4.zip)
 
-Then, you can use the following scripts to synthesize for `sentences.txt` using pretrained fastspeech2 model.
+Then, you can use the following scripts to synthesize for `../sentences.txt` using pretrained fastspeech2 model.
 ```bash
 python3 synthesize_e2e.py \
   --fastspeech2-config=fastspeech2_nosil_baker_ckpt_0.4/default.yaml \
@@ -54,7 +54,7 @@ python3 synthesize_e2e.py \
   --pwg-config=parallel_wavegan_baker_ckpt_0.4/pwg_default.yaml \
   --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
   --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
-  --text=sentences.txt \
+  --text=../sentences.txt \
   --output-dir=exp/debug/test_e2e \
   --device="gpu" \
   --phones-dict=fastspeech2_nosil_baker_ckpt_0.4/phone_id_map.txt
