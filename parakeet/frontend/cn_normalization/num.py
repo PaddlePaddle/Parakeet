@@ -162,8 +162,9 @@ def replace_number(match) -> str:
 
 
 # 范围表达式
-# 12-23, 12~23
-RE_RANGE = re.compile(r'(\d+)[-~](\d+)')
+# match.group(1) and match.group(8) are copy from RE_NUMBER
+RE_RANGE = re.compile(
+    r'((-?)((\d+)(\.\d+)?)|(\.(\d+)))[-~]((-?)((\d+)(\.\d+)?)|(\.(\d+)))')
 
 
 def replace_range(match) -> str:
@@ -175,9 +176,9 @@ def replace_range(match) -> str:
     ----------
     str
     """
-    first, second = match.group(1), match.group(2)
-    first: str = num2str(first)
-    second: str = num2str(second)
+    first, second = match.group(1), match.group(8)
+    first = RE_NUMBER.sub(replace_number, first)
+    second = RE_NUMBER.sub(replace_number, second)
     result = f"{first}到{second}"
     return result
 
@@ -241,7 +242,8 @@ def num2str(value_string: str) -> str:
 
     decimal = decimal.rstrip('0')
     if decimal:
-        # '.22' is verbalized as '点二二'
+        # '.22' is verbalized as '零点二二'
         # '3.20' is verbalized as '三点二
+        result = result if result else "零"
         result += '点' + verbalize_digit(decimal)
     return result
