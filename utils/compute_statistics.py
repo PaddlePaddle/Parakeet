@@ -18,7 +18,6 @@ from pathlib import Path
 
 import jsonlines
 import numpy as np
-from config import get_cfg_default
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
@@ -35,8 +34,7 @@ def main():
         "--field-name",
         type=str,
         help="name of the field to compute statistics for.")
-    parser.add_argument(
-        "--config", type=str, help="yaml format configuration file.")
+
     parser.add_argument(
         "--output",
         type=str,
@@ -67,11 +65,6 @@ def main():
         )
         logging.warning('Skip DEBUG/INFO messages')
 
-    config = get_cfg_default()
-    # load config
-    if args.config:
-        config.merge_from_file(args.config)
-
     # check directory existence
     if args.output is None:
         args.output = Path(
@@ -95,7 +88,6 @@ def main():
         scaler.partial_fit(datum[args.field_name])
 
     stats = np.stack([scaler.mean_, scaler.scale_], axis=0)
-
     np.save(str(args.output), stats.astype(np.float32), allow_pickle=False)
 
 

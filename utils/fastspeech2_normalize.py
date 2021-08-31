@@ -20,11 +20,9 @@ from pathlib import Path
 
 import jsonlines
 import numpy as np
+from parakeet.datasets.data_table import DataTable
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
-from parakeet.datasets.data_table import DataTable
-
-from config import get_cfg_default
 
 
 def main():
@@ -62,7 +60,10 @@ def main():
         default="phone_id_map.txt ",
         help="phone vocabulary file.")
     parser.add_argument(
-        "--config", type=str, help="yaml format configuration file.")
+        "--speaker-dict",
+        type=str,
+        default="speaker_id_map.txt ",
+        help="speaker id map file.")
     parser.add_argument(
         "--verbose",
         type=int,
@@ -87,11 +88,6 @@ def main():
             format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s"
         )
         logging.warning('Skip DEBUG/INFO messages')
-
-    # load config
-    config = get_cfg_default()
-    if args.config:
-        config.merge_from_file(args.config)
 
     # check directory existence
     dumpdir = Path(args.dumpdir).resolve()
@@ -131,6 +127,12 @@ def main():
     for phn, id in phn_id:
         vocab_phones[phn] = int(id)
 
+    vocab_speaker = {}
+    with open(args.speaker_dict, 'rt') as f:
+        spk_id = [line.strip().split() for line in f.readlines()]
+    for spk, id in spk_id:
+        vocab_speaker[spk] = int(id)
+
     # process each file
     output_metadata = []
 
@@ -158,8 +160,10 @@ def main():
         energy_path = energy_dir / f"{utt_id}_energy.npy"
         np.save(energy_path, energy.astype(np.float32), allow_pickle=False)
         phone_ids = [vocab_phones[p] for p in item['phones']]
+        spk_id = vocab_speaker[item["speaker"]]
         record = {
             "utt_id": item['utt_id'],
+            "spk_id": spk_id,
             "text": phone_ids,
             "text_lengths": item['text_lengths'],
             "speech_lengths": item['speech_lengths'],

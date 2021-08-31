@@ -11,8 +11,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     # get durations from MFA's result
     echo "Generate durations.txt from MFA results ..."
     python3 ${MAIN_ROOT}/utils/gen_duration_from_textgrid.py \
-        --inputdir=./baker_alignment_tone \
-        --output=durations.txt \
+        --inputdir=./aishell3_alignment_tone \
+        --output durations.txt \
         --sample-rate=${fs} \
         --n-shift=${n_shift}
 fi
@@ -21,8 +21,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     # extract features
     echo "Extract features ..."
     python3 ${MAIN_ROOT}/utils/fastspeech2_preprocess.py \
-        --dataset=baker \
-        --rootdir=~/datasets/BZNSYP/ \
+        --dataset=aishell3 \
+        --rootdir=~/datasets/data_aishell3/ \
         --dumpdir=dump \
         --dur-file=durations.txt \
         --config-path=conf/default.yaml \

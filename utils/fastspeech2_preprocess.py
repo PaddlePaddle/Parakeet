@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import os
 from concurrent.futures import ThreadPoolExecutor
 from operator import itemgetter
 from pathlib import Path
@@ -21,12 +22,13 @@ from typing import List, Dict, Any
 import jsonlines
 import librosa
 import numpy as np
-from parakeet.data.get_feats import LogMelFBank, Energy, Pitch
 import tqdm
+import yaml
+from parakeet.data.get_feats import LogMelFBank, Energy, Pitch
+from yacs.config import CfgNode as Configuration
 
-from config import get_cfg_default
 
-
+# speaker|utt_id|phn dur phn dur ...
 def get_phn_dur(file_name):
     '''
     read MFA duration.txt
@@ -41,16 +43,20 @@ def get_phn_dur(file_name):
     '''
     f = open(file_name, 'r')
     sentence = {}
+    speaker_set = set()
     for line in f:
-        utt = line.strip().split('|')[0]
-        p_d = line.strip().split('|')[-1]
+        line_list = line.strip().split('|')
+        utt = line_list[0]
+        speaker = line_list[1]
+        p_d = line_list[-1]
+        speaker_set.add(speaker)
         phn_dur = p_d.split()
         phn = phn_dur[::2]
         dur = phn_dur[1::2]
         assert len(phn) == len(dur)
-        sentence[utt] = (phn, [int(i) for i in dur])
+        sentence[utt] = (phn, [int(i) for i in dur], speaker)
     f.close()
-    return sentence
+    return sentence, speaker_set
 
 
 def deal_silence(sentence):
@@ -59,10 +65,10 @@ def deal_silence(sentence):
     Parameters
     ----------
     sentence : Dict
-        sentence: {'utt': ([char], [int])}
+        sentence: {'utt': (([char], [int]), str)}
     '''
     for utt in sentence:
-        cur_phn, cur_dur = sentence[utt]
+        cur_phn, cur_dur, speaker = sentence[utt]
         new_phn = []
         new_dur = []
 
@@ -83,7 +89,7 @@ def deal_silence(sentence):
                     new_phn[i] = 'spl'
 
         assert len(new_phn) == len(new_dur)
-        sentence[utt] = [new_phn, new_dur]
+        sentence[utt] = [new_phn, new_dur, speaker]
 
 
 def get_input_token(sentence, output_path):
@@ -106,10 +112,16 @@ def get_input_token(sentence, output_path):
     phn_token = ["<pad>", "<unk>"] + phn_token
     phn_token += ["，", "。", "？", "！", "<eos>"]
 
-    f = open(output_path, 'w')
-    for i, phn in enumerate(phn_token):
-        f.write(phn + ' ' + str(i) + '\n')
-    f.close()
+    with open(output_path, 'w') as f:
+        for i, phn in enumerate(phn_token):
+            f.write(phn + ' ' + str(i) + '\n')
+
+
+def get_spk_id_map(speaker_set, output_path):
+    speakers = sorted(list(speaker_set))
+    with open(output_path, 'w') as f:
+        for i, spk in enumerate(speakers):
+            f.write(spk + ' ' + str(i) + '\n')
 
 
 def compare_duration_and_mel_length(sentences, utt, mel):
@@ -152,11 +164,14 @@ def process_sentence(config: Dict[str, Any],
     if utt_id in sentences:
         # reading, resampling may occur
         wav, _ = librosa.load(str(fp), sr=config.fs)
+        if len(wav.shape) != 1 or np.abs(wav).max() > 1.0:
+            return record
         assert len(wav.shape) == 1, f"{utt_id} is not a mono-channel audio."
         assert np.abs(wav).max(
         ) <= 1.0, f"{utt_id} is seems to be different that 16 bit PCM."
         phones = sentences[utt_id][0]
         durations = sentences[utt_id][1]
+        speaker = sentences[utt_id][2]
         d_cumsum = np.pad(np.array(durations).cumsum(0), (1, 0), 'constant')
         # little imprecise than use *.TextGrid directly
         times = librosa.frames_to_time(
@@ -210,7 +225,8 @@ def process_sentence(config: Dict[str, Any],
             # use absolute path
             "speech": str(mel_path.resolve()),
             "pitch": str(f0_path.resolve()),
-            "energy": str(energy_path.resolve())
+            "energy": str(energy_path.resolve()),
+            "speaker": speaker
         }
     return record
 
@@ -261,20 +277,34 @@ def main():
     # parse config and args
     parser = argparse.ArgumentParser(
         description="Preprocess audio and then extract features.")
+
     parser.add_argument(
-        "--rootdir", default=None, type=str, help="directory to baker dataset.")
+        "--dataset",
+        default="baker",
+        type=str,
+        help="name of dataset, should in {baker, aishell3} now")
+
+    parser.add_argument(
+        "--rootdir", default=None, type=str, help="directory to dataset.")
+
     parser.add_argument(
         "--dur-file",
         default=None,
         type=str,
         help="path to baker durations.txt.")
+
     parser.add_argument(
         "--dumpdir",
         type=str,
         required=True,
         help="directory to dump feature files.")
+
     parser.add_argument(
-        "--config", type=str, help="yaml format configuration file.")
+        "--config-path",
+        default="conf/default.yaml",
+        type=str,
+        help="yaml format configuration file.")
+
     parser.add_argument(
         "--verbose",
         type=int,
@@ -291,17 +321,10 @@ def main():
         type=str2bool,
         default=True,
         help="whether cut sil in the edge of audio")
+
     args = parser.parse_args()
 
-    C = get_cfg_default()
-    if args.config:
-        C.merge_from_file(args.config)
-        C.freeze()
-
-    if args.verbose > 1:
-        print(vars(args))
-        print(C)
-
+    config_path = Path(args.config_path).resolve()
     root_dir = Path(args.rootdir).expanduser()
     dumpdir = Path(args.dumpdir).expanduser()
     dumpdir.mkdir(parents=True, exist_ok=True)
@@ -310,20 +333,45 @@ def main():
     assert root_dir.is_dir()
     assert dur_file.is_file()
 
-    sentences = get_phn_dur(dur_file)
+    with open(config_path, 'rt') as f:
+        _C = yaml.safe_load(f)
+        _C = Configuration(_C)
+        config = _C.clone()
+
+    if args.verbose > 1:
+        print(vars(args))
+        print(config)
+
+    sentences, speaker_set = get_phn_dur(dur_file)
 
     deal_silence(sentences)
     phone_id_map_path = dumpdir / "phone_id_map.txt"
+    speaker_id_map_path = dumpdir / "speaker_id_map.txt"
     get_input_token(sentences, phone_id_map_path)
-    wav_files = sorted(list((root_dir / "Wave").rglob("*.wav")))
+    get_spk_id_map(speaker_set, speaker_id_map_path)
 
-    # split data into 3 sections
-    num_train = 9800
-    num_dev = 100
-
-    train_wav_files = wav_files[:num_train]
-    dev_wav_files = wav_files[num_train:num_train + num_dev]
-    test_wav_files = wav_files[num_train + num_dev:]
+    if args.dataset == "baker":
+        wav_files = sorted(list((root_dir / "Wave").rglob("*.wav")))
+        # split data into 3 sections
+        num_train = 9800
+        num_dev = 100
+        train_wav_files = wav_files[:num_train]
+        dev_wav_files = wav_files[num_train:num_train + num_dev]
+        test_wav_files = wav_files[num_train + num_dev:]
+    elif args.dataset == "aishell3":
+        sub_num_dev = 5
+        wav_dir = root_dir / "train" / "wav"
+        train_wav_files = []
+        dev_wav_files = []
+        test_wav_files = []
+        for speaker in os.listdir(wav_dir):
+            wav_files = sorted(list((wav_dir / speaker).rglob("*.wav")))
+            if len(wav_files) > 100:
+                train_wav_files += wav_files[:-sub_num_dev * 2]
+                dev_wav_files += wav_files[-sub_num_dev * 2:-sub_num_dev]
+                test_wav_files += wav_files[-sub_num_dev:]
+            else:
+                train_wav_files += wav_files
 
     train_dump_dir = dumpdir / "train" / "raw"
     train_dump_dir.mkdir(parents=True, exist_ok=True)
@@ -334,55 +382,59 @@ def main():
 
     # Extractor
     mel_extractor = LogMelFBank(
-        sr=C.fs,
-        n_fft=C.n_fft,
-        hop_length=C.n_shift,
-        win_length=C.win_length,
-        window=C.window,
-        n_mels=C.n_mels,
-        fmin=C.fmin,
-        fmax=C.fmax)
+        sr=config.fs,
+        n_fft=config.n_fft,
+        hop_length=config.n_shift,
+        win_length=config.win_length,
+        window=config.window,
+        n_mels=config.n_mels,
+        fmin=config.fmin,
+        fmax=config.fmax)
     pitch_extractor = Pitch(
-        sr=C.fs, hop_length=C.n_shift, f0min=C.f0min, f0max=C.f0max)
+        sr=config.fs,
+        hop_length=config.n_shift,
+        f0min=config.f0min,
+        f0max=config.f0max)
     energy_extractor = Energy(
-        sr=C.fs,
-        n_fft=C.n_fft,
-        hop_length=C.n_shift,
-        win_length=C.win_length,
-        window=C.window)
+        sr=config.fs,
+        n_fft=config.n_fft,
+        hop_length=config.n_shift,
+        win_length=config.win_length,
+        window=config.window)
 
     # process for the 3 sections
-
-    process_sentences(
-        C,
-        train_wav_files,
-        sentences,
-        train_dump_dir,
-        mel_extractor,
-        pitch_extractor,
-        energy_extractor,
-        nprocs=args.num_cpu,
-        cut_sil=args.cut_sil)
-    process_sentences(
-        C,
-        dev_wav_files,
-        sentences,
-        dev_dump_dir,
-        mel_extractor,
-        pitch_extractor,
-        energy_extractor,
-        cut_sil=args.cut_sil)
-
-    process_sentences(
-        C,
-        test_wav_files,
-        sentences,
-        test_dump_dir,
-        mel_extractor,
-        pitch_extractor,
-        energy_extractor,
-        nprocs=args.num_cpu,
-        cut_sil=args.cut_sil)
+    if train_wav_files:
+        process_sentences(
+            config,
+            train_wav_files,
+            sentences,
+            train_dump_dir,
+            mel_extractor,
+            pitch_extractor,
+            energy_extractor,
+            nprocs=args.num_cpu,
+            cut_sil=args.cut_sil)
+    if dev_wav_files:
+        process_sentences(
+            config,
+            dev_wav_files,
+            sentences,
+            dev_dump_dir,
+            mel_extractor,
+            pitch_extractor,
+            energy_extractor,
+            cut_sil=args.cut_sil)
+    if test_wav_files:
+        process_sentences(
+            config,
+            test_wav_files,
+            sentences,
+            test_dump_dir,
+            mel_extractor,
+            pitch_extractor,
+            energy_extractor,
+            nprocs=args.num_cpu,
+            cut_sil=args.cut_sil)
 
 
 if __name__ == "__main__":

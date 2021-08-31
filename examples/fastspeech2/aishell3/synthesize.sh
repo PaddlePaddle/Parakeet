@@ -1,14 +1,14 @@
-
 #!/bin/bash
 
-python3 synthesize_e2e.py \
+python3 synthesize.py \
   --fastspeech2-config=conf/default.yaml \
-  --fastspeech2-checkpoint=exp/default/checkpoints/snapshot_iter_153.pdz \
+  --fastspeech2-checkpoint=exp/default/checkpoints/snapshot_iter_96400.pdz \
   --fastspeech2-stat=dump/train/speech_stats.npy \
   --pwg-config=parallel_wavegan_baker_ckpt_0.4/pwg_default.yaml \
   --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
   --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
-  --text=../sentences.txt \
-  --output-dir=exp/debug/test_e2e \
+  --test-metadata=dump/test/norm/metadata.jsonl \
+  --output-dir=exp/debug/test \
   --device="gpu" \
-  --phones-dict=dump/phone_id_map.txt
+  --phones-dict=dump/phone_id_map.txt \
+  --speaker-dict=dump/speaker_id_map.txt
