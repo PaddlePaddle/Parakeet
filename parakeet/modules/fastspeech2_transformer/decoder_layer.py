@@ -56,7 +56,7 @@ class DecoderLayer(nn.Layer):
             normalize_before=True,
             concat_after=False, ):
         """Construct an DecoderLayer object."""
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.size = size
         self.self_attn = self_attn
         self.src_attn = src_attn

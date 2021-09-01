@@ -54,9 +54,10 @@ class Prenet(nn.Layer):
         n_units : int, optional
             The number of prenet units.
         """
-        super(Prenet, self).__init__()
+        super().__init__()
         self.dropout_rate = dropout_rate
         self.prenet = nn.LayerList()
+        self.dropout = nn.Dropout(self.dropout_rate)
         for layer in six.moves.range(n_layers):
             n_inputs = idim if layer == 0 else n_units
             self.prenet.append(
@@ -77,7 +78,8 @@ class Prenet(nn.Layer):
 
         """
         for i in six.moves.range(len(self.prenet)):
-            x = F.dropout(self.prenet[i](x), self.dropout_rate)
+            # F.dropout 引入了随机, tacotron2 的 dropout 是不能去掉的
+            x = F.dropout(self.prenet[i](x))
         return x
 
 
@@ -124,7 +126,7 @@ class Postnet(nn.Layer):
         dropout_rate : float, optional
             Dropout rate..
         """
-        super(Postnet, self).__init__()
+        super().__init__()
         self.postnet = nn.LayerList()
         for layer in six.moves.range(n_layers - 1):
             ichans = odim if layer == 0 else n_chans

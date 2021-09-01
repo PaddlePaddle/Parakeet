@@ -36,7 +36,7 @@ from parakeet.modules.nets_utils import make_non_pad_mask
 from parakeet.modules.nets_utils import make_pad_mask
 
 
-class Transformer(nn.Layer):
+class TransformerTTS(nn.Layer):
     """TTS-Transformer module.
 
     This is a module of text-to-speech Transformer described in `Neural Speech Synthesis
@@ -166,12 +166,7 @@ class Transformer(nn.Layer):
         Number of heads in each layer to apply guided attention loss.
     num_layers_applied_guided_attn : int, optional
         Number of layers to apply guided attention loss.
-    modules_applied_guided_attn : Sequence[str], optional
         List of module names to apply guided attention loss.
-    guided_attn_loss_sigma : float, optional
-        Sigma in guided attention loss.
-    guided_attn_loss_lambda : float, optional
-        Lambda in guided attention loss.
     """
 
     def __init__(
@@ -228,16 +223,9 @@ class Transformer(nn.Layer):
             init_type: str="xavier_uniform",
             init_enc_alpha: float=1.0,
             init_dec_alpha: float=1.0,
-            use_masking: bool=False,
-            use_weighted_masking: bool=False,
-            bce_pos_weight: float=5.0,
-            loss_type: str="L1",
             use_guided_attn_loss: bool=True,
             num_heads_applied_guided_attn: int=2,
-            num_layers_applied_guided_attn: int=2,
-            modules_applied_guided_attn: Sequence[str]=("encoder-decoder"),
-            guided_attn_loss_sigma: float=0.4,
-            guided_attn_loss_lambda: float=1.0, ):
+            num_layers_applied_guided_attn: int=2, ):
         """Initialize Transformer module."""
         assert check_argument_types()
         super().__init__()
@@ -249,9 +237,7 @@ class Transformer(nn.Layer):
         self.spk_embed_dim = spk_embed_dim
         self.reduction_factor = reduction_factor
         self.use_gst = use_gst
-        self.use_guided_attn_loss = use_guided_attn_loss
         self.use_scaled_pos_enc = use_scaled_pos_enc
-        self.loss_type = loss_type
         self.use_guided_attn_loss = use_guided_attn_loss
         if self.use_guided_attn_loss:
             if num_layers_applied_guided_attn == -1:
@@ -262,13 +248,13 @@ class Transformer(nn.Layer):
                 self.num_heads_applied_guided_attn = aheads
             else:
                 self.num_heads_applied_guided_attn = num_heads_applied_guided_attn
-            self.modules_applied_guided_attn = modules_applied_guided_attn
         if self.spk_embed_dim is not None:
             self.spk_embed_integration_type = spk_embed_integration_type
 
         # use idx 0 as padding idx
         self.padding_idx = 0
-
+        # set_global_initializer 会影响后面的全局，包括 create_parameter
+        initialize(self, init_type)
         # get positional encoding class
         pos_enc_class = (ScaledPositionalEncoding
                          if self.use_scaled_pos_enc else PositionalEncoding)
@@ -372,17 +358,8 @@ class Transformer(nn.Layer):
             use_batch_norm=use_batch_norm,
             dropout_rate=postnet_dropout_rate, ))
 
-        # define loss function
-        self.criterion = TransformerLoss(
-            use_masking=use_masking,
-            use_weighted_masking=use_weighted_masking,
-            bce_pos_weight=bce_pos_weight, )
-        if self.use_guided_attn_loss:
-            self.attn_criterion = GuidedMultiHeadAttentionLoss(
-                sigma=guided_attn_loss_sigma,
-                alpha=guided_attn_loss_lambda, )
-
-        initialize(self, init_type)
+        # 闭合的 initialize() 中的 set_global_initializer 的作用域，防止其影响到 self._reset_parameters()
+        nn.initializer.set_global_initializer(None)
 
         self._reset_parameters(
             init_enc_alpha=init_enc_alpha,
@@ -398,7 +375,7 @@ class Transformer(nn.Layer):
                 dtype=str(init_enc_alpha.numpy().dtype),
                 default_initializer=paddle.nn.initializer.Assign(
                     init_enc_alpha))
-        if self.use_scaled_pos_enc:
+
             init_dec_alpha = paddle.to_tensor(init_dec_alpha)
             self.decoder.embed[-1].alpha = paddle.create_parameter(
                 shape=init_dec_alpha.shape,
@@ -464,105 +441,24 @@ class Transformer(nn.Layer):
                                                         spembs)
 
         # modifiy mod part of groundtruth
-        olens_in = olens
+
         if self.reduction_factor > 1:
-            olens_in = olens.new(
-                [olen // self.reduction_factor for olen in olens])
-            olens = olens.new(
-                [olen - olen % self.reduction_factor for olen in olens])
+            olens = paddle.to_tensor(
+                [olen - olen % self.reduction_factor for olen in olens.numpy()])
             max_olen = max(olens)
             ys = ys[:, :max_olen]
             labels = labels[:, :max_olen]
             labels[:, -1] = 1.0  # make sure at least one frame has 1
-        '''
-        # caluculate loss values
-        l1_loss, l2_loss, bce_loss = self.criterion(
-            after_outs, before_outs, logits, ys, labels, olens
-        )
-        if self.loss_type == "L1":
-            loss = l1_loss + bce_loss
-        elif self.loss_type == "L2":
-            loss = l2_loss + bce_loss
-        elif self.loss_type == "L1+L2":
-            loss = l1_loss + l2_loss + bce_loss
-        else:
-            raise ValueError("unknown --loss-type " + self.loss_type)
+        need_dict = {}
+        need_dict['encoder'] = self.encoder
+        need_dict['decoder'] = self.decoder
+        need_dict[
+            'num_heads_applied_guided_attn'] = self.num_heads_applied_guided_attn
+        need_dict[
+            'num_layers_applied_guided_attn'] = self.num_layers_applied_guided_attn
+        need_dict['use_scaled_pos_enc'] = self.use_scaled_pos_enc
 
-        stats = dict(
-            l1_loss=l1_loss.item(),
-            l2_loss=l2_loss.item(),
-            bce_loss=bce_loss.item(),
-        )
-
-        # calculate guided attention loss
-        if self.use_guided_attn_loss:
-            # calculate for encoder
-            if "encoder" in self.modules_applied_guided_attn:
-                att_ws = []
-                for idx, layer_idx in enumerate(
-                        reversed(range(len(self.encoder.encoders)))
-                ):
-                    att_ws += [
-                        self.encoder.encoders[layer_idx].self_attn.attn[
-                        :, : self.num_heads_applied_guided_attn
-                        ]
-                    ]
-                    if idx + 1 == self.num_layers_applied_guided_attn:
-                        break
-                # (B, H*L, T_in, T_in)
-                att_ws = paddle.concat(att_ws, axis=1)
-                enc_attn_loss = self.attn_criterion(att_ws, ilens, ilens)
-                loss = loss + enc_attn_loss
-                stats.update(enc_attn_loss=enc_attn_loss.item())
-            # calculate for decoder
-            if "decoder" in self.modules_applied_guided_attn:
-                att_ws = []
-                for idx, layer_idx in enumerate(
-                        reversed(range(len(self.decoder.decoders)))
-                ):
-                    att_ws += [
-                        self.decoder.decoders[layer_idx].self_attn.attn[
-                        :, : self.num_heads_applied_guided_attn
-                        ]
-                    ]
-                    if idx + 1 == self.num_layers_applied_guided_attn:
-                        break
-                # (B, H*L, T_out, T_out)
-                att_ws = paddle.concat(att_ws, axis=1)
-                dec_attn_loss = self.attn_criterion(att_ws, olens_in, olens_in)
-                loss = loss + dec_attn_loss
-                stats.update(dec_attn_loss=dec_attn_loss.item())
-            # calculate for encoder-decoder
-            if "encoder-decoder" in self.modules_applied_guided_attn:
-                att_ws = []
-                for idx, layer_idx in enumerate(
-                        reversed(range(len(self.decoder.decoders)))
-                ):
-                    att_ws += [
-                        self.decoder.decoders[layer_idx].src_attn.attn[
-                        :, : self.num_heads_applied_guided_attn
-                        ]
-                    ]
-                    if idx + 1 == self.num_layers_applied_guided_attn:
-                        break
-                # (B, H*L, T_out, T_in)
-                att_ws = paddle.concat(att_ws, axis=1)
-                enc_dec_attn_loss = self.attn_criterion(att_ws, ilens, olens_in)
-                loss = loss + enc_dec_attn_loss
-                stats.update(enc_dec_attn_loss=enc_dec_attn_loss.item())
-
-        stats.update(loss=loss.item())
-
-        # report extra information
-        if self.use_scaled_pos_enc:
-            stats.update(
-                encoder_alpha=self.encoder.embed[-1].alpha,
-                decoder_alpha=self.decoder.embed[-1].alpha,
-            )
-
-        return loss, stats
-        '''
-        return after_outs, before_outs, logits, ys, labels, olens
+        return after_outs, before_outs, logits, ys, labels, olens, ilens, need_dict
 
     def _forward(
             self,
@@ -860,13 +756,25 @@ class Transformer(nn.Layer):
         return hs
 
 
-class TransformerLoss(nn.Layer):
+class TransformerTTSInference(nn.Layer):
+    def __init__(self, normalizer, model):
+        super().__init__()
+        self.normalizer = normalizer
+        self.acoustic_model = model
+
+    def forward(self, text, spk_id=None):
+        normalized_mel = self.acoustic_model.inference(text)[0]
+        logmel = self.normalizer.inverse(normalized_mel)
+        return logmel
+
+
+class TransformerTTSLoss(nn.Layer):
     """Loss function module for Tacotron2."""
 
     def __init__(self,
                  use_masking=True,
                  use_weighted_masking=False,
-                 bce_pos_weight=20.0):
+                 bce_pos_weight=5.0):
         """Initialize Tactoron2 loss module.
 
         Parameters
@@ -922,11 +830,17 @@ class TransformerLoss(nn.Layer):
         # make mask and apply it
         if self.use_masking:
             masks = make_non_pad_mask(olens).unsqueeze(-1)
-            ys = ys.masked_select(masks)
-            after_outs = after_outs.masked_select(masks)
-            before_outs = before_outs.masked_select(masks)
-            labels = labels.masked_select(masks[:, :, 0])
-            logits = logits.masked_select(masks[:, :, 0])
+            ys = ys.masked_select(masks.broadcast_to(ys.shape))
+            after_outs = after_outs.masked_select(
+                masks.broadcast_to(after_outs.shape))
+            before_outs = before_outs.masked_select(
+                masks.broadcast_to(before_outs.shape))
+            # Operator slice does not have kernel for data_type[bool]
+            tmp_masks = paddle.cast(masks, dtype='int64')
+            tmp_masks = tmp_masks[:, :, 0]
+            tmp_masks = paddle.cast(tmp_masks, dtype='bool')
+            labels = labels.masked_select(tmp_masks.broadcast_to(labels.shape))
+            logits = logits.masked_select(tmp_masks.broadcast_to(logits.shape))
 
         # calculate loss
         l1_loss = self.l1_criterion(after_outs, ys) + self.l1_criterion(
@@ -1020,7 +934,8 @@ class GuidedAttentionLoss(nn.Layer):
         if self.masks is None:
             self.masks = self._make_masks(ilens, olens)
         losses = self.guided_attn_masks * att_ws
-        loss = paddle.mean(losses.masked_select(self.masks))
+        loss = paddle.mean(
+            losses.masked_select(self.masks.broadcast_to(losses.shape)))
         if self.reset_always:
             self._reset_masks()
         return self.alpha * loss
