@@ -23,8 +23,9 @@ import yaml
 from paddle import distributed as dist
 from paddle import DataParallel
 from paddle import nn
-from paddle.io import DataLoader, DistributedBatchSampler
-from paddle.optimizer import Adam  # No RAdaom
+from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
+from paddle.optimizer import Adam  # No RAdam
 from parakeet.datasets.data_table import DataTable
 from parakeet.models.speedyspeech import SpeedySpeech
 from parakeet.training.extensions.snapshot import Snapshot
@@ -36,7 +37,8 @@ from visualdl import LogWriter
 
 from batch_fn import collate_baker_examples
 from config import get_cfg_default
-from speedyspeech_updater import SpeedySpeechUpdater, SpeedySpeechEvaluator
+from speedyspeech_updater import SpeedySpeechUpdater
+from speedyspeech_updater import SpeedySpeechEvaluator
 
 
 def train_sp(args, config):
@@ -121,13 +123,19 @@ def train_sp(args, config):
         grad_clip=nn.ClipGradByGlobalNorm(5.0))
     print("optimizer done!")
 
-    updater = SpeedySpeechUpdater(
-        model=model, optimizer=optimizer, dataloader=train_dataloader)
-
     output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    updater = SpeedySpeechUpdater(
+        model=model,
+        optimizer=optimizer,
+        dataloader=train_dataloader,
+        output_dir=output_dir)
+
     trainer = Trainer(updater, (config.max_epoch, 'epoch'), output_dir)
 
-    evaluator = SpeedySpeechEvaluator(model, dev_dataloader)
+    evaluator = SpeedySpeechEvaluator(
+        model, dev_dataloader, output_dir=output_dir)
 
     if dist.get_rank() == 0:
         trainer.extend(evaluator, trigger=(1, "epoch"))

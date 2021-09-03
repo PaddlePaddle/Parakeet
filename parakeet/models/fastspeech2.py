@@ -280,13 +280,11 @@ class FastSpeech2(nn.Layer):
             use_batch_norm=use_batch_norm,
             dropout_rate=postnet_dropout_rate, ))
 
+        nn.initializer.set_global_initializer(None)
+
         self._reset_parameters(
             init_enc_alpha=init_enc_alpha,
             init_dec_alpha=init_dec_alpha, )
-
-        # define criterions
-        self.criterion = FastSpeech2Loss(
-            use_masking=use_masking, use_weighted_masking=use_weighted_masking)
 
     def forward(
             self,
