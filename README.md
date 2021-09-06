@@ -28,7 +28,7 @@ In order to facilitate exploiting the existing TTS models directly and developin
   - [【GE2E】Generalized End-to-End Loss for Speaker Verification](https://arxiv.org/abs/1710.10467)
 
 ## Updates
-- Aug-31-2021, Add  an example for Chinese Text Frontend](). Check [examples/text_frontend](./examples/text_frontend)
+- Aug-31-2021, Add  an example for Chinese Text Frontend. Check [examples/text_frontend](./examples/text_frontend)
 - Aug-23-2021, Add  an example for FastSpeech2 with AISHELL-3. Check [fastspeech2/aishell3](./fastspeech2/aishell3)
 - Aug-3-2021, Add  an example for FastSpeech2 with CSMSC. Check [fastspeech2/baker](./fastspeech2/baker)
 - Jul-19-2021, Add  an example for SpeedySpeech with CSMSC. Check [speedyspeech/baker](./speedyspeech/baker)
