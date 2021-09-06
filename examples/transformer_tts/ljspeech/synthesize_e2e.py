@@ -16,13 +16,12 @@ import argparse
 import logging
 from pathlib import Path
 
-import jsonlines
 import numpy as np
 import paddle
 import soundfile as sf
 import yaml
 from yacs.config import CfgNode
-from parakeet.datasets.data_table import DataTable
+from parakeet.frontend import English
 from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.models.transformer_tts import TransformerTTSInference
 from parakeet.models.waveflow import ConditionalWaveFlow
@@ -35,13 +34,21 @@ def evaluate(args, acoustic_model_config, vocoder_config):
     logging.getLogger("DataLoader").disabled = True
 
     # construct dataset for evaluation
-    with jsonlines.open(args.test_metadata, 'r') as reader:
-        test_metadata = list(reader)
-    test_dataset = DataTable(data=test_metadata, fields=["utt_id", "text"])
+    sentences = []
+    with open(args.text, 'rt') as f:
+        for line in f:
+            line_list = line.strip().split()
+            utt_id = line_list[0]
+            sentence = " ".join(line_list[1:])
+            sentences.append((utt_id, sentence))
 
     with open(args.phones_dict, "r") as f:
         phn_id = [line.strip().split() for line in f.readlines()]
+
     vocab_size = len(phn_id)
+    phone_id_map = {}
+    for phn, id in phn_id:
+        phone_id_map[phn] = int(id)
     print("vocab_size:", vocab_size)
     odim = acoustic_model_config.n_mels
     model = TransformerTTS(
@@ -50,6 +57,7 @@ def evaluate(args, acoustic_model_config, vocoder_config):
     model.set_state_dict(
         paddle.load(args.transformer_tts_checkpoint)["main_params"])
     model.eval()
+
     # remove ".pdparams" in waveflow_checkpoint
     vocoder_checkpoint_path = args.waveflow_checkpoint[:-9] if args.waveflow_checkpoint.endswith(
         ".pdparams") else args.waveflow_checkpoint
@@ -58,6 +66,9 @@ def evaluate(args, acoustic_model_config, vocoder_config):
     layer_tools.recursively_remove_weight_norm(vocoder)
     vocoder.eval()
     print("model done!")
+
+    frontend = English()
+    print("frontend done!")
 
     stat = np.load(args.transformer_tts_stat)
     mu, std = stat
@@ -71,17 +82,17 @@ def evaluate(args, acoustic_model_config, vocoder_config):
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for datum in test_dataset:
-        utt_id = datum["utt_id"]
-        text = paddle.to_tensor(datum["text"])
-
-        with paddle.no_grad():
-            mel = transformer_tts_inference(text)
-            # mel shape is (T, feats) and waveflow's input shape is (batch, feats, T)
-            mel = mel.unsqueeze(0).transpose([0, 2, 1])
-            # wavflow's output shape is (B, T)
-            wav = vocoder.infer(mel)[0]
-            print("wav:", wav)
+    for utt_id, sentence in sentences:
+        phones = frontend.phoneticize(sentence)
+        # remove start_symbol and end_symbol
+        phones = phones[1:-1]
+        phones = [phn for phn in phones if not phn.isspace()]
+        phone_ids = [phone_id_map[phn] for phn in phones]
+        mel = transformer_tts_inference(paddle.to_tensor(phone_ids))
+        # mel shape is (T, feats) and waveflow's input shape is (batch, feats, T)
+        mel = mel.unsqueeze(0).transpose([0, 2, 1])
+        # wavflow's output shape is (B, T)
+        wav = vocoder.infer(mel)[0]
 
         sf.write(
             str(output_dir / (utt_id + ".wav")),
@@ -117,8 +128,10 @@ def main():
         type=str,
         default="phone_id_map.txt",
         help="phone vocabulary file.")
-
-    parser.add_argument("--test-metadata", type=str, help="test metadata.")
+    parser.add_argument(
+        "--text",
+        type=str,
+        help="text to synthesize, a 'utt_id sentence' pair per line.")
     parser.add_argument("--output-dir", type=str, help="output dir.")
     parser.add_argument(
         "--device", type=str, default="gpu", help="device type to use.")

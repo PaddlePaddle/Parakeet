@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,615 +11,1073 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import math
-
+"""Fastspeech2 related modules for paddle"""
+from typing import Dict
+from typing import Sequence
+from typing import Tuple
+import numpy
 import paddle
 from paddle import nn
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
-from tqdm import trange
+import paddle.nn.functional as F
+from typeguard import check_argument_types
 
-import parakeet
-from parakeet.modules import losses as L
-from parakeet.modules import masking
-from parakeet.modules import positional_encoding as pe
-from parakeet.modules.attention import _concat_heads
-from parakeet.modules.attention import _split_heads
-from parakeet.modules.attention import drop_head
-from parakeet.modules.attention import scaled_dot_product_attention
-from parakeet.modules.conv import Conv1dBatchNorm
-from parakeet.modules.transformer import PositionwiseFFN
-from parakeet.utils import checkpoint
-from parakeet.utils import scheduler
-
-__all__ = ["TransformerTTS", "TransformerTTSLoss"]
-
-
-# Transformer TTS's own implementation of transformer
-class MultiheadAttention(nn.Layer):
-    """Multihead scaled dot product attention with drop head. See 
-    [Scheduled DropHead: A Regularization Method for Transformer Models](https://arxiv.org/abs/2004.13342) 
-    for details.
-    
-    Another deviation is that it concats the input query and context vector before
-    applying the output projection.
-    """
-
-    def __init__(self,
-                 model_dim,
-                 num_heads,
-                 k_dim=None,
-                 v_dim=None,
-                 k_input_dim=None,
-                 v_input_dim=None):
-        """
-        Args:
-            model_dim (int): the feature size of query.
-            num_heads (int): the number of attention heads.
-            k_dim (int, optional): feature size of the key of each scaled dot 
-                product attention. If not provided, it is set to 
-                model_dim / num_heads. Defaults to None.
-            v_dim (int, optional): feature size of the key of each scaled dot 
-                product attention. If not provided, it is set to 
-                model_dim / num_heads. Defaults to None.
-
-        Raises:
-            ValueError: if model_dim is not divisible by num_heads
-        """
-        super(MultiheadAttention, self).__init__()
-        if model_dim % num_heads != 0:
-            raise ValueError("model_dim must be divisible by num_heads")
-        depth = model_dim // num_heads
-        k_dim = k_dim or depth
-        v_dim = v_dim or depth
-        k_input_dim = k_input_dim or model_dim
-        v_input_dim = v_input_dim or model_dim
-        self.affine_q = nn.Linear(model_dim, num_heads * k_dim)
-        self.affine_k = nn.Linear(k_input_dim, num_heads * k_dim)
-        self.affine_v = nn.Linear(v_input_dim, num_heads * v_dim)
-        self.affine_o = nn.Linear(model_dim + num_heads * v_dim, model_dim)
-
-        self.num_heads = num_heads
-        self.model_dim = model_dim
-
-    def forward(self, q, k, v, mask, drop_n_heads=0):
-        """
-        Compute context vector and attention weights.
-        
-        Args:
-            q (Tensor): shape(batch_size, time_steps_q, model_dim), the queries.
-            k (Tensor): shape(batch_size, time_steps_k, model_dim), the keys.
-            v (Tensor): shape(batch_size, time_steps_k, model_dim), the values.
-            mask (Tensor): shape(batch_size, times_steps_q, time_steps_k) or 
-                broadcastable shape, dtype: float32 or float64, the mask.
-
-        Returns:
-            out (Tensor), shape(batch_size, time_steps_q, model_dim), the context vector.
-            attention_weights (Tensor): shape(batch_size, times_steps_q, time_steps_k), the attention weights.
-        """
-        q_in = q
-        q = _split_heads(self.affine_q(q), self.num_heads)  # (B, h, T, C)
-        k = _split_heads(self.affine_k(k), self.num_heads)
-        v = _split_heads(self.affine_v(v), self.num_heads)
-        if mask is not None:
-            mask = paddle.unsqueeze(mask, 1)  # unsqueeze for the h dim
-
-        context_vectors, attention_weights = scaled_dot_product_attention(
-            q, k, v, mask, training=self.training)
-        context_vectors = drop_head(context_vectors, drop_n_heads,
-                                    self.training)
-        context_vectors = _concat_heads(context_vectors)  # (B, T, h*C)
-
-        concat_feature = paddle.concat([q_in, context_vectors], -1)
-        out = self.affine_o(concat_feature)
-        return out, attention_weights
-
-
-class TransformerEncoderLayer(nn.Layer):
-    """
-    Transformer encoder layer.
-    """
-
-    def __init__(self, d_model, n_heads, d_ffn, dropout=0.):
-        """
-        Args:
-            d_model (int): the feature size of the input, and the output.
-            n_heads (int): the number of heads in the internal MultiHeadAttention layer.
-            d_ffn (int): the hidden size of the internal PositionwiseFFN.
-            dropout (float, optional): the probability of the dropout in 
-                MultiHeadAttention and PositionwiseFFN. Defaults to 0.
-        """
-        super(TransformerEncoderLayer, self).__init__()
-        self.self_mha = MultiheadAttention(d_model, n_heads)
-        self.layer_norm1 = nn.LayerNorm([d_model], epsilon=1e-6)
-
-        self.ffn = PositionwiseFFN(d_model, d_ffn, dropout)
-        self.layer_norm2 = nn.LayerNorm([d_model], epsilon=1e-6)
-
-        self.dropout = dropout
-
-    def _forward_mha(self, x, mask, drop_n_heads):
-        # PreLN scheme: Norm -> SubLayer -> Dropout -> Residual
-        x_in = x
-        x = self.layer_norm1(x)
-        context_vector, attn_weights = self.self_mha(x, x, x, mask,
-                                                     drop_n_heads)
-        context_vector = x_in + F.dropout(
-            context_vector, self.dropout, training=self.training)
-        return context_vector, attn_weights
-
-    def _forward_ffn(self, x):
-        # PreLN scheme: Norm -> SubLayer -> Dropout -> Residual
-        x_in = x
-        x = self.layer_norm2(x)
-        x = self.ffn(x)
-        out = x_in + F.dropout(x, self.dropout, training=self.training)
-        return out
-
-    def forward(self, x, mask, drop_n_heads=0):
-        """
-        Args:
-            x (Tensor): shape(batch_size, time_steps, d_model), the decoder input.
-            mask (Tensor): shape(batch_size, 1, time_steps), the padding mask.
-        
-        Returns:
-            x (Tensor): shape(batch_size, time_steps, d_model), the decoded.
-            attn_weights (Tensor), shape(batch_size, n_heads, time_steps, time_steps), self attention.
-        """
-        x, attn_weights = self._forward_mha(x, mask, drop_n_heads)
-        x = self._forward_ffn(x)
-        return x, attn_weights
-
-
-class TransformerDecoderLayer(nn.Layer):
-    """
-    Transformer decoder layer.
-    """
-
-    def __init__(self, d_model, n_heads, d_ffn, dropout=0., d_encoder=None):
-        """
-        Args:
-            d_model (int): the feature size of the input, and the output.
-            n_heads (int): the number of heads in the internal MultiHeadAttention layer.
-            d_ffn (int): the hidden size of the internal PositionwiseFFN.
-            dropout (float, optional): the probability of the dropout in 
-                MultiHeadAttention and PositionwiseFFN. Defaults to 0.
-        """
-        super(TransformerDecoderLayer, self).__init__()
-        self.self_mha = MultiheadAttention(d_model, n_heads)
-        self.layer_norm1 = nn.LayerNorm([d_model], epsilon=1e-6)
-
-        self.cross_mha = MultiheadAttention(
-            d_model, n_heads, k_input_dim=d_encoder, v_input_dim=d_encoder)
-        self.layer_norm2 = nn.LayerNorm([d_model], epsilon=1e-6)
-
-        self.ffn = PositionwiseFFN(d_model, d_ffn, dropout)
-        self.layer_norm3 = nn.LayerNorm([d_model], epsilon=1e-6)
-
-        self.dropout = dropout
-
-    def _forward_self_mha(self, x, mask, drop_n_heads):
-        # PreLN scheme: Norm -> SubLayer -> Dropout -> Residual
-        x_in = x
-        x = self.layer_norm1(x)
-        context_vector, attn_weights = self.self_mha(x, x, x, mask,
-                                                     drop_n_heads)
-        context_vector = x_in + F.dropout(
-            context_vector, self.dropout, training=self.training)
-        return context_vector, attn_weights
-
-    def _forward_cross_mha(self, q, k, v, mask, drop_n_heads):
-        # PreLN scheme: Norm -> SubLayer -> Dropout -> Residual
-        q_in = q
-        q = self.layer_norm2(q)
-        context_vector, attn_weights = self.cross_mha(q, k, v, mask,
-                                                      drop_n_heads)
-        context_vector = q_in + F.dropout(
-            context_vector, self.dropout, training=self.training)
-        return context_vector, attn_weights
-
-    def _forward_ffn(self, x):
-        # PreLN scheme: Norm -> SubLayer -> Dropout -> Residual
-        x_in = x
-        x = self.layer_norm3(x)
-        x = self.ffn(x)
-        out = x_in + F.dropout(x, self.dropout, training=self.training)
-        return out
-
-    def forward(self, q, k, v, encoder_mask, decoder_mask, drop_n_heads=0):
-        """
-        Args:
-            q (Tensor): shape(batch_size, time_steps_q, d_model), the decoder input.
-            k (Tensor): shape(batch_size, time_steps_k, d_model), keys.
-            v (Tensor): shape(batch_size, time_steps_k, d_model), values
-            encoder_mask (Tensor): shape(batch_size, 1, time_steps_k) encoder padding mask.
-            decoder_mask (Tensor): shape(batch_size, time_steps_q, time_steps_q) or broadcastable shape, decoder padding mask.
-        
-        Returns:
-            q (Tensor): shape(batch_size, time_steps_q, d_model), the decoded.
-            self_attn_weights (Tensor), shape(batch_size, n_heads, time_steps_q, time_steps_q), decoder self attention.
-            cross_attn_weights (Tensor), shape(batch_size, n_heads, time_steps_q, time_steps_k), decoder-encoder cross attention.
-        """
-        q, self_attn_weights = self._forward_self_mha(q, decoder_mask,
-                                                      drop_n_heads)
-        q, cross_attn_weights = self._forward_cross_mha(q, k, v, encoder_mask,
-                                                        drop_n_heads)
-        q = self._forward_ffn(q)
-        return q, self_attn_weights, cross_attn_weights
-
-
-class TransformerEncoder(nn.LayerList):
-    def __init__(self, d_model, n_heads, d_ffn, n_layers, dropout=0.):
-        super(TransformerEncoder, self).__init__()
-        for _ in range(n_layers):
-            self.append(
-                TransformerEncoderLayer(d_model, n_heads, d_ffn, dropout))
-
-    def forward(self, x, mask, drop_n_heads=0):
-        """
-        Args:
-            x (Tensor): shape(batch_size, time_steps, feature_size), the input tensor.
-            mask (Tensor): shape(batch_size, 1, time_steps), the mask.
-            drop_n_heads (int, optional): how many heads to drop. Defaults to 0.
-
-        Returns:
-            x (Tensor): shape(batch_size, time_steps, feature_size), the context vector.
-            attention_weights(list[Tensor]), each of shape
-                (batch_size, n_heads, time_steps, time_steps), the attention weights.
-        """
-        attention_weights = []
-        for layer in self:
-            x, attention_weights_i = layer(x, mask, drop_n_heads)
-            attention_weights.append(attention_weights_i)
-        return x, attention_weights
-
-
-class TransformerDecoder(nn.LayerList):
-    def __init__(self,
-                 d_model,
-                 n_heads,
-                 d_ffn,
-                 n_layers,
-                 dropout=0.,
-                 d_encoder=None):
-        super(TransformerDecoder, self).__init__()
-        for _ in range(n_layers):
-            self.append(
-                TransformerDecoderLayer(
-                    d_model, n_heads, d_ffn, dropout, d_encoder=d_encoder))
-
-    def forward(self, q, k, v, encoder_mask, decoder_mask, drop_n_heads=0):
-        """
-        Args:
-            q (Tensor): shape(batch_size, time_steps_q, d_model)
-            k (Tensor): shape(batch_size, time_steps_k, d_encoder)
-            v (Tensor): shape(batch_size, time_steps_k, k_encoder)
-            encoder_mask (Tensor): shape(batch_size, 1, time_steps_k)
-            decoder_mask (Tensor): shape(batch_size, time_steps_q, time_steps_q)
-            drop_n_heads (int, optional): [description]. Defaults to 0.
-
-        Returns:
-            q (Tensor): shape(batch_size, time_steps_q, d_model), the output.
-            self_attention_weights (List[Tensor]): shape (batch_size, num_heads, encoder_steps, encoder_steps)
-            cross_attention_weights (List[Tensor]): shape (batch_size, num_heads, decoder_steps, encoder_steps)
-        """
-        self_attention_weights = []
-        cross_attention_weights = []
-        for layer in self:
-            q, self_attention_weights_i, cross_attention_weights_i = layer(
-                q, k, v, encoder_mask, decoder_mask, drop_n_heads)
-            self_attention_weights.append(self_attention_weights_i)
-            cross_attention_weights.append(cross_attention_weights_i)
-        return q, self_attention_weights, cross_attention_weights
-
-
-class MLPPreNet(nn.Layer):
-    """Decoder's prenet."""
-
-    def __init__(self, d_input, d_hidden, d_output, dropout):
-        # (lin + relu + dropout) * n + last projection
-        super(MLPPreNet, self).__init__()
-        self.lin1 = nn.Linear(d_input, d_hidden)
-        self.lin2 = nn.Linear(d_hidden, d_hidden)
-        self.lin3 = nn.Linear(d_hidden, d_output)
-        self.dropout = dropout
-
-    def forward(self, x, dropout):
-        l1 = F.dropout(F.relu(self.lin1(x)), self.dropout, training=True)
-        l2 = F.dropout(F.relu(self.lin2(l1)), self.dropout, training=True)
-        l3 = self.lin3(l2)
-        return l3
-
-
-class CNNPostNet(nn.Layer):
-    def __init__(self, d_input, d_hidden, d_output, kernel_size, n_layers):
-        super(CNNPostNet, self).__init__()
-        self.convs = nn.LayerList()
-        kernel_size = kernel_size if isinstance(kernel_size, (
-            tuple, list)) else (kernel_size, )
-        padding = (kernel_size[0] - 1, 0)
-        for i in range(n_layers):
-            c_in = d_input if i == 0 else d_hidden
-            c_out = d_output if i == n_layers - 1 else d_hidden
-            self.convs.append(
-                Conv1dBatchNorm(
-                    c_in,
-                    c_out,
-                    kernel_size,
-                    weight_attr=I.XavierUniform(),
-                    padding=padding,
-                    momentum=0.99,
-                    epsilon=1e-03))
-        self.last_bn = nn.BatchNorm1D(d_output, momentum=0.99, epsilon=1e-3)
-        # for a layer that ends with a normalization layer that is targeted to
-        # output a non zero-central output, it may take a long time to 
-        # train the scale and bias
-        # NOTE: it can also be a non-causal conv
-
-    def forward(self, x):
-        x_in = x
-        for i, layer in enumerate(self.convs):
-            x = layer(x)
-            if i != (len(self.convs) - 1):
-                x = F.tanh(x)
-        # TODO: check it
-        # x = x_in + x
-        x = self.last_bn(x_in + x)
-        return x
+from parakeet.modules.fastspeech2_predictor.postnet import Postnet
+from parakeet.modules.fastspeech2_transformer.attention import MultiHeadedAttention
+from parakeet.modules.fastspeech2_transformer.decoder import Decoder
+from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
+from parakeet.modules.fastspeech2_transformer.embedding import ScaledPositionalEncoding
+from parakeet.modules.fastspeech2_transformer.encoder import Encoder
+from parakeet.modules.fastspeech2_transformer.mask import subsequent_mask
+from parakeet.modules.style_encoder import StyleEncoder
+from parakeet.modules.tacotron2.decoder import Prenet as DecoderPrenet
+from parakeet.modules.tacotron2.encoder import Encoder as EncoderPrenet
+from parakeet.modules.nets_utils import initialize
+from parakeet.modules.nets_utils import make_non_pad_mask
+from parakeet.modules.nets_utils import make_pad_mask
 
 
 class TransformerTTS(nn.Layer):
-    def __init__(self,
-                 frontend: parakeet.frontend.Phonetics,
-                 d_encoder: int,
-                 d_decoder: int,
-                 d_mel: int,
-                 n_heads: int,
-                 d_ffn: int,
-                 encoder_layers: int,
-                 decoder_layers: int,
-                 d_prenet: int,
-                 d_postnet: int,
-                 postnet_layers: int,
-                 postnet_kernel_size: int,
-                 max_reduction_factor: int,
-                 decoder_prenet_dropout: float,
-                 dropout: float,
-                 n_tones=None):
-        super(TransformerTTS, self).__init__()
+    """TTS-Transformer module.
 
-        # text frontend (text normalization and g2p)
-        self.frontend = frontend
+    This is a module of text-to-speech Transformer described in `Neural Speech Synthesis
+    with Transformer Network`_, which convert the sequence of tokens into the sequence
+    of Mel-filterbanks.
 
-        # encoder
-        self.encoder_prenet = nn.Embedding(
-            frontend.vocab_size,
-            d_encoder,
-            padding_idx=frontend.vocab.padding_index,
-            weight_attr=I.Uniform(-0.05, 0.05))
-        if n_tones:
-            self.toned = True
-            self.tone_embed = nn.Embedding(
-                n_tones,
-                d_encoder,
-                padding_idx=0,
-                weight_attr=I.Uniform(-0.005, 0.005))
+    .. _`Neural Speech Synthesis with Transformer Network`:
+        https://arxiv.org/pdf/1809.08895.pdf
+
+    Parameters
+    ----------
+    idim : int
+        Dimension of the inputs.
+    odim : int
+        Dimension of the outputs.
+    embed_dim : int, optional
+        Dimension of character embedding.
+    eprenet_conv_layers : int, optional
+        Number of encoder prenet convolution layers.
+    eprenet_conv_chans : int, optional
+        Number of encoder prenet convolution channels.
+    eprenet_conv_filts : int, optional
+        Filter size of encoder prenet convolution.
+    dprenet_layers : int, optional
+        Number of decoder prenet layers.
+    dprenet_units : int, optional
+        Number of decoder prenet hidden units.
+    elayers : int, optional
+        Number of encoder layers.
+    eunits : int, optional
+        Number of encoder hidden units.
+    adim : int, optional
+        Number of attention transformation dimensions.
+    aheads : int, optional
+        Number of heads for multi head attention.
+    dlayers : int, optional
+        Number of decoder layers.
+    dunits : int, optional
+        Number of decoder hidden units.
+    postnet_layers : int, optional
+        Number of postnet layers.
+    postnet_chans : int, optional
+        Number of postnet channels.
+    postnet_filts : int, optional
+        Filter size of postnet.
+    use_scaled_pos_enc : pool, optional
+        Whether to use trainable scaled positional encoding.
+    use_batch_norm : bool, optional
+        Whether to use batch normalization in encoder prenet.
+    encoder_normalize_before : bool, optional
+        Whether to perform layer normalization before encoder block.
+    decoder_normalize_before : bool, optional
+        Whether to perform layer normalization before decoder block.
+    encoder_concat_after : bool, optional
+        Whether to concatenate attention layer's input and output in encoder.
+    decoder_concat_after : bool, optional
+        Whether to concatenate attention layer's input and output in decoder.
+    positionwise_layer_type : str, optional
+        Position-wise operation type.
+    positionwise_conv_kernel_size : int, optional
+        Kernel size in position wise conv 1d.
+    reduction_factor : int, optional
+        Reduction factor.
+    spk_embed_dim : int, optional
+        Number of speaker embedding dimenstions.
+    spk_embed_integration_type : str, optional
+        How to integrate speaker embedding.
+    use_gst : str, optional
+        Whether to use global style token.
+    gst_tokens : int, optional
+        The number of GST embeddings.
+    gst_heads : int, optional
+        The number of heads in GST multihead attention.
+    gst_conv_layers : int, optional
+        The number of conv layers in GST.
+    gst_conv_chans_list : Sequence[int], optional
+            List of the number of channels of conv layers in GST.
+    gst_conv_kernel_size : int, optional
+        Kernal size of conv layers in GST.
+    gst_conv_stride : int, optional
+        Stride size of conv layers in GST.
+    gst_gru_layers : int, optional
+        The number of GRU layers in GST.
+    gst_gru_units : int, optional
+        The number of GRU units in GST.
+    transformer_lr : float, optional
+        Initial value of learning rate.
+    transformer_warmup_steps : int, optional
+        Optimizer warmup steps.
+    transformer_enc_dropout_rate : float, optional
+        Dropout rate in encoder except attention and positional encoding.
+    transformer_enc_positional_dropout_rate : float, optional
+        Dropout rate after encoder positional encoding.
+    transformer_enc_attn_dropout_rate : float, optional
+        Dropout rate in encoder self-attention module.
+    transformer_dec_dropout_rate : float, optional
+        Dropout rate in decoder except attention & positional encoding.
+    transformer_dec_positional_dropout_rate : float, optional
+        Dropout rate after decoder positional encoding.
+    transformer_dec_attn_dropout_rate : float, optional
+        Dropout rate in deocoder self-attention module.
+    transformer_enc_dec_attn_dropout_rate : float, optional
+        Dropout rate in encoder-deocoder attention module.
+    init_type : str, optional
+        How to initialize transformer parameters.
+    init_enc_alpha : float, optional
+        Initial value of alpha in scaled pos encoding of the encoder.
+    init_dec_alpha : float, optional
+        Initial value of alpha in scaled pos encoding of the decoder.
+    eprenet_dropout_rate : float, optional
+        Dropout rate in encoder prenet.
+    dprenet_dropout_rate : float, optional
+        Dropout rate in decoder prenet.
+    postnet_dropout_rate : float, optional
+        Dropout rate in postnet.
+    use_masking : bool, optional
+        Whether to apply masking for padded part in loss calculation.
+    use_weighted_masking : bool, optional
+        Whether to apply weighted masking in loss calculation.
+    bce_pos_weight : float, optional
+        Positive sample weight in bce calculation (only for use_masking=true).
+    loss_type : str, optional
+        How to calculate loss.
+    use_guided_attn_loss : bool, optional
+        Whether to use guided attention loss.
+    num_heads_applied_guided_attn : int, optional
+        Number of heads in each layer to apply guided attention loss.
+    num_layers_applied_guided_attn : int, optional
+        Number of layers to apply guided attention loss.
+        List of module names to apply guided attention loss.
+    """
+
+    def __init__(
+            self,
+            # network structure related
+            idim: int,
+            odim: int,
+            embed_dim: int=512,
+            eprenet_conv_layers: int=3,
+            eprenet_conv_chans: int=256,
+            eprenet_conv_filts: int=5,
+            dprenet_layers: int=2,
+            dprenet_units: int=256,
+            elayers: int=6,
+            eunits: int=1024,
+            adim: int=512,
+            aheads: int=4,
+            dlayers: int=6,
+            dunits: int=1024,
+            postnet_layers: int=5,
+            postnet_chans: int=256,
+            postnet_filts: int=5,
+            positionwise_layer_type: str="conv1d",
+            positionwise_conv_kernel_size: int=1,
+            use_scaled_pos_enc: bool=True,
+            use_batch_norm: bool=True,
+            encoder_normalize_before: bool=True,
+            decoder_normalize_before: bool=True,
+            encoder_concat_after: bool=False,
+            decoder_concat_after: bool=False,
+            reduction_factor: int=1,
+            spk_embed_dim: int=None,
+            spk_embed_integration_type: str="add",
+            use_gst: bool=False,
+            gst_tokens: int=10,
+            gst_heads: int=4,
+            gst_conv_layers: int=6,
+            gst_conv_chans_list: Sequence[int]=(32, 32, 64, 64, 128, 128),
+            gst_conv_kernel_size: int=3,
+            gst_conv_stride: int=2,
+            gst_gru_layers: int=1,
+            gst_gru_units: int=128,
+            # training related
+            transformer_enc_dropout_rate: float=0.1,
+            transformer_enc_positional_dropout_rate: float=0.1,
+            transformer_enc_attn_dropout_rate: float=0.1,
+            transformer_dec_dropout_rate: float=0.1,
+            transformer_dec_positional_dropout_rate: float=0.1,
+            transformer_dec_attn_dropout_rate: float=0.1,
+            transformer_enc_dec_attn_dropout_rate: float=0.1,
+            eprenet_dropout_rate: float=0.5,
+            dprenet_dropout_rate: float=0.5,
+            postnet_dropout_rate: float=0.5,
+            init_type: str="xavier_uniform",
+            init_enc_alpha: float=1.0,
+            init_dec_alpha: float=1.0,
+            use_guided_attn_loss: bool=True,
+            num_heads_applied_guided_attn: int=2,
+            num_layers_applied_guided_attn: int=2, ):
+        """Initialize Transformer module."""
+        assert check_argument_types()
+        super().__init__()
+
+        # store hyperparameters
+        self.idim = idim
+        self.odim = odim
+        self.eos = idim - 1
+        self.spk_embed_dim = spk_embed_dim
+        self.reduction_factor = reduction_factor
+        self.use_gst = use_gst
+        self.use_scaled_pos_enc = use_scaled_pos_enc
+        self.use_guided_attn_loss = use_guided_attn_loss
+        if self.use_guided_attn_loss:
+            if num_layers_applied_guided_attn == -1:
+                self.num_layers_applied_guided_attn = elayers
+            else:
+                self.num_layers_applied_guided_attn = num_layers_applied_guided_attn
+            if num_heads_applied_guided_attn == -1:
+                self.num_heads_applied_guided_attn = aheads
+            else:
+                self.num_heads_applied_guided_attn = num_heads_applied_guided_attn
+        if self.spk_embed_dim is not None:
+            self.spk_embed_integration_type = spk_embed_integration_type
+
+        # use idx 0 as padding idx
+        self.padding_idx = 0
+        # set_global_initializer 会影响后面的全局，包括 create_parameter
+        initialize(self, init_type)
+        # get positional encoding class
+        pos_enc_class = (ScaledPositionalEncoding
+                         if self.use_scaled_pos_enc else PositionalEncoding)
+
+        # define transformer encoder
+        if eprenet_conv_layers != 0:
+            # encoder prenet
+            encoder_input_layer = nn.Sequential(
+                EncoderPrenet(
+                    idim=idim,
+                    embed_dim=embed_dim,
+                    elayers=0,
+                    econv_layers=eprenet_conv_layers,
+                    econv_chans=eprenet_conv_chans,
+                    econv_filts=eprenet_conv_filts,
+                    use_batch_norm=use_batch_norm,
+                    dropout_rate=eprenet_dropout_rate,
+                    padding_idx=self.padding_idx, ),
+                nn.Linear(eprenet_conv_chans, adim), )
         else:
-            self.toned = False
-        # position encoding matrix may be extended later
-        self.encoder_pe = pe.sinusoid_position_encoding(1000, d_encoder)
-        self.encoder_pe_scalar = self.create_parameter([1], attr=I.Constant(1.))
-        self.encoder = TransformerEncoder(d_encoder, n_heads, d_ffn,
-                                          encoder_layers, dropout)
+            encoder_input_layer = nn.Embedding(
+                num_embeddings=idim,
+                embedding_dim=adim,
+                padding_idx=self.padding_idx)
+        self.encoder = Encoder(
+            idim=idim,
+            attention_dim=adim,
+            attention_heads=aheads,
+            linear_units=eunits,
+            num_blocks=elayers,
+            input_layer=encoder_input_layer,
+            dropout_rate=transformer_enc_dropout_rate,
+            positional_dropout_rate=transformer_enc_positional_dropout_rate,
+            attention_dropout_rate=transformer_enc_attn_dropout_rate,
+            pos_enc_class=pos_enc_class,
+            normalize_before=encoder_normalize_before,
+            concat_after=encoder_concat_after,
+            positionwise_layer_type=positionwise_layer_type,
+            positionwise_conv_kernel_size=positionwise_conv_kernel_size, )
 
-        # decoder
-        self.decoder_prenet = MLPPreNet(d_mel, d_prenet, d_decoder, dropout)
-        self.decoder_pe = pe.sinusoid_position_encoding(1000, d_decoder)
-        self.decoder_pe_scalar = self.create_parameter([1], attr=I.Constant(1.))
-        self.decoder = TransformerDecoder(
-            d_decoder,
-            n_heads,
-            d_ffn,
-            decoder_layers,
-            dropout,
-            d_encoder=d_encoder)
-        self.final_proj = nn.Linear(d_decoder, max_reduction_factor * d_mel)
-        self.decoder_postnet = CNNPostNet(d_mel, d_postnet, d_mel,
-                                          postnet_kernel_size, postnet_layers)
-        self.stop_conditioner = nn.Linear(d_mel, 3)
+        # define GST
+        if self.use_gst:
+            self.gst = StyleEncoder(
+                idim=odim,  # the input is mel-spectrogram
+                gst_tokens=gst_tokens,
+                gst_token_dim=adim,
+                gst_heads=gst_heads,
+                conv_layers=gst_conv_layers,
+                conv_chans_list=gst_conv_chans_list,
+                conv_kernel_size=gst_conv_kernel_size,
+                conv_stride=gst_conv_stride,
+                gru_layers=gst_gru_layers,
+                gru_units=gst_gru_units, )
 
-        # specs
-        self.padding_idx = frontend.vocab.padding_index
-        self.d_encoder = d_encoder
-        self.d_decoder = d_decoder
-        self.d_mel = d_mel
-        self.max_r = max_reduction_factor
-        self.dropout = dropout
-        self.decoder_prenet_dropout = decoder_prenet_dropout
+        # define projection layer
+        if self.spk_embed_dim is not None:
+            if self.spk_embed_integration_type == "add":
+                self.projection = nn.Linear(self.spk_embed_dim, adim)
+            else:
+                self.projection = nn.Linear(adim + self.spk_embed_dim, adim)
 
-        # start and end: though it is only used in predict 
-        # it can also be used in training
-        dtype = paddle.get_default_dtype()
-        self.start_vec = paddle.full([1, d_mel], 0.5, dtype=dtype)
-        self.end_vec = paddle.full([1, d_mel], -0.5, dtype=dtype)
-        self.stop_prob_index = 2
+        # define transformer decoder
+        if dprenet_layers != 0:
+            # decoder prenet
+            decoder_input_layer = nn.Sequential(
+                DecoderPrenet(
+                    idim=odim,
+                    n_layers=dprenet_layers,
+                    n_units=dprenet_units,
+                    dropout_rate=dprenet_dropout_rate, ),
+                nn.Linear(dprenet_units, adim), )
+        else:
+            decoder_input_layer = "linear"
+        self.decoder = Decoder(
+            odim=odim,  # odim is needed when no prenet is used
+            attention_dim=adim,
+            attention_heads=aheads,
+            linear_units=dunits,
+            num_blocks=dlayers,
+            dropout_rate=transformer_dec_dropout_rate,
+            positional_dropout_rate=transformer_dec_positional_dropout_rate,
+            self_attention_dropout_rate=transformer_dec_attn_dropout_rate,
+            src_attention_dropout_rate=transformer_enc_dec_attn_dropout_rate,
+            input_layer=decoder_input_layer,
+            use_output_layer=False,
+            pos_enc_class=pos_enc_class,
+            normalize_before=decoder_normalize_before,
+            concat_after=decoder_concat_after, )
 
-        # mutables
-        self.r = max_reduction_factor  # set it every call
-        self.drop_n_heads = 0
+        # define final projection
+        self.feat_out = nn.Linear(adim, odim * reduction_factor)
+        self.prob_out = nn.Linear(adim, reduction_factor)
 
-    def forward(self, text, mel, tones=None):
-        encoded, encoder_attention_weights, encoder_mask = self.encode(
-            text, tones=tones)
-        mel_output, mel_intermediate, cross_attention_weights, stop_logits = self.decode(
-            encoded, mel, encoder_mask)
-        outputs = {
-            "mel_output": mel_output,
-            "mel_intermediate": mel_intermediate,
-            "encoder_attention_weights": encoder_attention_weights,
-            "cross_attention_weights": cross_attention_weights,
-            "stop_logits": stop_logits,
-        }
-        return outputs
+        # define postnet
+        self.postnet = (None if postnet_layers == 0 else Postnet(
+            idim=idim,
+            odim=odim,
+            n_layers=postnet_layers,
+            n_chans=postnet_chans,
+            n_filts=postnet_filts,
+            use_batch_norm=use_batch_norm,
+            dropout_rate=postnet_dropout_rate, ))
 
-    def encode(self, text, tones=None):
-        T_enc = text.shape[-1]
-        embed = self.encoder_prenet(text)
-        if self.toned:
-            embed += self.tone_embed(tones)
-        if embed.shape[1] > self.encoder_pe.shape[0]:
-            new_T = max(embed.shape[1], self.encoder_pe.shape[0] * 2)
-            self.encoder_pe = pe.sinusoid_position_encoding(new_T,
-                                                            self.d_encoder)
-        pos_enc = self.encoder_pe[:T_enc, :]  # (T, C)
-        x = embed.scale(
-            math.sqrt(self.d_encoder)) + pos_enc * self.encoder_pe_scalar
-        x = F.dropout(x, self.dropout, training=self.training)
+        # 闭合的 initialize() 中的 set_global_initializer 的作用域，防止其影响到 self._reset_parameters()
+        nn.initializer.set_global_initializer(None)
 
-        # TODO(chenfeiyu): unsqueeze a decoder_time_steps=1 for the mask
-        encoder_padding_mask = paddle.unsqueeze(
-            masking.id_mask(text, self.padding_idx, dtype=x.dtype), 1)
-        x, attention_weights = self.encoder(x, encoder_padding_mask,
-                                            self.drop_n_heads)
-        return x, attention_weights, encoder_padding_mask
+        self._reset_parameters(
+            init_enc_alpha=init_enc_alpha,
+            init_dec_alpha=init_dec_alpha, )
 
-    def decode(self, encoder_output, input, encoder_padding_mask):
-        batch_size, T_dec, mel_dim = input.shape
+    def _reset_parameters(self, init_enc_alpha: float, init_dec_alpha: float):
 
-        x = self.decoder_prenet(input, self.decoder_prenet_dropout)
-        # twice its length if needed
-        if x.shape[1] * self.r > self.decoder_pe.shape[0]:
-            new_T = max(x.shape[1] * self.r, self.decoder_pe.shape[0] * 2)
-            self.decoder_pe = pe.sinusoid_position_encoding(new_T,
-                                                            self.d_decoder)
-        pos_enc = self.decoder_pe[:T_dec * self.r:self.r, :]
-        x = x.scale(
-            math.sqrt(self.d_decoder)) + pos_enc * self.decoder_pe_scalar
-        x = F.dropout(x, self.dropout, training=self.training)
+        # initialize alpha in scaled positional encoding
+        if self.use_scaled_pos_enc:
+            init_enc_alpha = paddle.to_tensor(init_enc_alpha)
+            self.encoder.embed[-1].alpha = paddle.create_parameter(
+                shape=init_enc_alpha.shape,
+                dtype=str(init_enc_alpha.numpy().dtype),
+                default_initializer=paddle.nn.initializer.Assign(
+                    init_enc_alpha))
 
-        no_future_mask = masking.future_mask(T_dec, dtype=input.dtype)
-        decoder_padding_mask = masking.feature_mask(
-            input, axis=-1, dtype=input.dtype)
-        decoder_mask = masking.combine_mask(
-            decoder_padding_mask.unsqueeze(1), no_future_mask)
-        decoder_output, _, cross_attention_weights = self.decoder(
-            x, encoder_output, encoder_output, encoder_padding_mask,
-            decoder_mask, self.drop_n_heads)
+            init_dec_alpha = paddle.to_tensor(init_dec_alpha)
+            self.decoder.embed[-1].alpha = paddle.create_parameter(
+                shape=init_dec_alpha.shape,
+                dtype=str(init_dec_alpha.numpy().dtype),
+                default_initializer=paddle.nn.initializer.Assign(
+                    init_dec_alpha))
 
-        # use only parts of it
-        output_proj = self.final_proj(decoder_output)[:, :, :self.r * mel_dim]
-        mel_intermediate = paddle.reshape(output_proj,
-                                          [batch_size, -1, mel_dim])
-        stop_logits = self.stop_conditioner(mel_intermediate)
+    def forward(
+            self,
+            text: paddle.Tensor,
+            text_lengths: paddle.Tensor,
+            speech: paddle.Tensor,
+            speech_lengths: paddle.Tensor,
+            spembs: paddle.Tensor=None,
+    ) -> Tuple[paddle.Tensor, Dict[str, paddle.Tensor], paddle.Tensor]:
+        """Calculate forward propagation.
 
-        # cnn postnet
-        mel_channel_first = paddle.transpose(mel_intermediate, [0, 2, 1])
-        mel_output = self.decoder_postnet(mel_channel_first)
-        mel_output = paddle.transpose(mel_output, [0, 2, 1])
+        Parameters
+        ----------
+        text : Tensor
+            Batch of padded character ids (B, Tmax).
+        text_lengths : Tensor
+            Batch of lengths of each input batch (B,).
+        speech : Tensor
+            Batch of padded target features (B, Lmax, odim).
+        speech_lengths : Tensor
+            Batch of the lengths of each target (B,).
+        spembs : Tensor, optional
+            Batch of speaker embeddings (B, spk_embed_dim).
 
-        return mel_output, mel_intermediate, cross_attention_weights, stop_logits
+        Returns
+        ----------
+        Tensor
+            Loss scalar value.
+        Dict
+            Statistics to be monitored.
 
-    @paddle.no_grad()
-    def infer(self, input, max_length=1000, verbose=True, tones=None):
-        """Predict log scale magnitude mel spectrogram from text input.
-
-        Args:
-            input (Tensor): shape (T), dtype int, input text sequencce.
-            max_length (int, optional): max decoder steps. Defaults to 1000.
-            verbose (bool, optional): display progress bar. Defaults to True.
         """
-        decoder_input = paddle.unsqueeze(self.start_vec, 0)  # (B=1, T, C)
-        decoder_output = paddle.unsqueeze(self.start_vec, 0)  # (B=1, T, C)
+        text = text[:, :text_lengths.max()]  # for data-parallel
+        speech = speech[:, :speech_lengths.max()]  # for data-parallel
+        batch_size = text.shape[0]
 
-        # encoder the text sequence
-        encoder_output, encoder_attentions, encoder_padding_mask = self.encode(
-            input, tones=tones)
-        for _ in trange(int(max_length // self.r) + 1):
-            mel_output, _, cross_attention_weights, stop_logits = self.decode(
-                encoder_output, decoder_input, encoder_padding_mask)
+        # Add eos at the last of sequence
+        text = numpy.pad(text.numpy(), ((0, 0), (0, 1)), 'constant')
+        xs = paddle.to_tensor(text)
+        for i, l in enumerate(text_lengths):
+            xs[i, l] = self.eos
+        ilens = text_lengths + 1
 
-            # extract last step and append it to decoder input
-            decoder_input = paddle.concat(
-                [decoder_input, mel_output[:, -1:, :]], 1)
-            # extract last r steps and append it to decoder output
-            decoder_output = paddle.concat(
-                [decoder_output, mel_output[:, -self.r:, :]], 1)
+        ys = speech
+        olens = speech_lengths
 
-            # stop condition: (if any ouput frame of the output multiframes hits the stop condition)
-            # import pdb; pdb.set_trace()
-            if paddle.any(
-                    paddle.argmax(stop_logits[0, -self.r:, :],
-                                  axis=-1) == self.stop_prob_index):
-                if verbose:
-                    print("Hits stop condition.")
+        # make labels for stop prediction
+        labels = make_pad_mask(olens - 1)
+        labels = numpy.pad(
+            labels.numpy(), ((0, 0), (0, 1)), 'constant', constant_values=1.0)
+        labels = paddle.to_tensor(labels)
+        labels = paddle.cast(labels, dtype="float32")
+        # labels = F.pad(labels, [0, 1], "constant", 1.0)
+
+        # calculate transformer outputs
+        after_outs, before_outs, logits = self._forward(xs, ilens, ys, olens,
+                                                        spembs)
+
+        # modifiy mod part of groundtruth
+
+        if self.reduction_factor > 1:
+            olens = paddle.to_tensor(
+                [olen - olen % self.reduction_factor for olen in olens.numpy()])
+            max_olen = max(olens)
+            ys = ys[:, :max_olen]
+            labels = labels[:, :max_olen]
+            labels[:, -1] = 1.0  # make sure at least one frame has 1
+        need_dict = {}
+        need_dict['encoder'] = self.encoder
+        need_dict['decoder'] = self.decoder
+        need_dict[
+            'num_heads_applied_guided_attn'] = self.num_heads_applied_guided_attn
+        need_dict[
+            'num_layers_applied_guided_attn'] = self.num_layers_applied_guided_attn
+        need_dict['use_scaled_pos_enc'] = self.use_scaled_pos_enc
+
+        return after_outs, before_outs, logits, ys, labels, olens, ilens, need_dict
+
+    def _forward(
+            self,
+            xs: paddle.Tensor,
+            ilens: paddle.Tensor,
+            ys: paddle.Tensor,
+            olens: paddle.Tensor,
+            spembs: paddle.Tensor,
+    ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
+        # forward encoder
+        x_masks = self._source_mask(ilens)
+        hs, h_masks = self.encoder(xs, x_masks)
+
+        # integrate with GST
+        if self.use_gst:
+            style_embs = self.gst(ys)
+            hs = hs + style_embs.unsqueeze(1)
+
+        # integrate speaker embedding
+        if self.spk_embed_dim is not None:
+            hs = self._integrate_with_spk_embed(hs, spembs)
+
+        # thin out frames for reduction factor (B, Lmax, odim) ->  (B, Lmax//r, odim)
+        if self.reduction_factor > 1:
+            ys_in = ys[:, self.reduction_factor - 1::self.reduction_factor]
+            olens_in = olens.new(
+                [olen // self.reduction_factor for olen in olens])
+        else:
+            ys_in, olens_in = ys, olens
+
+        # add first zero frame and remove last frame for auto-regressive
+        ys_in = self._add_first_frame_and_remove_last_frame(ys_in)
+
+        # forward decoder
+        y_masks = self._target_mask(olens_in)
+        zs, _ = self.decoder(ys_in, y_masks, hs, h_masks)
+        # (B, Lmax//r, odim * r) -> (B, Lmax//r * r, odim)
+        before_outs = self.feat_out(zs).reshape([zs.shape[0], -1, self.odim])
+        # (B, Lmax//r, r) -> (B, Lmax//r * r)
+        logits = self.prob_out(zs).reshape([zs.shape[0], -1])
+
+        # postnet -> (B, Lmax//r * r, odim)
+        if self.postnet is None:
+            after_outs = before_outs
+        else:
+            after_outs = before_outs + self.postnet(
+                before_outs.transpose([0, 2, 1])).transpose([0, 2, 1])
+
+        return after_outs, before_outs, logits
+
+    def inference(
+            self,
+            text: paddle.Tensor,
+            speech: paddle.Tensor=None,
+            spembs: paddle.Tensor=None,
+            threshold: float=0.5,
+            minlenratio: float=0.0,
+            maxlenratio: float=10.0,
+            use_teacher_forcing: bool=False,
+    ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
+        """Generate the sequence of features given the sequences of characters.
+
+        Parameters
+        ----------
+        text : Tensor
+            Input sequence of characters (T,).
+        speech : Tensor, optional
+            Feature sequence to extract style (N, idim).
+        spembs : Tensor, optional
+            Speaker embedding vector (spk_embed_dim,).
+        threshold : float, optional
+            Threshold in inference.
+        minlenratio : float, optional
+            Minimum length ratio in inference.
+        maxlenratio : float, optional
+            Maximum length ratio in inference.
+        use_teacher_forcing : bool, optional
+            Whether to use teacher forcing.
+
+        Returns
+        ----------
+        Tensor
+            Output sequence of features (L, odim).
+        Tensor
+            Output sequence of stop probabilities (L,).
+        Tensor
+            Encoder-decoder (source) attention weights (#layers, #heads, L, T).
+
+        """
+        x = text
+        y = speech
+        spemb = spembs
+
+        # add eos at the last of sequence
+        text = numpy.pad(
+            text.numpy(), (0, 1), 'constant', constant_values=self.eos)
+        x = paddle.to_tensor(text)
+
+        # inference with teacher forcing
+        if use_teacher_forcing:
+            assert speech is not None, "speech must be provided with teacher forcing."
+
+            # get teacher forcing outputs
+            xs, ys = x.unsqueeze(0), y.unsqueeze(0)
+            spembs = None if spemb is None else spemb.unsqueeze(0)
+            ilens = paddle.to_tensor(
+                [xs.shape[1]], dtype=paddle.int64, place=xs.place)
+            olens = paddle.to_tensor(
+                [ys.shape[1]], dtype=paddle.int64, place=ys.place)
+            outs, *_ = self._forward(xs, ilens, ys, olens, spembs)
+
+            # get attention weights
+            att_ws = []
+            for i in range(len(self.decoder.decoders)):
+                att_ws += [self.decoder.decoders[i].src_attn.attn]
+            # (B, L, H, T_out, T_in)
+            att_ws = paddle.stack(att_ws, axis=1)
+
+            return outs[0], None, att_ws[0]
+
+        # forward encoder
+        xs = x.unsqueeze(0)
+        hs, _ = self.encoder(xs, None)
+
+        # integrate GST
+        if self.use_gst:
+            style_embs = self.gst(y.unsqueeze(0))
+            hs = hs + style_embs.unsqueeze(1)
+
+        # integrate speaker embedding
+        if self.spk_embed_dim is not None:
+            spembs = spemb.unsqueeze(0)
+            hs = self._integrate_with_spk_embed(hs, spembs)
+
+        # set limits of length
+        maxlen = int(hs.shape[1] * maxlenratio / self.reduction_factor)
+        minlen = int(hs.shape[1] * minlenratio / self.reduction_factor)
+
+        # initialize
+        idx = 0
+        ys = paddle.zeros([1, 1, self.odim])
+        outs, probs = [], []
+
+        # forward decoder step-by-step
+        z_cache = None
+        while True:
+            # update index
+            idx += 1
+
+            # calculate output and stop prob at idx-th step
+            y_masks = subsequent_mask(idx).unsqueeze(0)
+            z, z_cache = self.decoder.forward_one_step(
+                ys, y_masks, hs, cache=z_cache)  # (B, adim)
+            outs += [
+                self.feat_out(z).reshape([self.reduction_factor, self.odim])
+            ]  # [(r, odim), ...]
+            probs += [F.sigmoid(self.prob_out(z))[0]]  # [(r), ...]
+
+            # update next inputs
+            ys = paddle.concat(
+                (ys, outs[-1][-1].reshape([1, 1, self.odim])),
+                axis=1)  # (1, idx + 1, odim)
+
+            # get attention weights
+            att_ws_ = []
+            for name, m in self.named_sublayers():
+                if isinstance(m, MultiHeadedAttention) and "src" in name:
+                    # [(#heads, 1, T),...]
+                    att_ws_ += [m.attn[0, :, -1].unsqueeze(1)]
+            if idx == 1:
+                att_ws = att_ws_
+            else:
+                # [(#heads, l, T), ...]
+                att_ws = [
+                    paddle.concat([att_w, att_w_], axis=1)
+                    for att_w, att_w_ in zip(att_ws, att_ws_)
+                ]
+
+            # check whether to finish generation
+            if sum(paddle.cast(probs[-1] >= threshold,
+                               'int64')) > 0 or idx >= maxlen:
+                # check mininum length
+                if idx < minlen:
+                    continue
+                # (L, odim) -> (1, L, odim) -> (1, odim, L)
+                outs = (paddle.concat(outs, axis=0).unsqueeze(0).transpose(
+                    [0, 2, 1]))
+                if self.postnet is not None:
+                    # (1, odim, L)
+                    outs = outs + self.postnet(outs)
+                # (L, odim)
+                outs = outs.transpose([0, 2, 1]).squeeze(0)
+                probs = paddle.concat(probs, axis=0)
                 break
-        mel_output = decoder_output[:, 1:, :]
 
-        outputs = {
-            "mel_output": mel_output,
-            "encoder_attention_weights": encoder_attentions,
-            "cross_attention_weights": cross_attention_weights,
-        }
-        return outputs
+        # concatenate attention weights -> (#layers, #heads, L, T)
+        att_ws = paddle.stack(att_ws, axis=0)
 
-    def set_constants(self, reduction_factor, drop_n_heads):
-        self.r = reduction_factor
-        self.drop_n_heads = drop_n_heads
+        return outs, probs, att_ws
 
-    @classmethod
-    def from_pretrained(cls, frontend, config, checkpoint_path):
-        model = TransformerTTS(
-            frontend,
-            d_encoder=config.model.d_encoder,
-            d_decoder=config.model.d_decoder,
-            d_mel=config.data.n_mels,
-            n_heads=config.model.n_heads,
-            d_ffn=config.model.d_ffn,
-            encoder_layers=config.model.encoder_layers,
-            decoder_layers=config.model.decoder_layers,
-            d_prenet=config.model.d_prenet,
-            d_postnet=config.model.d_postnet,
-            postnet_layers=config.model.postnet_layers,
-            postnet_kernel_size=config.model.postnet_kernel_size,
-            max_reduction_factor=config.model.max_reduction_factor,
-            decoder_prenet_dropout=config.model.decoder_prenet_dropout,
-            dropout=config.model.dropout)
+    def _add_first_frame_and_remove_last_frame(
+            self, ys: paddle.Tensor) -> paddle.Tensor:
+        ys_in = paddle.concat(
+            [paddle.zeros((ys.shape[0], 1, ys.shape[2])), ys[:, :-1]], axis=1)
+        return ys_in
 
-        iteration = checkpoint.load_parameters(
-            model, checkpoint_path=checkpoint_path)
-        drop_n_heads = scheduler.StepWise(config.training.drop_n_heads)
-        reduction_factor = scheduler.StepWise(config.training.reduction_factor)
-        model.set_constants(
-            reduction_factor=reduction_factor(iteration),
-            drop_n_heads=drop_n_heads(iteration))
-        return model
+    def _source_mask(self, ilens: paddle.Tensor) -> paddle.Tensor:
+        """Make masks for self-attention.
+
+        Parameters
+        ----------
+        ilens : Tensor
+            Batch of lengths (B,).
+
+        Returns
+        -------
+        Tensor
+            Mask tensor for self-attention.
+            dtype=paddle.bool
+
+        Examples
+        -------
+        >>> ilens = [5, 3]
+        >>> self._source_mask(ilens)
+        tensor([[[1, 1, 1, 1, 1],
+                    [1, 1, 1, 0, 0]]]) bool
+
+        """
+        x_masks = make_non_pad_mask(ilens)
+        return x_masks.unsqueeze(-2)
+
+    def _target_mask(self, olens: paddle.Tensor) -> paddle.Tensor:
+        """Make masks for masked self-attention.
+
+        Parameters
+        ----------
+            olens : LongTensor
+                Batch of lengths (B,).
+
+        Returns
+        ----------
+        Tensor
+            Mask tensor for masked self-attention.
+
+        Examples
+        ----------
+        >>> olens = [5, 3]
+        >>> self._target_mask(olens)
+        tensor([[[1, 0, 0, 0, 0],
+                    [1, 1, 0, 0, 0],
+                    [1, 1, 1, 0, 0],
+                    [1, 1, 1, 1, 0],
+                    [1, 1, 1, 1, 1]],
+                [[1, 0, 0, 0, 0],
+                    [1, 1, 0, 0, 0],
+                    [1, 1, 1, 0, 0],
+                    [1, 1, 1, 0, 0],
+                    [1, 1, 1, 0, 0]]], dtype=paddle.uint8)
+
+        """
+        y_masks = make_non_pad_mask(olens)
+        s_masks = subsequent_mask(y_masks.shape[-1]).unsqueeze(0)
+        return paddle.logical_and(y_masks.unsqueeze(-2), s_masks)
+
+    def _integrate_with_spk_embed(self,
+                                  hs: paddle.Tensor,
+                                  spembs: paddle.Tensor) -> paddle.Tensor:
+        """Integrate speaker embedding with hidden states.
+
+        Parameters
+        ----------
+        hs : Tensor
+            Batch of hidden state sequences (B, Tmax, adim).
+        spembs : Tensor
+            Batch of speaker embeddings (B, spk_embed_dim).
+
+        Returns
+        ----------
+        Tensor
+            Batch of integrated hidden state sequences (B, Tmax, adim).
+
+        """
+        if self.spk_embed_integration_type == "add":
+            # apply projection and then add to hidden states
+            spembs = self.projection(F.normalize(spembs))
+            hs = hs + spembs.unsqueeze(1)
+        elif self.spk_embed_integration_type == "concat":
+            # concat hidden states with spk embeds and then apply projection
+            spembs = F.normalize(spembs).unsqueeze(1).expand(-1, hs.shape[1],
+                                                             -1)
+            hs = self.projection(paddle.concat([hs, spembs], axis=-1))
+        else:
+            raise NotImplementedError("support only add or concat.")
+
+        return hs
+
+
+class TransformerTTSInference(nn.Layer):
+    def __init__(self, normalizer, model):
+        super().__init__()
+        self.normalizer = normalizer
+        self.acoustic_model = model
+
+    def forward(self, text, spk_id=None):
+        normalized_mel = self.acoustic_model.inference(text)[0]
+        logmel = self.normalizer.inverse(normalized_mel)
+        return logmel
 
 
 class TransformerTTSLoss(nn.Layer):
-    def __init__(self, stop_loss_scale):
-        super(TransformerTTSLoss, self).__init__()
-        self.stop_loss_scale = stop_loss_scale
+    """Loss function module for Tacotron2."""
 
-    def forward(self, mel_output, mel_intermediate, mel_target, stop_logits,
-                stop_probs):
-        mask = masking.feature_mask(mel_target, axis=-1, dtype=mel_target.dtype)
-        mask1 = paddle.unsqueeze(mask, -1)
-        mel_loss1 = L.masked_l1_loss(mel_output, mel_target, mask1)
-        mel_loss2 = L.masked_l1_loss(mel_intermediate, mel_target, mask1)
+    def __init__(self,
+                 use_masking=True,
+                 use_weighted_masking=False,
+                 bce_pos_weight=5.0):
+        """Initialize Tactoron2 loss module.
 
-        mel_len = mask.shape[-1]
-        last_position = F.one_hot(
-            mask.sum(-1).astype("int64") - 1, num_classes=mel_len)
-        mask2 = mask + last_position.scale(self.stop_loss_scale - 1).astype(
-            mask.dtype)
-        stop_loss = L.masked_softmax_with_cross_entropy(
-            stop_logits, stop_probs.unsqueeze(-1), mask2.unsqueeze(-1))
+        Parameters
+        ----------
+        use_masking : bool
+            Whether to apply masking for padded part in loss calculation.
+        use_weighted_masking : bool
+            Whether to apply weighted masking in loss calculation.
+        bce_pos_weight : float
+            Weight of positive sample of stop token.
 
-        loss = mel_loss1 + mel_loss2 + stop_loss
-        losses = dict(
-            loss=loss,  # total loss
-            mel_loss1=mel_loss1,  # ouput mel loss
-            mel_loss2=mel_loss2,  # intermediate mel loss
-            stop_loss=stop_loss  # stop prob loss
-        )
-        return losses
+        """
+        super().__init__()
+        assert (use_masking != use_weighted_masking) or not use_masking
+        self.use_masking = use_masking
+        self.use_weighted_masking = use_weighted_masking
+
+        # define criterions
+        reduction = "none" if self.use_weighted_masking else "mean"
+        self.l1_criterion = nn.L1Loss(reduction=reduction)
+        self.mse_criterion = nn.MSELoss(reduction=reduction)
+        self.bce_criterion = nn.BCEWithLogitsLoss(
+            reduction=reduction, pos_weight=paddle.to_tensor(bce_pos_weight))
+
+    def forward(self, after_outs, before_outs, logits, ys, labels, olens):
+        """Calculate forward propagation.
+
+        Parameters
+        ----------
+        after_outs : Tensor
+            Batch of outputs after postnets (B, Lmax, odim).
+        before_outs : Tensor
+            Batch of outputs before postnets (B, Lmax, odim).
+        logits : Tensor
+            Batch of stop logits (B, Lmax).
+        ys : Tensor
+            Batch of padded target features (B, Lmax, odim).
+        labels : LongTensor
+            Batch of the sequences of stop token labels (B, Lmax).
+        olens : LongTensor
+            Batch of the lengths of each target (B,).
+
+        Returns
+        ----------
+        Tensor
+            L1 loss value.
+        Tensor
+            Mean square error loss value.
+        Tensor
+            Binary cross entropy loss value.
+
+        """
+        # make mask and apply it
+        if self.use_masking:
+            masks = make_non_pad_mask(olens).unsqueeze(-1)
+            ys = ys.masked_select(masks.broadcast_to(ys.shape))
+            after_outs = after_outs.masked_select(
+                masks.broadcast_to(after_outs.shape))
+            before_outs = before_outs.masked_select(
+                masks.broadcast_to(before_outs.shape))
+            # Operator slice does not have kernel for data_type[bool]
+            tmp_masks = paddle.cast(masks, dtype='int64')
+            tmp_masks = tmp_masks[:, :, 0]
+            tmp_masks = paddle.cast(tmp_masks, dtype='bool')
+            labels = labels.masked_select(tmp_masks.broadcast_to(labels.shape))
+            logits = logits.masked_select(tmp_masks.broadcast_to(logits.shape))
+
+        # calculate loss
+        l1_loss = self.l1_criterion(after_outs, ys) + self.l1_criterion(
+            before_outs, ys)
+        mse_loss = self.mse_criterion(after_outs, ys) + self.mse_criterion(
+            before_outs, ys)
+        bce_loss = self.bce_criterion(logits, labels)
+
+        # make weighted mask and apply it
+        if self.use_weighted_masking:
+            masks = make_non_pad_mask(olens).unsqueeze(-1)
+            weights = masks.float() / masks.sum(dim=1, keepdim=True).float()
+            out_weights = weights.div(ys.shape[0] * ys.shape[2])
+            logit_weights = weights.div(ys.shape[0])
+
+            # apply weight
+            l1_loss = l1_loss.multiply(out_weights)
+            l1_loss = l1_loss.masked_select(
+                masks.broadcast_to(l1_loss.shape)).sum()
+
+            mse_loss = mse_loss.multiply(out_weights)
+            mse_loss = mse_loss.masked_select(
+                masks.broadcast_to(mse_loss.shape)).sum()
+
+            bce_loss = bce_loss.multiply(logit_weights.squeeze(-1))
+            bce_loss = bce_loss.masked_select(
+                masks.squeeze(-1).broadcast_to(bce_loss.shape)).sum()
+
+        return l1_loss, mse_loss, bce_loss
+
+
+class GuidedAttentionLoss(nn.Layer):
+    """Guided attention loss function module.
+
+    This module calculates the guided attention loss described
+    in `Efficiently Trainable Text-to-Speech System Based
+    on Deep Convolutional Networks with Guided Attention`_,
+    which forces the attention to be diagonal.
+
+    .. _`Efficiently Trainable Text-to-Speech System
+        Based on Deep Convolutional Networks with Guided Attention`:
+        https://arxiv.org/abs/1710.08969
+
+    """
+
+    def __init__(self, sigma=0.4, alpha=1.0, reset_always=True):
+        """Initialize guided attention loss module.
+
+        Parameters
+        ----------
+        sigma : float, optional
+            Standard deviation to control how close attention to a diagonal.
+        alpha : float, optional
+            Scaling coefficient (lambda).
+        reset_always : bool, optional
+            Whether to always reset masks.
+
+        """
+        super(GuidedAttentionLoss, self).__init__()
+        self.sigma = sigma
+        self.alpha = alpha
+        self.reset_always = reset_always
+        self.guided_attn_masks = None
+        self.masks = None
+
+    def _reset_masks(self):
+        self.guided_attn_masks = None
+        self.masks = None
+
+    def forward(self, att_ws, ilens, olens):
+        """Calculate forward propagation.
+
+        Parameters
+        ----------
+        att_ws : Tensor
+            Batch of attention weights (B, T_max_out, T_max_in).
+        ilens : LongTensor
+            Batch of input lenghts (B,).
+        olens : LongTensor
+            Batch of output lenghts (B,).
+
+        Returns
+        ----------
+        Tensor
+            Guided attention loss value.
+
+        """
+        if self.guided_attn_masks is None:
+            self.guided_attn_masks = self._make_guided_attention_masks(ilens,
+                                                                       olens)
+        if self.masks is None:
+            self.masks = self._make_masks(ilens, olens)
+        losses = self.guided_attn_masks * att_ws
+        loss = paddle.mean(
+            losses.masked_select(self.masks.broadcast_to(losses.shape)))
+        if self.reset_always:
+            self._reset_masks()
+        return self.alpha * loss
+
+    def _make_guided_attention_masks(self, ilens, olens):
+        n_batches = len(ilens)
+        max_ilen = max(ilens)
+        max_olen = max(olens)
+        guided_attn_masks = paddle.zeros((n_batches, max_olen, max_ilen))
+
+        for idx, (ilen, olen) in enumerate(zip(ilens, olens)):
+
+            ilen = int(ilen)
+            olen = int(olen)
+            guided_attn_masks[idx, :olen, :
+                              ilen] = self._make_guided_attention_mask(
+                                  ilen, olen, self.sigma)
+        return guided_attn_masks
+
+    @staticmethod
+    def _make_guided_attention_mask(ilen, olen, sigma):
+        """Make guided attention mask.
+
+        Examples
+        ----------
+        >>> guided_attn_mask =_make_guided_attention(5, 5, 0.4)
+        >>> guided_attn_mask.shape
+        [5, 5]
+        >>> guided_attn_mask
+        tensor([[0.0000, 0.1175, 0.3935, 0.6753, 0.8647],
+                [0.1175, 0.0000, 0.1175, 0.3935, 0.6753],
+                [0.3935, 0.1175, 0.0000, 0.1175, 0.3935],
+                [0.6753, 0.3935, 0.1175, 0.0000, 0.1175],
+                [0.8647, 0.6753, 0.3935, 0.1175, 0.0000]])
+        >>> guided_attn_mask =_make_guided_attention(3, 6, 0.4)
+        >>> guided_attn_mask.shape
+        [6, 3]
+        >>> guided_attn_mask
+        tensor([[0.0000, 0.2934, 0.7506],
+                [0.0831, 0.0831, 0.5422],
+                [0.2934, 0.0000, 0.2934],
+                [0.5422, 0.0831, 0.0831],
+                [0.7506, 0.2934, 0.0000],
+                [0.8858, 0.5422, 0.0831]])
+
+        """
+        grid_x, grid_y = paddle.meshgrid(
+            paddle.arange(olen), paddle.arange(ilen))
+        grid_x = grid_x.cast(dtype=paddle.float32)
+        grid_y = grid_y.cast(dtype=paddle.float32)
+        return 1.0 - paddle.exp(-(
+            (grid_y / ilen - grid_x / olen)**2) / (2 * (sigma**2)))
+
+    @staticmethod
+    def _make_masks(ilens, olens):
+        """Make masks indicating non-padded part.
+
+        Parameters
+        ----------
+        ilens (LongTensor or List): Batch of lengths (B,).
+        olens (LongTensor or List): Batch of lengths (B,).
+
+        Returns
+        ----------
+        Tensor 
+            Mask tensor indicating non-padded part.
+
+        Examples
+        ----------
+        >>> ilens, olens = [5, 2], [8, 5]
+        >>> _make_mask(ilens, olens)
+        tensor([[[1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1]],
+
+                [[1, 1, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0]]], dtype=paddle.uint8)
+
+        """
+        # (B, T_in)
+        in_masks = make_non_pad_mask(ilens)
+        # (B, T_out)
+        out_masks = make_non_pad_mask(olens)
+        # (B, T_out, T_in)
+
+        return paddle.logical_and(
+            out_masks.unsqueeze(-1), in_masks.unsqueeze(-2))
+
+
+class GuidedMultiHeadAttentionLoss(GuidedAttentionLoss):
+    """Guided attention loss function module for multi head attention.
+
+    Parameters
+    ----------
+    sigma : float, optional
+        Standard deviation to controlGuidedAttentionLoss
+        how close attention to a diagonal.
+    alpha : float, optional
+        Scaling coefficient (lambda).
+    reset_always : bool, optional
+        Whether to always reset masks.
+
+    """
+
+    def forward(self, att_ws, ilens, olens):
+        """Calculate forward propagation.
+
+        Parameters
+        ----------
+        att_ws : Tensor
+            Batch of multi head attention weights (B, H, T_max_out, T_max_in).
+        ilens : Tensor
+            Batch of input lenghts (B,).
+        olens : Tensor
+            Batch of output lenghts (B,).
+
+        Returns
+        ----------
+        Tensor
+            Guided attention loss value.
+
+        """
+        if self.guided_attn_masks is None:
+            self.guided_attn_masks = (
+                self._make_guided_attention_masks(ilens, olens).unsqueeze(1))
+        if self.masks is None:
+            self.masks = self._make_masks(ilens, olens).unsqueeze(1)
+        losses = self.guided_attn_masks * att_ws
+        loss = paddle.mean(
+            losses.masked_select(self.masks.broadcast_to(losses.shape)))
+        if self.reset_always:
+            self._reset_masks()
+
+        return self.alpha * loss

@@ -16,27 +16,33 @@ import logging
 from typing import Dict
 
 import paddle
+from paddle import distributed as dist
+from paddle.io import DataLoader
 from paddle.nn import Layer
 from paddle.optimizer import Optimizer
 from paddle.optimizer.lr import LRScheduler
-from paddle.io import DataLoader
-from timer import timer
-
-from parakeet.training.updaters.standard_updater import StandardUpdater, UpdaterState
 from parakeet.training.extensions.evaluator import StandardEvaluator
 from parakeet.training.reporter import report
+from parakeet.training.updaters.standard_updater import StandardUpdater
+from parakeet.training.updaters.standard_updater import UpdaterState
+from timer import timer
+logging.basicConfig(
+    format='%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='[%Y-%m-%d %H:%M:%S]')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class PWGUpdater(StandardUpdater):
-    def __init__(
-            self,
-            models: Dict[str, Layer],
-            optimizers: Dict[str, Optimizer],
-            criterions: Dict[str, Layer],
-            schedulers: Dict[str, LRScheduler],
-            dataloader: DataLoader,
-            discriminator_train_start_steps: int,
-            lambda_adv: float, ):
+    def __init__(self,
+                 models: Dict[str, Layer],
+                 optimizers: Dict[str, Optimizer],
+                 criterions: Dict[str, Layer],
+                 schedulers: Dict[str, LRScheduler],
+                 dataloader: DataLoader,
+                 discriminator_train_start_steps: int,
+                 lambda_adv: float,
+                 output_dir=None):
         self.models = models
         self.generator: Layer = models['generator']
         self.discriminator: Layer = models['discriminator']
@@ -61,7 +67,16 @@ class PWGUpdater(StandardUpdater):
 
         self.train_iterator = iter(self.dataloader)
 
+        log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
+        self.filehandler = logging.FileHandler(str(log_file))
+        logger.addHandler(self.filehandler)
+        self.logger = logger
+        self.msg = ""
+
     def update_core(self, batch):
+        self.msg = "Rank: {}, ".format(dist.get_rank())
+        losses_dict = {}
+
         # parse batch
         wav, mel = batch
 
@@ -70,7 +85,7 @@ class PWGUpdater(StandardUpdater):
 
         with timer() as t:
             wav_ = self.generator(noise, mel)
-            logging.debug(f"Generator takes {t.elapse}s.")
+            # logging.debug(f"Generator takes {t.elapse}s.")
 
         # initialize
         gen_loss = 0.0
@@ -78,10 +93,14 @@ class PWGUpdater(StandardUpdater):
         ## Multi-resolution stft loss
         with timer() as t:
             sc_loss, mag_loss = self.criterion_stft(wav_, wav)
-            logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s.")
+            # logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s.")
 
         report("train/spectral_convergence_loss", float(sc_loss))
         report("train/log_stft_magnitude_loss", float(mag_loss))
+
+        losses_dict["spectral_convergence_loss"] = float(sc_loss)
+        losses_dict["log_stft_magnitude_loss"] = float(mag_loss)
+
         gen_loss += sc_loss + mag_loss
 
         ## Adversarial loss
@@ -89,22 +108,24 @@ class PWGUpdater(StandardUpdater):
             with timer() as t:
                 p_ = self.discriminator(wav_)
                 adv_loss = self.criterion_mse(p_, paddle.ones_like(p_))
-                logging.debug(
-                    f"Discriminator and adversarial loss takes {t.elapse}s")
+                # logging.debug(
+                #     f"Discriminator and adversarial loss takes {t.elapse}s")
             report("train/adversarial_loss", float(adv_loss))
+            losses_dict["adversarial_loss"] = float(adv_loss)
             gen_loss += self.lambda_adv * adv_loss
 
         report("train/generator_loss", float(gen_loss))
+        losses_dict["generator_loss"] = float(gen_loss)
 
         with timer() as t:
             self.optimizer_g.clear_grad()
             gen_loss.backward()
-            logging.debug(f"Backward takes {t.elapse}s.")
+            # logging.debug(f"Backward takes {t.elapse}s.")
 
         with timer() as t:
             self.optimizer_g.step()
             self.scheduler_g.step()
-            logging.debug(f"Update takes {t.elapse}s.")
+            # logging.debug(f"Update takes {t.elapse}s.")
 
         # Disctiminator
         if self.state.iteration > self.discriminator_train_start_steps:
@@ -118,6 +139,9 @@ class PWGUpdater(StandardUpdater):
             report("train/real_loss", float(real_loss))
             report("train/fake_loss", float(fake_loss))
             report("train/discriminator_loss", float(dis_loss))
+            losses_dict["real_loss"] = float(real_loss)
+            losses_dict["fake_loss"] = float(fake_loss)
+            losses_dict["discriminator_loss"] = float(dis_loss)
 
             self.optimizer_d.clear_grad()
             dis_loss.backward()
@@ -125,9 +149,17 @@ class PWGUpdater(StandardUpdater):
             self.optimizer_d.step()
             self.scheduler_d.step()
 
+        self.msg += ', '.join('{}: {:>.6f}'.format(k, v)
+                              for k, v in losses_dict.items())
+
 
 class PWGEvaluator(StandardEvaluator):
-    def __init__(self, models, criterions, dataloader, lambda_adv):
+    def __init__(self,
+                 models,
+                 criterions,
+                 dataloader,
+                 lambda_adv,
+                 output_dir=None):
         self.models = models
         self.generator = models['generator']
         self.discriminator = models['discriminator']
@@ -139,34 +171,47 @@ class PWGEvaluator(StandardEvaluator):
         self.dataloader = dataloader
         self.lambda_adv = lambda_adv
 
+        log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
+        self.filehandler = logging.FileHandler(str(log_file))
+        logger.addHandler(self.filehandler)
+        self.logger = logger
+        self.msg = ""
+
     def evaluate_core(self, batch):
-        logging.debug("Evaluate: ")
+        # logging.debug("Evaluate: ")
+        self.msg = "Evaluate: "
+        losses_dict = {}
+
         wav, mel = batch
         noise = paddle.randn(wav.shape)
 
         with timer() as t:
             wav_ = self.generator(noise, mel)
-            logging.debug(f"Generator takes {t.elapse}s")
+            # logging.debug(f"Generator takes {t.elapse}s")
 
         ## Adversarial loss
         with timer() as t:
             p_ = self.discriminator(wav_)
             adv_loss = self.criterion_mse(p_, paddle.ones_like(p_))
-            logging.debug(
-                f"Discriminator and adversarial loss takes {t.elapse}s")
+            # logging.debug(
+            #     f"Discriminator and adversarial loss takes {t.elapse}s")
         report("eval/adversarial_loss", float(adv_loss))
+        losses_dict["adversarial_loss"] = float(adv_loss)
         gen_loss = self.lambda_adv * adv_loss
 
         # stft loss
         with timer() as t:
             sc_loss, mag_loss = self.criterion_stft(wav_, wav)
-            logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s")
+            # logging.debug(f"Multi-resolution STFT loss takes {t.elapse}s")
 
         report("eval/spectral_convergence_loss", float(sc_loss))
         report("eval/log_stft_magnitude_loss", float(mag_loss))
+        losses_dict["spectral_convergence_loss"] = float(sc_loss)
+        losses_dict["log_stft_magnitude_loss"] = float(mag_loss)
         gen_loss += sc_loss + mag_loss
 
         report("eval/generator_loss", float(gen_loss))
+        losses_dict["generator_loss"] = float(gen_loss)
 
         # Disctiminator
         p = self.discriminator(wav)
@@ -176,3 +221,11 @@ class PWGEvaluator(StandardEvaluator):
         report("eval/real_loss", float(real_loss))
         report("eval/fake_loss", float(fake_loss))
         report("eval/discriminator_loss", float(dis_loss))
+
+        losses_dict["real_loss"] = float(real_loss)
+        losses_dict["fake_loss"] = float(fake_loss)
+        losses_dict["discriminator_loss"] = float(dis_loss)
+
+        self.msg += ', '.join('{}: {:>.6f}'.format(k, v)
+                              for k, v in losses_dict.items())
+        self.logger.info(self.msg)

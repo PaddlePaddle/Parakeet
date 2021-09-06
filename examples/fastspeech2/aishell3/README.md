@@ -7,7 +7,7 @@ We use AISHELL-3 to train a multi-speaker fastspeech2 model here.
 
 ## Dataset
 
-### Download and Extract the datasaet.
+### Download and Extract the datasaet
 Download AISHELL-3.
 ```bash
 wget https://www.openslr.org/resources/93/data_aishell3.tgz
@@ -18,12 +18,12 @@ mkdir data_aishell3
 tar zxvf data_aishell3.tgz -C data_aishell3
 ```
 
-### Get MFA result of BZNSYP and Extract it.
+### Get MFA result of BZNSYP and Extract it
 
 We use [MFA2.x](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) to get durations for aishell3_fastspeech2.
 You can download from here [aishell3_alignment_tone.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/AISHELL-3/with_tone/aishell3_alignment_tone.tar.gz), or train your own MFA model reference to [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) (use MFA1.x now) of our repo.
 
-### Preprocess the dataset.
+### Preprocess the dataset
 
 Assume the path to the dataset is `~/datasets/data_aishell3`.
 Assume the path to the MFA result of AISHELL-3 is `./aishell3_alignment_tone`.
@@ -69,7 +69,7 @@ python3 synthesize_e2e.py \
   --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
   --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
   --text=../sentences.txt \
-  --output-dir=exp/debug/test_e2e \
+  --output-dir=exp/default/test_e2e \
   --device="gpu" \
   --phones-dict=fastspeech2_nosil_aishell3_ckpt_0.4/phone_id_map.txt \
   --speaker-dict=fastspeech2_nosil_aishell3_ckpt_0.4/speaker_id_map.txt

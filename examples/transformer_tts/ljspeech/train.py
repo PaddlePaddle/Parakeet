@@ -25,7 +25,7 @@ from paddle import distributed as dist
 from paddle import nn
 from paddle.io import DataLoader, DistributedBatchSampler
 from parakeet.datasets.data_table import DataTable
-from parakeet.models.transformer_tts_new import TransformerTTS
+from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.seeding import seed_everything
@@ -149,17 +149,20 @@ def train_sp(args, config):
     optimizer = build_optimizers(model, **config["optimizer"])
     print("optimizer done!")
 
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     updater = TransformerTTSUpdater(
         model=model,
         optimizer=optimizer,
         dataloader=train_dataloader,
+        output_dir=output_dir,
         **config["updater"])
 
-    output_dir = Path(args.output_dir)
     trainer = Trainer(updater, (config.max_epoch, 'epoch'), output_dir)
 
-    evaluator = TransformerTTSEvaluator(model, dev_dataloader,
-                                        **config["updater"])
+    evaluator = TransformerTTSEvaluator(
+        model, dev_dataloader, output_dir=output_dir, **config["updater"])
 
     if dist.get_rank() == 0:
         trainer.extend(evaluator, trigger=(1, "epoch"))
@@ -167,7 +170,7 @@ def train_sp(args, config):
         trainer.extend(VisualDL(writer), trigger=(1, "iteration"))
         trainer.extend(
             Snapshot(max_size=config.num_snapshots), trigger=(1, 'epoch'))
-    print(trainer.extensions)
+    # print(trainer.extensions)
     trainer.run()
 
 

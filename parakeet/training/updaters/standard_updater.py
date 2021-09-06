@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import time
 from typing import Dict
 from typing import Optional
 
@@ -57,6 +58,8 @@ class StandardUpdater(UpdaterBase):
             self.state = init_state
 
         self.train_iterator = iter(dataloader)
+        self.batch_read_time = 0
+        self.batch_time = 0
 
     def update(self):
         # We increase the iteration index after updating and before extension.
@@ -99,8 +102,17 @@ class StandardUpdater(UpdaterBase):
             layer.train()
 
         # training for a step is implemented here
+        time_before_read = time.time()
         batch = self.read_batch()
+        time_before_core = time.time()
         self.update_core(batch)
+        self.batch_time = time.time() - time_before_core
+        self.batch_read_time = time_before_core - time_before_read
+        if isinstance(batch, dict):
+            self.batch_size = len(list(batch.items())[0][-1])
+        # for pwg
+        elif isinstance(batch, list):
+            self.batch_size = batch[0].shape[0]
 
         self.state.iteration += 1
         if self.updates_per_epoch is not None:

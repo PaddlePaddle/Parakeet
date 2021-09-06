@@ -1,5 +1,5 @@
 python inference.py \
-  --inference-dir=exp/debug/inference \
+  --inference-dir=exp/default/inference \
   --text=sentences.txt \
-  --output-dir=exp/debug/pd_infer_out
+  --output-dir=exp/default/pd_infer_out
 

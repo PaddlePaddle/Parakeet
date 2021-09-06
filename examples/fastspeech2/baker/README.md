@@ -2,14 +2,14 @@
 
 ## Dataset
 
-### Download and Extract the datasaet.
+### Download and Extract the datasaet
 Download BZNSYP from it's [Official Website](https://test.data-baker.com/data/index/source).
-### Get MFA result of BZNSYP and Extract it.
+### Get MFA result of BZNSYP and Extract it
 
 We use [MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) to get durations for fastspeech2.
 You can download from here [baker_alignment_tone.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/BZNSYP/with_tone/baker_alignment_tone.tar.gz), or train your own MFA model reference to  [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) of our repo.
 
-### Preprocess the dataset.
+### Preprocess the dataset
 
 Assume the path to the dataset is `~/datasets/BZNSYP`.
 Assume the path to the MFA result of BZNSYP is `./baker_alignment_tone`.
@@ -55,7 +55,7 @@ python3 synthesize_e2e.py \
   --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
   --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
   --text=../sentences.txt \
-  --output-dir=exp/debug/test_e2e \
+  --output-dir=exp/default/test_e2e \
   --device="gpu" \
   --phones-dict=fastspeech2_nosil_baker_ckpt_0.4/phone_id_map.txt
 ```

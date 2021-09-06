@@ -23,11 +23,13 @@ import yaml
 from paddle import DataParallel
 from paddle import distributed as dist
 from paddle import nn
-from paddle.io import DataLoader, DistributedBatchSampler
+from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
 from paddle.optimizer import Adam  # No RAdaom
 from paddle.optimizer.lr import StepDecay
 from parakeet.datasets.data_table import DataTable
-from parakeet.models.parallel_wavegan import PWGGenerator, PWGDiscriminator
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGDiscriminator
 from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
@@ -38,7 +40,8 @@ from visualdl import LogWriter
 
 from batch_fn import Clip
 from config import get_cfg_default
-from pwg_updater import PWGUpdater, PWGEvaluator
+from pwg_updater import PWGUpdater
+from pwg_updater import PWGEvaluator
 
 
 def train_sp(args, config):
@@ -99,11 +102,13 @@ def train_sp(args, config):
         batch_max_steps=config.batch_max_steps,
         hop_size=config.hop_length,
         aux_context_window=config.generator_params.aux_context_window)
+
     train_dataloader = DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
         collate_fn=train_batch_fn,
         num_workers=config.num_workers)
+
     dev_dataloader = DataLoader(
         dev_dataset,
         batch_sampler=dev_sampler,
@@ -139,10 +144,8 @@ def train_sp(args, config):
     print("optimizers done!")
 
     output_dir = Path(args.output_dir)
-    checkpoint_dir = output_dir / "checkpoints"
     if dist.get_rank() == 0:
         output_dir.mkdir(parents=True, exist_ok=True)
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
         with open(output_dir / "config.yaml", 'wt') as f:
             f.write(config.dump(default_flow_style=None))
 
@@ -165,7 +168,8 @@ def train_sp(args, config):
         },
         dataloader=train_dataloader,
         discriminator_train_start_steps=config.discriminator_train_start_steps,
-        lambda_adv=config.lambda_adv, )
+        lambda_adv=config.lambda_adv,
+        output_dir=output_dir)
 
     evaluator = PWGEvaluator(
         models={
@@ -177,21 +181,23 @@ def train_sp(args, config):
             "mse": criterion_mse,
         },
         dataloader=dev_dataloader,
-        lambda_adv=config.lambda_adv, )
+        lambda_adv=config.lambda_adv,
+        output_dir=output_dir)
     trainer = Trainer(
         updater,
         stop_trigger=(config.train_max_steps, "iteration"),
         out=output_dir, )
 
-    trainer.extend(evaluator, trigger=(config.eval_interval_steps, 'iteration'))
     if dist.get_rank() == 0:
+        trainer.extend(
+            evaluator, trigger=(config.eval_interval_steps, 'iteration'))
         writer = LogWriter(str(trainer.out))
         trainer.extend(VisualDL(writer), trigger=(1, 'iteration'))
         trainer.extend(
             Snapshot(max_size=config.num_snapshots),
             trigger=(config.save_interval_steps, 'iteration'))
 
-    print(trainer.extensions.keys())
+    # print(trainer.extensions.keys())
     print("Trainer Done!")
     trainer.run()
 

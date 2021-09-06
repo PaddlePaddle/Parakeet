@@ -2,51 +2,60 @@
 
 ## Dataset
 
-### Download the datasaet.
-
+### Download the datasaet
 ```bash
 wget https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
 ```
-
-### Extract the dataset.
-
+### Extract the dataset
 ```bash
 tar xjvf LJSpeech-1.1.tar.bz2
 ```
 
-### Preprocess the dataset.
+### Preprocess the dataset
 
-Assume the path to save the preprocessed dataset is `ljspeech_transformer_tts`. Run the command below to preprocess the dataset.
+Assume the path to the dataset is `~/datasets/LJSpeech-1.1`.
+Run the command below to preprocess the dataset.
 
 ```bash
-python preprocess.py --input=LJSpeech-1.1/  --output=ljspeech_transformer_tts
+./preprocess.sh
 ```
-
 ## Train the model
-
-The training script requires 4 command line arguments.
-`--data` is the path of the training dataset, `--output` is the path of the output direcctory (we recommend to use a subdirectory in `runs` to manage different experiments.)
-
-`--device` should be "cpu" or "gpu", `--nprocs` is the number of processes to train the model in parallel.
-
 ```bash
-python train.py --data=ljspeech_transformer_tts/ --output=runs/test --device="gpu" --nprocs=1
+./run.sh
 ```
-
-If you want distributed training, set a larger `--nprocs` (e.g. 4). Note that distributed training with cpu is not supported yet.
-
+If you want to train transformer_tts with cpu, please add `--device=cpu` arguments for `python3 train.py` in `run.sh`.
 ## Synthesize
-
-Synthesize waveform. We assume the `--input` is a text file, one sentence per line, and `--output` is a directory to save the synthesized mel spectrogram(log magnitude) in `.npy` format. The mel spectrograms can be used with `Waveflow` to generate waveforms.
-
-`--checkpoint_path` should be the path of the parameter file (`.pdparams`) to load. Note that the extention name `.pdparmas` is not included here.
-
-`--device` specifies to device to run synthesis on.
+We use [waveflow](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/waveflow) as the neural vocoder.
+Download Pretrained WaveFlow Model with residual channel equals 128 from [waveflow_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/waveflow_ljspeech_ckpt_0.3.zip) and unzip it.
+```bash
+unzip waveflow_ljspeech_ckpt_0.3.zip
+```
+`synthesize.sh` can synthesize waveform from `metadata.jsonl`.
+`synthesize_e2e.sh` can synthesize waveform from text list.
 
 ```bash
-python synthesize.py --input=sentence.txt --output=mels/ --checkpoint_path='step-310000' --device="gpu" --verbose
+./synthesize.sh
 ```
+or
+```bash
+./synthesize_e2e.sh
+```
+
+You can see the bash files for more datails of input parameters.
 
 ## Pretrained Model
+Pretrained Model can be downloaded here. [transformer_tts_ljspeech_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.4.zip)
 
-Pretrained model can be downloaded here. [transformer_tts_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.3.zip).
+Then, you can use the following scripts to synthesize for `../sentences.txt` using pretrained transformer_tts model.
+```bash
+python3 synthesize_e2e.py \
+  --transformer-tts-config=transformer_tts_ljspeech_ckpt_0.4/default.yaml \
+  --transformer-tts-checkpoint=transformer_tts_ljspeech_ckpt_0.4/snapshot_iter_201500.pdz \
+  --transformer-tts-stat=transformer_tts_ljspeech_ckpt_0.4/speech_stats.npy \
+  --waveflow-config=waveflow_ljspeech_ckpt_0.3/config.yaml \
+  --waveflow-checkpoint=waveflow_ljspeech_ckpt_0.3/step-2000000.pdparams \
+  --text=../sentences.txt \
+  --output-dir=exp/default/test_e2e \
+  --device="gpu" \
+  --phones-dict=transformer_tts_ljspeech_ckpt_0.4/phone_id_map.txt
+```

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import argparse
 from pathlib import Path
 
@@ -31,6 +32,8 @@ def main():
         type=str,
         help="text to synthesize, a 'utt_id sentence' pair per line")
     parser.add_argument("--output-dir", type=str, help="output dir")
+    parser.add_argument(
+        "--enable-auto-log", action="store_true", help="use auto log")
 
     args, _ = parser.parse_known_args()
 
@@ -48,6 +51,23 @@ def main():
     pwg_config.enable_memory_optim()
     pwg_predictor = inference.create_predictor(pwg_config)
 
+    if args.enable_auto_log:
+        import auto_log
+        os.makedirs("output", exist_ok=True)
+        pid = os.getpid()
+        logger = auto_log.AutoLogger(
+            model_name="speedyspeech",
+            model_precision='float32',
+            batch_size=1,
+            data_shape="dynamic",
+            save_path="./output/auto_log.log",
+            inference_config=speedyspeech_config,
+            pids=pid,
+            process_name=None,
+            gpu_ids=0,
+            time_keys=['preprocess_time', 'inference_time', 'postprocess_time'],
+            warmup=0)
+
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     sentences = []
@@ -57,9 +77,15 @@ def main():
             sentences.append((utt_id, sentence))
 
     for utt_id, sentence in sentences:
+        if args.enable_auto_log:
+            logger.times.start()
+
         phones, tones = text_analysis(sentence)
         phones = phones.numpy()
         tones = tones.numpy()
+
+        if args.enable_auto_log:
+            logger.times.stamp()
 
         input_names = speedyspeech_predictor.get_input_names()
         phones_handle = speedyspeech_predictor.get_input_handle(input_names[0])
@@ -86,8 +112,17 @@ def main():
         output_handle = pwg_predictor.get_output_handle(output_names[0])
         wav = output_data = output_handle.copy_to_cpu()
 
+        if args.enable_auto_log:
+            logger.times.stamp()
+
         sf.write(output_dir / (utt_id + ".wav"), wav, samplerate=24000)
+
+        if args.enable_auto_log:
+            logger.times.end(stamp=True)
         print(f"{utt_id} done!")
+
+    if args.enable_auto_log:
+        logger.report()
 
 
 if __name__ == "__main__":

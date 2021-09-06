@@ -21,8 +21,10 @@ import paddle
 import soundfile as sf
 import yaml
 from yacs.config import CfgNode
-from parakeet.models.fastspeech2 import FastSpeech2, FastSpeech2Inference
-from parakeet.models.parallel_wavegan import PWGGenerator, PWGInference
+from parakeet.models.fastspeech2 import FastSpeech2
+from parakeet.models.fastspeech2 import FastSpeech2Inference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 
 from frontend import Frontend
@@ -113,9 +115,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Synthesize with fastspeech2 & parallel wavegan.")
     parser.add_argument(
-        "--fastspeech2-config",
-        type=str,
-        help="fastspeech2 config file to overwrite default config.")
+        "--fastspeech2-config", type=str, help="fastspeech2 config file.")
     parser.add_argument(
         "--fastspeech2-checkpoint",
         type=str,
@@ -126,9 +126,7 @@ def main():
         help="mean and standard deviation used to normalize spectrogram when training fastspeech2."
     )
     parser.add_argument(
-        "--pwg-config",
-        type=str,
-        help="parallel wavegan config file to overwrite default config.")
+        "--pwg-config", type=str, help="parallel wavegan config file.")
     parser.add_argument(
         "--pwg-params",
         type=str,

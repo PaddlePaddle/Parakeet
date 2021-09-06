@@ -8,7 +8,7 @@ python3 synthesize.py \
   --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
   --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
   --test-metadata=dump/test/norm/metadata.jsonl \
-  --output-dir=exp/debug/test \
+  --output-dir=exp/default/test \
   --device="gpu" \
   --phones-dict=dump/phone_id_map.txt \
   --speaker-dict=dump/speaker_id_map.txt
