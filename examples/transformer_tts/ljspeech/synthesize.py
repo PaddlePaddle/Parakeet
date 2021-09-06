@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,91 +13,132 @@
 # limitations under the License.
 
 import argparse
+import logging
 from pathlib import Path
 
+import jsonlines
 import numpy as np
 import paddle
-from matplotlib import pyplot as plt
+import soundfile as sf
+import yaml
+from yacs.config import CfgNode
+from parakeet.datasets.data_table import DataTable
+from parakeet.models.transformer_tts_new import TransformerTTS
+from parakeet.models.transformer_tts_new import TransformerTTSInference
+from parakeet.models.waveflow import ConditionalWaveFlow
+from parakeet.modules.normalizer import ZScore
+from parakeet.utils import layer_tools
 
-from parakeet.frontend import English
-from parakeet.models.transformer_tts import TransformerTTS
-from parakeet.utils import display
 
-from config import get_cfg_defaults
+def evaluate(args, acoustic_model_config, vocoder_config):
+    # dataloader has been too verbose
+    logging.getLogger("DataLoader").disabled = True
 
+    # construct dataset for evaluation
+    with jsonlines.open(args.test_metadata, 'r') as reader:
+        test_metadata = list(reader)
+    test_dataset = DataTable(data=test_metadata, fields=["utt_id", "text"])
 
-def main(config, args):
-    paddle.set_device(args.device)
+    with open(args.phones_dict, "r") as f:
+        phn_id = [line.strip().split() for line in f.readlines()]
+    vocab_size = len(phn_id)
+    print("vocab_size:", vocab_size)
+    odim = acoustic_model_config.n_mels
+    model = TransformerTTS(
+        idim=vocab_size, odim=odim, **acoustic_model_config["model"])
 
-    # model
-    frontend = English()
-    model = TransformerTTS.from_pretrained(frontend, config,
-                                           args.checkpoint_path)
+    model.set_state_dict(
+        paddle.load(args.transformer_tts_checkpoint)["main_params"])
     model.eval()
+    # remove ".pdparams" in waveflow_checkpoint
+    vocoder_checkpoint_path = args.waveflow_checkpoint[:-9] if args.waveflow_checkpoint.endswith(
+        ".pdparams") else args.waveflow_checkpoint
+    vocoder = ConditionalWaveFlow.from_pretrained(vocoder_config,
+                                                  vocoder_checkpoint_path)
+    layer_tools.recursively_remove_weight_norm(vocoder)
+    vocoder.eval()
+    print("model done!")
 
-    # inputs
-    input_path = Path(args.input).expanduser()
-    with open(input_path, "rt") as f:
-        sentences = f.readlines()
+    stat = np.load(args.transformer_tts_stat)
+    mu, std = stat
+    mu = paddle.to_tensor(mu)
+    std = paddle.to_tensor(std)
+    transformer_tts_normalizer = ZScore(mu, std)
 
-    output_dir = Path(args.output).expanduser()
+    transformer_tts_inferencce = TransformerTTSInference(
+        transformer_tts_normalizer, model)
+
+    output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for i, sentence in enumerate(sentences):
-        if args.verbose:
-            print("text: ", sentence)
-            print("phones: ", frontend.phoneticize(sentence))
-        text_ids = paddle.to_tensor(frontend(sentence))
-        text_ids = paddle.unsqueeze(text_ids, 0)  # (1, T)
+    for datum in test_dataset:
+        utt_id = datum["utt_id"]
+        text = paddle.to_tensor(datum["text"])
 
         with paddle.no_grad():
-            outputs = model.infer(text_ids, verbose=args.verbose)
+            mel = transformer_tts_inferencce(text)
+            mel = paddle.to_tensor(mel).unsqueeze(0)
+            # mel shape is (T, feats) and waveflow's input shape is (batch, feats, T)
+            mel = mel.transpose([0, 2, 1])
+            # wavflow's output shape is (B, T)
+            wav = vocoder.infer(mel)[0]
+            print("wav:", wav)
 
-        mel_output = outputs["mel_output"][0].numpy()
-        cross_attention_weights = outputs["cross_attention_weights"]
-        attns = np.stack([attn[0].numpy() for attn in cross_attention_weights])
-        attns = np.transpose(attns, [0, 1, 3, 2])
-        display.plot_multilayer_multihead_alignments(attns)
-        plt.savefig(str(output_dir / f"sentence_{i}.png"))
+        sf.write(
+            str(output_dir / (utt_id + ".wav")),
+            wav.numpy(),
+            samplerate=acoustic_model_config.fs)
+        print(f"{utt_id} done!")
 
-        mel_output = mel_output.T  # (C, T)
-        np.save(str(output_dir / f"sentence_{i}"), mel_output)
-        if args.verbose:
-            print("spectrogram saved at {}".format(output_dir /
-                                                   f"sentence_{i}.npy"))
+
+def main():
+    # parse args and config and redirect to train_sp
+    parser = argparse.ArgumentParser(
+        description="Synthesize with transformer tts & waveflow.")
+    parser.add_argument(
+        "--transformer-tts-config",
+        type=str,
+        help="transformer tts config file.")
+    parser.add_argument(
+        "--transformer-tts-checkpoint",
+        type=str,
+        help="transformer tts checkpoint to load.")
+    parser.add_argument(
+        "--transformer-tts-stat",
+        type=str,
+        help="mean and standard deviation used to normalize spectrogram when training transformer tts."
+    )
+    parser.add_argument(
+        "--waveflow-config", type=str, help="waveflow config file.")
+    # not normalize when training waveflow
+    parser.add_argument(
+        "--waveflow-checkpoint", type=str, help="waveflow checkpoint to load.")
+    parser.add_argument(
+        "--phones-dict",
+        type=str,
+        default="phone_id_map.txt",
+        help="phone vocabulary file.")
+
+    parser.add_argument("--test-metadata", type=str, help="test metadata.")
+    parser.add_argument("--output-dir", type=str, help="output dir.")
+    parser.add_argument(
+        "--device", type=str, default="gpu", help="device type to use.")
+    parser.add_argument("--verbose", type=int, default=1, help="verbose.")
+
+    args = parser.parse_args()
+    with open(args.transformer_tts_config) as f:
+        transformer_tts_config = CfgNode(yaml.safe_load(f))
+    with open(args.waveflow_config) as f:
+        waveflow_config = CfgNode(yaml.safe_load(f))
+
+    print("========Args========")
+    print(yaml.safe_dump(vars(args)))
+    print("========Config========")
+    print(transformer_tts_config)
+    print(waveflow_config)
+
+    evaluate(args, transformer_tts_config, waveflow_config)
 
 
 if __name__ == "__main__":
-    config = get_cfg_defaults()
-
-    parser = argparse.ArgumentParser(
-        description="generate mel spectrogram with TransformerTTS.")
-    parser.add_argument(
-        "--config",
-        type=str,
-        metavar="FILE",
-        help="extra config to overwrite the default config")
-    parser.add_argument(
-        "--checkpoint_path", type=str, help="path of the checkpoint to load.")
-    parser.add_argument("--input", type=str, help="path of the text sentences")
-    parser.add_argument("--output", type=str, help="path to save outputs")
-    parser.add_argument(
-        "--device", type=str, default="cpu", help="device type to use.")
-    parser.add_argument(
-        "--opts",
-        nargs=argparse.REMAINDER,
-        help="options to overwrite --config file and the default config, passing in KEY VALUE pairs"
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="print msg")
-
-    args = parser.parse_args()
-    if args.config:
-        config.merge_from_file(args.config)
-    if args.opts:
-        config.merge_from_list(args.opts)
-    config.freeze()
-    print(config)
-    print(args)
-
-    main(config, args)
+    main()
