@@ -1,11 +1,11 @@
 python synthesize_e2e.py \
   --speedyspeech-config=conf/default.yaml \
-  --speedyspeech-checkpoint=exp/debug/checkpoints/snapshot_iter_91800.pdz \
+  --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_91800.pdz \
   --speedyspeech-stat=dump/train/stats.npy \
   --pwg-config=../../parallelwave_gan/baker/conf/default.yaml \
   --pwg-checkpoint=../../parallelwave_gan/baker/exp/default/checkpoints/snapshot_iter_400000.pdz \
   --pwg-stat=../../parallelwave_gan/baker/dump/train/stats.npy \
   --text=sentences.txt \
-  --output-dir=exp/debug/e2e \
-  --inference-dir=exp/debug/inference \
+  --output-dir=exp/default/e2e \
+  --inference-dir=exp/default/inference \
   --device="gpu"
