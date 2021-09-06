@@ -1,16 +1,16 @@
-# FastSpeech2 with BZNSYP
+# FastSpeech2 with the Baker dataset
+This example contains code used to train a [Fastspeech2](https://arxiv.org/abs/2006.04558) model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html).
 
 ## Dataset
 
-### Download and Extract the datasaet.
-Download BZNSYP from it's [Official Website](https://test.data-baker.com/data/index/source).
-### Get MFA result of BZNSYP and Extract it.
+### Download and Extract the datasaet
+Download CSMSC from it's [Official Website](https://test.data-baker.com/data/index/source).
 
+### Get MFA result of CSMSC and Extract it
 We use [MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) to get durations for fastspeech2.
 You can download from here [baker_alignment_tone.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/BZNSYP/with_tone/baker_alignment_tone.tar.gz), or train your own MFA model reference to  [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) of our repo.
 
-### Preprocess the dataset.
-
+### Preprocess the dataset
 Assume the path to the dataset is `~/datasets/BZNSYP`.
 Assume the path to the MFA result of BZNSYP is `./baker_alignment_tone`.
 Run the command below to preprocess the dataset.
@@ -18,11 +18,13 @@ Run the command below to preprocess the dataset.
 ```bash
 ./preprocess.sh
 ```
+
 ## Train the model
 ```bash
 ./run.sh
 ```
 If you want to train fastspeech2 with cpu, please add `--device=cpu` arguments for `python3 train.py` in `run.sh`.
+
 ## Synthesize
 We use [parallel wavegan](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/parallelwave_gan/baker) as the neural vocoder.
 Download pretrained parallel wavegan model from [parallel_wavegan_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/parallel_wavegan_baker_ckpt_0.4.zip) and unzip it.
