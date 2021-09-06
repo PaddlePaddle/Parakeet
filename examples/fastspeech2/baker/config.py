@@ -26,6 +26,3 @@ with open(config_path, 'rt') as f:
 def get_cfg_default():
     config = _C.clone()
     return config
-
-
-print(get_cfg_default())

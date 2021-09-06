@@ -20,7 +20,6 @@ from typing import List
 from typing import Union
 
 import six
-import tqdm
 
 from parakeet.training.extension import Extension
 from parakeet.training.extension import PRIORITY_READER
@@ -122,6 +121,7 @@ class Trainer(object):
                 entry.extension.initialize(self)
 
         update = self.updater.update  # training step
+
         stop_trigger = self.stop_trigger
 
         # display only one progress bar
@@ -135,8 +135,6 @@ class Trainer(object):
             else:
                 max_iteration = self.stop_trigger.limit
 
-        p = tqdm.tqdm(initial=self.updater.state.iteration, total=max_iteration)
-
         try:
             while not stop_trigger(self):
                 self.observation = {}
@@ -146,7 +144,21 @@ class Trainer(object):
                 # updating parameters and state
                 with scope(self.observation):
                     update()
-                    p.update()
+                    batch_read_time = self.updater.batch_read_time
+                    batch_time = self.updater.batch_time
+                    logger = self.updater.logger
+                    logger.removeHandler(self.updater.filehandler)
+                    msg = self.updater.msg
+                    msg = " iter: {}/{}, ".format(self.updater.state.iteration,
+                                                  max_iteration) + msg
+                    msg += ", avg_reader_cost: {:.5f} sec, ".format(
+                        batch_read_time
+                    ) + "avg_batch_cost: {:.5f} sec, ".format(batch_time)
+                    msg += "avg_samples: {}, ".format(
+                        self.updater.
+                        batch_size) + "avg_ips: {:.5f} sequences/sec".format(
+                            self.updater.batch_size / batch_time)
+                    logger.info(msg)
 
                     # execute extension when necessary
                     for name, entry in extensions:

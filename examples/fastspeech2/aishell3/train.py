@@ -23,7 +23,8 @@ import paddle
 from paddle import DataParallel
 from paddle import distributed as dist
 from paddle import nn
-from paddle.io import DataLoader, DistributedBatchSampler
+from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
 from parakeet.datasets.data_table import DataTable
 from parakeet.models.fastspeech2 import FastSpeech2
 from parakeet.training.extensions.snapshot import Snapshot
@@ -35,7 +36,8 @@ import yaml
 
 from batch_fn import collate_aishell3_examples
 from config import get_cfg_default
-from fastspeech2_updater import FastSpeech2Updater, FastSpeech2Evaluator
+from fastspeech2_updater import FastSpeech2Evaluator
+from fastspeech2_updater import FastSpeech2Updater
 
 optim_classes = dict(
     adadelta=paddle.optimizer.Adadelta,
@@ -97,6 +99,7 @@ def train_sp(args, config):
                     "energy": np.load}, )
     with jsonlines.open(args.dev_metadata, 'r') as reader:
         dev_metadata = list(reader)
+
     dev_dataset = DataTable(
         data=dev_metadata,
         fields=[
@@ -154,16 +157,19 @@ def train_sp(args, config):
     optimizer = build_optimizers(model, **config["optimizer"])
     print("optimizer done!")
 
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     updater = FastSpeech2Updater(
         model=model,
         optimizer=optimizer,
         dataloader=train_dataloader,
+        output_dir=output_dir,
         **config["updater"])
 
-    output_dir = Path(args.output_dir)
     trainer = Trainer(updater, (config.max_epoch, 'epoch'), output_dir)
 
-    evaluator = FastSpeech2Evaluator(model, dev_dataloader, **config["updater"])
+    evaluator = FastSpeech2Evaluator(
+        model, dev_dataloader, output_dir=output_dir, **config["updater"])
 
     if dist.get_rank() == 0:
         trainer.extend(evaluator, trigger=(1, "epoch"))
@@ -171,7 +177,7 @@ def train_sp(args, config):
         trainer.extend(VisualDL(writer), trigger=(1, "iteration"))
         trainer.extend(
             Snapshot(max_size=config.num_snapshots), trigger=(1, 'epoch'))
-    print(trainer.extensions)
+    # print(trainer.extensions)
     trainer.run()
 
 

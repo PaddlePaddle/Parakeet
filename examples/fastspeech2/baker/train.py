@@ -35,7 +35,8 @@ import yaml
 
 from batch_fn import collate_baker_examples
 from config import get_cfg_default
-from fastspeech2_updater import FastSpeech2Updater, FastSpeech2Evaluator
+from fastspeech2_updater import FastSpeech2Evaluator
+from fastspeech2_updater import FastSpeech2Updater
 
 optim_classes = dict(
     adadelta=paddle.optimizer.Adadelta,
@@ -108,6 +109,7 @@ def train_sp(args, config):
                     "energy": np.load}, )
 
     # collate function and dataloader
+
     train_sampler = DistributedBatchSampler(
         train_dataset,
         batch_size=config.batch_size,
@@ -145,16 +147,20 @@ def train_sp(args, config):
     optimizer = build_optimizers(model, **config["optimizer"])
     print("optimizer done!")
 
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     updater = FastSpeech2Updater(
         model=model,
         optimizer=optimizer,
         dataloader=train_dataloader,
+        output_dir=output_dir,
         **config["updater"])
 
-    output_dir = Path(args.output_dir)
     trainer = Trainer(updater, (config.max_epoch, 'epoch'), output_dir)
 
-    evaluator = FastSpeech2Evaluator(model, dev_dataloader, **config["updater"])
+    evaluator = FastSpeech2Evaluator(
+        model, dev_dataloader, output_dir=output_dir, **config["updater"])
 
     if dist.get_rank() == 0:
         trainer.extend(evaluator, trigger=(1, "epoch"))
@@ -162,7 +168,7 @@ def train_sp(args, config):
         trainer.extend(VisualDL(writer), trigger=(1, "iteration"))
         trainer.extend(
             Snapshot(max_size=config.num_snapshots), trigger=(1, 'epoch'))
-    print(trainer.extensions)
+    # print(trainer.extensions)
     trainer.run()
 
 
