@@ -69,7 +69,7 @@ python3 synthesize_e2e.py \
   --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
   --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
   --text=../sentences.txt \
-  --output-dir=exp/debug/test_e2e \
+  --output-dir=exp/default/test_e2e \
   --device="gpu" \
   --phones-dict=fastspeech2_nosil_aishell3_ckpt_0.4/phone_id_map.txt \
   --speaker-dict=fastspeech2_nosil_aishell3_ckpt_0.4/speaker_id_map.txt
