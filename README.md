@@ -28,11 +28,11 @@ In order to facilitate exploiting the existing TTS models directly and developin
   - [【GE2E】Generalized End-to-End Loss for Speaker Verification](https://arxiv.org/abs/1710.10467)
 
 ## Updates
-- Aug-31-2021, Add  an example for Chinese Text Frontend. Check [examples/text_frontend](./examples/text_frontend)
-- Aug-23-2021, Add  an example for FastSpeech2 with AISHELL-3. Check [fastspeech2/aishell3](./fastspeech2/aishell3)
-- Aug-3-2021, Add  an example for FastSpeech2 with CSMSC. Check [fastspeech2/baker](./fastspeech2/baker)
-- Jul-19-2021, Add  an example for SpeedySpeech with CSMSC. Check [speedyspeech/baker](./speedyspeech/baker)
-- Jul-01-2021, Add  an example for Parallel WaveGAN with CSMSC. Check [parallelwave_gan/baker](./parallelwave_gan/baker)
+- Aug-31-2021, Add  an example for Chinese Text Frontend. Check [examples/text_frontend](./examples/text_frontend).
+- Aug-23-2021, Add  an example for FastSpeech2 with AISHELL-3. Check [fastspeech2/aishell3](./examples/fastspeech2/aishell3).
+- Aug-3-2021, Add  an example for FastSpeech2 with CSMSC. Check [fastspeech2/baker](./examples/fastspeech2/baker).
+- Jul-19-2021, Add  an example for SpeedySpeech with CSMSC. Check [speedyspeech/baker](./examples/speedyspeech/baker).
+- Jul-01-2021, Add  an example for Parallel WaveGAN with CSMSC. Check [parallelwave_gan/baker](./examples/parallelwave_gan/baker).
 - Jul-01-2021, Add an example for usage of Montreal-Forced-Aligner. Check  [examples/use_mfa](./examples/use_mfa).
 - May-07-2021, Add an example for voice cloning in Chinese. Check [examples/tacotron2_aishell3](./examples/tacotron2_aishell3).
 
@@ -73,8 +73,8 @@ Entries to the introduction, and the launch of training and synthsis for differe
 - [>>> Chinese Text Frontend](./examples/text_frontend)
 - [>>> FastSpeech2](./examples/fastspeech2)
 - [>>> Montreal-Forced-Aligner](./examples/use_mfa)
-- [>>> Parallel WaveGAN](./parallelwave_gan)
-- [>>> SpeedySpeech](.examples/speedyspeech)
+- [>>> Parallel WaveGAN](./examples/parallelwave_gan)
+- [>>> SpeedySpeech](./examples/speedyspeech)
 - [>>> Tacotron2_AISHELL3](./examples/tacotron2_aishell3)
 - [>>> GE2E](./examples/ge2e)
 - [>>> WaveFlow](./examples/waveflow)
