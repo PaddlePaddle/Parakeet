@@ -19,8 +19,8 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 
 In order to facilitate exploiting the existing TTS models directly and developing the new ones, Parakeet selects typical models and provides their reference implementations in PaddlePaddle. Further more, Parakeet abstracts the TTS pipeline and standardizes the procedure of data preprocessing, common modules sharing, model configuration, and the process of training and synthesis. The models supported here include Text FrontEnd, end-to-end Acoustic models and Vocoders:
 
-* Text FrontEnd
-  * Rule based frontend.
+- Text FrontEnd
+  - Rule based Chinese frontend.
 
 - Acoustic Models
   - [【FastSpeech2】FastSpeech 2: Fast and High-Quality End-to-End Text to Speech](https://arxiv.org/abs/2006.04558)
@@ -85,7 +85,7 @@ Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) 
 
 ## Released Model
 
-### AM
+### Acoustic Model
 
 #### FastSpeech2
 1. [fastspeech2_nosil_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech2_nosil_baker_ckpt_0.4.zip)
