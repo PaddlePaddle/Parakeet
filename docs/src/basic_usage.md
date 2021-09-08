@@ -10,7 +10,7 @@ checkpoint_name/
 └──phone_id_map.txt
 ```
 `default.yaml` stores the config used to train the model.
-`snapshot_iter_N.pdz` is the chechpoint file, where `N ` is the steps it has been trained.  
+`snapshot_iter_N.pdz` is the chechpoint file, where `N` is the steps it has been trained.
 `*_stats.npy` is the stats file of feature if  it has been normalized before training.
 `phone_id_map.txt` is the map of  phonemes to phoneme_ids.
 

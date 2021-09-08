@@ -1,20 +1,21 @@
+
 # Advanced Usage
 This sections covers how to extend parakeet by implementing your own models and experiments. Guidelines on implementation are also elaborated.
 
 For the general deep learning experiment, there are several parts to deal with:
 1. Preprocess the data according to the needs of the model, and iterate the dataset by batch.
 2. Define the model, optimizer and other components.
-3. Write out the training process (generally including forward / backward calculation, parameter update, log recording, visualization, periodic, evaluation, etc.).
+3. Write out the training process (generally including forward / backward calculation, parameter update, log recording, visualization, periodic evaluation, etc.).
 5. Configure and run the experiment.
 
 ## Parakeet's Model Components
 In order to balance the reusability and function of models, we divide models into several types according to its characteristics.
 
-For the more commonly used modules that can be used as part of other larger models, we try to implement them as simple and universal as possible, because they will be reused. Modules with trainable parameters are generally implemented as subclasses of `paddle.nn.Layer`. Modules without trainable parameters can be directly implemented as a function, and its input and output are `paddle.Tensor`  or its set.
+For the commonly used modules that can be used as part of other larger models, we try to implement them as simple and universal as possible, because they will be reused. Modules with trainable parameters are generally implemented as subclasses of `paddle.nn.Layer`. Modules without trainable parameters can be directly implemented as a function, and its input and output are `paddle.Tensor`.
 
 Models for a specific task  are implemented as subclasses of `paddle.nn.Layer`. Models could be simple, like a single layer RNN. For complicated models, it is recommended to split the model into different components.
 
-For a encoder-decoder model, it's natural to split it into encoder and decoder. For a model composed of several similar layers, it's natural to extract the sublayer as a separate layer.
+For a seq-to-seq model, it's natural to split it into encoder and decoder. For a model composed of several similar layers, it's natural to extract the sublayer as a separate layer.
 
 There are two common ways to define a model which consists of several modules.
 
@@ -85,11 +86,11 @@ During preprocessing, we can do filtering, We can also save more intermediate fe
 
 Use a list-like way to store metadata and store the file path in it, so that you can not be restricted by the specific storage location of the file. In addition to the file path, other metadata can also be stored in it. For example, the path of the text, the path of the audio, the path of the spectrum, the number of frames, the number of sampling points, and so on.
 
-Then for the path, there are multiple opening methods, , such as `sf.read`, `np.load`, etc., so it's best to use a parameter that can be input, we don't even want to determine the reading method by it's extension, it's best to let the users input it , in this way, users can define their own method to parse the data.
+Then for the path, there are multiple opening methods,  such as `sf.read`, `np.load`, etc., so it's best to use a parameter that can be input, we don't even want to determine the reading method by it's extension, it's best to let the users input it , in this way, users can define their own method to parse the data.
 
-So we learned from the design of `DataFrame`, but our construction method is simpler, only need a `list of dicts`, a dict represents a record, and it's convenient to interact with formats such as `json`, `yaml`. For each selected field, we need to give a parser (called `converter `in the interface), and that's it.
+So we learned from the design of `DataFrame`, but our construction method is simpler, only need a `list of dicts`, a dict represents a record, and it's convenient to interact with formats such as `json`, `yaml`. For each selected field, we need to give a parser (called `converter` in the interface), and that's it.
 
-Then we need to select a format for saving metadata to the hard disk. There are two square brackets when storing the list of records in `json`, which is not convenient for stream reading and writing, so we use `jsonlines`. We don't use `yaml ` because it occupies too many rows when storing the list of records.
+Then we need to select a format for saving metadata to the hard disk. There are two square brackets when storing the list of records in `json`, which is not convenient for stream reading and writing, so we use `jsonlines`. We don't use `yaml` because it occupies too many rows when storing the list of records.
 
 Meanwhile, `cache` is added here, and a multi-process Manager is used to share memory between multiple processes. When `num_workers` is used, it is guaranteed that each sub process will not cache a copy.
 
@@ -242,7 +243,7 @@ def test_reporter_scope():
     assert third == {'third_begin': 3, 'third_end': 4}
 ```
 
-In this way, when we write  modular components, we can directly call `report`.  The caller will decide where to report as long as the it's ready for `OBSERVATION`, then it opens a `scope` and calls the component within this `scope`.
+In this way, when we write  modular components, we can directly call `report`.  The caller will decide where to report as long as it's ready for `OBSERVATION`, then it opens a `scope` and calls the component within this `scope`.
 
  The `Trainer` in Parakeet report the information in this way.
 ```python
@@ -261,7 +262,7 @@ In order to maintain the purity of function and the reusability of code, we abst
 
 We tend to write the forward process of training in `forward()`, but only write to the prediction result, not to the loss. Therefore, this module can be called by a larger module.
 
-However, when we compose an experiment, we need to add some other things, such as training process, regular evaluation, regular saving, visualization and the like. In this process, we will encounter some things that only exist in the training process, such as `optimizer`, `learning rate`, `scheduler`, `visualizer`, etc. These things are not part of the model, they should **NOT** be written in the model code.
+However, when we compose an experiment, we need to add some other things, such as training process, evaluation process, checkpoint saving, visualization and the like. In this process, we will encounter some things that only exist in the training process, such as `optimizer`, `learning rate scheduler`, `visualizer`, etc. These things are not part of the model, they should **NOT** be written in the model code.
 
 We made an abstraction for these intermediate processes, that is, `Updater`, which takes the `model`, `optimizer`, and `data stream` as input, and its function is training. Since there may be differences in training methods of different models, we tend to write a corresponding `Updater` for each model. But this is different from the final training script, there is still a certain degree of encapsulation, just to extract the details of regular saving, visualization, evaluation, etc., and only retain the most basic function, that is,  training the model.
 
@@ -300,19 +301,33 @@ The experimental codes in Parakeet  are generally organized as follows:
 
 ```text
 ├── conf
-│    └── default.yaml    (defalut config)
-├── README.md            (Help information)  
-├── batch_fn.py            (organize metadata into batch)
-├── config.py            (code to read default config)
+│    └── default.yaml   (defalut config)
+├── README.md           (help information)  
+├── batch_fn.py         (organize metadata into batch)
+├── config.py           (code to read default config)
 ├── *_updater.py        (Updater of  a specific model)
-├── preprocess.py        (data preprocessing code)
-├── preprocess.sh        (script to call data preprocessing.py)
+├── preprocess.py       (data preprocessing code)
+├── preprocess.sh       (script to call data preprocessing.py)
 ├── synthesis.py        (synthesis from metadata)
 ├── synthesis.sh        (script to call synthesis.py)
 ├── synthesis_e2e.py    (synthesis from raw text)
 ├── synthesis_e2e.sh    (script to call synthesis_e2e.py)
 ├── train.py            (train code)
-└── run.sh                (script to call train.py)
+└── run.sh              (script to call train.py)
+```
+
+We add a named argument. `--output-dir` to each training script to specify the output directory. The directory structure is as follows, It's best for developers to follow this specification:
+```text
+exp/default/
+├── checkpoints/
+│   ├── records.jsonl        (record file)
+│   └── snapshot_iter_*.pdz  (checkpoint files)
+├── config.yaml              (config fille of this experiment)
+├── vdlrecords.*.log         (visualdl record file)
+├── worker_*.log             (text logging, one file per process)
+├── validation/              (output dir during training, information_iter_*/ is the output of each step, if necessary)
+├── inference/               (output dir of exported static graph model, which is only used in the final stage of training, if implemented)
+└── test/                    (output dir of synthesis results)
 ```
 
 You can view the examples we provide in `Parakeet/examples`. These experiments are provided to users as examples which can be run directly. Users are welcome to add new models and experiments and contribute code to Parakeet.
