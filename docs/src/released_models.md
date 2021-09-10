@@ -1,5 +1,5 @@
 # Released Models
-TTS system mainly includes three modules: `text frontend`, `acoustic model` and `vocoder`. We introduce a rule based Chinese text frontend in [cn_text_frontend.md](./cn_text_frontend.md). Here, we will introduce acoustic models and vocoders, which are trainable models.
+TTS system mainly includes three modules: `text frontend`, `Acoustic model` and `Vocoder`. We introduce a rule based Chinese text frontend in [cn_text_frontend.md](./cn_text_frontend.md). Here, we will introduce acoustic models and vocoders, which are trainable models.
 
 The main processes of TTS include:
 1. Convert the original text into characters/phonemes, through `text frontend` module.
@@ -10,7 +10,6 @@ A simple text frontend module can be implemented by rules. Acoustic models and v
 
 ## Acoustic Models
 ### Modeling Objectives of Acoustic Models
-
 Modeling the mapping relationship between text sequences and speech features：
 ```text
 text X = {x1,...,xM}
@@ -55,7 +54,7 @@ At present, there are two mainstream acoustic model structures.
     - CBHG postprocess.
     - Vocoder: Griffin-Lim.
 <div align="left">
-  <img src="../images/tacotron.png" width=500 /> <br>
+  <img src="../images/tacotron.png" width=700 /> <br>
 </div>
 
 **Advantage of Tacotron:**
@@ -103,17 +102,17 @@ You can find Parakeet's tacotron2 example at `Parakeet/examples/tacotron2`.
 - Training is relatively inefficient.
 - The attention is not robust enough and the stability is poor.
 
-Transformer TTS is a combination of Tacotron2 and [Transformer](https://arxiv.org/abs/1706.03762).
+Transformer TTS is a combination of Tacotron2 and Transformer.
 
 #### Transformer
-Transformer is a seq2seq model based entirely on attention mechanism.
+ [Transformer](https://arxiv.org/abs/1706.03762) is a seq2seq model based entirely on attention mechanism.
 
 **Features of Transformer:**
 - Encoder.
-    - N blocks based on self-attention mechanism.
+    - `N` blocks based on self-attention mechanism.
     - Positional Encoding.
 - Decoder.
-    - N blocks based on self-attention mechanism.
+    - `N` blocks based on self-attention mechanism.
     - Add Mask to the self-attention in blocks to cover up the information after `t` step.
     - Attentions between encoder and decoder.
     - Positional Encoding.
@@ -168,7 +167,7 @@ Instead of using the encoder-attention-decoder based architecture as adopted by 
 - Length regulator.
     - Use real phoneme durations to expand output frame of encoder during training.
 - Non autoregressive decode.
-    -  Improve generation efficienc.y.
+    -  Improve generation efficiency.
 
 **Length predictor:**
 - Pretrain a TransformerTTS model.
@@ -177,7 +176,7 @@ Instead of using the encoder-attention-decoder based architecture as adopted by 
 - Use the output of encoder to predict the phoneme durations and calculate the MSE loss.
 - Use real phoneme durations to expand output frame of encoder during training.
 - Use phoneme durations predicted by the duration model to expand the frame during prediction.
-    - Attentrion can not control phoneme durations. The explicit duration modeling can control durations through duration coefficient (duration coefficient is 1 during training).
+    - Attentrion can not control phoneme durations. The explicit duration modeling can control durations through duration coefficient (duration coefficient is `1` during training).
 
 **Advantages of non-autoregressive decoder:**
 - The built-in duration model of the seq2seq model has converted the input length `M` to the output length `N`.
@@ -227,8 +226,59 @@ You can find Parakeet's FastSpeech2/FastPitch example at `Parakeet/examples/fast
   <img src="../images/speedyspeech.png" width=500 /> <br>
 </div>
 
-## Vocoders
+You can find Parakeet's SpeedySpeech example at `Parakeet/examples/speedyspeech/baker`.
 
-### Parallel WaveGAN
+## Vocoders
+In speech synthesis, the main task of the vocoder is to convert the spectral parameters predicted by the acoustic model into the final speech waveform.
+
+Taking into account the short-term change frequency of the waveform, the acoustic model usually avoids direct modeling of the speech waveform, but firstly models the spectral features extracted from the speech waveform, and then reconstructs the waveform by the decoding part of the vocoder.
+
+A complete vocoder usually consists of a pair of encoders and decoders for speech analysis and synthesis. The encoder estimate the parameters, and then the decoder restores the speech.
+
+Vocoders based on neural networks usually only have a decoder, which learns the mapping relationship from spectral features to waveforms through training data.
+
+### Categories of neural vocodes
+Consistent with the mainstream method of generating models, neural vocoders are divided into Flow-based vocoders and GAN-based vocoders according to different modeling methods.
+
+**Flow-based vocoders:**
+- Autoregressive Flow: WaveNet, WaveRNN, LPCNet
+- Inverse Autoregressive Flow: Parallel WaveNet
+- Bipartite Transformation: WaveGlow, WaveFlow
+
+**GAN-based vocoders:**
+- Parallel WaveGAN, MelGAN, Multi-band MelGAN, HiFiGAN
+
+**Motivations of GAN-based vocoders:**
+- Modeling speech signal by estimating probability distribution usually has high requirements for the expression ability of the model itself. In addition, specific assumptions need to be made about the distribution of waveforms.
+- Although autoregressive flow neural vocoders can obtain high-quality synthetic speech, such models usually have a **slow generation speed**. Substantial optimization in the engineering phase is required.
+- The training of inverse autoregressive flow vocoders is complex, and they also require the modeling capability of long term context information.
+- Vocoders based on Bipartite Transformation converge slowly and are complex.
+- GAN-based vocoders don't need to make assumptions about the speech distribution, and learn through confrontation.
+
+Here, we introduce a Flow-based vocoder WaveFlow and a GAN-based vocoder Parallel WaveGAN.
 
 ### WaveFlow
+ [WaveFlow](https://arxiv.org/abs/1912.01219) is proposed by Baidu Research.
+
+**Features of WaveFlow:**
+- It can synthesize 22.05 kHz high-fidelity speech around 40x faster than real-time on a Nvidia V100 GPU without engineered inference kernels, which is faster than [WaveGlow](https://github.com/NVIDIA/waveglow) and serveral orders of magnitude faster than WaveNet.
+- It is a small-footprint flow-based model for raw audio. It has only 5.9M parameters, which is 15x smalller than WaveGlow (87.9M).
+- It is directly trained with maximum likelihood without probability density distillation and auxiliary losses as used in [Parallel WaveNet](https://arxiv.org/abs/1711.10433) and [ClariNet](https://openreview.net/pdf?id=HklY120cYm), which simplifies the training pipeline and reduces the cost of development.
+
+You can find Parakeet's WaveFlow example at `Parakeet/examples/waveflow`.
+
+### Parallel WaveGAN
+[Parallel WaveGAN](https://arxiv.org/abs/1910.11480) trains a non-autoregressive WaveNet variant as a generator in a GAN based training method.
+
+**Features of Parallel WaveGAN:**
+
+- Use non-causal convolution instead of causal convolution.
+- The input is random Gaussian white noise.
+- The model is non-autoregressive both in training and prediction, which is fast
+-  Multi-resolution STFT loss.
+
+<div align="left">
+  <img src="../images/pwg.png" width=600 /> <br>
+</div>
+
+You can find Parakeet's Parallel WaveGAN example at `Parakeet/examples/parallelwave_gan/baker`.
