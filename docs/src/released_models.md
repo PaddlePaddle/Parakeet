@@ -142,7 +142,7 @@ Transformer TTS is a seq2seq acoustic model based on Transformer and Tacotron2.
 </div>
 
 **Disadvantages of Transformer TTS:**
-- The modeling ability of losition encoding for timing information is still relatively weak.
+- The ability of position encoding for timing information is still relatively weak.
 - The ability to perceive local information is weak, and local information is more related to pronunciation.
 - Stability is worse than Tacotron2.
 
@@ -212,7 +212,7 @@ FastSpeech2 is similar to FastPitch but introduces more variation information of
   <img src="../images/fastspeech2.png" width=800 /> <br>
 </div>
 
-You can find Parakeet's FastSpeech2/FastPitch example at `Parakeet/examples/fastspeech2`, We use token-averaged value introduced in FastPitch rather than frame level ones in FastSpeech2.
+You can find Parakeet's FastSpeech2/FastPitch example at `Parakeet/examples/fastspeech2`, We use token-averaged pitch and energy values introduced in FastPitch rather than frame level ones in FastSpeech2.
 
 ### SpeedySpeech
 [SpeedySpeech](https://arxiv.org/abs/2008.03802) simplify the teacher-student architecture of FastSpeech and provide a fast and stable training procedure.
@@ -233,27 +233,38 @@ In speech synthesis, the main task of the vocoder is to convert the spectral par
 
 Taking into account the short-term change frequency of the waveform, the acoustic model usually avoids direct modeling of the speech waveform, but firstly models the spectral features extracted from the speech waveform, and then reconstructs the waveform by the decoding part of the vocoder.
 
-A complete vocoder usually consists of a pair of encoders and decoders for speech analysis and synthesis. The encoder estimate the parameters, and then the decoder restores the speech.
+A vocoder usually consists of a pair of encoders and decoders for speech analysis and synthesis. The encoder estimate the parameters, and then the decoder restores the speech.
 
-Vocoders based on neural networks usually only have a decoder, which learns the mapping relationship from spectral features to waveforms through training data.
+Vocoders based on neural networks usually is speech synthesis, which learns the mapping relationship from spectral features to waveforms through training data.
 
 ### Categories of neural vocodes
-Consistent with the mainstream method of generating models, neural vocoders are divided into Flow-based vocoders and GAN-based vocoders according to different modeling methods.
+- Autoregression
+    - WaveNet
+    - WaveRNN
+    - LPCNet
 
-**Flow-based vocoders:**
-- Autoregressive Flow: WaveNet, WaveRNN, LPCNet
-- Inverse Autoregressive Flow: Parallel WaveNet
-- Bipartite Transformation: WaveGlow, WaveFlow
-
-**GAN-based vocoders:**
-- Parallel WaveGAN, MelGAN, Multi-band MelGAN, HiFiGAN
+- Flow
+    - **WaveFlow**
+    - WaveGlow
+    - FloWaveNet
+    - Parallel WaveNet
+- GAN
+    - WaveGAN
+    - **Parallel WaveGAN**
+    - MelGAN
+    - HiFi-GAN
+- VAE
+    - Wave-VAE
+- Diffusion
+    - WaveGrad
+    - DiffWave
 
 **Motivations of GAN-based vocoders:**
 - Modeling speech signal by estimating probability distribution usually has high requirements for the expression ability of the model itself. In addition, specific assumptions need to be made about the distribution of waveforms.
-- Although autoregressive flow neural vocoders can obtain high-quality synthetic speech, such models usually have a **slow generation speed**. Substantial optimization in the engineering phase is required.
+- Although autoregressive neural vocoders can obtain high-quality synthetic speech, such models usually have a **slow generation speed**.
 - The training of inverse autoregressive flow vocoders is complex, and they also require the modeling capability of long term context information.
 - Vocoders based on Bipartite Transformation converge slowly and are complex.
-- GAN-based vocoders don't need to make assumptions about the speech distribution, and learn through confrontation.
+- GAN-based vocoders don't need to make assumptions about the speech distribution, and train through adversarial learning.
 
 Here, we introduce a Flow-based vocoder WaveFlow and a GAN-based vocoder Parallel WaveGAN.
 
