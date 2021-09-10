@@ -1,10 +1,11 @@
 # Chinese Rule Based Text Frontend
-TTS system mainly includes three modules: `text frontend`, `acoustic model` and `vocoder`. We provide a complete Chinese text frontend module in Parakeet, see exapmle in `Parakeet/examples/text_frontend/`.
+TTS system mainly includes three modules: `text frontend`, `Acoustic model` and `Vocoder`. We provide a complete Chinese text frontend module in Parakeet, see exapmle in `Parakeet/examples/text_frontend/`.
 
 A text frontend module mainly includes:
  - Text Normalization (TN)
+ - Text Segmentation
  - Word Segmentation (mainly in Chinese)
- - Part-of-speech
+ - Part-of-Speech
  - Prosody
  - G2P (Grapheme-to-Phoneme, include Polyphone and tone sandhi, etc.)
  - Linguistic features
