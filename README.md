@@ -8,8 +8,8 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 ## News  <img src="./docs/images/news_icon.png" width="40"/>
 
 - Aug-31-2021, Chinese Text Frontend. Check [examples/text_frontend](./examples/text_frontend).
-- Aug-23-2021, FastSpeech2 with AISHELL-3. Check [fastspeech2/aishell3](./examples/fastspeech2/aishell3).
-- Aug-3-2021,  FastSpeech2 with CSMSC. Check [fastspeech2/baker](./examples/fastspeech2/baker).
+- Aug-23-2021, FastSpeech2/FastPitch with AISHELL-3. Check [fastspeech2/aishell3](./examples/fastspeech2/aishell3).
+- Aug-3-2021,  FastSpeech2/FastPitch with CSMSC. Check [fastspeech2/baker](./examples/fastspeech2/baker).
 - Jul-19-2021, SpeedySpeech with CSMSC. Check [speedyspeech/baker](./examples/speedyspeech/baker).
 - Jul-01-2021, Parallel WaveGAN with CSMSC. Check [parallelwave_gan/baker](./examples/parallelwave_gan/baker).
 - Jul-01-2021, Montreal-Forced-Aligner. Check  [examples/use_mfa](./examples/use_mfa).
@@ -19,8 +19,8 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 
 In order to facilitate exploiting the existing TTS models directly and developing the new ones, Parakeet selects typical models and provides their reference implementations in PaddlePaddle. Further more, Parakeet abstracts the TTS pipeline and standardizes the procedure of data preprocessing, common modules sharing, model configuration, and the process of training and synthesis. The models supported here include Text FrontEnd, end-to-end Acoustic models and Vocoders:
 
-* Text FrontEnd
-  * Rule based frontend.
+- Text FrontEnd
+  - Rule based Chinese frontend.
 
 - Acoustic Models
   - [【FastSpeech2】FastSpeech 2: Fast and High-Quality End-to-End Text to Speech](https://arxiv.org/abs/2006.04558)
@@ -69,7 +69,7 @@ See [install](https://paddle-parakeet.readthedocs.io/en/latest/install.html) for
 Entries to the introduction, and the launch of training and synthsis for different example models:
 
 - [>>> Chinese Text Frontend](./examples/text_frontend)
-- [>>> FastSpeech2](./examples/fastspeech2)
+- [>>> FastSpeech2/FastPitch](./examples/fastspeech2)
 - [>>> Montreal-Forced-Aligner](./examples/use_mfa)
 - [>>> Parallel WaveGAN](./examples/parallelwave_gan)
 - [>>> SpeedySpeech](./examples/speedyspeech)
@@ -85,9 +85,9 @@ Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) 
 
 ## Released Model
 
-### AM
+### Acoustic Model
 
-#### FastSpeech2
+#### FastSpeech2/FastPitch
 1. [fastspeech2_nosil_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech2_nosil_baker_ckpt_0.4.zip)
 2. [fastspeech2_nosil_aishell3_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech2_nosil_aishell3_ckpt_0.4.zip)
 
