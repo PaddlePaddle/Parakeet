@@ -18,7 +18,6 @@ import paddle.nn.functional as F
 from paddle import nn
 
 
-# postnet 应该放在这
 class Prenet(nn.Layer):
     """Prenet module for decoder of Spectrogram prediction network.
 
@@ -57,7 +56,6 @@ class Prenet(nn.Layer):
         super().__init__()
         self.dropout_rate = dropout_rate
         self.prenet = nn.LayerList()
-        self.dropout = nn.Dropout(self.dropout_rate)
         for layer in six.moves.range(n_layers):
             n_inputs = idim if layer == 0 else n_units
             self.prenet.append(

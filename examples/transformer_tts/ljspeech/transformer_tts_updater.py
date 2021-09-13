@@ -54,6 +54,11 @@ class TransformerTTSUpdater(StandardUpdater):
         self.guided_attn_loss_lambda = guided_attn_loss_lambda
         self.modules_applied_guided_attn = modules_applied_guided_attn
 
+        self.criterion = TransformerTTSLoss(
+            use_masking=self.use_masking,
+            use_weighted_masking=self.use_weighted_masking,
+            bce_pos_weight=self.bce_pos_weight)
+
         log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
         self.filehandler = logging.FileHandler(str(log_file))
         logger.addHandler(self.filehandler)
@@ -70,10 +75,6 @@ class TransformerTTSUpdater(StandardUpdater):
             speech=batch["speech"],
             speech_lengths=batch["speech_lengths"], )
 
-        self.criterion = TransformerTTSLoss(
-            use_masking=self.use_masking,
-            use_weighted_masking=self.use_weighted_masking,
-            bce_pos_weight=self.bce_pos_weight)
         if self.use_guided_attn_loss:
             self.attn_criterion = GuidedMultiHeadAttentionLoss(
                 sigma=self.guided_attn_loss_sigma,
@@ -86,6 +87,7 @@ class TransformerTTSUpdater(StandardUpdater):
             ys=ys,
             labels=labels,
             olens=olens)
+
         report("train/bce_loss", float(bce_loss))
         report("train/l1_loss", float(l1_loss))
         report("train/l2_loss", float(l2_loss))
@@ -201,6 +203,11 @@ class TransformerTTSEvaluator(StandardEvaluator):
         self.guided_attn_loss_lambda = guided_attn_loss_lambda
         self.modules_applied_guided_attn = modules_applied_guided_attn
 
+        self.criterion = TransformerTTSLoss(
+            use_masking=self.use_masking,
+            use_weighted_masking=self.use_weighted_masking,
+            bce_pos_weight=self.bce_pos_weight)
+
         log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
         self.filehandler = logging.FileHandler(str(log_file))
         logger.addHandler(self.filehandler)
@@ -215,10 +222,7 @@ class TransformerTTSEvaluator(StandardEvaluator):
             text_lengths=batch["text_lengths"],
             speech=batch["speech"],
             speech_lengths=batch["speech_lengths"])
-        self.criterion = TransformerTTSLoss(
-            use_masking=self.use_masking,
-            use_weighted_masking=self.use_weighted_masking,
-            bce_pos_weight=self.bce_pos_weight)
+
         if self.use_guided_attn_loss:
             self.attn_criterion = GuidedMultiHeadAttentionLoss(
                 sigma=self.guided_attn_loss_sigma,
@@ -231,6 +235,7 @@ class TransformerTTSEvaluator(StandardEvaluator):
             ys=ys,
             labels=labels,
             olens=olens)
+
         report("eval/bce_loss", float(bce_loss))
         report("eval/l1_loss", float(l1_loss))
         report("eval/l2_loss", float(l2_loss))
@@ -310,7 +315,6 @@ class TransformerTTSEvaluator(StandardEvaluator):
                 need_dict['encoder'].embed[-1].alpha)
             losses_dict["decoder_alpha"] = float(
                 need_dict['decoder'].embed[-1].alpha)
-
         report("eval/loss", float(loss))
         losses_dict["loss"] = float(loss)
         self.msg += ', '.join('{}: {:>.6f}'.format(k, v)
