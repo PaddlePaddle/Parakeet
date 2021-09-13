@@ -7,6 +7,6 @@ python3 synthesize_e2e.py \
   --waveflow-config=waveflow_ljspeech_ckpt_0.3/config.yaml \
   --waveflow-checkpoint=waveflow_ljspeech_ckpt_0.3/step-2000000.pdparams \
   --text=../sentences.txt \
-  --output-dir=exp_eos_bce_2/default/test_e2e \
+  --output-dir=exp/default/test_e2e \
   --device="gpu" \
   --phones-dict=dump/phone_id_map.txt

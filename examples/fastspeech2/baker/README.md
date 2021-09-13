@@ -1,4 +1,3 @@
-
 # FastSpeech2 with the Baker dataset
 This example contains code used to train a [Fastspeech2](https://arxiv.org/abs/2006.04558) model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html).
 
@@ -22,13 +21,13 @@ When it is done. A `dump` folder is created in the current directory. The struct
 
 ```text
 dump
-|-- dev
-│   ├──norm
+├── dev
+│   ├── norm
 │   └── raw
 ├── phone_id_map.txt
 ├── speaker_id_map.txt
 ├── test
-│   ├──norm
+│   ├── norm
 │   └── raw
 └── train
     ├── energy_stats.npy
@@ -39,7 +38,7 @@ dump
 ```
 The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of which contains a `norm` and `raw` sub folder. The raw folder contains speech、pitch and energy features of each utterances, while the norm folder contains normalized ones. The statistics used to normalize features are computed from the training set, which is located in `dump/train/*_stats.npy`.
 
-Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features and id of each utterance.
+Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
 ## Train the mode
 ```bash

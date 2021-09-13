@@ -1,4 +1,3 @@
-
 # FastSpeech2 with AISHELL-3
 This example contains code used to train a [Fastspeech2](https://arxiv.org/abs/2006.04558) model with [AISHELL-3](http://www.aishelltech.com/aishell_3).
 
@@ -29,13 +28,13 @@ Run the command below to preprocess the dataset.
 When it is done. A `dump` folder is created in the current directory. The structure of the dump folder is listed below.
 ```text
 dump
-|-- dev
-│   ├──norm
+├── dev
+│   ├── norm
 │   └── raw
 ├── phone_id_map.txt
 ├── speaker_id_map.txt
 ├── test
-│   ├──norm
+│   ├── norm
 │   └── raw
 └── train
     ├── energy_stats.npy
@@ -46,7 +45,7 @@ dump
 ```
 The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of which contains a `norm` and `raw` sub folder. The raw folder contains speech、pitch and energy features of each utterances, while the norm folder contains normalized ones. The statistics used to normalize features are computed from the training set, which is located in `dump/train/*_stats.npy`.
 
-Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features and id of each utterance.
+Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
 ## Train the model
 ```bash
