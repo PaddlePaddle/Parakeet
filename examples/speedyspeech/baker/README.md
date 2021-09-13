@@ -17,18 +17,18 @@ When it is done. A `dump` folder is created in the current directory. The struct
 ```text
 dump
 ├── dev
-│   ├── norm
-│   └── raw
+│   ├── norm
+│   └── raw
 ├── test
-│   ├── norm
-│   └── raw
+│   ├── norm
+│   └── raw
 └── train
     ├── norm
     ├── raw
     └── stats.npy
 ```
 
-The dataset is split into 3 parts, namely train, dev and test, each of which contains a `norm` and `raw` sub folder. The raw folder contains log magnitude of mel spectrogram of each utterances, while the norm folder contains normalized spectrogram. The statistics used to normalize the spectrogram is computed from the training set, which is located in `dump/train/stats.npy`.
+The dataset is split into 3 parts, namely `train`, `dev` and `test`, each of which contains a `norm` and `raw` sub folder. The raw folder contains log magnitude of mel spectrogram of each utterances, while the norm folder contains normalized spectrogram. The statistics used to normalize the spectrogram is computed from the training set, which is located in `dump/train/stats.npy`.
 
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations, path of spectrogram, and id of each utterance.
 
@@ -101,8 +101,10 @@ When training is done or pretrained models are downloaded. You can run `synthesi
 usage: synthesize_e2e.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
                          [--speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT]
                          [--speedyspeech-stat SPEEDYSPEECH_STAT]
-                         [--pwg-config PWG_CONFIG] [--pwg-checkpoint PWG_CHECKPOINT]
+                         [--pwg-config PWG_CONFIG]
+                         [--pwg-checkpoint PWG_CHECKPOINT]
                          [--pwg-stat PWG_STAT] [--text TEXT]
+                         [--phones-dict PHONES_DICT] [--tones-dict TONES_DICT]
                          [--output-dir OUTPUT_DIR]
                          [--inference-dir INFERENCE_DIR] [--device DEVICE]
                          [--verbose VERBOSE]
@@ -125,6 +127,10 @@ optional arguments:
   --pwg-stat PWG_STAT   mean and standard deviation used to normalize
                         spectrogram when training speedyspeech.
   --text TEXT           text to synthesize, a 'utt_id sentence' pair per line
+  --phones-dict PHONES_DICT
+                        phone vocabulary file.
+  --tones-dict TONES_DICT
+                        tone vocabulary file.
   --output-dir OUTPUT_DIR
                         output dir
   --inference-dir INFERENCE_DIR
@@ -134,8 +140,10 @@ optional arguments:
 ```
 
 1. `--speedyspeech-config`, `--speedyspeech-checkpoint`, `--speedyspeech-stat` are arguments for speedyspeech, which correspond to the 3 files in the speedyspeech pretrained model.
-2. `--pwg-config`, `--pwg-checkpoint`, `--pwg-stat` are arguments for speedyspeech, which correspond to the 3 files in the parallel wavegan pretrained model.
+2. `--pwg-config`, `--pwg-checkpoint`, `--pwg-stat` are arguments for parallel wavegan, which correspond to the 3 files in the parallel wavegan pretrained model.
 3. `--text` is the text file, which contains sentences to synthesize.
 4. `--output-dir` is the directory to save synthesized audio files.
 5. `--inference-dir` is the directory to save exported model, which can be used with paddle infernece.
 6. `--device` is the type of device to run synthesis, 'cpu' and 'gpu' are supported. 'gpu' is recommended for faster synthesis.
+6. `phones-dict` is the path of the phone vocabulary file.
+7. `tones-dict` is the path of the tone vocabulary file.

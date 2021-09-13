@@ -31,7 +31,7 @@ from parakeet.models.parallel_wavegan import PWGGenerator
 from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 
-from frontend import text_analysis
+from frontend import Frontend
 
 
 def evaluate(args, speedyspeech_config, pwg_config):
@@ -91,14 +91,30 @@ def evaluate(args, speedyspeech_config, pwg_config):
     paddle.jit.save(pwg_inference, os.path.join(args.inference_dir, "pwg"))
     pwg_inference = paddle.jit.load(os.path.join(args.inference_dir, "pwg"))
 
+    frontend = Frontend(args.phones_dict, args.tones_dict)
+    print("frontend done!")
+
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for utt_id, sentence in sentences:
-        phones, tones = text_analysis(sentence)
+        input_ids = frontend.get_input_ids(
+            sentence, merge_sentences=True, get_tone_ids=True)
+        phone_ids = input_ids["phone_ids"]
+        tone_ids = input_ids["tone_ids"]
 
-        with paddle.no_grad():
-            wav = pwg_inference(speedyspeech_inference(phones, tones))
+        flags = 0
+        for i in range(len(phone_ids)):
+            part_phone_ids = phone_ids[i]
+            part_tone_ids = tone_ids[i]
+            with paddle.no_grad():
+                mel = speedyspeech_inference(part_phone_ids, part_tone_ids)
+                temp_wav = pwg_inference(mel)
+                if flags == 0:
+                    wav = temp_wav
+                    flags = 1
+                else:
+                    wav = paddle.concat([wav, temp_wav])
         sf.write(
             output_dir / (utt_id + ".wav"),
             wav.numpy(),
@@ -136,6 +152,16 @@ def main():
         "--text",
         type=str,
         help="text to synthesize, a 'utt_id sentence' pair per line")
+    parser.add_argument(
+        "--phones-dict",
+        type=str,
+        default="phones.txt",
+        help="phone vocabulary file.")
+    parser.add_argument(
+        "--tones-dict",
+        type=str,
+        default="tones.txt",
+        help="tone vocabulary file.")
     parser.add_argument("--output-dir", type=str, help="output dir")
     parser.add_argument(
         "--inference-dir", type=str, help="dir to save inference models")

@@ -183,8 +183,9 @@ def train_sp(args, config):
 
 def main():
     # parse args and config and redirect to train_sp
-    parser = argparse.ArgumentParser(description="Train a FastSpeech2 "
-                                     "model with Baker Mandrin TTS dataset.")
+    parser = argparse.ArgumentParser(
+        description="Train a FastSpeech2 "
+        "model with AISHELL-3 Mandrin TTS dataset.")
     parser.add_argument(
         "--config", type=str, help="config file to overwrite default config.")
     parser.add_argument("--train-metadata", type=str, help="training data.")

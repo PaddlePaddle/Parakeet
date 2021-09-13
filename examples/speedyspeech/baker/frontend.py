@@ -13,82 +13,87 @@
 # limitations under the License.
 
 import re
-from pathlib import Path
+from typing import Dict
+from typing import List
 
 import numpy as np
 import paddle
-from pypinyin import lazy_pinyin, Style
-import jieba
-import phkit
-phkit.initialize()
+
+from parakeet.frontend.cn_frontend import Frontend as cnFrontend
 from parakeet.frontend.vocab import Vocab
 
-file_dir = Path(__file__).parent.resolve()
-with open(file_dir / "phones.txt", 'rt') as f:
-    phones = [line.strip() for line in f.readlines()]
 
-with open(file_dir / "tones.txt", 'rt') as f:
-    tones = [line.strip() for line in f.readlines()]
-voc_phones = Vocab(phones, start_symbol=None, end_symbol=None)
-voc_tones = Vocab(tones, start_symbol=None, end_symbol=None)
+class Frontend():
+    def __init__(self, phone_vocab_path=None, tone_vocab_path=None):
+        self.frontend = cnFrontend()
 
+        if phone_vocab_path:
+            with open(phone_vocab_path, 'rt') as f:
+                phones = [line.strip() for line in f.readlines()]
+            self.vocab_phones = Vocab(
+                phones, start_symbol=None, end_symbol=None)
 
-def segment(sentence):
-    segments = re.split(r'[：，；。？！]', sentence)
-    segments = [seg for seg in segments if len(seg)]
-    return segments
+        if tone_vocab_path:
+            with open(tone_vocab_path, 'rt') as f:
+                tones = [line.strip() for line in f.readlines()]
+            self.vocab_tones = Vocab(tones, start_symbol=None, end_symbol=None)
 
+    def _p2id(self, phonemes: List[str]) -> np.array:
+        phone_ids = [self.vocab_phones.lookup(item) for item in phonemes]
+        return np.array(phone_ids, np.int64)
 
-def g2p(sentence):
-    segments = segment(sentence)
-    phones = []
-    phones.append('sil')
-    tones = []
-    tones.append('0')
+    def _t2id(self, tones: List[str]) -> np.array:
+        tone_ids = [self.vocab_tones.lookup(item) for item in tones]
+        return np.array(tone_ids, np.int64)
 
-    for seg in segments:
-        seg = jieba.lcut(seg)
-        initials = lazy_pinyin(
-            seg, neutral_tone_with_five=True, style=Style.INITIALS)
-        finals = lazy_pinyin(
-            seg, neutral_tone_with_five=True, style=Style.FINALS_TONE3)
-        for c, v in zip(initials, finals):
-            # NOTE: post process for pypinyin outputs
-            # we discriminate i, ii and iii
-            if re.match(r'i\d', v):
-                if c in ['z', 'c', 's']:
-                    v = re.sub('i', 'ii', v)
-                elif c in ['zh', 'ch', 'sh', 'r']:
-                    v = re.sub('i', 'iii', v)
-            if c:
-                phones.append(c)
-                tones.append('0')
-            if v:
-                phones.append(v[:-1])
-                tones.append(v[-1])
-        phones.append('sp')
-        tones.append('0')
-    phones[-1] = 'sil'
-    tones[-1] = '0'
-    return (phones, tones)
+    def _get_phone_tone(self, phonemes: List[str],
+                        get_tone_ids: bool=False) -> List[List[str]]:
+        phones = []
+        tones = []
+        if get_tone_ids and self.vocab_tones:
+            for full_phone in phonemes:
+                # split tone from finals
+                match = re.match(r'^(\w+)([012345])$', full_phone)
+                if match:
+                    phone = match.group(1)
+                    tone = match.group(2)
+                    phones.append(phone)
+                    tones.append(tone)
+                else:
+                    phones.append(full_phone)
+                    tones.append('0')
+        else:
+            for phone in phonemes:
+                phones.append(phone)
+        return phones, tones
 
-
-def p2id(voc, phonemes):
-    phone_ids = [voc.lookup(item) for item in phonemes]
-    return np.array(phone_ids, np.int64)
-
-
-def t2id(voc, tones):
-    tone_ids = [voc.lookup(item) for item in tones]
-    return np.array(tone_ids, np.int64)
-
-
-def text_analysis(sentence):
-    phonemes, tones = g2p(sentence)
-    print(sentence)
-    print([p + t if t != '0' else p for p, t in zip(phonemes, tones)])
-    phone_ids = p2id(voc_phones, phonemes)
-    tone_ids = t2id(voc_tones, tones)
-    phones = paddle.to_tensor(phone_ids)
-    tones = paddle.to_tensor(tone_ids)
-    return phones, tones
+    def get_input_ids(
+            self,
+            sentence: str,
+            merge_sentences: bool=True,
+            get_tone_ids: bool=False) -> Dict[str, List[paddle.Tensor]]:
+        phonemes = self.frontend.get_phonemes(
+            sentence, merge_sentences=merge_sentences)
+        result = {}
+        phones = []
+        tones = []
+        temp_phone_ids = []
+        temp_tone_ids = []
+        for part_phonemes in phonemes:
+            # add sil for speechspeech
+            part_phonemes = ["sil"] + part_phonemes + ["sil"]
+            phones, tones = self._get_phone_tone(
+                part_phonemes, get_tone_ids=get_tone_ids)
+            if tones:
+                tone_ids = self._t2id(tones)
+                tone_ids = paddle.to_tensor(tone_ids)
+                temp_tone_ids.append(tone_ids)
+            if phones:
+                phone_ids = self._p2id(phones)
+                phone_ids = paddle.to_tensor(phone_ids)
+                temp_phone_ids.append(phone_ids)
+        if temp_tone_ids:
+            result["tone_ids"] = temp_tone_ids
+        if temp_phone_ids:
+            result["phone_ids"] = temp_phone_ids
+        return result
