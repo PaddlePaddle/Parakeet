@@ -56,7 +56,7 @@ For more help on arguments
 
 ``python train_transformer.py --help``.
 
-## Synthesis
+## Synthesize
 
 After training the Tacotron2, spectrogram can be synthesized by running ``synthesize.py``.
 
@@ -73,7 +73,7 @@ The ``${CONFIGPATH}`` needs to be matched with ``${CHECKPOINTPATH}``.
 
 For more help on arguments
 
-``python synthesis.py --help``.
+``python synthesize.py --help``.
 
 Then you can find the spectrogram files in ``${OUTPUTPATH}``, and then they can be the input of vocoder like [waveflow](../waveflow/README.md#Synthesis) to get audio files.
 

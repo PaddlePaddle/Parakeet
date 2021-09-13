@@ -1,5 +1,5 @@
 .. parakeet documentation master file, created by
-   sphinx-quickstart on Thu Dec 17 20:01:34 2020.
+   sphinx-quickstart on Fri Sep 10 14:22:24 2021.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -15,37 +15,27 @@ Parakeet
 #. Ready-to-run experiments.
 
 .. toctree::
-    :caption: Getting started
-    :maxdepth: 1
+   :maxdepth: 1
+   :caption: Introduction
 
-    install
-    basic
-    advanced 
+   introduction
 
 .. toctree::
-    :caption: Demos
-    :maxdepth: 1
-    
-    demo
+   :maxdepth: 1
+   :caption: Getting started
+
+   install
+   basic_usage
+   advanced_usage
+   cn_text_frontend
+   released_models
 
 .. toctree::
-    :caption: Design of Parakeet
-    :maxdepth: 1
-    
-    design
-
-.. toctree::
-    :caption: Documentation
-    :maxdepth: 1
-
-    parakeet.audio
-    parakeet.data
-    parakeet.datasets
-    parakeet.frontend
-    parakeet.modules
-    parakeet.models
-    parakeet.training
-    parakeet.utils
+   :maxdepth: 1
+   :caption: Demos
+   
+   demo
+   
 
 Indices and tables
 ==================

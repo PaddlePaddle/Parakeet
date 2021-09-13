@@ -1,1 +1,6 @@
-paddlepaddle==2.0.0.rc1
+myst-parser
+recommonmark>=0.5.0
+sphinx
+sphinx-autobuild
+sphinx-markdown-tables
+sphinx_rtd_theme
