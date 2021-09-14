@@ -82,7 +82,7 @@ Entries to the introduction, and the launch of training and synthsis for differe
 
 ## Audio samples
 ### TTS models (Acoustic Model + Neural Vocoder)
-Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) for audio sampels.
+Check our [website](https://paddleparakeet.readthedocs.io/en/latest/demo.html) for audio sampels.
 
 ## Released Model
 
