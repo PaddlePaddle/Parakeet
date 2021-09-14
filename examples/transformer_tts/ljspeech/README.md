@@ -17,11 +17,12 @@ Run the command below to preprocess the dataset.
 ```
 When it is done. A `dump` folder is created in the current directory. The structure of the dump folder is listed below.
 ```text
+dump
 ├── dev
 │ ├── norm
 │ └── raw
 ├── phone_id_map.txt
-|-- speaker_id_map.txt
+├── speaker_id_map.txt
 ├── test
 │  ├── norm
 │  └── raw
