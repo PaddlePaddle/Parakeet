@@ -7,13 +7,14 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 
 ## News  <img src="./docs/images/news_icon.png" width="40"/>
 
+- Sep-14-2021, Reconstruction of TransformerTTS. Check [examples/transformer_tts/ljspeech](./examples/transformer_tts/ljspeech).
 - Aug-31-2021, Chinese Text Frontend. Check [examples/text_frontend](./examples/text_frontend).
-- Aug-23-2021, FastSpeech2/FastPitch with AISHELL-3. Check [fastspeech2/aishell3](./examples/fastspeech2/aishell3).
-- Aug-3-2021,  FastSpeech2/FastPitch with CSMSC. Check [fastspeech2/baker](./examples/fastspeech2/baker).
-- Jul-19-2021, SpeedySpeech with CSMSC. Check [speedyspeech/baker](./examples/speedyspeech/baker).
-- Jul-01-2021, Parallel WaveGAN with CSMSC. Check [parallelwave_gan/baker](./examples/parallelwave_gan/baker).
+- Aug-23-2021, FastSpeech2/FastPitch with AISHELL-3. Check [examples/fastspeech2/aishell3](./examples/fastspeech2/aishell3).
+- Aug-03-2021, FastSpeech2/FastPitch with CSMSC. Check [examples/fastspeech2/baker](./examples/fastspeech2/baker).
+- Jul-19-2021, SpeedySpeech with CSMSC. Check [examples/speedyspeech/baker](./examples/speedyspeech/baker).
+- Jul-01-2021, Parallel WaveGAN with CSMSC. Check [examples/parallelwave_gan/baker](./examples/parallelwave_gan/baker).
 - Jul-01-2021, Montreal-Forced-Aligner. Check  [examples/use_mfa](./examples/use_mfa).
-- May-07-2021, voice cloning in Chinese. Check [examples/tacotron2_aishell3](./examples/tacotron2_aishell3).
+- May-07-2021, Voice Cloning in Chinese. Check [examples/tacotron2_aishell3](./examples/tacotron2_aishell3).
 
 ## Overview
 
@@ -97,6 +98,7 @@ Check our [website](https://paddle-parakeet.readthedocs.io/en/latest/demo.html) 
 #### TransformerTTS
 
 1. [transformer_tts_ljspeech_ckpt_0.3.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.3.zip)
+2. [transformer_tts_ljspeech_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/transformer_tts_ljspeech_ckpt_0.4.zip)
 
 #### Tacotron2
 
