@@ -77,10 +77,13 @@ class LogMelFBank():
     #   TTS: log_10(abs(stft))
     #   ASR: log_e(power(stft))
 
-    def get_log_mel_fbank(self, wav):
+    def get_log_mel_fbank(self, wav, base='10'):
         mel = self._mel_spectrogram(wav)
         mel = np.clip(mel, a_min=1e-10, a_max=float("inf"))
-        mel = np.log10(mel.T)
+        if base == '10':
+            mel = np.log10(mel.T)
+        elif base == 'e':
+            mel = np.log(mel.T)
         # (num_frames, n_mels)
         return mel
 

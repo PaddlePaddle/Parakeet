@@ -11,8 +11,74 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Tacotron2 decoder related modules."""
+
 import six
+import paddle.nn.functional as F
 from paddle import nn
+
+
+class Prenet(nn.Layer):
+    """Prenet module for decoder of Spectrogram prediction network.
+
+    This is a module of Prenet in the decoder of Spectrogram prediction network,
+    which described in `Natural TTS
+    Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions`_.
+    The Prenet preforms nonlinear conversion
+    of inputs before input to auto-regressive lstm,
+    which helps to learn diagonal attentions.
+
+    Notes
+    ----------
+    This module alway applies dropout even in evaluation.
+    See the detail in `Natural TTS Synthesis by
+    Conditioning WaveNet on Mel Spectrogram Predictions`_.
+
+    .. _`Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions`:
+       https://arxiv.org/abs/1712.05884
+
+    """
+
+    def __init__(self, idim, n_layers=2, n_units=256, dropout_rate=0.5):
+        """Initialize prenet module.
+
+        Parameters
+        ----------
+        idim : int
+            Dimension of the inputs.
+        odim : int
+            Dimension of the outputs.
+        n_layers : int, optional
+            The number of prenet layers.
+        n_units : int, optional
+            The number of prenet units.
+        """
+        super().__init__()
+        self.dropout_rate = dropout_rate
+        self.prenet = nn.LayerList()
+        for layer in six.moves.range(n_layers):
+            n_inputs = idim if layer == 0 else n_units
+            self.prenet.append(
+                nn.Sequential(nn.Linear(n_inputs, n_units), nn.ReLU()))
+
+    def forward(self, x):
+        """Calculate forward propagation.
+
+        Parameters
+        ----------
+        x : Tensor
+            Batch of input tensors (B, ..., idim).
+
+        Returns
+        ----------
+        Tensor
+            Batch of output tensors (B, ..., odim).
+
+        """
+        for i in six.moves.range(len(self.prenet)):
+            # F.dropout 引入了随机, tacotron2 的 dropout 是不能去掉的
+            x = F.dropout(self.prenet[i](x))
+        return x
 
 
 class Postnet(nn.Layer):
@@ -58,7 +124,7 @@ class Postnet(nn.Layer):
         dropout_rate : float, optional
             Dropout rate..
         """
-        super(Postnet, self).__init__()
+        super().__init__()
         self.postnet = nn.LayerList()
         for layer in six.moves.range(n_layers - 1):
             ichans = odim if layer == 0 else n_chans

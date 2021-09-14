@@ -37,6 +37,11 @@ class FastSpeech2Updater(StandardUpdater):
         super().__init__(model, optimizer, dataloader, init_state=None)
         self.use_masking = use_masking
         self.use_weighted_masking = use_weighted_masking
+
+        self.criterion = FastSpeech2Loss(
+            use_masking=self.use_masking,
+            use_weighted_masking=self.use_weighted_masking)
+
         log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
         self.filehandler = logging.FileHandler(str(log_file))
         logger.addHandler(self.filehandler)
@@ -56,11 +61,7 @@ class FastSpeech2Updater(StandardUpdater):
             pitch=batch["pitch"],
             energy=batch["energy"], )
 
-        criterion = FastSpeech2Loss(
-            use_masking=self.use_masking,
-            use_weighted_masking=self.use_weighted_masking)
-
-        l1_loss, duration_loss, pitch_loss, energy_loss = criterion(
+        l1_loss, duration_loss, pitch_loss, energy_loss = self.criterion(
             after_outs=after_outs,
             before_outs=before_outs,
             d_outs=d_outs,
@@ -112,6 +113,10 @@ class FastSpeech2Evaluator(StandardEvaluator):
         self.logger = logger
         self.msg = ""
 
+        self.criterion = FastSpeech2Loss(
+            use_masking=self.use_masking,
+            use_weighted_masking=self.use_weighted_masking)
+
     def evaluate_core(self, batch):
         self.msg = "Evaluate: "
         losses_dict = {}
@@ -125,10 +130,7 @@ class FastSpeech2Evaluator(StandardEvaluator):
             pitch=batch["pitch"],
             energy=batch["energy"])
 
-        criterion = FastSpeech2Loss(
-            use_masking=self.use_masking,
-            use_weighted_masking=self.use_weighted_masking)
-        l1_loss, duration_loss, pitch_loss, energy_loss = criterion(
+        l1_loss, duration_loss, pitch_loss, energy_loss = self.criterion(
             after_outs=after_outs,
             before_outs=before_outs,
             d_outs=d_outs,
