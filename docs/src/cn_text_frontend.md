@@ -2,13 +2,13 @@
 TTS system mainly includes three modules: `text frontend`, `Acoustic model` and `Vocoder`. We provide a complete Chinese text frontend module in Parakeet, see exapmle in `Parakeet/examples/text_frontend/`.
 
 A text frontend module mainly includes:
- - Text Normalization (TN)
  - Text Segmentation
+ - Text Normalization (TN)
  - Word Segmentation (mainly in Chinese)
  - Part-of-Speech
  - Prosody
- - G2P (Grapheme-to-Phoneme, include Polyphone and tone sandhi, etc.)
- - Linguistic features
+ - G2P (Grapheme-to-Phoneme, include Polyphone and Tone Sandhi, etc.)
+ - Linguistic Features/Charactors/Phonemes
 
 ```text
 • text: 90 后为中华人民共和国成立 70 周年准备了大礼
@@ -39,21 +39,21 @@ Among them, Text Normalization and G2P are the most important modules. We mainly
 |telephone|这是固话0421-33441122<br>这是手机+86 18544139121|这是固话零四二一三三四四一一二二<br>这是手机八六一八五四四一三九一二一|
 
 
-## G2P
-In Chinese, G2P is a very complex module, which mainly includes polyphone module and tone sandhi module.
+## Grapheme-to-Phoneme
+In Chinese, G2P is a very complex module, which mainly includes **polyphone**  and **tone sandhi**.
 
 We use [g2pM](https://github.com/kakaobrain/g2pM) and [pypinyin](https://github.com/mozillazg/python-pinyin)  as the defalut g2p tools. They can solve the problem of polyphone to a certain extent. In the future, we intend to use a trainable language model (for example, [BERT](https://arxiv.org/abs/1810.04805)) for polyphone.
 
 However, g2pM and pypinyin do not perform well in tone sandhi, we use rules to solve this problem, which requires relevant linguistic knowledge.
 
-The tone sandhi in Chinese mainly include:
+The **tone sandhi** in Chinese mainly include:
 
  - soft tone sandhi (轻声变调)
  - "一" "不" tone sandhi ("一" "不" 变调)
  - three tone sandhi  (三声变调)
 
 For ease of understanding, we list the tone sandhi rules in Chinese here
-### 轻声变调
+### 1. 轻声变调
 |  |cases  |
 |:--|:-|
 | 语气助词“吧、呢、啊”等 | 吃吧、走吗、去呢、跑啊 |
@@ -67,7 +67,7 @@ For ease of understanding, we list the tone sandhi rules in Chinese here
 | 约定俗成 | 匀称、盘算、枇杷、篱笆、活泼、玄乎。狐狸、学生、拾掇、麻烦、蛤蟆、石榴。玫瑰、凉快、萝卜、朋友、奴才、云彩。脑袋、老爷、老婆、嘴巴、指头、指甲。委屈、喇叭、讲究、打发、打听、喜欢。点心、伙计、打扮、哑巴、女婿、首饰。自在、吓唬、力气、漂亮、队伍、地方。痛快、念叨、笑语、丈夫、志气、钥匙。月亮、正经、位置、秀气、上司、悟性。告示、动静、热闹、屁股、阔气、意思。等 |
 
 
-### "一" "不" 变调
+### 2. "一" "不" 变调
 #### "一" 变调
 |  | 是否变调 | cases|
 |:--|:-|:-|
@@ -87,7 +87,7 @@ For ease of understanding, we list the tone sandhi rules in Chinese here
 | 轻读，不”夹在重叠动词或重叠形容词之间、夹在动词和补语之间 |  |懂不懂 dǒng bu dǒng 、看不清 kàn bu qīng |
 
 
-### 三声变调
+### 3. 三声变调
 |  | 子类别| 如何变调|cases|
 |:--|:-|:-|:-|
 |单独念 |  | 否|  |
