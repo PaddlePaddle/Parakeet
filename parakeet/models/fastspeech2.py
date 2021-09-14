@@ -24,11 +24,11 @@ from typeguard import check_argument_types
 from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictor
 from parakeet.modules.fastspeech2_predictor.duration_predictor import DurationPredictorLoss
 from parakeet.modules.fastspeech2_predictor.length_regulator import LengthRegulator
-from parakeet.modules.fastspeech2_predictor.postnet import Postnet
 from parakeet.modules.fastspeech2_predictor.variance_predictor import VariancePredictor
 from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
 from parakeet.modules.fastspeech2_transformer.embedding import ScaledPositionalEncoding
 from parakeet.modules.fastspeech2_transformer.encoder import Encoder as TransformerEncoder
+from parakeet.modules.tacotron2.decoder import Postnet
 from parakeet.modules.nets_utils import initialize
 from parakeet.modules.nets_utils import make_non_pad_mask
 from parakeet.modules.nets_utils import make_pad_mask

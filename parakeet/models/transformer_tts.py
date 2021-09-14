@@ -21,7 +21,6 @@ from paddle import nn
 import paddle.nn.functional as F
 from typeguard import check_argument_types
 
-from parakeet.modules.fastspeech2_predictor.postnet import Postnet
 from parakeet.modules.fastspeech2_transformer.attention import MultiHeadedAttention
 from parakeet.modules.fastspeech2_transformer.decoder import Decoder
 from parakeet.modules.fastspeech2_transformer.embedding import PositionalEncoding
@@ -29,6 +28,7 @@ from parakeet.modules.fastspeech2_transformer.embedding import ScaledPositionalE
 from parakeet.modules.fastspeech2_transformer.encoder import Encoder
 from parakeet.modules.fastspeech2_transformer.mask import subsequent_mask
 from parakeet.modules.style_encoder import StyleEncoder
+from parakeet.modules.tacotron2.decoder import Postnet
 from parakeet.modules.tacotron2.decoder import Prenet as DecoderPrenet
 from parakeet.modules.tacotron2.encoder import Encoder as EncoderPrenet
 from parakeet.modules.nets_utils import initialize

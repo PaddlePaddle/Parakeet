@@ -59,6 +59,11 @@ class TransformerTTSUpdater(StandardUpdater):
             use_weighted_masking=self.use_weighted_masking,
             bce_pos_weight=self.bce_pos_weight)
 
+        if self.use_guided_attn_loss:
+            self.attn_criterion = GuidedMultiHeadAttentionLoss(
+                sigma=self.guided_attn_loss_sigma,
+                alpha=self.guided_attn_loss_lambda, )
+
         log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
         self.filehandler = logging.FileHandler(str(log_file))
         logger.addHandler(self.filehandler)
@@ -74,11 +79,6 @@ class TransformerTTSUpdater(StandardUpdater):
             text_lengths=batch["text_lengths"],
             speech=batch["speech"],
             speech_lengths=batch["speech_lengths"], )
-
-        if self.use_guided_attn_loss:
-            self.attn_criterion = GuidedMultiHeadAttentionLoss(
-                sigma=self.guided_attn_loss_sigma,
-                alpha=self.guided_attn_loss_lambda, )
 
         l1_loss, l2_loss, bce_loss = self.criterion(
             after_outs=after_outs,
@@ -208,6 +208,11 @@ class TransformerTTSEvaluator(StandardEvaluator):
             use_weighted_masking=self.use_weighted_masking,
             bce_pos_weight=self.bce_pos_weight)
 
+        if self.use_guided_attn_loss:
+            self.attn_criterion = GuidedMultiHeadAttentionLoss(
+                sigma=self.guided_attn_loss_sigma,
+                alpha=self.guided_attn_loss_lambda, )
+
         log_file = output_dir / 'worker_{}.log'.format(dist.get_rank())
         self.filehandler = logging.FileHandler(str(log_file))
         logger.addHandler(self.filehandler)
@@ -222,11 +227,6 @@ class TransformerTTSEvaluator(StandardEvaluator):
             text_lengths=batch["text_lengths"],
             speech=batch["speech"],
             speech_lengths=batch["speech_lengths"])
-
-        if self.use_guided_attn_loss:
-            self.attn_criterion = GuidedMultiHeadAttentionLoss(
-                sigma=self.guided_attn_loss_sigma,
-                alpha=self.guided_attn_loss_lambda, )
 
         l1_loss, l2_loss, bce_loss = self.criterion(
             after_outs=after_outs,
