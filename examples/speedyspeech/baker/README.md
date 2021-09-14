@@ -145,5 +145,5 @@ optional arguments:
 4. `--output-dir` is the directory to save synthesized audio files.
 5. `--inference-dir` is the directory to save exported model, which can be used with paddle infernece.
 6. `--device` is the type of device to run synthesis, 'cpu' and 'gpu' are supported. 'gpu' is recommended for faster synthesis.
-6. `phones-dict` is the path of the phone vocabulary file.
-7. `tones-dict` is the path of the tone vocabulary file.
+6. `--phones-dict` is the path of the phone vocabulary file.
+7. `--tones-dict` is the path of the tone vocabulary file.

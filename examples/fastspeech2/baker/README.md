@@ -73,7 +73,7 @@ optional arguments:
 3. `--output-dir` is the directory to save the results of the experiment. Checkpoints are save in `checkpoints/` inside this directory.
 4. `--device` is the type of the device to run the experiment, 'cpu' or 'gpu' are supported.
 5. `--nprocs` is the number of processes to run in parallel, note that nprocs > 1 is only supported when `--device` is 'gpu'.
-6. `phones-dict` is the path of the phone vocabulary file.
+6. `--phones-dict` is the path of the phone vocabulary file.
 
 ## Pretrained Model
 Pretrained FastSpeech2 model with no silence in the edge of audios. [fastspeech2_nosil_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/fastspeech2_nosil_baker_ckpt_0.4.zip)
@@ -177,12 +177,12 @@ optional arguments:
   --verbose VERBOSE     verbose.
 ```
 
-1. --fastspeech2-config, --fastspeech2-checkpoint, --fastspeech2-stat and --phones-dict are arguments for fastspeech2, which correspond to the 4 files in the fastspeech2 pretrained model.
-2. --pwg-config, --pwg-params, --pwg-stat are arguments for parallel wavegan, which correspond to the 3 files in the parallel wavegan pretrained model.
-3. --test-metadata should be the metadata file in the normalized subfolder of `test`  in the `dump` folder.
-4. --text is the text file, which contains sentences to synthesize.
-5. --output-dir is the directory to save synthesized audio files.
-6. --device is the type of device to run synthesis, 'cpu' and 'gpu' are supported. 'gpu' is recommended for faster synthesis.
+1. `--fastspeech2-config`, `--fastspeech2-checkpoint`, `--fastspeech2-stat` and `--phones-dict` are arguments for fastspeech2, which correspond to the 4 files in the fastspeech2 pretrained model.
+2. `--pwg-config`, `--pwg-params`, `--pwg-stat` are arguments for parallel wavegan, which correspond to the 3 files in the parallel wavegan pretrained model.
+3. `--test-metadata` should be the metadata file in the normalized subfolder of `test`  in the `dump` folder.
+4. `--text` is the text file, which contains sentences to synthesize.
+5. `--output-dir` is the directory to save synthesized audio files.
+6. `--device is` the type of device to run synthesis, 'cpu' and 'gpu' are supported. 'gpu' is recommended for faster synthesis.
 
 You can use the following scripts to synthesize for `../sentences.txt` using pretrained fastspeech2 and parallel wavegan models.
 ```bash
