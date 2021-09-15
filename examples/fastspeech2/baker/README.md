@@ -40,7 +40,7 @@ The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of whi
 
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
-## Train the mode
+## Train the model
 ```bash
 ./run.sh
 ```
