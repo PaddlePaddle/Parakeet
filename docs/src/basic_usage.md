@@ -70,7 +70,7 @@ for part_phone_ids in phone_ids:
             mel = temp_mel
             flags = 1
         else:
-            mel = paddle.concat([mel, temp_wav])
+            mel = paddle.concat([mel, temp_mel])
 ```
 
 ## Vocoder (spectrogram to wave)
