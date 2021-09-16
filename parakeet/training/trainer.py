@@ -146,6 +146,7 @@ class Trainer(object):
                     update()
                     batch_read_time = self.updater.batch_read_time
                     batch_time = self.updater.batch_time
+                    avg_batch_cost = batch_read_time + batch_time
                     logger = self.updater.logger
                     logger.removeHandler(self.updater.filehandler)
                     msg = self.updater.msg
@@ -153,11 +154,11 @@ class Trainer(object):
                                                   max_iteration) + msg
                     msg += ", avg_reader_cost: {:.5f} sec, ".format(
                         batch_read_time
-                    ) + "avg_batch_cost: {:.5f} sec, ".format(batch_time)
+                    ) + "avg_batch_cost: {:.5f} sec, ".format(avg_batch_cost)
                     msg += "avg_samples: {}, ".format(
                         self.updater.
                         batch_size) + "avg_ips: {:.5f} sequences/sec".format(
-                            self.updater.batch_size / batch_time)
+                            self.updater.batch_size / avg_batch_cost)
                     logger.info(msg)
 
                     # execute extension when necessary
