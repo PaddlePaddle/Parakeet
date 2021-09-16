@@ -45,7 +45,3 @@ There are two ways to install parakeet according to the purpose of using it.
        cd Parakeet
        pip install -e .
        ```
- 2.  If  you only need to use the models for inference by parakeet, install from pypi is recommended.
-       ```python
-       pip install paddle-parakeet
-       ```
