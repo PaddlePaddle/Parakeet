@@ -47,11 +47,7 @@ sudo apt-get install libsndfile1
 See [install](https://www.paddlepaddle.org.cn/install/quick) for more details. This repo requires PaddlePaddle **2.1.2** or above.
 
 ### Install Parakeet
-```bash
-pip install -U paddle-parakeet
-```
 
-or
 ```bash
 git clone https://github.com/PaddlePaddle/Parakeet
 cd Parakeet
