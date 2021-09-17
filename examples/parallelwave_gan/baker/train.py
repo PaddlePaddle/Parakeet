@@ -216,6 +216,19 @@ def main():
     parser.add_argument(
         "--nprocs", type=int, default=1, help="number of processes.")
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
+    parser.add_argument(
+        "--batch-size", type=str, default="8", help="batch size.")
+    parser.add_argument("--max-iter", type=str, default="8", help="batch size.")
+
+    def str2bool(str):
+        return True if str.lower() == 'true' else False
+
+    parser.add_argument(
+        "--run-benchmark",
+        type=str2bool,
+        default=False,
+        help="runing benchmark or not, if True, use the --batch-size and --max-iter."
+    )
 
     args = parser.parse_args()
     if args.device == "cpu" and args.nprocs > 1:
@@ -223,6 +236,11 @@ def main():
     config = get_cfg_default()
     if args.config:
         config.merge_from_file(args.config)
+
+    # 增加 --batch_size --max_iter 用于 benchmark 调用
+    if args.run_benchmark:
+        config.batch_size = int(args.batch_size)
+        config.train_max_steps = int(args.max_iter)
 
     print("========Args========")
     print(yaml.safe_dump(vars(args)))
