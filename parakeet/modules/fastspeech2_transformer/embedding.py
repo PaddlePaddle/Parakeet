@@ -98,7 +98,7 @@ class ScaledPositionalEncoding(PositionalEncoding):
         """Initialize class."""
         super().__init__(
             d_model=d_model, dropout_rate=dropout_rate, max_len=max_len)
-        x = paddle.ones([1.0], dtype="float32")
+        x = paddle.ones([1], dtype="float32")
         self.alpha = paddle.create_parameter(
             shape=x.shape,
             dtype=str(x.numpy().dtype),
