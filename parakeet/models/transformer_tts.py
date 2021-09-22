@@ -395,13 +395,13 @@ class TransformerTTS(nn.Layer):
 
         Parameters
         ----------
-        text : Tensor
+        text : Tensor(int64)
             Batch of padded character ids (B, Tmax).
-        text_lengths : Tensor
+        text_lengths : Tensor(int64)
             Batch of lengths of each input batch (B,).
         speech : Tensor
             Batch of padded target features (B, Lmax, odim).
-        speech_lengths : Tensor
+        speech_lengths : Tensor(int64)
             Batch of the lengths of each target (B,).
         spembs : Tensor, optional
             Batch of speaker embeddings (B, spk_embed_dim).
@@ -414,19 +414,18 @@ class TransformerTTS(nn.Layer):
             Statistics to be monitored.
 
         """
-        text = text[:, :text_lengths.max()]  # for data-parallel
-        speech = speech[:, :speech_lengths.max()]  # for data-parallel
-        batch_size = text.shape[0]
+        # input of embedding must be int64
+        text_lengths = paddle.cast(text_lengths, 'int64')
 
         # Add eos at the last of sequence
         text = numpy.pad(text.numpy(), ((0, 0), (0, 1)), 'constant')
-        xs = paddle.to_tensor(text)
+        xs = paddle.to_tensor(text, dtype='int64')
         for i, l in enumerate(text_lengths):
             xs[i, l] = self.eos
         ilens = text_lengths + 1
 
         ys = speech
-        olens = speech_lengths
+        olens = paddle.cast(speech_lengths, 'int64')
 
         # make labels for stop prediction
         labels = make_pad_mask(olens - 1)
@@ -523,7 +522,7 @@ class TransformerTTS(nn.Layer):
 
         Parameters
         ----------
-        text : Tensor
+        text : Tensor(int64)
             Input sequence of characters (T,).
         speech : Tensor, optional
             Feature sequence to extract style (N, idim).
@@ -548,14 +547,14 @@ class TransformerTTS(nn.Layer):
             Encoder-decoder (source) attention weights (#layers, #heads, L, T).
 
         """
-        x = text
+        # input of embedding must be int64
         y = speech
         spemb = spembs
 
         # add eos at the last of sequence
         text = numpy.pad(
             text.numpy(), (0, 1), 'constant', constant_values=self.eos)
-        x = paddle.to_tensor(text)
+        x = paddle.to_tensor(text, dtype='int64')
 
         # inference with teacher forcing
         if use_teacher_forcing:

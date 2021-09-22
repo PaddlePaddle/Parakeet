@@ -51,7 +51,6 @@ class SpeedySpeechUpdater(StandardUpdater):
         decoded, predicted_durations = self.model(
             text=batch["phones"],
             tones=batch["tones"],
-            plens=batch["num_phones"],
             durations=batch["durations"])
 
         target_mel = batch["feats"]
@@ -114,7 +113,6 @@ class SpeedySpeechEvaluator(StandardEvaluator):
         decoded, predicted_durations = self.model(
             text=batch["phones"],
             tones=batch["tones"],
-            plens=batch["num_phones"],
             durations=batch["durations"])
 
         target_mel = batch["feats"]

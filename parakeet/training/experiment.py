@@ -262,7 +262,6 @@ class ExperimentBase(object):
         """
         logger = logging.getLogger(__name__)
         logger.setLevel("INFO")
-        logger.addHandler(logging.StreamHandler())
         log_file = self.output_dir / 'worker_{}.log'.format(dist.get_rank())
         logger.addHandler(logging.FileHandler(str(log_file)))
 
