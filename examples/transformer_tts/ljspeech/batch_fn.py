@@ -21,8 +21,12 @@ def collate_ljspeech_examples(examples):
     # fields = ["text", "text_lengths", "speech", "speech_lengths"]
     text = [np.array(item["text"], dtype=np.int64) for item in examples]
     speech = [np.array(item["speech"], dtype=np.float32) for item in examples]
-    text_lengths = np.array([item["text_lengths"] for item in examples])
-    speech_lengths = np.array([item["speech_lengths"] for item in examples])
+    text_lengths = [
+        np.array(item["text_lengths"], dtype=np.int64) for item in examples
+    ]
+    speech_lengths = [
+        np.array(item["speech_lengths"], dtype=np.int64) for item in examples
+    ]
 
     text = batch_sequences(text)
     speech = batch_sequences(speech)

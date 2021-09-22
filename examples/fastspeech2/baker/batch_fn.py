@@ -26,8 +26,13 @@ def collate_baker_examples(examples):
     durations = [
         np.array(item["durations"], dtype=np.int64) for item in examples
     ]
-    text_lengths = np.array([item["text_lengths"] for item in examples])
-    speech_lengths = np.array([item["speech_lengths"] for item in examples])
+
+    text_lengths = [
+        np.array(item["text_lengths"], dtype=np.int64) for item in examples
+    ]
+    speech_lengths = [
+        np.array(item["speech_lengths"], dtype=np.int64) for item in examples
+    ]
 
     text = batch_sequences(text)
     pitch = batch_sequences(pitch)

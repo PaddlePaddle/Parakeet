@@ -19,7 +19,7 @@ from pathlib import Path
 import soundfile as sf
 from paddle import inference
 
-from frontend import text_analysis
+from frontend import Frontend
 
 
 def main():
@@ -34,8 +34,21 @@ def main():
     parser.add_argument("--output-dir", type=str, help="output dir")
     parser.add_argument(
         "--enable-auto-log", action="store_true", help="use auto log")
+    parser.add_argument(
+        "--phones-dict",
+        type=str,
+        default="phones.txt",
+        help="phone vocabulary file.")
+    parser.add_argument(
+        "--tones-dict",
+        type=str,
+        default="tones.txt",
+        help="tone vocabulary file.")
 
     args, _ = parser.parse_known_args()
+
+    frontend = Frontend(args.phones_dict, args.tones_dict)
+    print("frontend done!")
 
     speedyspeech_config = inference.Config(
         str(Path(args.inference_dir) / "speedyspeech.pdmodel"),
@@ -71,6 +84,7 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     sentences = []
+
     with open(args.text, 'rt') as f:
         for line in f:
             utt_id, sentence = line.strip().split()
@@ -80,9 +94,12 @@ def main():
         if args.enable_auto_log:
             logger.times.start()
 
-        phones, tones = text_analysis(sentence)
-        phones = phones.numpy()
-        tones = tones.numpy()
+        input_ids = frontend.get_input_ids(
+            sentence, merge_sentences=True, get_tone_ids=True)
+        phone_ids = input_ids["phone_ids"]
+        tone_ids = input_ids["tone_ids"]
+        phones = phone_ids[0]
+        tones = tone_ids[0]
 
         if args.enable_auto_log:
             logger.times.stamp()

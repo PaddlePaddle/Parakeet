@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
+
 from parakeet.data.batch import batch_sequences
 
 
@@ -24,13 +26,25 @@ def collate_baker_examples(examples):
     durations = [
         np.array(item["durations"], dtype=np.int64) for item in examples
     ]
-    num_phones = np.array([item["num_phones"] for item in examples])
-    num_frames = np.array([item["num_frames"] for item in examples])
+    num_phones = [
+        np.array(item["num_phones"], dtype=np.int64) for item in examples
+    ]
+    num_frames = [
+        np.array(item["num_frames"], dtype=np.int64) for item in examples
+    ]
 
     phones = batch_sequences(phones)
     tones = batch_sequences(tones)
     feats = batch_sequences(feats)
     durations = batch_sequences(durations)
+
+    # convert each batch to paddle.Tensor
+    phones = paddle.to_tensor(phones)
+    tones = paddle.to_tensor(tones)
+    feats = paddle.to_tensor(feats)
+    durations = paddle.to_tensor(durations)
+    num_phones = paddle.to_tensor(num_phones)
+    num_frames = paddle.to_tensor(num_frames)
     batch = {
         "phones": phones,
         "tones": tones,

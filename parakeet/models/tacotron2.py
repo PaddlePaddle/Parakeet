@@ -735,6 +735,8 @@ class Tacotron2(nn.Layer):
 
             stop_logits: output sequence of stop logits (B, T_mel)
         """
+        # input of embedding must be int64
+        text_inputs = paddle.cast(text_inputs, 'int64')
         embedded_inputs = self.embedding(text_inputs)
         if self.toned:
             embedded_inputs += self.embedding_tones(tones)
@@ -804,6 +806,8 @@ class Tacotron2(nn.Layer):
             alignments: attention weights (B, T_mel, T_text). This key is only
             present when `use_stop_token` is True.
         """
+        # input of embedding must be int64
+        text_inputs = paddle.cast(text_inputs, 'int64')
         embedded_inputs = self.embedding(text_inputs)
         if self.toned:
             embedded_inputs += self.embedding_tones(tones)

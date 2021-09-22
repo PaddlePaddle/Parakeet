@@ -163,9 +163,14 @@ class SpeedySpeech(nn.Layer):
         self.duration_predictor = duration_predictor
         self.decoder = decoder
 
-    def forward(self, text, tones, plens, durations):
+    def forward(self, text, tones, durations):
+        # input of embedding must be int64
+        text = paddle.cast(text, 'int64')
+        tones = paddle.cast(tones, 'int64')
+        durations = paddle.cast(durations, 'int64')
         encodings = self.encoder(text, tones)
-        pred_durations = self.duration_predictor(encodings.detach())  # (B, T)
+        # (B, T)
+        pred_durations = self.duration_predictor(encodings.detach())
 
         # expand encodings
         durations_to_expand = durations
@@ -178,11 +183,14 @@ class SpeedySpeech(nn.Layer):
         decoded = self.decoder(encodings)
         return decoded, pred_durations
 
-    def inference(self, text, tones):
+    def inference(self, text, tones=None):
         # text: [T]
         # tones: [T]
+        # input of embedding must be int64
+        text = paddle.cast(text, 'int64')
         text = text.unsqueeze(0)
         if tones is not None:
+            tones = paddle.cast(tones, 'int64')
             tones = tones.unsqueeze(0)
 
         encodings = self.encoder(text, tones)

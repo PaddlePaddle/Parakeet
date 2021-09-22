@@ -47,7 +47,6 @@ def main(config, args):
 
     for i, sentence in enumerate(sentences):
         sentence = paddle.to_tensor(frontend(sentence)).unsqueeze(0)
-
         outputs = model.infer(sentence)
         mel_output = outputs["mel_outputs_postnet"][0].numpy().T
         alignment = outputs["alignments"][0].numpy().T

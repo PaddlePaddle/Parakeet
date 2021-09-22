@@ -303,25 +303,25 @@ class FastSpeech2(nn.Layer):
 
         Parameters
         ----------
-        text : Tensor
+        text : Tensor(int64)
             Batch of padded token ids (B, Tmax).
-        text_lengths : Tensor)
+        text_lengths : Tensor(int64)
             Batch of lengths of each input (B,).
         speech : Tensor
             Batch of padded target features (B, Lmax, odim).
-        speech_lengths : Tensor
+        speech_lengths : Tensor(int64)
             Batch of the lengths of each target (B,).
-        durations : Tensor
+        durations : Tensor(int64)
             Batch of padded durations (B, Tmax).
         pitch : Tensor
             Batch of padded token-averaged pitch (B, Tmax, 1).
         energy : Tensor
             Batch of padded token-averaged energy (B, Tmax, 1).
-        tone_id : Tensor
+        tone_id : Tensor, optional(int64)
                 Batch of padded tone ids  (B, Tmax).
         spembs : Tensor, optional
             Batch of speaker embeddings (B, spk_embed_dim).
-        spk_id : Tnesor
+        spk_id : Tnesor, optional(int64)
             Batch of speaker ids (B,)
 
         Returns
@@ -341,12 +341,18 @@ class FastSpeech2(nn.Layer):
         Tensor
             speech_lengths, modified if reduction_factor > 1
         """
-
-        xs = text
-        ilens = text_lengths
-        ys, ds, ps, es = speech, durations, pitch, energy
-        olens = speech_lengths
-
+        # input of embedding must be int64
+        xs = paddle.cast(text, 'int64')
+        ilens = paddle.cast(text_lengths, 'int64')
+        ds = paddle.cast(durations, 'int64')
+        olens = paddle.cast(speech_lengths, 'int64')
+        ys = speech
+        ps = pitch
+        es = energy
+        if spk_id is not None:
+            spk_id = paddle.cast(spk_id, 'int64')
+        if tone_id is not None:
+            tone_id = paddle.cast(tone_id, 'int64')
         # forward propagation
         before_outs, after_outs, d_outs, p_outs, e_outs = self._forward(
             xs,
@@ -476,11 +482,11 @@ class FastSpeech2(nn.Layer):
 
         Parameters
         ----------
-        text : Tensor
+        text : Tensor(int64)
             Input sequence of characters (T,).
         speech : Tensor, optional
             Feature sequence to extract style (N, idim).
-        durations : Tensor, optional
+        durations : Tensor, optional (int64)
             Groundtruth of duration (T,).
         pitch : Tensor, optional
             Groundtruth of token-averaged pitch (T, 1).
@@ -492,18 +498,24 @@ class FastSpeech2(nn.Layer):
             Whether to use teacher forcing.
             If true, groundtruth of duration, pitch and energy will be used.
         spembs : Tensor, optional
-                peaker embedding vector (spk_embed_dim,).
-        spk_id : Tensor, optional
+            peaker embedding vector (spk_embed_dim,).
+        spk_id : Tensor, optional(int64)
             Speaker embedding vector (spk_embed_dim).
+        tone_id : Tensor, optional(int64)
+            Batch of padded tone ids  (B, Tmax).
 
         Returns
         ----------
         Tensor
             Output sequence of features (L, odim).
         """
-        x, y = text, speech
-        spemb, d, p, e = spembs, durations, pitch, energy
-
+        # input of embedding must be int64
+        x = paddle.cast(text, 'int64')
+        y = speech
+        spemb = spembs
+        if durations:
+            d = paddle.cast(durations, 'int64')
+        p, e = pitch, energy
         # setup batch axis
         ilens = paddle.to_tensor(
             [x.shape[0]], dtype=paddle.int64, place=x.place)
