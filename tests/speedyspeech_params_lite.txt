@@ -1,7 +1,7 @@
 ===========================train_params===========================
 model_name:speedyspeech
 python:python3.7
-gpu_list:0|0,1
+gpu_list:1|0,1
 null:null
 null:null
 null:null
@@ -12,12 +12,12 @@ null:null
 null:null
 null:null
 ##
-trainer:lite_train|norm_train
-norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/BZNSYP/dev/norm/metadata.jsonl --output-dir=exp/lite --nprocs=1
+trainer:norm_train
+norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/mini_BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/mini_BZNSYP/dev/norm/metadata.jsonl --config=lite_train_infer.yaml --output-dir=exp/default
 null:null
 null:null
 null:null
-lite_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/mini_BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/mini_BZNSYP/dev/norm/metadata.jsonl --config=lite_train_infer.yaml --output-dir=exp/default --nprocs=1
+null:null
 null:null
 ##
 ===========================eval_params===========================
