@@ -204,7 +204,8 @@ class ExperimentBase(object):
         try:
             self.train()
         except KeyboardInterrupt as exception:
-            self.save()
+            # delete this, because it can not save a complete model
+            # self.save()
             self.close()
             sys.exit(exception)
         finally:
