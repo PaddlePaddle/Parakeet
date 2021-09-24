@@ -224,9 +224,9 @@ def main():
     benchmark_group = parser.add_argument_group(
         'benchmark', 'arguments related to benchmark.')
     benchmark_group.add_argument(
-        "--batch-size", type=str, default="8", help="batch size.")
+        "--batch-size", type=int, default=8, help="batch size.")
     benchmark_group.add_argument(
-        "--max-iter", type=str, default="400000", help="train max steps.")
+        "--max-iter", type=int, default=400000, help="train max steps.")
 
     benchmark_group.add_argument(
         "--run-benchmark",
@@ -250,8 +250,8 @@ def main():
 
     # 增加 --batch_size --max_iter 用于 benchmark 调用
     if args.run_benchmark:
-        config.batch_size = int(args.batch_size)
-        config.train_max_steps = int(args.max_iter)
+        config.batch_size = args.batch_size
+        config.train_max_steps = args.max_iter
 
     print("========Args========")
     print(yaml.safe_dump(vars(args)))
