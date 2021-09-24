@@ -205,6 +205,9 @@ def train_sp(args, config):
 
 def main():
     # parse args and config and redirect to train_sp
+    def str2bool(str):
+        return True if str.lower() == 'true' else False
+
     parser = argparse.ArgumentParser(description="Train a ParallelWaveGAN "
                                      "model with Baker Mandrin TTS dataset.")
     parser.add_argument(
@@ -217,20 +220,21 @@ def main():
     parser.add_argument(
         "--nprocs", type=int, default=1, help="number of processes.")
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
-    parser.add_argument(
+
+    benchmark_group = parser.add_argument_group(
+        'benchmark', 'arguments related to benchmark.')
+    benchmark_group.add_argument(
         "--batch-size", type=str, default="8", help="batch size.")
-    parser.add_argument("--max-iter", type=str, default="8", help="batch size.")
+    benchmark_group.add_argument(
+        "--max-iter", type=str, default="400000", help="train max steps.")
 
-    def str2bool(str):
-        return True if str.lower() == 'true' else False
-
-    parser.add_argument(
+    benchmark_group.add_argument(
         "--run-benchmark",
         type=str2bool,
         default=False,
         help="runing benchmark or not, if True, use the --batch-size and --max-iter."
     )
-    parser.add_argument(
+    benchmark_group.add_argument(
         "--profiler_options",
         type=str,
         default=None,

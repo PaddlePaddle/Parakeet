@@ -39,7 +39,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
             for bs_item in ${bs_item_list[@]}; do
                   echo "index is speed, 1gpus, begin, ${model_name}"
                   run_mode=sp
-                  CUDA_VISIBLE_DEVICES=5 bash benchmark/PWGAN/run_benchmark.sh ${run_mode} ${bs_item} ${fp_item} 100 ${model_mode}     #  (5min)
+                  CUDA_VISIBLE_DEVICES=0 bash benchmark/PWGAN/run_benchmark.sh ${run_mode} ${bs_item} ${fp_item} 100 ${model_mode}     #  (5min)
                   sleep 60
                   echo "index is speed, 8gpus, run_mode is multi_process, begin, ${model_name}"
                   run_mode=mp
