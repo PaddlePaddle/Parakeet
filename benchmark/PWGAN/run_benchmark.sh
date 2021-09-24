@@ -3,10 +3,10 @@ set -xe
 # 运行示例：CUDA_VISIBLE_DEVICES=0 bash run_benchmark.sh ${run_mode} ${bs_item} ${fp_item} 500 ${model_mode}
 # 参数说明
 function _set_params(){
-    run_mode=${1:-"sp"}          # 单卡sp|多卡mp
+    run_mode=${1:-"sp"}         # 单卡sp|多卡mp
     batch_size=${2:-"8"}
     fp_item=${3:-"fp32"}        # fp32|fp16
-    max_iter=${4:-"500"}       # 可选，如果需要修改代码提前中断
+    max_iter=${4:-"500"}        # 可选，如果需要修改代码提前中断
     model_name=${5:-"model_name"}
     run_log_path=${TRAIN_LOG_DIR:-$(pwd)}  # TRAIN_LOG_DIR 后续QA设置该参数
  
@@ -30,7 +30,7 @@ function _train(){
 
     case ${run_mode} in
     sp) train_cmd="python3 examples/parallelwave_gan/baker/train.py --nprocs=1 ${train_cmd}" ;;
-    mp) train_cmd="FLAGS_cudnn_exhaustive_search=true FLAGS_conv_workspace_size_limit=4000 python3 examples/parallelwave_gan/baker/train.py --nprocs=8 ${train_cmd}"
+    mp) train_cmd="python3 examples/parallelwave_gan/baker/train.py --nprocs=8 ${train_cmd}"
         log_parse_file="mylog/workerlog.0" ;;
     *) echo "choose run_mode(sp or mp)"; exit 1;
     esac
@@ -43,7 +43,8 @@ function _train(){
         echo -e "${model_name}, SUCCESS"
         export job_fail_flag=0
     fi
-    # kill -9 `ps -ef|grep 'python'|awk '{print $2}'`
+
+    trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
  
     if [ $run_mode = "mp" -a -d mylog ]; then
         rm ${log_file}

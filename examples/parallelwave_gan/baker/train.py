@@ -186,7 +186,8 @@ def train_sp(args, config):
     trainer = Trainer(
         updater,
         stop_trigger=(config.train_max_steps, "iteration"),
-        out=output_dir, )
+        out=output_dir,
+        profiler_options=args.profiler_options)
 
     if dist.get_rank() == 0:
         trainer.extend(
@@ -228,6 +229,12 @@ def main():
         type=str2bool,
         default=False,
         help="runing benchmark or not, if True, use the --batch-size and --max-iter."
+    )
+    parser.add_argument(
+        "--profiler_options",
+        type=str,
+        default=None,
+        help="The option of profiler, which should be in format \"key1=value1;key2=value2;key3=value3\"."
     )
 
     args = parser.parse_args()
