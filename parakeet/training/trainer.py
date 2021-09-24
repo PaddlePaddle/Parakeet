@@ -27,6 +27,7 @@ from parakeet.training.reporter import scope
 from parakeet.training.trigger import get_trigger
 from parakeet.training.triggers.limit_trigger import LimitTrigger
 from parakeet.training.updater import UpdaterBase
+from parakeet.utils import profiler
 
 
 class _ExtensionEntry(object):
@@ -41,13 +42,14 @@ class Trainer(object):
                  updater: UpdaterBase,
                  stop_trigger: Callable=None,
                  out: Union[str, Path]='result',
-                 extensions: List[Extension]=None):
+                 extensions: List[Extension]=None,
+                 profiler_options: str=None):
         self.updater = updater
         self.extensions = OrderedDict()
         self.stop_trigger = LimitTrigger(*stop_trigger)
         self.out = Path(out)
         self.observation = None
-
+        self.profiler_options = profiler_options
         self._done = False
         if extensions:
             for ext in extensions:
@@ -143,7 +145,10 @@ class Trainer(object):
 
                 # updating parameters and state
                 with scope(self.observation):
+
                     update()
+                    if self.profiler_options:
+                        profiler.add_profiler_step(self.profiler_options)
                     batch_read_time = self.updater.batch_read_time
                     batch_time = self.updater.batch_time
                     avg_batch_cost = batch_read_time + batch_time

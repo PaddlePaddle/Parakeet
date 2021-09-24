@@ -186,7 +186,8 @@ def train_sp(args, config):
     trainer = Trainer(
         updater,
         stop_trigger=(config.train_max_steps, "iteration"),
-        out=output_dir, )
+        out=output_dir,
+        profiler_options=args.profiler_options)
 
     if dist.get_rank() == 0:
         trainer.extend(
@@ -204,6 +205,9 @@ def train_sp(args, config):
 
 def main():
     # parse args and config and redirect to train_sp
+    def str2bool(str):
+        return True if str.lower() == 'true' else False
+
     parser = argparse.ArgumentParser(description="Train a ParallelWaveGAN "
                                      "model with Baker Mandrin TTS dataset.")
     parser.add_argument(
@@ -217,12 +221,37 @@ def main():
         "--nprocs", type=int, default=1, help="number of processes.")
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
+    benchmark_group = parser.add_argument_group(
+        'benchmark', 'arguments related to benchmark.')
+    benchmark_group.add_argument(
+        "--batch-size", type=str, default="8", help="batch size.")
+    benchmark_group.add_argument(
+        "--max-iter", type=str, default="400000", help="train max steps.")
+
+    benchmark_group.add_argument(
+        "--run-benchmark",
+        type=str2bool,
+        default=False,
+        help="runing benchmark or not, if True, use the --batch-size and --max-iter."
+    )
+    benchmark_group.add_argument(
+        "--profiler_options",
+        type=str,
+        default=None,
+        help="The option of profiler, which should be in format \"key1=value1;key2=value2;key3=value3\"."
+    )
+
     args = parser.parse_args()
     if args.device == "cpu" and args.nprocs > 1:
         raise RuntimeError("Multiprocess training on CPU is not supported.")
     config = get_cfg_default()
     if args.config:
         config.merge_from_file(args.config)
+
+    # 增加 --batch_size --max_iter 用于 benchmark 调用
+    if args.run_benchmark:
+        config.batch_size = int(args.batch_size)
+        config.train_max_steps = int(args.max_iter)
 
     print("========Args========")
     print(yaml.safe_dump(vars(args)))
