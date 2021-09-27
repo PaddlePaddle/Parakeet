@@ -15,6 +15,7 @@
 import argparse
 import os
 import logging
+import shutil
 from pathlib import Path
 
 import jsonlines
@@ -198,8 +199,11 @@ def main():
     if args.device == "cpu" and args.nprocs > 1:
         raise RuntimeError("Multiprocess training on CPU is not supported.")
     config = get_cfg_default()
+    config_name = args.config.split("/")[-1]
     if args.config:
         config.merge_from_file(args.config)
+    # copy conf to output_dir
+    shutil.copyfile(args.config, Path(args.output_dir) / config_name)
 
     print("========Args========")
     print(yaml.safe_dump(vars(args)))
