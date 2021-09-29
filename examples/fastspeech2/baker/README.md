@@ -88,16 +88,16 @@ fastspeech2_nosil_baker_ckpt_0.4
 ```
 ## Synthesize
 We use [parallel wavegan](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/parallelwave_gan/baker) as the neural vocoder.
-Download pretrained parallel wavegan model from [parallel_wavegan_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/parallel_wavegan_baker_ckpt_0.4.zip) and unzip it.
+Download pretrained parallel wavegan model from [pwg_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/pwg_baker_ckpt_0.4.zip) and unzip it.
 ```bash
-unzip parallel_wavegan_baker_ckpt_0.4.zip
+unzip pwg_baker_ckpt_0.4.zip
 ```
 Parallel WaveGAN checkpoint contains files listed below.
 ```text
-parallel_wavegan_baker_ckpt_0.4
-├── pwg_default.yaml         # default config used to train parallel wavegan
-├── pwg_generator.pdparams   # model parameters of parallel wavegan
-└── pwg_stats.npy            # statistics used to normalize spectrogram when training parallel wavegan
+pwg_baker_ckpt_0.4
+├── pwg_default.yaml               # default config used to train parallel wavegan
+├── pwg_snapshot_iter_400000.pdz   # model parameters of parallel wavegan
+└── pwg_stats.npy                  # statistics used to normalize spectrogram when training parallel wavegan
 ```
 `synthesize.sh` calls `synthesize.py`, which can synthesize waveform from `metadata.jsonl`.
 ```bash
@@ -107,8 +107,9 @@ parallel_wavegan_baker_ckpt_0.4
 usage: synthesize.py [-h] [--fastspeech2-config FASTSPEECH2_CONFIG]
                      [--fastspeech2-checkpoint FASTSPEECH2_CHECKPOINT]
                      [--fastspeech2-stat FASTSPEECH2_STAT]
-                     [--pwg-config PWG_CONFIG] [--pwg-params PWG_PARAMS]
-                     [--pwg-stat PWG_STAT] [--phones-dict PHONES_DICT]
+                     [--pwg-config PWG_CONFIG]
+                     [--pwg-checkpoint PWG_CHECKPOINT] [--pwg-stat PWG_STAT]
+                     [--phones-dict PHONES_DICT]
                      [--test-metadata TEST_METADATA] [--output-dir OUTPUT_DIR]
                      [--device DEVICE] [--verbose VERBOSE]
 
@@ -125,7 +126,7 @@ optional arguments:
                         spectrogram when training fastspeech2.
   --pwg-config PWG_CONFIG
                         parallel wavegan config file.
-  --pwg-params PWG_PARAMS
+  --pwg-checkpoint PWG_CHECKPOINT
                         parallel wavegan generator parameters to load.
   --pwg-stat PWG_STAT   mean and standard deviation used to normalize
                         spectrogram when training parallel wavegan.
@@ -146,7 +147,8 @@ optional arguments:
 usage: synthesize_e2e.py [-h] [--fastspeech2-config FASTSPEECH2_CONFIG]
                          [--fastspeech2-checkpoint FASTSPEECH2_CHECKPOINT]
                          [--fastspeech2-stat FASTSPEECH2_STAT]
-                         [--pwg-config PWG_CONFIG] [--pwg-params PWG_PARAMS]
+                         [--pwg-config PWG_CONFIG]
+                         [--pwg-checkpoint PWG_CHECKPOINT]
                          [--pwg-stat PWG_STAT] [--phones-dict PHONES_DICT]
                          [--text TEXT] [--output-dir OUTPUT_DIR]
                          [--device DEVICE] [--verbose VERBOSE]
@@ -164,7 +166,7 @@ optional arguments:
                         spectrogram when training fastspeech2.
   --pwg-config PWG_CONFIG
                         parallel wavegan config file.
-  --pwg-params PWG_PARAMS
+  --pwg-checkpoint PWG_CHECKPOINT
                         parallel wavegan generator parameters to load.
   --pwg-stat PWG_STAT   mean and standard deviation used to normalize
                         spectrogram when training parallel wavegan.
@@ -178,7 +180,7 @@ optional arguments:
 ```
 
 1. `--fastspeech2-config`, `--fastspeech2-checkpoint`, `--fastspeech2-stat` and `--phones-dict` are arguments for fastspeech2, which correspond to the 4 files in the fastspeech2 pretrained model.
-2. `--pwg-config`, `--pwg-params`, `--pwg-stat` are arguments for parallel wavegan, which correspond to the 3 files in the parallel wavegan pretrained model.
+2. `--pwg-config`, `--pwg-checkpoint`, `--pwg-stat` are arguments for parallel wavegan, which correspond to the 3 files in the parallel wavegan pretrained model.
 3. `--test-metadata` should be the metadata file in the normalized subfolder of `test`  in the `dump` folder.
 4. `--text` is the text file, which contains sentences to synthesize.
 5. `--output-dir` is the directory to save synthesized audio files.
@@ -190,9 +192,9 @@ python3 synthesize_e2e.py \
   --fastspeech2-config=fastspeech2_nosil_baker_ckpt_0.4/default.yaml \
   --fastspeech2-checkpoint=fastspeech2_nosil_baker_ckpt_0.4/snapshot_iter_76000.pdz \
   --fastspeech2-stat=fastspeech2_nosil_baker_ckpt_0.4/speech_stats.npy \
-  --pwg-config=parallel_wavegan_baker_ckpt_0.4/pwg_default.yaml \
-  --pwg-params=parallel_wavegan_baker_ckpt_0.4/pwg_generator.pdparams \
-  --pwg-stat=parallel_wavegan_baker_ckpt_0.4/pwg_stats.npy \
+  --pwg-config=pwg_baker_ckpt_0.4/pwg_default.yaml \
+  --pwg-checkpoint=pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz \
+  --pwg-stat=pwg_baker_ckpt_0.4/pwg_stats.npy \
   --text=../sentences.txt \
   --output-dir=exp/default/test_e2e \
   --device="gpu" \

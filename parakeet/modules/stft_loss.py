@@ -14,8 +14,57 @@
 import paddle
 from paddle import nn
 from paddle.nn import functional as F
+from scipy import signal
 
-from parakeet.modules.audio import STFT
+
+def stft(x,
+         fft_size,
+         hop_length=None,
+         win_length=None,
+         window='hann',
+         center=True,
+         pad_mode='reflect'):
+    """Perform STFT and convert to magnitude spectrogram.
+    Parameters
+    ----------
+    x : Tensor
+        Input signal tensor (B, T).
+    fft_size : int
+        FFT size.
+    hop_size : int
+        Hop size.
+    win_length : int
+        window : str, optional
+    window : str
+        Name of window function, see `scipy.signal.get_window` for more
+        details. Defaults to "hann".
+    center : bool, optional
+        center (bool, optional): Whether to pad `x` to make that the
+        :math:`t \times hop\_length` at the center of :math:`t`-th frame. Default: `True`.
+    pad_mode : str, optional
+        Choose padding pattern when `center` is `True`.
+    Returns
+    ----------
+    Tensor:
+        Magnitude spectrogram (B, #frames, fft_size // 2 + 1).
+    """
+    # calculate window
+    window = signal.get_window(window, win_length, fftbins=True)
+    window = paddle.to_tensor(window)
+    x_stft = paddle.tensor.signal.stft(
+        x,
+        fft_size,
+        hop_length,
+        win_length,
+        window=window,
+        center=center,
+        pad_mode=pad_mode)
+
+    real = x_stft.real()
+    imag = x_stft.imag()
+
+    return paddle.sqrt(paddle.clip(real**2 + imag**2, min=1e-7)).transpose(
+        [0, 2, 1])
 
 
 class SpectralConvergenceLoss(nn.Layer):
@@ -46,7 +95,7 @@ class SpectralConvergenceLoss(nn.Layer):
 class LogSTFTMagnitudeLoss(nn.Layer):
     """Log STFT magnitude loss module."""
 
-    def __init__(self, epsilon=1e-10):
+    def __init__(self, epsilon=1e-7):
         """Initilize los STFT magnitude loss module."""
         super().__init__()
         self.epsilon = epsilon
@@ -82,11 +131,7 @@ class STFTLoss(nn.Layer):
         self.fft_size = fft_size
         self.shift_size = shift_size
         self.win_length = win_length
-        self.stft = STFT(
-            n_fft=fft_size,
-            hop_length=shift_size,
-            win_length=win_length,
-            window=window)
+        self.window = window
         self.spectral_convergence_loss = SpectralConvergenceLoss()
         self.log_stft_magnitude_loss = LogSTFTMagnitudeLoss()
 
@@ -105,10 +150,10 @@ class STFTLoss(nn.Layer):
         Tensor
             Log STFT magnitude loss value.
         """
-        x_mag = self.stft.magnitude(x)
-        y_mag = self.stft.magnitude(y)
-        x_mag = x_mag.transpose([0, 2, 1])
-        y_mag = y_mag.transpose([0, 2, 1])
+        x_mag = stft(x, self.fft_size, self.shift_size, self.win_length,
+                     self.window)
+        y_mag = stft(y, self.fft_size, self.shift_size, self.win_length,
+                     self.window)
         sc_loss = self.spectral_convergence_loss(x_mag, y_mag)
         mag_loss = self.log_stft_magnitude_loss(x_mag, y_mag)
 
