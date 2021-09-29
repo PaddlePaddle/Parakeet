@@ -206,7 +206,9 @@ class SpeedySpeech(nn.Layer):
         k = paddle.full([1], 0, dtype=paddle.int64)
         for j in range(t_enc):
             d = durations_to_expand[0, j]
-            M[0, k:k + d, j] = 1
+            # If the d == 0, slice action is meaningless and not supported
+            if d >= 1:
+                M[0, k:k + d, j] = 1
             k += d
 
         encodings = paddle.matmul(M, encodings)

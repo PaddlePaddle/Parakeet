@@ -36,7 +36,8 @@ if [ ${MODE} = "lite_train_infer" ];then
     wget -nc -P  ./pretrain_models/ https://paddlespeech.bj.bcebos.com/Parakeet/pwg_baker_ckpt_0.4.zip
     (cd ./pretrain_models && unzip speedyspeech_baker_ckpt_0.4.zip && unzip pwg_baker_ckpt_0.4.zip)
     # generate a config patch
-    echo 'max_epoch: 30' > lite_train_infer.yaml
+    echo 'max_epoch: 10' > lite_train_infer.yaml
+    echo 'num_snapshots: 10' >> lite_train_infer.yaml
     # download data
     rm -rf ./train_data/mini_BZNSYP
     wget -nc -P ./train_data/ https://paddlespeech.bj.bcebos.com/datasets/CE/speedyspeech/mini_BZNSYP.tar.gz
