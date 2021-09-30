@@ -1,7 +1,7 @@
 ===========================train_params===========================
 model_name:speedyspeech
 python:python3.7
-gpu_list:0,1
+gpu_list:1
 null:null
 null:null
 null:null
@@ -13,7 +13,7 @@ null:null
 null:null
 ##
 trainer:norm_train
-norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/BZNSYP/dev/norm/metadata.jsonl --output-dir=exp/lite
+norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/BZNSYP/dev/norm/metadata.jsonl --output-dir=exp/whole
 null:null
 null:null
 null:null

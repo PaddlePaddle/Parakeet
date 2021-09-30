@@ -1,7 +1,7 @@
 ===========================train_params===========================
 model_name:speedyspeech
 python:python3.7
-gpu_list:1|0,1
+gpu_list:0,1
 null:null
 null:null
 null:null
@@ -13,7 +13,7 @@ null:null
 null:null
 ##
 trainer:norm_train
-norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/mini_BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/mini_BZNSYP/dev/norm/metadata.jsonl --config=lite_train_infer.yaml --output-dir=exp/default
+norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/BZNSYP/dev/norm/metadata.jsonl --output-dir=exp/whole
 null:null
 null:null
 null:null
@@ -21,7 +21,7 @@ null:null
 null:null
 ##
 ===========================eval_params===========================
-eval:../examples/speedyspeech/baker/synthesize_e2e.py --speedyspeech-config=../examples/speedyspeech/baker/conf/default.yaml --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_90.pdz --speedyspeech-stat=pretrain_models/speedyspeech_baker_ckpt_0.4/speedy_speech_stats.npy --pwg-config=../examples/parallelwave_gan/baker/conf/default.yaml --pwg-checkpoint=pretrain_models/pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz --pwg-stat=pretrain_models/pwg_baker_ckpt_0.4/pwg_stats.npy --text=../examples/speedyspeech/baker/sentences.txt --output-dir=e2e --inference-dir=inference --device="gpu" --phones-dict=../examples/speedyspeech/baker/phones.txt --tones-dict=../examples/speedyspeech/baker/tones.txt
+eval:../examples/speedyspeech/baker/synthesize_e2e.py --speedyspeech-config=../examples/speedyspeech/baker/conf/default.yaml --speedyspeech-checkpoint=pretrain_models/speedyspeech_baker_ckpt_0.4/speedyspeech_snapshot_iter_91800.pdz --speedyspeech-stat=pretrain_models/speedyspeech_baker_ckpt_0.4/speedy_speech_stats.npy --pwg-config=../examples/parallelwave_gan/baker/conf/default.yaml --pwg-checkpoint=pretrain_models/pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz --pwg-stat=pretrain_models/pwg_baker_ckpt_0.4/pwg_stats.npy --text=../examples/speedyspeech/baker/sentences.txt --output-dir=e2e --inference-dir=inference --device="gpu" --phones-dict=../examples/speedyspeech/baker/phones.txt --tones-dict=../examples/speedyspeech/baker/tones.txt
 null:null
 ##
 ===========================infer_params===========================
