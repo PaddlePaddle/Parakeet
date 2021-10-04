@@ -143,4 +143,11 @@ dmypy.json
 runs
 syn_audios
 exp/
+exp_*/
 dump/
+dump_*/
+*_test.py
+*_torch.py
+*.ipynb
+*ckpt*
+*alignment*

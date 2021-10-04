@@ -1,6 +1,8 @@
 #!/bin/bash
 
-python3 train.py \
+export MAIN_ROOT=`realpath ${PWD}/../../../`
+
+python3 ${MAIN_ROOT}/utils/multi_spk_fs2_train.py \
     --train-metadata=dump/train/norm/metadata.jsonl \
     --dev-metadata=dump/dev/norm/metadata.jsonl \
     --config=conf/default.yaml \

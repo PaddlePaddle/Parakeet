@@ -1,11 +1,15 @@
+#!/bin/bash
+
 python synthesize_e2e.py \
   --speedyspeech-config=conf/default.yaml \
-  --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_91800.pdz \
-  --speedyspeech-stat=dump/train/stats.npy \
-  --pwg-config=../../parallelwave_gan/baker/conf/default.yaml \
-  --pwg-checkpoint=../../parallelwave_gan/baker/exp/default/checkpoints/snapshot_iter_400000.pdz \
-  --pwg-stat=../../parallelwave_gan/baker/dump/train/stats.npy \
-  --text=sentences.txt \
-  --output-dir=exp/default/e2e \
+  --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_11400.pdz \
+  --speedyspeech-stat=dump/train/feats_stats.npy \
+  --pwg-config=pwg_baker_ckpt_0.4/pwg_default.yaml \
+  --pwg-checkpoint=pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz \
+  --pwg-stat=pwg_baker_ckpt_0.4/pwg_stats.npy \
+  --text=../sentences.txt \
+  --output-dir=exp/default/test_e2e \
   --inference-dir=exp/default/inference \
-  --device="gpu"
+  --device="gpu" \
+  --phones-dict=dump/phone_id_map.txt \
+  --tones-dict=dump/tone_id_map.txt

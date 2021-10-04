@@ -1,9 +1,11 @@
 
 #!/bin/bash
 
-python3 synthesize.py \
+export MAIN_ROOT=`realpath ${PWD}/../../../`
+
+python3 ${MAIN_ROOT}/utils/fs2_pwg_syn.py \
   --fastspeech2-config=conf/default.yaml \
-  --fastspeech2-checkpoint=exp/default/checkpoints/snapshot_iter_153.pdz \
+  --fastspeech2-checkpoint=exp/default/checkpoints/snapshot_iter_76000.pdz \
   --fastspeech2-stat=dump/train/speech_stats.npy \
   --pwg-config=pwg_baker_ckpt_0.4/pwg_default.yaml \
   --pwg-checkpoint=pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz \

@@ -1,4 +1,4 @@
-# FastSpeech2 with the Baker dataset
+# FastSpeech2 with CSMSC
 This example contains code used to train a [Fastspeech2](https://arxiv.org/abs/2006.04558) model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html).
 
 ## Dataset
@@ -11,7 +11,7 @@ You can download from here [baker_alignment_tone.tar.gz](https://paddlespeech.bj
 
 ### Preprocess the dataset
 Assume the path to the dataset is `~/datasets/BZNSYP`.
-Assume the path to the MFA result of BZNSYP is `./baker_alignment_tone`.
+Assume the path to the MFA result of CSMSC is `./baker_alignment_tone`.
 Run the command below to preprocess the dataset.
 
 ```bash
@@ -41,21 +41,22 @@ The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
 ## Train the model
+`./run.sh` calls `Parakeet/utils/fs2_train.py`.
 ```bash
 ./run.sh
 ```
-Or you can use `train.py` directly. Here's the complete help message.
+Here's the complete help message.
 ```text
-usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
-                [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
-                [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
-                [--phones-dict PHONES_DICT]
+usage: fs2_train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
+                    [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
+                    [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+                    [--phones-dict PHONES_DICT]
 
-Train a FastSpeech2 model with Baker Mandrin TTS dataset.
+Train a FastSpeech2 model with sigle speaker dataset.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --config CONFIG       config file to overwrite default config.
+  --config CONFIG       fastspeech2 config file.
   --train-metadata TRAIN_METADATA
                         training data.
   --dev-metadata DEV_METADATA
@@ -99,19 +100,20 @@ pwg_baker_ckpt_0.4
 ├── pwg_snapshot_iter_400000.pdz   # model parameters of parallel wavegan
 └── pwg_stats.npy                  # statistics used to normalize spectrogram when training parallel wavegan
 ```
-`synthesize.sh` calls `synthesize.py`, which can synthesize waveform from `metadata.jsonl`.
+`synthesize.sh` calls `Parakeet/utils/fs2_pwg_syn.py`, which can synthesize waveform from `metadata.jsonl`.
 ```bash
 ./synthesize.sh
 ```
 ```text
-usage: synthesize.py [-h] [--fastspeech2-config FASTSPEECH2_CONFIG]
-                     [--fastspeech2-checkpoint FASTSPEECH2_CHECKPOINT]
-                     [--fastspeech2-stat FASTSPEECH2_STAT]
-                     [--pwg-config PWG_CONFIG]
-                     [--pwg-checkpoint PWG_CHECKPOINT] [--pwg-stat PWG_STAT]
-                     [--phones-dict PHONES_DICT]
-                     [--test-metadata TEST_METADATA] [--output-dir OUTPUT_DIR]
-                     [--device DEVICE] [--verbose VERBOSE]
+usage: fs2_pwg_syn.py [-h] [--fastspeech2-config FASTSPEECH2_CONFIG]
+                      [--fastspeech2-checkpoint FASTSPEECH2_CHECKPOINT]
+                      [--fastspeech2-stat FASTSPEECH2_STAT]
+                      [--pwg-config PWG_CONFIG]
+                      [--pwg-checkpoint PWG_CHECKPOINT] [--pwg-stat PWG_STAT]
+                      [--phones-dict PHONES_DICT]
+                      [--test-metadata TEST_METADATA]
+                      [--output-dir OUTPUT_DIR] [--device DEVICE]
+                      [--verbose VERBOSE]
 
 Synthesize with fastspeech2 & parallel wavegan.
 

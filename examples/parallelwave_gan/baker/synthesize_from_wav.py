@@ -23,10 +23,19 @@ import paddle
 import soundfile as sf
 import yaml
 from parakeet.data.get_feats import LogMelFBank
-from parakeet.models.parallel_wavegan import PWGGenerator, PWGInference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
+from yacs.config import CfgNode as Configuration
 
-from config import get_cfg_default
+
+def get_cfg_default():
+    config_path = (Path(__file__).parent / "conf" / "default.yaml").resolve()
+    with open(config_path, 'rt') as f:
+        _C = yaml.safe_load(f)
+        _C = Configuration(_C)
+    config = _C.clone()
+    return config
 
 
 def evaluate(args, config):
@@ -53,9 +62,9 @@ def evaluate(args, config):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mel_extractor = LogMelFBank(
-        sr=config.sr,
+        sr=config.fs,
         n_fft=config.n_fft,
-        hop_length=config.hop_length,
+        hop_length=config.n_shift,
         win_length=config.win_length,
         window=config.window,
         n_mels=config.n_mels,
@@ -63,7 +72,7 @@ def evaluate(args, config):
         fmax=config.fmax)
 
     for utt_name in os.listdir(input_dir):
-        wav, _ = librosa.load(str(input_dir / utt_name), sr=config.sr)
+        wav, _ = librosa.load(str(input_dir / utt_name), sr=config.fs)
         # extract mel feats
         mel = mel_extractor.get_log_mel_fbank(wav)
         mel = paddle.to_tensor(mel)
@@ -71,7 +80,7 @@ def evaluate(args, config):
         sf.write(
             str(output_dir / ("gen_" + utt_name)),
             gen_wav.numpy(),
-            samplerate=config.sr)
+            samplerate=config.fs)
         print(f"{utt_name} done!")
 
 

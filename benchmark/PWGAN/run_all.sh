@@ -14,18 +14,19 @@ fi
 # 2 拷贝该模型需要数据、预训练模型
 # 下载 baker 数据集到 home 目录下并解压缩到 home 目录下
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-      wget https://paddlespeech.bj.bcebos.com/datasets/BZNSYP.rar
+      wget https://weixinxcxdb.oss-cn-beijing.aliyuncs.com/gwYinPinKu/BZNSYP.rar
       mkdir BZNSYP
       unrar x BZNSYP.rar BZNSYP
+      wget https://paddlespeech.bj.bcebos.com/Parakeet/benchmark/durations.txt
 fi
 # 数据预处理
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 
-      python examples/parallelwave_gan/baker/preprocess.py --rootdir=BZNSYP/ --dumpdir=dump --num_cpu=20
-      python examples/parallelwave_gan/baker/compute_statistics.py --metadata=dump/train/raw/metadata.jsonl --field-name="feats" --dumpdir=dump/train
-      python examples/parallelwave_gan/baker/normalize.py --metadata=dump/train/raw/metadata.jsonl --dumpdir=dump/train/norm --stats=dump/train/stats.npy
-      python examples/parallelwave_gan/baker/normalize.py --metadata=dump/dev/raw/metadata.jsonl --dumpdir=dump/dev/norm --stats=dump/train/stats.npy
-      python examples/parallelwave_gan/baker/normalize.py --metadata=dump/test/raw/metadata.jsonl --dumpdir=dump/test/norm --stats=dump/train/stats.npy
+      python utils/vocoder_preprocess.py --rootdir=BZNSYP/ --dumpdir=dump --num-cpu=20 --cut-sil=True --dur-file=durations.txt --config=examples/parallelwave_gan/baker/conf/default.yaml
+      python utils/compute_statistics.py --metadata=dump/train/raw/metadata.jsonl --field-name="feats"
+      python utils/vocoder_normalize.py --metadata=dump/train/raw/metadata.jsonl --dumpdir=dump/train/norm --stats=dump/train/feats_stats.npy
+      python utils/vocoder_normalize.py --metadata=dump/dev/raw/metadata.jsonl --dumpdir=dump/dev/norm --stats=dump/train/feats_stats.npy
+      python utils/vocoder_normalize.py --metadata=dump/test/raw/metadata.jsonl --dumpdir=dump/test/norm --stats=dump/train/feats_stats.npy
 fi
 # 3 批量运行（如不方便批量，1，2需放到单个模型中）
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then

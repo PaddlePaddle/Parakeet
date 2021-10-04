@@ -65,7 +65,7 @@ def write_lab(root_dir: Union[str, Path],
 
 
 def reorganize_aishell3(root_dir: Union[str, Path],
-                        output_dir: Union[str, Path]=None,
+                        output_dir: Union[str, Path],
                         script_type='pinyin'):
     output_dir.mkdir(parents=True, exist_ok=True)
     link_wav(root_dir, output_dir)

@@ -22,7 +22,7 @@ class LogMelFBank():
                  sr=24000,
                  n_fft=2048,
                  hop_length=300,
-                 win_length=1200,
+                 win_length=None,
                  window="hann",
                  n_mels=80,
                  fmin=80,
@@ -169,7 +169,7 @@ class Energy():
                  sr=24000,
                  n_fft=2048,
                  hop_length=300,
-                 win_length=1200,
+                 win_length=None,
                  window="hann",
                  center=True,
                  pad_mode="reflect"):

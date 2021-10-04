@@ -119,7 +119,7 @@ def process_sentence(config: Dict[str, Any],
             "phones": phones,
             "text_lengths": len(phones),
             "speech_lengths": num_frames,
-            "speech": str(mel_path.resolve()),
+            "speech": str(mel_path),
             "speaker": speaker
         }
     return record
@@ -200,6 +200,8 @@ def main():
     config_path = Path(args.config_path).resolve()
     root_dir = Path(args.rootdir).expanduser()
     dumpdir = Path(args.dumpdir).expanduser()
+    # use absolute path
+    dumpdir = dumpdir.resolve()
     dumpdir.mkdir(parents=True, exist_ok=True)
 
     assert root_dir.is_dir()

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import logging
 import argparse
+import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -23,15 +23,13 @@ import paddle
 import yaml
 from paddle import jit
 from paddle.static import InputSpec
-from yacs.config import CfgNode
-
+from parakeet.frontend.cn_frontend import Frontend
 from parakeet.models.speedyspeech import SpeedySpeech
 from parakeet.models.speedyspeech import SpeedySpeechInference
 from parakeet.models.parallel_wavegan import PWGGenerator
 from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
-
-from frontend import Frontend
+from yacs.config import CfgNode
 
 
 def evaluate(args, speedyspeech_config, pwg_config):
@@ -45,7 +43,19 @@ def evaluate(args, speedyspeech_config, pwg_config):
             utt_id, sentence = line.strip().split()
             sentences.append((utt_id, sentence))
 
-    model = SpeedySpeech(**speedyspeech_config["model"])
+    with open(args.phones_dict, "r") as f:
+        phn_id = [line.strip().split() for line in f.readlines()]
+    vocab_size = len(phn_id)
+    print("vocab_size:", vocab_size)
+    with open(args.tones_dict, "r") as f:
+        tone_id = [line.strip().split() for line in f.readlines()]
+    tone_size = len(tone_id)
+    print("tone_size:", tone_size)
+
+    model = SpeedySpeech(
+        vocab_size=vocab_size,
+        tone_size=tone_size,
+        **speedyspeech_config["model"])
     model.set_state_dict(
         paddle.load(args.speedyspeech_checkpoint)["main_params"])
     model.eval()
@@ -91,7 +101,8 @@ def evaluate(args, speedyspeech_config, pwg_config):
     paddle.jit.save(pwg_inference, os.path.join(args.inference_dir, "pwg"))
     pwg_inference = paddle.jit.load(os.path.join(args.inference_dir, "pwg"))
 
-    frontend = Frontend(args.phones_dict, args.tones_dict)
+    frontend = Frontend(
+        phone_vocab_path=args.phones_dict, tone_vocab_path=args.tones_dict)
     print("frontend done!")
 
     output_dir = Path(args.output_dir)
@@ -118,7 +129,7 @@ def evaluate(args, speedyspeech_config, pwg_config):
         sf.write(
             output_dir / (utt_id + ".wav"),
             wav.numpy(),
-            samplerate=speedyspeech_config.sr)
+            samplerate=speedyspeech_config.fs)
         print(f"{utt_id} done!")
 
 
@@ -153,15 +164,9 @@ def main():
         type=str,
         help="text to synthesize, a 'utt_id sentence' pair per line")
     parser.add_argument(
-        "--phones-dict",
-        type=str,
-        default="phones.txt",
-        help="phone vocabulary file.")
+        "--phones-dict", type=str, default=None, help="phone vocabulary file.")
     parser.add_argument(
-        "--tones-dict",
-        type=str,
-        default="tones.txt",
-        help="tone vocabulary file.")
+        "--tones-dict", type=str, default=None, help="tone vocabulary file.")
     parser.add_argument("--output-dir", type=str, help="output dir")
     parser.add_argument(
         "--inference-dir", type=str, help="dir to save inference models")

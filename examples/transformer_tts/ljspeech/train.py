@@ -21,22 +21,22 @@ from pathlib import Path
 import jsonlines
 import numpy as np
 import paddle
+import yaml
 from paddle import DataParallel
 from paddle import distributed as dist
 from paddle import nn
 from paddle.io import DataLoader, DistributedBatchSampler
 from parakeet.datasets.data_table import DataTable
+from parakeet.datasets.am_batch_fn import transformer_single_spk_batch_fn
 from parakeet.models.transformer_tts import TransformerTTS
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.seeding import seed_everything
 from parakeet.training.trainer import Trainer
+from parakeet.training.transformer_tts_updater import TransformerTTSUpdater
+from parakeet.training.transformer_tts_updater import TransformerTTSEvaluator
 from visualdl import LogWriter
-import yaml
-
-from batch_fn import collate_ljspeech_examples
-from config import get_cfg_default
-from transformer_tts_updater import TransformerTTSUpdater, TransformerTTSEvaluator
+from yacs.config import CfgNode
 
 optim_classes = dict(
     adadelta=paddle.optimizer.Adadelta,
@@ -124,7 +124,7 @@ def train_sp(args, config):
     train_dataloader = DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
-        collate_fn=collate_ljspeech_examples,
+        collate_fn=transformer_single_spk_batch_fn,
         num_workers=config.num_workers)
 
     dev_dataloader = DataLoader(
@@ -132,7 +132,7 @@ def train_sp(args, config):
         shuffle=False,
         drop_last=False,
         batch_size=config.batch_size,
-        collate_fn=collate_ljspeech_examples,
+        collate_fn=transformer_single_spk_batch_fn,
         num_workers=config.num_workers)
     print("dataloaders done!")
 
@@ -152,10 +152,10 @@ def train_sp(args, config):
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    config_name = args.config.split("/")[-1]
-    # copy conf to output_dir
-    shutil.copyfile(args.config, output_dir / config_name)
+    if dist.get_rank() == 0:
+        config_name = args.config.split("/")[-1]
+        # copy conf to output_dir
+        shutil.copyfile(args.config, output_dir / config_name)
 
     updater = TransformerTTSUpdater(
         model=model,
@@ -177,6 +177,13 @@ def train_sp(args, config):
             Snapshot(max_size=config.num_snapshots), trigger=(1, 'epoch'))
     # print(trainer.extensions)
     trainer.run()
+
+
+def get_cfg_default():
+    config_path = (Path(__file__).parent / "conf" / "default.yaml").resolve()
+    with open(config_path, 'rt') as f:
+        config = CfgNode(yaml.safe_load(f))
+    return config
 
 
 def main():
