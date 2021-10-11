@@ -20,12 +20,12 @@ fi
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     # extract features
     echo "Extract features ..."
-    python3 ${MAIN_ROOT}/utils/fastspeech2_preprocess.py \
+    python3 ${MAIN_ROOT}/utils/fs2_preprocess.py \
         --dataset=aishell3 \
         --rootdir=~/datasets/data_aishell3/ \
         --dumpdir=dump \
         --dur-file=durations.txt \
-        --config-path=conf/default.yaml \
+        --config=conf/default.yaml \
         --num-cpu=8 \
         --cut-sil=True
 fi
@@ -47,9 +47,9 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-    # normalize and covert phone to id, dev and test should use train's stats
+    # normalize and covert phone/speaker to id, dev and test should use train's stats
     echo "Normalize ..."
-    python3 ${MAIN_ROOT}/utils/fastspeech2_normalize.py \
+    python3 ${MAIN_ROOT}/utils/fs2_normalize.py \
         --metadata=dump/train/raw/metadata.jsonl \
         --dumpdir=dump/train/norm \
         --speech-stats=dump/train/speech_stats.npy \
@@ -58,7 +58,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --phones-dict=dump/phone_id_map.txt \
         --speaker-dict=dump/speaker_id_map.txt
 
-    python3 ${MAIN_ROOT}/utils/fastspeech2_normalize.py \
+    python3 ${MAIN_ROOT}/utils/fs2_normalize.py \
         --metadata=dump/dev/raw/metadata.jsonl \
         --dumpdir=dump/dev/norm \
         --speech-stats=dump/train/speech_stats.npy \
@@ -67,7 +67,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --phones-dict=dump/phone_id_map.txt \
         --speaker-dict=dump/speaker_id_map.txt
 
-    python3 ${MAIN_ROOT}/utils/fastspeech2_normalize.py \
+    python3 ${MAIN_ROOT}/utils/fs2_normalize.py \
         --metadata=dump/test/raw/metadata.jsonl \
         --dumpdir=dump/test/norm \
         --speech-stats=dump/train/speech_stats.npy \

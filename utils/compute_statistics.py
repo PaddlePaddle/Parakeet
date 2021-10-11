@@ -40,6 +40,16 @@ def main():
         type=str,
         help="path to save statistics. if not provided, "
         "stats will be saved in the above root directory with name stats.npy")
+
+    def str2bool(str):
+        return True if str.lower() == 'true' else False
+
+    parser.add_argument(
+        "--use-relative-path",
+        type=str2bool,
+        default=False,
+        help="whether use relative path in metadata")
+
     parser.add_argument(
         "--verbose",
         type=int,
@@ -75,6 +85,12 @@ def main():
 
     with jsonlines.open(args.metadata, 'r') as reader:
         metadata = list(reader)
+
+    if args.use_relative_path:
+        # if use_relative_path in preprocess, covert it to absolute path here
+        metadata_dir = Path(args.metadata).parent
+        for item in metadata:
+            item["feats"] = str(metadata_dir / item["feats"])
     dataset = DataTable(
         metadata,
         fields=[args.field_name],

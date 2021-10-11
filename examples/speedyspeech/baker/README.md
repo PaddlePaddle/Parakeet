@@ -1,17 +1,22 @@
-# Speedyspeech with the Baker dataset
+# Speedyspeech with CSMSC
 
-This example contains code used to train a [Speedyspeech](http://arxiv.org/abs/2008.03802) model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html). NOTE that we only implement the student part of the Speedyspeech model. The ground truth alignment used to train the model is extracted from the dataset.
+This example contains code used to train a [Speedyspeech](http://arxiv.org/abs/2008.03802) model with [Chinese Standard Mandarin Speech Copus](https://www.data-baker.com/open_source.html). NOTE that we only implement the student part of the Speedyspeech model. The ground truth alignment used to train the model is extracted from the dataset using [MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner).
+
+## Dataset
+### Download and Extract the datasaet
+Download CSMSC from it's [Official Website](https://test.data-baker.com/data/index/source).
+
+### Get MFA result of CSMSC and Extract it
+We use [MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) to get durations for SPEEDYSPEECH.
+You can download from here [baker_alignment_tone.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/BZNSYP/with_tone/baker_alignment_tone.tar.gz), or train your own MFA model reference to  [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) of our repo.
 
 ## Preprocess the dataset
-
-Download the dataset from the [official website of data-baker](https://www.data-baker.com/data/index/source) and extract it to `~/datasets`. Then the dataset is in directory `~/datasets/BZNSYP`.
-
-Run the script for preprocessing.
-
+Assume the path to the dataset is `~/datasets/BZNSYP`.
+Assume the path to the MFA result of CSMSC is `./baker_alignment_tone`.
+Run the command below to preprocess the dataset.
 ```bash
-bash preprocess.sh
+./preprocess.sh
 ```
-
 When it is done. A `dump` folder is created in the current directory. The structure of the dump folder is listed below.
 
 ```text
@@ -25,42 +30,47 @@ dump
 └── train
     ├── norm
     ├── raw
-    └── stats.npy
+    └── feats_stats.npy
 ```
 
-The dataset is split into 3 parts, namely `train`, `dev` and `test`, each of which contains a `norm` and `raw` sub folder. The raw folder contains log magnitude of mel spectrogram of each utterances, while the norm folder contains normalized spectrogram. The statistics used to normalize the spectrogram is computed from the training set, which is located in `dump/train/stats.npy`.
+The dataset is split into 3 parts, namely `train`, `dev` and `test`, each of which contains a `norm` and `raw` sub folder. The raw folder contains log magnitude of mel spectrogram of each utterances, while the norm folder contains normalized spectrogram. The statistics used to normalize the spectrogram is computed from the training set, which is located in `dump/train/feats_stats.npy`.
 
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations, path of spectrogram, and id of each utterance.
 
 ## Train the model
-
-To train the model use the `run.sh`. It is an example script to run `train.py`.
-
+`./run.sh` calls `Parakeet/utils/ss_train.py`.
 ```bash
-bash run.sh
+./run.sh
 ```
-
-Or you can use `train.py` directly. Here's the complete help message.
+Here's the complete help message.
 
 ```text
-usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
-                [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
-                [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+usage: ss_train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
+                   [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
+                   [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+                   [--use-relative-path USE_RELATIVE_PATH]
+                   [--phones-dict PHONES_DICT] [--tones-dict TONES_DICT]
 
-Train a Speedyspeech model with Baker Mandrin TTS dataset.
+Train a Speedyspeech model with sigle speaker dataset.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --config CONFIG       config file to overwrite default config
+  --config CONFIG       config file.
   --train-metadata TRAIN_METADATA
-                        training data
+                        training data.
   --dev-metadata DEV_METADATA
-                        dev data
+                        dev data.
   --output-dir OUTPUT_DIR
-                        output dir
-  --device DEVICE       device type to use
-  --nprocs NPROCS       number of processes
-  --verbose VERBOSE     verbose
+                        output dir.
+  --device DEVICE       device type to use.
+  --nprocs NPROCS       number of processes.
+  --verbose VERBOSE     verbose.
+  --use-relative-path USE_RELATIVE_PATH
+                        whether use relative path in metadata
+  --phones-dict PHONES_DICT
+                        phone vocabulary file.
+  --tones-dict TONES_DICT
+                        tone vocabulary file.
 ```
 
 1. `--config` is a config file in yaml format to overwrite the default config, which can be found at `conf/default.yaml`.
@@ -68,35 +78,84 @@ optional arguments:
 3. `--output-dir` is the directory to save the results of the experiment. Checkpoints are save in `checkpoints/` inside this directory.
 4. `--device` is the type of the device to run the experiment, 'cpu' or 'gpu' are supported.
 5. `--nprocs` is the number of processes to run in parallel, note that nprocs > 1 is only supported when `--device` is 'gpu'.
+6. `--phones-dict` is the path of the phone vocabulary file.
+7. `--tones-dict` is the path of the tone vocabulary file.
 
-## Pretrained Models
+## Pretrained Model
+Pretrained SpeedySpeech model with no silence in the edge of audios. [speedyspeech_nosil_baker_ckpt_0.5.zip](https://paddlespeech.bj.bcebos.com/Parakeet/speedyspeech_nosil_baker_ckpt_0.5.zip)
 
-Pretrained models can be downloaded here:
-1. Speedyspeech checkpoint. [speedyspeech_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/speedyspeech_baker_ckpt_0.4.zip)
-2. Parallel WaveGAN checkpoint. [pwg_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/pwg_baker_ckpt_0.4.zip), which is used as a vocoder in the end-to-end inference script.
-
-Speedyspeech checkpoint contains files listed below.
-
+SpeedySpeech checkpoint contains files listed below.
 ```text
-speedyspeech_baker_ckpt_0.4
-├── speedyspeech_default.yaml             # default config used to train speedyseech
-├── speedy_speech_stats.npy               # statistics used to normalize spectrogram when training speedyspeech
-└── speedyspeech_snapshot_iter_91800.pdz  # model parameters and optimizer states
+speedyspeech_nosil_baker_ckpt_0.5
+├── default.yaml            # default config used to train speedyspeech
+├── feats_stats.npy         # statistics used to normalize spectrogram when training speedyspeech
+├── phone_id_map.txt        # phone vocabulary file when training speedyspeech
+├── snapshot_iter_11400.pdz # model parameters and optimizer states
+└── tone_id_map.txt         # tone vocabulary file when training speedyspeech
 ```
 
+## Synthesize
+We use [parallel wavegan](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/parallelwave_gan/baker) as the neural vocoder.
+Download pretrained parallel wavegan model from [pwg_baker_ckpt_0.4.zip](https://paddlespeech.bj.bcebos.com/Parakeet/pwg_baker_ckpt_0.4.zip) and unzip it.
+```bash
+unzip pwg_baker_ckpt_0.4.zip
+```
 Parallel WaveGAN checkpoint contains files listed below.
-
 ```text
 pwg_baker_ckpt_0.4
-├── pwg_default.yaml              # default config used to train parallel wavegan
-├── pwg_snapshot_iter_400000.pdz  # model parameters and optimizer states of parallel wavegan
-└── pwg_stats.npy                 # statistics used to normalize spectrogram when training parallel wavegan
+├── pwg_default.yaml               # default config used to train parallel wavegan
+├── pwg_snapshot_iter_400000.pdz   # model parameters of parallel wavegan
+└── pwg_stats.npy                  # statistics used to normalize spectrogram when training parallel wavegan
 ```
+`synthesize.sh` calls `Parakeet/utils/ss_pwg_syn.py`, which can synthesize waveform from `metadata.jsonl`.
+```bash
+./synthesize.sh
+```
+```text
+usage: ss_pwg_syn.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
+                     [--speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT]
+                     [--speedyspeech-stat SPEEDYSPEECH_STAT]
+                     [--pwg-config PWG_CONFIG]
+                     [--pwg-checkpoint PWG_CHECKPOINT] [--pwg-stat PWG_STAT]
+                     [--phones-dict PHONES_DICT] [--tones-dict TONES_DICT]
+                     [--test-metadata TEST_METADATA] [--output-dir OUTPUT_DIR]
+                     [--inference-dir INFERENCE_DIR] [--device DEVICE]
+                     [--verbose VERBOSE]
 
-## Synthesize End to End
+Synthesize with speedyspeech & parallel wavegan.
 
-When training is done or pretrained models are downloaded. You can run `synthesize_e2e.py` to synthsize.
-
+optional arguments:
+  -h, --help            show this help message and exit
+  --speedyspeech-config SPEEDYSPEECH_CONFIG
+                        config file for speedyspeech.
+  --speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT
+                        speedyspeech checkpoint to load.
+  --speedyspeech-stat SPEEDYSPEECH_STAT
+                        mean and standard deviation used to normalize
+                        spectrogram when training speedyspeech.
+  --pwg-config PWG_CONFIG
+                        config file for parallelwavegan.
+  --pwg-checkpoint PWG_CHECKPOINT
+                        parallel wavegan generator parameters to load.
+  --pwg-stat PWG_STAT   mean and standard deviation used to normalize
+                        spectrogram when training speedyspeech.
+  --phones-dict PHONES_DICT
+                        phone vocabulary file.
+  --tones-dict TONES_DICT
+                        tone vocabulary file.
+  --test-metadata TEST_METADATA
+                        test metadata
+  --output-dir OUTPUT_DIR
+                        output dir
+  --inference-dir INFERENCE_DIR
+                        dir to save inference models
+  --device DEVICE       device type to use
+  --verbose VERBOSE     verbose
+```
+`synthesize_e2e.sh` calls `synthesize_e2e.py`, which can synthesize waveform from text file.
+```bash
+./synthesize_e2e.sh
+```
 ```text
 usage: synthesize_e2e.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
                          [--speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT]
@@ -138,7 +197,6 @@ optional arguments:
   --device DEVICE       device type to use
   --verbose VERBOSE     verbose
 ```
-
 1. `--speedyspeech-config`, `--speedyspeech-checkpoint`, `--speedyspeech-stat` are arguments for speedyspeech, which correspond to the 3 files in the speedyspeech pretrained model.
 2. `--pwg-config`, `--pwg-checkpoint`, `--pwg-stat` are arguments for parallel wavegan, which correspond to the 3 files in the parallel wavegan pretrained model.
 3. `--text` is the text file, which contains sentences to synthesize.
@@ -147,3 +205,20 @@ optional arguments:
 6. `--device` is the type of device to run synthesis, 'cpu' and 'gpu' are supported. 'gpu' is recommended for faster synthesis.
 6. `--phones-dict` is the path of the phone vocabulary file.
 7. `--tones-dict` is the path of the tone vocabulary file.
+
+You can use the following scripts to synthesize for `../sentences.txt` using pretrained speedyspeech and parallel wavegan models.
+```bash
+python3 synthesize_e2e.py \
+  --speedyspeech-config=speedyspeech_nosil_baker_ckpt_0.5/default.yaml \
+  --speedyspeech-checkpoint=speedyspeech_nosil_baker_ckpt_0.5/snapshot_iter_11400.pdz \
+  --speedyspeech-stat=speedyspeech_nosil_baker_ckpt_0.5/feats_stats.npy \
+  --pwg-config=pwg_baker_ckpt_0.4/pwg_default.yaml \
+  --pwg-checkpoint=pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz \
+  --pwg-stat=pwg_baker_ckpt_0.4/pwg_stats.npy \
+  --text=../sentences.txt \
+  --output-dir=exp/default/test_e2e \
+  --inference-dir=exp/default/inference \
+  --device="gpu" \
+  --phones-dict=speedyspeech_nosil_baker_ckpt_0.5/phone_id_map.txt \
+  --tones-dict=speedyspeech_nosil_baker_ckpt_0.5/tone_id_map.txt
+```

@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 python3 synthesize_e2e.py \

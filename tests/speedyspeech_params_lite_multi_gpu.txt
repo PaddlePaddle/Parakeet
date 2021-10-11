@@ -1,7 +1,7 @@
 ===========================train_params===========================
 model_name:speedyspeech
 python:python3.7
-gpu_list:2,3
+gpu_list:0,1
 null:null
 null:null
 null:null
@@ -13,7 +13,7 @@ null:null
 null:null
 ##
 trainer:norm_train
-norm_train:../examples/speedyspeech/baker/train.py --train-metadata=train_data/mini_BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/mini_BZNSYP/dev/norm/metadata.jsonl --config=lite_train_infer.yaml --output-dir=exp/default
+norm_train:../utils/ss_train.py --train-metadata=train_data/mini_BZNSYP/train/norm/metadata.jsonl --dev-metadata=train_data/mini_BZNSYP/dev/norm/metadata.jsonl --config=../examples/speedyspeech/baker/conf/default.yaml --batch_size=32 --max_epoch=20 --num_snapshots=10 --output-dir=exp/default --phones-dict=train_data/mini_BZNSYP/phone_id_map.txt --tones-dict=train_data/mini_BZNSYP/tone_id_map.txt --use-relative-path=True
 null:null
 null:null
 null:null
@@ -21,7 +21,7 @@ null:null
 null:null
 ##
 ===========================eval_params===========================
-eval:../examples/speedyspeech/baker/synthesize_e2e.py --speedyspeech-config=../examples/speedyspeech/baker/conf/default.yaml --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_10.pdz --speedyspeech-stat=pretrain_models/speedyspeech_baker_ckpt_0.4/speedy_speech_stats.npy --pwg-config=../examples/parallelwave_gan/baker/conf/default.yaml --pwg-checkpoint=pretrain_models/pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz --pwg-stat=pretrain_models/pwg_baker_ckpt_0.4/pwg_stats.npy --text=../examples/speedyspeech/baker/sentences.txt --output-dir=e2e --inference-dir=inference --device="gpu" --phones-dict=../examples/speedyspeech/baker/phones.txt --tones-dict=../examples/speedyspeech/baker/tones.txt
+eval:../examples/speedyspeech/baker/synthesize_e2e.py --speedyspeech-config=../examples/speedyspeech/baker/conf/default.yaml --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_20.pdz --speedyspeech-stat=train_data/mini_BZNSYP/train/feats_stats.npy --pwg-config=pretrain_models/pwg_baker_ckpt_0.4/pwg_default.yaml --pwg-checkpoint=pretrain_models/pwg_baker_ckpt_0.4/pwg_snapshot_iter_400000.pdz --pwg-stat=pretrain_models/pwg_baker_ckpt_0.4/pwg_stats.npy --text=../examples/speedyspeech/sentences.txt --output-dir=e2e --inference-dir=inference --device="gpu" --phones-dict=train_data/mini_BZNSYP/phone_id_map.txt --tones-dict=train_data/mini_BZNSYP/tone_id_map.txt
 null:null
 ##
 ===========================infer_params===========================
@@ -37,8 +37,7 @@ null:null
 null:null
 null:null
 null:null
-inference:../examples/speedyspeech/baker/inference.py --inference-dir=pretrain_models/speedyspeech_pwg_inference_0.4 --text=../examples/speedyspeech/baker/sentences.txt --output-dir=inference_out --enable-auto-log --phones-dict=../examples/speedyspeech/baker/phones.txt --tones-dict=../examples/speedyspeech/baker/tones.txt --output-dir=e2e --inference-dir=inference
---use_gpu:True
+inference:../examples/speedyspeech/baker/inference.py --inference-dir=pretrain_models/speedyspeech_pwg_inference_0.5 --text=../examples/speedyspeech/sentences.txt --output-dir=inference_out --enable-auto-log --phones-dict=pretrain_models/speedyspeech_pwg_inference_0.5/phone_id_map.txt --tones-dict=pretrain_models/speedyspeech_pwg_inference_0.5/tone_id_map.txt
 null:null
 null:null
 null:null

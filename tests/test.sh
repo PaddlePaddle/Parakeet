@@ -329,7 +329,7 @@ else
                     cmd="${python} -m paddle.distributed.launch --ips=${ips} --gpus=${gpu} ${run_train} ${set_save_model} ${set_pretrain} ${set_epoch} ${set_autocast} ${set_batchsize} ${set_train_params1}"
                 fi
                 # run train
-                eval "unset CUDA_VISIBLE_DEVICES"
+                # eval "unset CUDA_VISIBLE_DEVICES"
                 eval $cmd
                 status_check $? "${cmd}" "${status_log}"
 

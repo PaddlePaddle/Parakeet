@@ -6,20 +6,19 @@
 ###########################################################
 #                FEATURE EXTRACTION SETTING               #
 ###########################################################
-sr: 24000                # Sampling rate.
-n_fft: 2048              # FFT size (in samples).
-hop_length: 300          # Hop size (in samples).
-win_length: 1200         # Window length (in samples).
+fs: 24000                # Sampling rate.
+n_fft: 2048              # FFT size. (in samples)
+n_shift: 300             # Hop size. (in samples)
+win_length: 1200         # Window length. (in samples)
                          # If set to null, it will be the same as fft_size.
 window: "hann"           # Window function.
 n_mels: 80               # Number of mel basis.
 fmin: 80                 # Minimum freq in mel basis calculation. (Hz)
 fmax: 7600               # Maximum frequency in mel basis calculation. (Hz)
-# global_gain_scale: 1.0   # Will be multiplied to all of waveform.
 trim_silence: false      # Whether to trim the start and end of silence.
 top_db: 60               # Need to tune carefully if the recording is not good.
-trim_frame_length: 2048    # Frame size in trimming.(in samples)
-trim_hop_length: 512       # Hop size in trimming.(in samples)
+trim_frame_length: 2048    # Frame size in trimming. (in samples)
+trim_hop_length: 512       # Hop size in trimming. (in samples)
 
 ###########################################################
 #         GENERATOR NETWORK ARCHITECTURE SETTING          #
@@ -42,7 +41,6 @@ generator_params:
     use_weight_norm: true # Whether to use weight norm.
                           # If set to true, it will be applied to all of the conv layers.
     use_causal_conv: false               # use causal conv in residual blocks and upsample layers
-    # upsample_net: "ConvInUpsampleNetwork" # Upsampling network architecture.
     upsample_scales: [4, 5, 3, 5]     # Upsampling scales. Prodcut of these must be the same as hop size.
     interpolate_mode: "nearest" # upsample net interpolate mode
     freq_axis_kernel_size: 1 # upsamling net: convolution kernel size in frequencey axis
@@ -118,7 +116,6 @@ discriminator_train_start_steps: 100000 # Number of steps to start to train disc
 train_max_steps: 400000                 # Number of training steps.
 save_interval_steps: 5000               # Interval steps to save checkpoint.
 eval_interval_steps: 1000               # Interval steps to evaluate the network.
-
 
 ###########################################################
 #                     OTHER SETTING                       #

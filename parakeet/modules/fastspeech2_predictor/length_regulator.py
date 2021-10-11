@@ -58,7 +58,8 @@ class LengthRegulator(nn.Layer):
             k = 0
             for j in range(t_enc):
                 d = durations[i, j]
-                M[i, k:k + d, j] = 1
+                if d >= 1:
+                    M[i, k:k + d, j] = 1
                 k += d
         M = paddle.to_tensor(M, dtype=encodings.dtype)
         encodings = paddle.matmul(M, encodings)

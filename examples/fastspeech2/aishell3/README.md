@@ -15,7 +15,7 @@ Extract AISHELL-3.
 mkdir data_aishell3
 tar zxvf data_aishell3.tgz -C data_aishell3
 ```
-### Get MFA result of BZNSYP and Extract it
+### Get MFA result of AISHELL-3 and Extract it
 We use [MFA2.x](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) to get durations for aishell3_fastspeech2.
 You can download from here [aishell3_alignment_tone.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/AISHELL-3/with_tone/aishell3_alignment_tone.tar.gz), or train your own MFA model reference to [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) (use MFA1.x now) of our repo.
 ### Preprocess the dataset
@@ -48,21 +48,25 @@ The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
 ## Train the model
+`./run.sh` calls `Parakeet/utils/multi_spk_fs2_train.py`.
 ```bash
 ./run.sh
 ```
-Or you can use `train.py` directly. Here's the complete help message.
+Here's the complete help message.
 ```text
-usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
-                [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
-                [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
-                [--phones-dict PHONES_DICT] [--speaker-dict SPEAKER_DICT]
+usage: multi_spk_fs2_train.py [-h] [--config CONFIG]
+                              [--train-metadata TRAIN_METADATA]
+                              [--dev-metadata DEV_METADATA]
+                              [--output-dir OUTPUT_DIR] [--device DEVICE]
+                              [--nprocs NPROCS] [--verbose VERBOSE]
+                              [--phones-dict PHONES_DICT]
+                              [--speaker-dict SPEAKER_DICT]
 
-Train a FastSpeech2 model with AISHELL-3 Mandrin TTS dataset.
+Train a FastSpeech2 model with multiple speaker dataset.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --config CONFIG       config file to overwrite default config.
+  --config CONFIG       fastspeech2 config file.
   --train-metadata TRAIN_METADATA
                         training data.
   --dev-metadata DEV_METADATA

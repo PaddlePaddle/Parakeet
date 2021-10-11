@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import argparse
+import os
 from pathlib import Path
 
 import soundfile as sf
 from paddle import inference
-
-from frontend import Frontend
+from parakeet.frontend.cn_frontend import Frontend
 
 
 def main():
@@ -47,7 +46,8 @@ def main():
 
     args, _ = parser.parse_known_args()
 
-    frontend = Frontend(args.phones_dict, args.tones_dict)
+    frontend = Frontend(
+        phone_vocab_path=args.phones_dict, tone_vocab_path=args.tones_dict)
     print("frontend done!")
 
     speedyspeech_config = inference.Config(

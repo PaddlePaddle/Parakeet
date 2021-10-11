@@ -87,6 +87,7 @@ def evaluate(args, acoustic_model_config, vocoder_config):
         # remove start_symbol and end_symbol
         phones = phones[1:-1]
         phones = [phn for phn in phones if not phn.isspace()]
+        phones = [phn if phn in phone_id_map else "," for phn in phones]
         phone_ids = [phone_id_map[phn] for phn in phones]
         mel = transformer_tts_inference(paddle.to_tensor(phone_ids))
         # mel shape is (T, feats) and waveflow's input shape is (batch, feats, T)

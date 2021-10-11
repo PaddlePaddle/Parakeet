@@ -20,14 +20,13 @@ import numpy as np
 import paddle
 import soundfile as sf
 import yaml
-from yacs.config import CfgNode
+from parakeet.frontend.cn_frontend import Frontend
 from parakeet.models.fastspeech2 import FastSpeech2
 from parakeet.models.fastspeech2 import FastSpeech2Inference
 from parakeet.models.parallel_wavegan import PWGGenerator
 from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
-
-from frontend import Frontend
+from yacs.config import CfgNode
 
 
 def evaluate(args, fastspeech2_config, pwg_config):
@@ -67,7 +66,7 @@ def evaluate(args, fastspeech2_config, pwg_config):
     vocoder.eval()
     print("model done!")
 
-    frontend = Frontend(args.phones_dict)
+    frontend = Frontend(phone_vocab_path=args.phones_dict)
     print("frontend done!")
 
     stat = np.load(args.fastspeech2_stat)
