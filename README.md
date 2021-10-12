@@ -6,7 +6,7 @@ Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-spee
 </div>
 
 ## News  <img src="./docs/images/news_icon.png" width="40"/>
-
+- Oct-12-2021, Refector examples code.
 - Oct-12-2021, Parallel WaveGAN with LJSpeech. Check [examples/GANVocoder/parallelwave_gan/ljspeech](./examples/GANVocoder/parallelwave_gan/ljspeech).
 - Oct-12-2021, FastSpeech2/FastPitch with LJSpeech. Check [examples/fastspeech2/ljspeech](./examples/fastspeech2/ljspeech).
 - Sep-14-2021, Reconstruction of TransformerTTS. Check [examples/transformer_tts/ljspeech](./examples/transformer_tts/ljspeech).
