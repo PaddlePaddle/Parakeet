@@ -38,18 +38,18 @@ The dataset is split into 3 parts, namely `train`, `dev` and `test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, tones, durations, path of spectrogram, and id of each utterance.
 
 ## Train the model
-`./run.sh` calls `Parakeet/utils/ss_train.py`.
+`./run.sh` calls `../train.py`.
 ```bash
 ./run.sh
 ```
 Here's the complete help message.
 
 ```text
-usage: ss_train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
-                   [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
-                   [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
-                   [--use-relative-path USE_RELATIVE_PATH]
-                   [--phones-dict PHONES_DICT] [--tones-dict TONES_DICT]
+usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
+                     [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
+                     [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+                     [--use-relative-path USE_RELATIVE_PATH]
+                     [--phones-dict PHONES_DICT] [--tones-dict TONES_DICT]
 
 Train a Speedyspeech model with sigle speaker dataset.
 
@@ -107,12 +107,12 @@ pwg_baker_ckpt_0.4
 ├── pwg_snapshot_iter_400000.pdz   # model parameters of parallel wavegan
 └── pwg_stats.npy                  # statistics used to normalize spectrogram when training parallel wavegan
 ```
-`synthesize.sh` calls `Parakeet/utils/ss_pwg_syn.py`, which can synthesize waveform from `metadata.jsonl`.
+`synthesize.sh` calls `../synthesize.py`, which can synthesize waveform from `metadata.jsonl`.
 ```bash
 ./synthesize.sh
 ```
 ```text
-usage: ss_pwg_syn.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
+usage: synthesize.py [-h] [--speedyspeech-config SPEEDYSPEECH_CONFIG]
                      [--speedyspeech-checkpoint SPEEDYSPEECH_CHECKPOINT]
                      [--speedyspeech-stat SPEEDYSPEECH_STAT]
                      [--pwg-config PWG_CONFIG]

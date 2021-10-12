@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 train.py \
+python3 ../train.py \
     --train-metadata=dump/train/norm/metadata.jsonl \
     --dev-metadata=dump/dev/norm/metadata.jsonl \
     --config=conf/default.yaml \

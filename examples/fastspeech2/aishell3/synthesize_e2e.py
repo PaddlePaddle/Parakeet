@@ -20,11 +20,11 @@ import numpy as np
 import paddle
 import soundfile as sf
 import yaml
-from parakeet.frontend.cn_frontend import Frontend
-from parakeet.models.fastspeech2 import FastSpeech2
-from parakeet.models.fastspeech2 import FastSpeech2Inference
-from parakeet.models.parallel_wavegan import PWGGenerator
-from parakeet.models.parallel_wavegan import PWGInference
+from parakeet.frontend.zh_frontend import Frontend
+from parakeet.models.fastspeech2.fastspeech2 import FastSpeech2
+from parakeet.models.fastspeech2.fastspeech2 import FastSpeech2Inference
+from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 from yacs.config import CfgNode
 
@@ -106,7 +106,7 @@ def evaluate(args, fastspeech2_config, pwg_config):
             str(output_dir / (str(spk_id) + "_" + utt_id + ".wav")),
             wav.numpy(),
             samplerate=fastspeech2_config.fs)
-        print(f"{utt_id} done!")
+        print(f"{spk_id}_{utt_id} done!")
 
 
 def main():
@@ -136,15 +136,9 @@ def main():
         help="mean and standard deviation used to normalize spectrogram when training parallel wavegan."
     )
     parser.add_argument(
-        "--phones-dict",
-        type=str,
-        default="phone_id_map.txt",
-        help="phone vocabulary file.")
+        "--phones-dict", type=str, default=None, help="phone vocabulary file.")
     parser.add_argument(
-        "--speaker-dict",
-        type=str,
-        default="speaker_id_map.txt ",
-        help="speaker id map file.")
+        "--speaker-dict", type=str, default=None, help="speaker id map file.")
     parser.add_argument(
         "--text",
         type=str,

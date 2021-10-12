@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 synthesize.py \
+python3 ../synthesize.py \
   --transformer-tts-config=conf/default.yaml \
   --transformer-tts-checkpoint=exp/default/checkpoints/snapshot_iter_201500.pdz \
   --transformer-tts-stat=dump/train/speech_stats.npy \

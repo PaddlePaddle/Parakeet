@@ -16,7 +16,7 @@ import argparse
 import re
 from pathlib import Path
 
-from parakeet.frontend.cn_normalization.text_normlization import TextNormalizer
+from parakeet.frontend.zh_normalization.text_normlization import TextNormalizer
 from parakeet.utils.error_rate import char_errors
 
 

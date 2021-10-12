@@ -17,7 +17,9 @@ from pathlib import Path
 
 import librosa
 import numpy as np
+import yaml
 from praatio import tgio
+from yacs.config import CfgNode
 
 
 def readtg(tg_path, sample_rate=24000, n_shift=300):
@@ -95,12 +97,16 @@ def main():
         "--n-shift",
         type=int,
         help="the n_shift of time_to_freames, also called hop_length.")
+    parser.add_argument(
+        "--config", type=str, help="config file with fs and n_shift.")
 
     args = parser.parse_args()
+    with open(args.config) as f:
+        config = CfgNode(yaml.safe_load(f))
 
     inputdir = Path(args.inputdir).expanduser()
     output = Path(args.output).expanduser()
-    gen_duration_from_textgrid(inputdir, output, args.sample_rate, args.n_shift)
+    gen_duration_from_textgrid(inputdir, output, config.fs, config.n_shift)
 
 
 if __name__ == "__main__":

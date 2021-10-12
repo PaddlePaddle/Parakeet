@@ -3,9 +3,6 @@
 stage=0
 stop_stage=100
 
-fs=24000
-n_shift=300
-
 export MAIN_ROOT=`realpath ${PWD}/../../../`
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
@@ -14,13 +11,12 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     python3 ${MAIN_ROOT}/utils/gen_duration_from_textgrid.py \
         --inputdir=./baker_alignment_tone \
         --output=durations.txt \
-        --sample-rate=${fs} \
-        --n-shift=${n_shift}
+        --config=conf/default.yaml
 fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Extract features ..."
-    python3 ${MAIN_ROOT}/utils/ss_preprocess.py \
+    python3 ../preprocess.py \
         --dataset=baker \
         --rootdir=~/datasets/BZNSYP/ \
         --dumpdir=dump \
@@ -42,7 +38,7 @@ fi
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     # normalize and covert phone/tone to id, dev and test should use train's stats
     echo "Normalize ..."
-    python3 ${MAIN_ROOT}/utils/ss_normalize.py \
+    python3 ../normalize.py \
         --metadata=dump/train/raw/metadata.jsonl \
         --dumpdir=dump/train/norm \
         --stats=dump/train/feats_stats.npy \
@@ -50,7 +46,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --tones-dict=dump/tone_id_map.txt \
         --use-relative-path=True
 
-    python3 ${MAIN_ROOT}/utils/ss_normalize.py \
+    python3 ../normalize.py \
         --metadata=dump/dev/raw/metadata.jsonl \
         --dumpdir=dump/dev/norm \
         --stats=dump/train/feats_stats.npy \
@@ -58,7 +54,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --tones-dict=dump/tone_id_map.txt \
         --use-relative-path=True
 
-    python3 ${MAIN_ROOT}/utils/ss_normalize.py \
+    python3 ../normalize.py \
         --metadata=dump/test/raw/metadata.jsonl \
         --dumpdir=dump/test/norm \
         --stats=dump/train/feats_stats.npy \

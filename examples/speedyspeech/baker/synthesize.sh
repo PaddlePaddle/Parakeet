@@ -1,8 +1,6 @@
 #!/bin/bash
 
-export MAIN_ROOT=`realpath ${PWD}/../../../`
-
-python3 ${MAIN_ROOT}/utils/ss_pwg_syn.py \
+python3 ../synthesize.py \
   --speedyspeech-config=conf/default.yaml \
   --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_11400.pdz \
   --speedyspeech-stat=dump/train/feats_stats.npy \
