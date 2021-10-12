@@ -14,7 +14,7 @@
 import logging
 
 from paddle import distributed as dist
-from parakeet.models.fastspeech2.fastspeech2 import FastSpeech2Loss
+from parakeet.models.fastspeech2 import FastSpeech2Loss
 from parakeet.training.extensions.evaluator import StandardEvaluator
 from parakeet.training.reporter import report
 from parakeet.training.updaters.standard_updater import StandardUpdater

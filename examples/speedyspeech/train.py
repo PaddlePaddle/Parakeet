@@ -27,9 +27,9 @@ from paddle.io import DataLoader
 from paddle.io import DistributedBatchSampler
 from parakeet.datasets.data_table import DataTable
 from parakeet.datasets.am_batch_fn import speedyspeech_batch_fn
-from parakeet.models.speedyspeech.speedyspeech import SpeedySpeech
-from parakeet.models.speedyspeech.speedyspeech_updater import SpeedySpeechEvaluator
-from parakeet.models.speedyspeech.speedyspeech_updater import SpeedySpeechUpdater
+from parakeet.models.speedyspeech import SpeedySpeech
+from parakeet.models.speedyspeech import SpeedySpeechEvaluator
+from parakeet.models.speedyspeech import SpeedySpeechUpdater
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.optimizer import build_optimizers

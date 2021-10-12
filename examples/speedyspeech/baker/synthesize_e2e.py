@@ -24,10 +24,10 @@ import yaml
 from paddle import jit
 from paddle.static import InputSpec
 from parakeet.frontend.zh_frontend import Frontend
-from parakeet.models.speedyspeech.speedyspeech import SpeedySpeech
-from parakeet.models.speedyspeech.speedyspeech import SpeedySpeechInference
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGInference
+from parakeet.models.speedyspeech import SpeedySpeech
+from parakeet.models.speedyspeech import SpeedySpeechInference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 from yacs.config import CfgNode
 

@@ -23,8 +23,8 @@ import paddle
 import soundfile as sf
 import yaml
 from parakeet.data.get_feats import LogMelFBank
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGInference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 from yacs.config import CfgNode as Configuration
 

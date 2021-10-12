@@ -24,7 +24,7 @@ import soundfile as sf
 import yaml
 from paddle import distributed as dist
 from parakeet.datasets.data_table import DataTable
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGGenerator
 from yacs.config import CfgNode
 
 

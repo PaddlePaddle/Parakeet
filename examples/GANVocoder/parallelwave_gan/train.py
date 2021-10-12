@@ -30,10 +30,10 @@ from paddle.optimizer import Adam  # No RAdaom
 from paddle.optimizer.lr import StepDecay
 from parakeet.datasets.data_table import DataTable
 from parakeet.datasets.vocoder_batch_fn import Clip
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGDiscriminator
-from parakeet.models.parallel_wavegan.parallel_wavegan_updater import PWGUpdater
-from parakeet.models.parallel_wavegan.parallel_wavegan_updater import PWGEvaluator
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGDiscriminator
+from parakeet.models.parallel_wavegan import PWGUpdater
+from parakeet.models.parallel_wavegan import PWGEvaluator
 from parakeet.modules.stft_loss import MultiResolutionSTFTLoss
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL

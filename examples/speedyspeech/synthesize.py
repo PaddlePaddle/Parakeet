@@ -26,10 +26,10 @@ from paddle.static import InputSpec
 from yacs.config import CfgNode
 
 from parakeet.datasets.data_table import DataTable
-from parakeet.models.speedyspeech.speedyspeech import SpeedySpeech
-from parakeet.models.speedyspeech.speedyspeech import SpeedySpeechInference
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGInference
+from parakeet.models.speedyspeech import SpeedySpeech
+from parakeet.models.speedyspeech import SpeedySpeechInference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 
 

@@ -21,10 +21,10 @@ import paddle
 import soundfile as sf
 import yaml
 from parakeet.frontend.zh_frontend import Frontend
-from parakeet.models.fastspeech2.fastspeech2 import FastSpeech2
-from parakeet.models.fastspeech2.fastspeech2 import FastSpeech2Inference
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGGenerator
-from parakeet.models.parallel_wavegan.parallel_wavegan import PWGInference
+from parakeet.models.fastspeech2 import FastSpeech2
+from parakeet.models.fastspeech2 import FastSpeech2Inference
+from parakeet.models.parallel_wavegan import PWGGenerator
+from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
 from yacs.config import CfgNode
 

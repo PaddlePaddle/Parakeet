@@ -23,8 +23,8 @@ import soundfile as sf
 import yaml
 from yacs.config import CfgNode
 from parakeet.datasets.data_table import DataTable
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTSInference
+from parakeet.models.transformer_tts import TransformerTTS
+from parakeet.models.transformer_tts import TransformerTTSInference
 from parakeet.models.waveflow import ConditionalWaveFlow
 from parakeet.modules.normalizer import ZScore
 from parakeet.utils import layer_tools

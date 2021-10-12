@@ -16,8 +16,8 @@ from typing import Sequence
 
 import paddle
 from paddle import distributed as dist
-from parakeet.models.transformer_tts.transformer_tts import GuidedMultiHeadAttentionLoss
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTSLoss
+from parakeet.models.transformer_tts import GuidedMultiHeadAttentionLoss
+from parakeet.models.transformer_tts import TransformerTTSLoss
 from parakeet.training.extensions.evaluator import StandardEvaluator
 from parakeet.training.reporter import report
 from parakeet.training.updaters.standard_updater import StandardUpdater

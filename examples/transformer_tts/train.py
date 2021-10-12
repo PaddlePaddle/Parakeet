@@ -28,9 +28,9 @@ from paddle.io import DataLoader
 from paddle.io import DistributedBatchSampler
 from parakeet.datasets.data_table import DataTable
 from parakeet.datasets.am_batch_fn import transformer_single_spk_batch_fn
-from parakeet.models.transformer_tts.transformer_tts import TransformerTTS
-from parakeet.models.transformer_tts.transformer_tts_updater import TransformerTTSUpdater
-from parakeet.models.transformer_tts.transformer_tts_updater import TransformerTTSEvaluator
+from parakeet.models.transformer_tts import TransformerTTS
+from parakeet.models.transformer_tts import TransformerTTSUpdater
+from parakeet.models.transformer_tts import TransformerTTSEvaluator
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.optimizer import build_optimizers

@@ -23,13 +23,14 @@ import paddle
 import yaml
 from paddle import DataParallel
 from paddle import distributed as dist
-from paddle.io import DataLoader, DistributedBatchSampler
+from paddle.io import DataLoader
+from paddle.io import DistributedBatchSampler
 from parakeet.datasets.data_table import DataTable
 from parakeet.datasets.am_batch_fn import fastspeech2_single_spk_batch_fn
 from parakeet.datasets.am_batch_fn import fastspeech2_multi_spk_batch_fn
-from parakeet.models.fastspeech2.fastspeech2 import FastSpeech2
-from parakeet.models.fastspeech2.fastspeech2_updater import FastSpeech2Evaluator
-from parakeet.models.fastspeech2.fastspeech2_updater import FastSpeech2Updater
+from parakeet.models.fastspeech2 import FastSpeech2
+from parakeet.models.fastspeech2 import FastSpeech2Evaluator
+from parakeet.models.fastspeech2 import FastSpeech2Updater
 from parakeet.training.extensions.snapshot import Snapshot
 from parakeet.training.extensions.visualizer import VisualDL
 from parakeet.training.optimizer import build_optimizers
