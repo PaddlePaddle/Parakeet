@@ -76,7 +76,8 @@ def evaluate(args, config):
         # extract mel feats
         mel = mel_extractor.get_log_mel_fbank(wav)
         mel = paddle.to_tensor(mel)
-        gen_wav = pwg_inference(mel)
+        with paddle.no_grad():
+            gen_wav = pwg_inference(mel)
         sf.write(
             str(output_dir / ("gen_" + utt_name)),
             gen_wav.numpy(),
