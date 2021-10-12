@@ -81,7 +81,6 @@ def evaluate(args, acoustic_model_config, vocoder_config):
             mel = mel.unsqueeze(0).transpose([0, 2, 1])
             # wavflow's output shape is (B, T)
             wav = vocoder.infer(mel)[0]
-            print("wav:", wav)
 
         sf.write(
             str(output_dir / (utt_id + ".wav")),

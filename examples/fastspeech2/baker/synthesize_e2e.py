@@ -87,11 +87,11 @@ def evaluate(args, fastspeech2_config, pwg_config):
             with paddle.no_grad():
                 mel = fastspeech2_inference(part_phone_ids)
                 temp_wav = pwg_inference(mel)
-                if flags == 0:
-                    wav = temp_wav
-                    flags = 1
-                else:
-                    wav = paddle.concat([wav, temp_wav])
+            if flags == 0:
+                wav = temp_wav
+                flags = 1
+            else:
+                wav = paddle.concat([wav, temp_wav])
         sf.write(
             str(output_dir / (utt_id + ".wav")),
             wav.numpy(),
