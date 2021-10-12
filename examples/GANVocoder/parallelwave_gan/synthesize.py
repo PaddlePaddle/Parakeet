@@ -80,7 +80,8 @@ def main():
         mel = example['feats']
         mel = paddle.to_tensor(mel)  # (T, C)
         with timer() as t:
-            wav = generator.inference(c=mel)
+            with paddle.no_grad():
+                wav = generator.inference(c=mel)
             wav = wav.numpy()
             N += wav.size
             T += t.elapse

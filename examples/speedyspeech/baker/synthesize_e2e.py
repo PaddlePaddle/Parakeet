@@ -121,11 +121,11 @@ def evaluate(args, speedyspeech_config, pwg_config):
             with paddle.no_grad():
                 mel = speedyspeech_inference(part_phone_ids, part_tone_ids)
                 temp_wav = pwg_inference(mel)
-                if flags == 0:
-                    wav = temp_wav
-                    flags = 1
-                else:
-                    wav = paddle.concat([wav, temp_wav])
+            if flags == 0:
+                wav = temp_wav
+                flags = 1
+            else:
+                wav = paddle.concat([wav, temp_wav])
         sf.write(
             output_dir / (utt_id + ".wav"),
             wav.numpy(),
