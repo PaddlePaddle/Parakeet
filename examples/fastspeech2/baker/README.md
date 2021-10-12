@@ -41,18 +41,18 @@ The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
 ## Train the model
-`./run.sh` calls `Parakeet/utils/fs2_train.py`.
+`./run.sh` calls `../train.py`.
 ```bash
 ./run.sh
 ```
 Here's the complete help message.
 ```text
-usage: fs2_train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
-                    [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
-                    [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
-                    [--phones-dict PHONES_DICT]
+usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
+                [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
+                [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+                [--phones-dict PHONES_DICT] [--speaker-dict SPEAKER_DICT]
 
-Train a FastSpeech2 model with sigle speaker dataset.
+Train a FastSpeech2 model.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -68,6 +68,8 @@ optional arguments:
   --verbose VERBOSE     verbose.
   --phones-dict PHONES_DICT
                         phone vocabulary file.
+  --speaker-dict SPEAKER_DICT
+                        speaker id map file for multiple speaker model.
 ```
 1. `--config` is a config file in yaml format to overwrite the default config, which can be found at `conf/default.yaml`.
 2. `--train-metadata` and `--dev-metadata` should be the metadata file in the normalized subfolder of `train` and `dev` in the `dump` folder.
@@ -100,20 +102,19 @@ pwg_baker_ckpt_0.4
 ├── pwg_snapshot_iter_400000.pdz   # model parameters of parallel wavegan
 └── pwg_stats.npy                  # statistics used to normalize spectrogram when training parallel wavegan
 ```
-`synthesize.sh` calls `Parakeet/utils/fs2_pwg_syn.py`, which can synthesize waveform from `metadata.jsonl`.
+`synthesize.sh` calls `../synthesize.py`, which can synthesize waveform from `metadata.jsonl`.
 ```bash
 ./synthesize.sh
 ```
 ```text
-usage: fs2_pwg_syn.py [-h] [--fastspeech2-config FASTSPEECH2_CONFIG]
-                      [--fastspeech2-checkpoint FASTSPEECH2_CHECKPOINT]
-                      [--fastspeech2-stat FASTSPEECH2_STAT]
-                      [--pwg-config PWG_CONFIG]
-                      [--pwg-checkpoint PWG_CHECKPOINT] [--pwg-stat PWG_STAT]
-                      [--phones-dict PHONES_DICT]
-                      [--test-metadata TEST_METADATA]
-                      [--output-dir OUTPUT_DIR] [--device DEVICE]
-                      [--verbose VERBOSE]
+usage: synthesize.py [-h] [--fastspeech2-config FASTSPEECH2_CONFIG]
+                     [--fastspeech2-checkpoint FASTSPEECH2_CHECKPOINT]
+                     [--fastspeech2-stat FASTSPEECH2_STAT]
+                     [--pwg-config PWG_CONFIG]
+                     [--pwg-checkpoint PWG_CHECKPOINT] [--pwg-stat PWG_STAT]
+                     [--phones-dict PHONES_DICT] [--speaker-dict SPEAKER_DICT]
+                     [--test-metadata TEST_METADATA] [--output-dir OUTPUT_DIR]
+                     [--device DEVICE] [--verbose VERBOSE]
 
 Synthesize with fastspeech2 & parallel wavegan.
 
@@ -134,6 +135,8 @@ optional arguments:
                         spectrogram when training parallel wavegan.
   --phones-dict PHONES_DICT
                         phone vocabulary file.
+  --speaker-dict SPEAKER_DICT
+                        speaker id map file for multiple speaker model.
   --test-metadata TEST_METADATA
                         test metadata.
   --output-dir OUTPUT_DIR

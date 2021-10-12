@@ -16,7 +16,7 @@ import argparse
 import re
 from pathlib import Path
 
-from parakeet.frontend.cn_frontend import Frontend as cnFrontend
+from parakeet.frontend.zh_frontend import Frontend as zhFrontend
 from parakeet.utils.error_rate import word_errors
 
 SILENCE_TOKENS = {"sp", "sil", "sp1", "spl"}
@@ -90,7 +90,7 @@ def main():
             line_list = line.split(" ")
             utt_id, phones = line_list[0], " ".join(line_list[1:])
             ref_dict[utt_id] = phones
-    frontend = cnFrontend()
+    frontend = zhFrontend()
     avg_wer = get_avg_wer(raw_dict, ref_dict, frontend, output_dir)
     print("The avg WER of g2p is:", avg_wer)
 

@@ -89,11 +89,12 @@ def evaluate(args, acoustic_model_config, vocoder_config):
         phones = [phn for phn in phones if not phn.isspace()]
         phones = [phn if phn in phone_id_map else "," for phn in phones]
         phone_ids = [phone_id_map[phn] for phn in phones]
-        mel = transformer_tts_inference(paddle.to_tensor(phone_ids))
-        # mel shape is (T, feats) and waveflow's input shape is (batch, feats, T)
-        mel = mel.unsqueeze(0).transpose([0, 2, 1])
-        # wavflow's output shape is (B, T)
-        wav = vocoder.infer(mel)[0]
+        with paddle.no_grad():
+            mel = transformer_tts_inference(paddle.to_tensor(phone_ids))
+            # mel shape is (T, feats) and waveflow's input shape is (batch, feats, T)
+            mel = mel.unsqueeze(0).transpose([0, 2, 1])
+            # wavflow's output shape is (B, T)
+            wav = vocoder.infer(mel)[0]
 
         sf.write(
             str(output_dir / (utt_id + ".wav")),

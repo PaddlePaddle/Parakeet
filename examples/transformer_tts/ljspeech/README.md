@@ -36,10 +36,11 @@ The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, path of speech features, speaker and id of each utterance.
 
 ## Train the model
+`./run.sh` calls `../train.py`.
 ```bash
 ./run.sh
 ```
-Or you can use `train.py` directly. Here's the complete help message.
+Here's the complete help message.
 ```text
 usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
                 [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
@@ -93,7 +94,7 @@ waveflow_ljspeech_ckpt_0.3
 ├── config.yaml           # default config used to train waveflow
 └── step-2000000.pdparams # model parameters of waveflow
 ```
-`synthesize.sh` calls `synthesize.py`, which can synthesize waveform from `metadata.jsonl`.
+`synthesize.sh` calls `../synthesize.py`, which can synthesize waveform from `metadata.jsonl`.
 ```bash
 ./synthesize.sh
 ```

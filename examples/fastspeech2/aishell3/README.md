@@ -48,21 +48,18 @@ The dataset is split into 3 parts, namely `train`, `dev` and` test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains phones, text_lengths, speech_lengths, durations, path of speech features, path of pitch features, path of energy features, speaker and id of each utterance.
 
 ## Train the model
-`./run.sh` calls `Parakeet/utils/multi_spk_fs2_train.py`.
+`./run.sh` calls `../train.py`.
 ```bash
 ./run.sh
 ```
 Here's the complete help message.
 ```text
-usage: multi_spk_fs2_train.py [-h] [--config CONFIG]
-                              [--train-metadata TRAIN_METADATA]
-                              [--dev-metadata DEV_METADATA]
-                              [--output-dir OUTPUT_DIR] [--device DEVICE]
-                              [--nprocs NPROCS] [--verbose VERBOSE]
-                              [--phones-dict PHONES_DICT]
-                              [--speaker-dict SPEAKER_DICT]
+usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
+                [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
+                [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+                [--phones-dict PHONES_DICT] [--speaker-dict SPEAKER_DICT]
 
-Train a FastSpeech2 model with multiple speaker dataset.
+Train a FastSpeech2 model.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -79,7 +76,7 @@ optional arguments:
   --phones-dict PHONES_DICT
                         phone vocabulary file.
   --speaker-dict SPEAKER_DICT
-                        speaker id map file.
+                        speaker id map file for multiple speaker model.
 ```
 1. `--config` is a config file in yaml format to overwrite the default config, which can be found at `conf/default.yaml`.
 2. `--train-metadata` and `--dev-metadata` should be the metadata file in the normalized subfolder of `train` and `dev` in the `dump` folder.
@@ -148,7 +145,7 @@ optional arguments:
   --phones-dict PHONES_DICT
                         phone vocabulary file.
   --speaker-dict SPEAKER_DICT
-                        speaker id map file.
+                        speaker id map file for multiple speaker model.
   --test-metadata TEST_METADATA
                         test metadata.
   --output-dir OUTPUT_DIR

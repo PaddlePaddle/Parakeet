@@ -1,8 +1,7 @@
 
 #!/bin/bash
 
-export MAIN_ROOT=`realpath ${PWD}/../../../`
-python3 ${MAIN_ROOT}/utils/fs2_pwg_syn.py \
+python3 ../synthesize.py \
   --fastspeech2-config=conf/default.yaml \
   --fastspeech2-checkpoint=exp/default/checkpoints/snapshot_iter_100000.pdz \
   --fastspeech2-stat=dump/train/speech_stats.npy \

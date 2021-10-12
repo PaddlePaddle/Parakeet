@@ -10,10 +10,6 @@ window: "hann"           # Window function.
 n_mels: 80             # Number of mel basis.
 fmin: 80                 # Minimum freq in mel basis calculation.
 fmax: 7600               # Maximum frequency in mel basis calculation.
-trim_silence: false      # Whether to trim the start and end of silence.
-top_db: 60 # Need to tune carefully if the recording is not good.
-trim_frame_length: 2048    # Frame size in trimming.(in samples)
-trim_hop_length: 512       # Hop size in trimming.(in samples)
 
 ###########################################################
 #                       DATA SETTING                      #

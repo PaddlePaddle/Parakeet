@@ -1,7 +1,6 @@
 #!/bin/bash
-export MAIN_ROOT=`realpath ${PWD}/../../../`
 
-python3 ${MAIN_ROOT}/utils/fs2_train.py \
+python3 ../train.py \
     --train-metadata=dump/train/norm/metadata.jsonl \
     --dev-metadata=dump/dev/norm/metadata.jsonl \
     --config=conf/default.yaml \

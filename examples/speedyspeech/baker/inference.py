@@ -18,7 +18,7 @@ from pathlib import Path
 
 import soundfile as sf
 from paddle import inference
-from parakeet.frontend.cn_frontend import Frontend
+from parakeet.frontend.zh_frontend import Frontend
 
 
 def main():

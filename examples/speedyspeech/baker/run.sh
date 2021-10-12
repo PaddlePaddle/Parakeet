@@ -1,9 +1,7 @@
 
 #!/bin/bash
 
-export MAIN_ROOT=`realpath ${PWD}/../../../`
-
-python ${MAIN_ROOT}/utils/ss_train.py \
+python ../train.py \
     --train-metadata=dump/train/norm/metadata.jsonl \
     --dev-metadata=dump/dev/norm/metadata.jsonl \
     --config=conf/default.yaml \
