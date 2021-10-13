@@ -105,6 +105,9 @@ def main():
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
     args = parser.parse_args()
+
+    paddle.set_device(args.device)
+
     config = get_cfg_default()
     if args.config:
         config.merge_from_file(args.config)

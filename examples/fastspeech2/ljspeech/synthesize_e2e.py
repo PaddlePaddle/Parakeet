@@ -148,6 +148,9 @@ def main():
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
     args = parser.parse_args()
+
+    paddle.set_device(args.device)
+
     with open(args.fastspeech2_config) as f:
         fastspeech2_config = CfgNode(yaml.safe_load(f))
     with open(args.pwg_config) as f:

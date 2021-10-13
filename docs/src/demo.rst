@@ -27,7 +27,10 @@ Analysis/synthesis
 Audio samples generated from ground-truth spectrograms with a vocoder.
 
 .. raw:: html
-
+    
+    <b>LJSpeech(English)</b>
+    <br>
+    </br>
     <table>
         <tr>
             <th  align="left"> GT </th>
@@ -101,6 +104,12 @@ Audio samples generated from ground-truth spectrograms with a vocoder.
             </td>
         </tr>
     </table>
+    
+    <br>
+    </br>
+    <b>CSMSC(Chinese)</b>
+    <br>
+    </br>
 
     <table>
         <tr>
