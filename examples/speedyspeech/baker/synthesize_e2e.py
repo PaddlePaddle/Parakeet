@@ -175,6 +175,9 @@ def main():
     parser.add_argument("--verbose", type=int, default=1, help="verbose")
 
     args, _ = parser.parse_known_args()
+
+    paddle.set_device(args.device)
+
     with open(args.speedyspeech_config) as f:
         speedyspeech_config = CfgNode(yaml.safe_load(f))
     with open(args.pwg_config) as f:

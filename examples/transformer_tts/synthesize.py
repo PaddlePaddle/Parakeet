@@ -121,6 +121,9 @@ def main():
     parser.add_argument("--verbose", type=int, default=1, help="verbose.")
 
     args = parser.parse_args()
+
+    paddle.set_device(args.device)
+
     with open(args.transformer_tts_config) as f:
         transformer_tts_config = CfgNode(yaml.safe_load(f))
     with open(args.waveflow_config) as f:
