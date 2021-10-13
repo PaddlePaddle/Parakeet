@@ -30,10 +30,10 @@ from parakeet.data.get_feats import Energy
 from parakeet.data.get_feats import LogMelFBank
 from parakeet.data.get_feats import Pitch
 from parakeet.datasets.preprocess_utils import compare_duration_and_mel_length
-from parakeet.datasets.preprocess_utils import merge_silence
 from parakeet.datasets.preprocess_utils import get_input_token
 from parakeet.datasets.preprocess_utils import get_phn_dur
 from parakeet.datasets.preprocess_utils import get_spk_id_map
+from parakeet.datasets.preprocess_utils import merge_silence
 from yacs.config import CfgNode
 
 
