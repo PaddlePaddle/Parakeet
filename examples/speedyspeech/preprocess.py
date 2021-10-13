@@ -27,9 +27,9 @@ import yaml
 from concurrent.futures import ThreadPoolExecutor
 from parakeet.data.get_feats import LogMelFBank
 from parakeet.datasets.preprocess_utils import compare_duration_and_mel_length
-from parakeet.datasets.preprocess_utils import merge_silence
 from parakeet.datasets.preprocess_utils import get_phones_tones
 from parakeet.datasets.preprocess_utils import get_phn_dur
+from parakeet.datasets.preprocess_utils import merge_silence
 from pathlib import Path
 from yacs.config import CfgNode
 

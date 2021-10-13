@@ -25,72 +25,10 @@ import tqdm
 import yaml
 from concurrent.futures import ThreadPoolExecutor
 from parakeet.data.get_feats import LogMelFBank
+from parakeet.datasets.preprocess_utils import get_phn_dur
+from parakeet.datasets.preprocess_utils import merge_silence
 from pathlib import Path
 from yacs.config import CfgNode
-
-
-# speaker|utt_id|phn dur phn dur ...
-def get_phn_dur(file_name):
-    '''
-    read MFA duration.txt
-    Parameters
-    ----------
-    file_name : str or Path
-        path of gen_duration_from_textgrid.py's result
-    Returns
-    ----------
-    Dict
-        sentence: {'utt': ([char], [int])}
-    '''
-    f = open(file_name, 'r')
-    sentence = {}
-    speaker_set = set()
-    for line in f:
-        line_list = line.strip().split('|')
-        utt = line_list[0]
-        speaker = line_list[1]
-        p_d = line_list[-1]
-        speaker_set.add(speaker)
-        phn_dur = p_d.split()
-        phn = phn_dur[::2]
-        dur = phn_dur[1::2]
-        assert len(phn) == len(dur)
-        sentence[utt] = (phn, [int(i) for i in dur], speaker)
-    f.close()
-    return sentence, speaker_set
-
-
-def merge_silence(sentence):
-    '''
-    merge silences, set <eos>
-    Parameters
-    ----------
-    sentence : Dict
-        sentence: {'utt': (([char], [int]), str)}
-    '''
-    for utt in sentence:
-        cur_phn, cur_dur, speaker = sentence[utt]
-        new_phn = []
-        new_dur = []
-
-        # merge sp and sil
-        for i, p in enumerate(cur_phn):
-            if i > 0 and 'sil' == p and cur_phn[i - 1] in {"sil", "sp"}:
-                new_dur[-1] += cur_dur[i]
-                new_phn[-1] = 'sil'
-            else:
-                new_phn.append(p)
-                new_dur.append(cur_dur[i])
-
-        for i, (p, d) in enumerate(zip(new_phn, new_dur)):
-            if p in {"sp"}:
-                if d < 14:
-                    new_phn[i] = 'sp'
-                else:
-                    new_phn[i] = 'spl'
-
-        assert len(new_phn) == len(new_dur)
-        sentence[utt] = [new_phn, new_dur, speaker]
 
 
 def process_sentence(config: Dict[str, Any],
