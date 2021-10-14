@@ -465,6 +465,9 @@ class PWGGenerator(nn.Layer):
         skips = 0
         for f in self.conv_layers:
             x, s = f(x, c)
+            # Add depency with x to avoid lanching op too fast that leads
+            # to GPU memory reach too high value (ugly trick here) 
+            c += paddle.mean(x - x)
             skips += s
         skips *= math.sqrt(1.0 / len(self.conv_layers))
 
