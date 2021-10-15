@@ -1,5 +1,6 @@
 #!/bin/bash
-
+FLAGS_allocator_strategy=naive_best_fit \
+FLAGS_fraction_of_gpu_memory_to_use=0.01 \
 python3 synthesize_e2e.py \
   --fastspeech2-config=conf/default.yaml \
   --fastspeech2-checkpoint=exp/default/checkpoints/snapshot_iter_96400.pdz \
