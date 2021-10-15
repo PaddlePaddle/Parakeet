@@ -1,5 +1,6 @@
 #!/bin/bash
-
+FLAGS_allocator_strategy=naive_best_fit \
+FLAGS_fraction_of_gpu_memory_to_use=0.01 \
 python3 ../synthesize.py \
   --speedyspeech-config=conf/default.yaml \
   --speedyspeech-checkpoint=exp/default/checkpoints/snapshot_iter_11400.pdz \
