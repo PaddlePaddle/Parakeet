@@ -206,6 +206,8 @@ optional arguments:
 
 You can use the following scripts to synthesize for `../sentences.txt` using pretrained fastspeech2 and parallel wavegan models.
 ```bash
+FLAGS_allocator_strategy=naive_best_fit \
+FLAGS_fraction_of_gpu_memory_to_use=0.01 \
 python3 synthesize_e2e.py \
   --fastspeech2-config=fastspeech2_nosil_aishell3_ckpt_0.4/default.yaml \
   --fastspeech2-checkpoint=fastspeech2_nosil_aishell3_ckpt_0.4/snapshot_iter_96400.pdz \
