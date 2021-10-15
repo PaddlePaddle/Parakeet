@@ -14,7 +14,7 @@ fmax: 7600          # Maximum frequency in mel basis calculation.
 ###########################################################
 #                       DATA SETTING                      #
 ###########################################################
-batch_size: 32
+batch_size: 64
 num_workers: 4
 
 ###########################################################
@@ -35,13 +35,13 @@ model:
 ###########################################################
 optimizer:
   optim: adam              # optimizer type
-  learning_rate: 0.001     # learning rate
-  max_grad_norm: 5.0
+  learning_rate: 0.002     # learning rate
+  max_grad_norm: 1
 
 ###########################################################
 #                     TRAINING SETTING                    #
 ###########################################################
-max_epoch: 300
+max_epoch: 200
 num_snapshots: 5
 
 ###########################################################
