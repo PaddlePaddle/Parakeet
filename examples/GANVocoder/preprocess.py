@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import os
 from operator import itemgetter
 from typing import Any
 from typing import Dict
 from typing import List
 
-import argparse
 import jsonlines
 import librosa
 import numpy as np
@@ -38,6 +39,9 @@ def process_sentence(config: Dict[str, Any],
                      mel_extractor=None,
                      cut_sil: bool=True):
     utt_id = fp.stem
+    # for vctk
+    if utt_id.endswith("_mic2"):
+        utt_id = utt_id[:-5]
     record = None
     if utt_id in sentences:
         # reading, resampling may occur
@@ -142,7 +146,7 @@ def main():
         "--dataset",
         default="baker",
         type=str,
-        help="name of dataset, should in {baker, ljspeech} now")
+        help="name of dataset, should in {baker, ljspeech, vctk} now")
     parser.add_argument(
         "--rootdir", default=None, type=str, help="directory to dataset.")
     parser.add_argument(
@@ -196,16 +200,34 @@ def main():
         wav_files = sorted(list((rootdir / "Wave").rglob("*.wav")))
         num_train = 9800
         num_dev = 100
+        train_wav_files = wav_files[:num_train]
+        dev_wav_files = wav_files[num_train:num_train + num_dev]
+        test_wav_files = wav_files[num_train + num_dev:]
 
     elif args.dataset == "ljspeech":
         wav_files = sorted(list((rootdir / "wavs").rglob("*.wav")))
         # split data into 3 sections
         num_train = 12900
         num_dev = 100
-
-    train_wav_files = wav_files[:num_train]
-    dev_wav_files = wav_files[num_train:num_train + num_dev]
-    test_wav_files = wav_files[num_train + num_dev:]
+        train_wav_files = wav_files[:num_train]
+        dev_wav_files = wav_files[num_train:num_train + num_dev]
+        test_wav_files = wav_files[num_train + num_dev:]
+    elif args.dataset == "vctk":
+        sub_num_dev = 5
+        wav_dir = rootdir / "wav48_silence_trimmed"
+        train_wav_files = []
+        dev_wav_files = []
+        test_wav_files = []
+        for speaker in os.listdir(wav_dir):
+            wav_files = sorted(list((wav_dir / speaker).rglob("*_mic2.flac")))
+            if len(wav_files) > 100:
+                train_wav_files += wav_files[:-sub_num_dev * 2]
+                dev_wav_files += wav_files[-sub_num_dev * 2:-sub_num_dev]
+                test_wav_files += wav_files[-sub_num_dev:]
+            else:
+                train_wav_files += wav_files
+    else:
+        print("dataset should in {baker, ljspeech, vctk} now!")
 
     train_dump_dir = dumpdir / "train" / "raw"
     train_dump_dir.mkdir(parents=True, exist_ok=True)

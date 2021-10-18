@@ -46,6 +46,9 @@ def process_sentence(config: Dict[str, Any],
                      energy_extractor=None,
                      cut_sil: bool=True):
     utt_id = fp.stem
+    # for vctk
+    if utt_id.endswith("_mic2"):
+        utt_id = utt_id[:-5]
     record = None
     if utt_id in sentences:
         # reading, resampling may occur
@@ -127,7 +130,7 @@ def process_sentences(config,
                       cut_sil: bool=True):
     if nprocs == 1:
         results = []
-        for fp in tqdm.tqdm(fps, total=len(fps)):
+        for fp in fps:
             record = process_sentence(config, fp, sentences, output_dir,
                                       mel_extractor, pitch_extractor,
                                       energy_extractor, cut_sil)
@@ -167,7 +170,7 @@ def main():
         "--dataset",
         default="baker",
         type=str,
-        help="name of dataset, should in {baker, aishell3, ljspeech} now")
+        help="name of dataset, should in {baker, aishell3, ljspeech, vctk} now")
 
     parser.add_argument(
         "--rootdir", default=None, type=str, help="directory to dataset.")
@@ -256,6 +259,23 @@ def main():
         train_wav_files = wav_files[:num_train]
         dev_wav_files = wav_files[num_train:num_train + num_dev]
         test_wav_files = wav_files[num_train + num_dev:]
+    elif args.dataset == "vctk":
+        sub_num_dev = 5
+        wav_dir = rootdir / "wav48_silence_trimmed"
+        train_wav_files = []
+        dev_wav_files = []
+        test_wav_files = []
+        for speaker in os.listdir(wav_dir):
+            wav_files = sorted(list((wav_dir / speaker).rglob("*_mic2.flac")))
+            if len(wav_files) > 100:
+                train_wav_files += wav_files[:-sub_num_dev * 2]
+                dev_wav_files += wav_files[-sub_num_dev * 2:-sub_num_dev]
+                test_wav_files += wav_files[-sub_num_dev:]
+            else:
+                train_wav_files += wav_files
+
+    else:
+        print("dataset should in {baker, aishell3, ljspeech, vctk} now!")
 
     train_dump_dir = dumpdir / "train" / "raw"
     train_dump_dir.mkdir(parents=True, exist_ok=True)

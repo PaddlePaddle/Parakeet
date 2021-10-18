@@ -20,13 +20,13 @@ import numpy as np
 import paddle
 import soundfile as sf
 import yaml
-from yacs.config import CfgNode
 from parakeet.frontend import English
 from parakeet.models.fastspeech2 import FastSpeech2
 from parakeet.models.fastspeech2 import FastSpeech2Inference
 from parakeet.models.parallel_wavegan import PWGGenerator
 from parakeet.models.parallel_wavegan import PWGInference
 from parakeet.modules.normalizer import ZScore
+from yacs.config import CfgNode
 
 
 def evaluate(args, fastspeech2_config, pwg_config):
@@ -49,9 +49,17 @@ def evaluate(args, fastspeech2_config, pwg_config):
     for phn, id in phn_id:
         phone_id_map[phn] = int(id)
     print("vocab_size:", vocab_size)
+    with open(args.speaker_dict, 'rt') as f:
+        spk_id = [line.strip().split() for line in f.readlines()]
+    num_speakers = len(spk_id)
+    print("num_speakers:", num_speakers)
+
     odim = fastspeech2_config.n_mels
     model = FastSpeech2(
-        idim=vocab_size, odim=odim, **fastspeech2_config["model"])
+        idim=vocab_size,
+        odim=odim,
+        num_speakers=num_speakers,
+        **fastspeech2_config["model"])
 
     model.set_state_dict(
         paddle.load(args.fastspeech2_checkpoint)["main_params"])
@@ -84,7 +92,8 @@ def evaluate(args, fastspeech2_config, pwg_config):
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
+    # only test the number 0 speaker
+    spk_id = 0
     for utt_id, sentence in sentences:
         phones = frontend.phoneticize(sentence)
         # remove start_symbol and end_symbol
@@ -98,14 +107,15 @@ def evaluate(args, fastspeech2_config, pwg_config):
         phone_ids = paddle.to_tensor(phone_ids)
 
         with paddle.no_grad():
-            mel = fastspeech2_inference(phone_ids)
+            mel = fastspeech2_inference(
+                phone_ids, spk_id=paddle.to_tensor(spk_id))
             wav = pwg_inference(mel)
 
         sf.write(
-            str(output_dir / (utt_id + ".wav")),
+            str(output_dir / (str(spk_id) + "_" + utt_id + ".wav")),
             wav.numpy(),
             samplerate=fastspeech2_config.fs)
-        print(f"{utt_id} done!")
+        print(f"{spk_id}_{utt_id} done!")
 
 
 def main():
@@ -135,10 +145,9 @@ def main():
         help="mean and standard deviation used to normalize spectrogram when training parallel wavegan."
     )
     parser.add_argument(
-        "--phones-dict",
-        type=str,
-        default="phone_id_map.txt",
-        help="phone vocabulary file.")
+        "--phones-dict", type=str, default=None, help="phone vocabulary file.")
+    parser.add_argument(
+        "--speaker-dict", type=str, default=None, help="speaker id map file.")
     parser.add_argument(
         "--text",
         type=str,

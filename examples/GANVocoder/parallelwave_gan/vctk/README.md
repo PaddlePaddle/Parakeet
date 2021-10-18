@@ -1,19 +1,19 @@
-# Parallel WaveGAN with the LJSpeech-1.1 dataset
-
-This example contains code used to train a [parallel wavegan](http://arxiv.org/abs/1910.11480) model with [LJSpeech-1.1](https://keithito.com/LJ-Speech-Dataset/).
-
+# Parallel WaveGAN with VCTK
+This example contains code used to train a [parallel wavegan](http://arxiv.org/abs/1910.11480) model with [VCTK](https://datashare.ed.ac.uk/handle/10283/3443).
 ## Preprocess the dataset
-
 ### Download and Extract the datasaet
-Download LJSpeech-1.1 from the [official website](https://keithito.com/LJ-Speech-Dataset/).
+Download VCTK-0.92  from the [official website](https://datashare.ed.ac.uk/handle/10283/3443) and extract it to `~/datasets`. Then the dataset is in directory `~/datasets/VCTK-Corpus-0.92`.
 
 ### Get MFA results for silence trim
 We use [MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner) results to  cut silence in the edge of audio.
-You can download from here [ljspeech_alignment.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/LJSpeech-1.1/ljspeech_alignment.tar.gz), or train your own MFA model reference to  [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) of our repo.
+You can download from here [vctk_alignment.tar.gz](https://paddlespeech.bj.bcebos.com/MFA/VCTK-Corpus-0.92/vctk_alignment.tar.gz), or train your own MFA model reference to  [use_mfa example](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa) of our repo.
+ps: we remove three speakers in VCTK-0.92 (see [reorganize_vctk.py](https://github.com/PaddlePaddle/Parakeet/tree/develop/examples/use_mfa/local/reorganize_vctk.py)):
+1. `p315`, because no txt for it.
+2. `p280` and `p362`, because no *_mic2.flac (which is better than *_mic1.flac) for  them.
 
 ### Preprocess the dataset
-Assume the path to the dataset is `~/datasets/LJSpeech-1.1`.
-Assume the path to the MFA result of LJSpeech-1.1 is `./ljspeech_alignment`.
+Assume the path to the dataset is `~/datasets/VCTK-Corpus-0.92`.
+Assume the path to the MFA result of VCTK is `./vctk_alignment`.
 Run the command below to preprocess the dataset.
 ```bash
 ./preprocess.sh
@@ -39,6 +39,7 @@ The dataset is split into 3 parts, namely `train`, `dev` and `test`, each of whi
 Also there is a `metadata.jsonl` in each subfolder. It is a table-like file which contains id and paths to spectrogam of each utterance.
 
 ## Train the model
+
 `./run.sh` calls `../train.py`.
 ```bash
 ./run.sh
@@ -47,11 +48,11 @@ Here's the complete help message.
 
 ```text
 usage: train.py [-h] [--config CONFIG] [--train-metadata TRAIN_METADATA]
-                     [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
-                     [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
-                     [--batch-size BATCH_SIZE] [--max-iter MAX_ITER]
-                     [--run-benchmark RUN_BENCHMARK]
-                     [--profiler_options PROFILER_OPTIONS]
+                [--dev-metadata DEV_METADATA] [--output-dir OUTPUT_DIR]
+                [--device DEVICE] [--nprocs NPROCS] [--verbose VERBOSE]
+                [--batch-size BATCH_SIZE] [--max-iter MAX_ITER]
+                [--run-benchmark RUN_BENCHMARK]
+                [--profiler_options PROFILER_OPTIONS]
 
 Train a ParallelWaveGAN model.
 
@@ -89,19 +90,10 @@ benchmark:
 5. `--nprocs` is the number of processes to run in parallel, note that nprocs > 1 is only supported when `--device` is 'gpu'.
 
 ## Pretrained Models
-Pretrained models can be downloaded here:
-1. Parallel WaveGAN checkpoint. [pwg_ljspeech_ckpt_0.5.zip](https://paddlespeech.bj.bcebos.com/Parakeet/pwg_ljspeech_ckpt_0.5.zip), which is used as a vocoder in the end-to-end inference script.
 
-Parallel WaveGAN checkpoint contains files listed below.
-
-```text
-pwg_ljspeech_ckpt_0.5
-├── pwg_default.yaml              # default config used to train parallel wavegan
-├── pwg_snapshot_iter_400000.pdz  # generator parameters of parallel wavegan
-└── pwg_stats.npy                 # statistics used to normalize spectrogram when training parallel wavegan
-```
 
 ## Synthesize
+
 `synthesize.sh` calls `../synthesize.py `, which can synthesize waveform from `metadata.jsonl`.
 ```bash
 ./synthesize.sh
