@@ -98,8 +98,8 @@ def main():
             sentence, merge_sentences=True, get_tone_ids=True)
         phone_ids = input_ids["phone_ids"]
         tone_ids = input_ids["tone_ids"]
-        phones = phone_ids[0]
-        tones = tone_ids[0]
+        phones = phone_ids[0].numpy()
+        tones = tone_ids[0].numpy()
 
         if args.enable_auto_log:
             logger.times.stamp()
