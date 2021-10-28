@@ -1,3 +1,4 @@
+# Parakeet is moving to https://github.com/PaddlePaddle/DeepSpeech now!!!
 # Parakeet
 Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on PaddlePaddle dynamic graph and includes many influential TTS models.  
 
