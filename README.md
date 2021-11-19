@@ -1,4 +1,4 @@
-# Parakeet is moving to https://github.com/PaddlePaddle/DeepSpeech now!!!
+# Parakeet has moved to [PaddleSpeech](https://github.com/PaddlePaddle/PaddleSpeech), this repo will not update anymore, you can open issues of Parakeet in PaddleSpeech
 # Parakeet
 Parakeet aims to provide a flexible, efficient and state-of-the-art text-to-speech toolkit for the open-source community. It is built on PaddlePaddle dynamic graph and includes many influential TTS models.  
 
